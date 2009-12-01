@@ -1,0 +1,256 @@
+module BST;
+
+// Removed None type. Was:
+//  type None = enum (NONE);
+
+// Removed type specifier for 'none' alternative. Was:
+//  type Optional (type Base) = union (None none, Base some);
+type Optional (type Base) = union (none, Base some);
+
+// This makes enum types not needed anymore since
+//  type Fruit = union (Apple, Orange, Banana)
+// effectively replaces
+//  type Fruit = enum (Apple, Orange, Banana)
+//
+// The difference here is that alternative ids are no more globally visible.
+// The new syntax requires type specifier as a prefix:
+//  Fruit fruit = Fruit.Orange
+// instead of:
+//  Fruit fruit = Orange
+//
+// See below for more examples.
+
+type Tree;
+
+type Node (type Entry) = struct (
+    Entry entry,
+    Tree (Entry) left,
+    Tree (Entry) right);
+
+type Tree (type Entry) = Optional (Node (Entry));
+
+empty (type Entry : Tree (Entry) tree) {
+    // New syntax for contructing values of union types:
+    // UNION-TYPE '.' ALTERNATIVE-ID ( '(' EXPRESSION ')' )?
+    // instead of:
+    // '(' ALTERNATIVE-ID ':' EXPRESSION ')'
+    //
+    // It allows to not specify expressions for degenerate alternatives.
+    tree = Tree (Entry).none;
+}
+
+leaf (type Entry, Entry entry : Tree (Entry) tree) {
+    tree = Tree (Entry).some ((entry, empty (Entry), empty (Entry)));
+}
+
+isNone (type Base, Optional (Base) opt : bool b) {
+    switch (opt) {
+        case none: b = true
+        default:   b = false
+    }
+}
+
+getKey (type Entry, Node (Entry) node : int key) {
+    key = getKey(node.entry);
+}
+
+find (type Entry, Tree (Entry) tree, Entry entry : Tree (Entry) tree') {
+    // No need to declare additional variable to preserve type anymore. Was:
+    // Tree (Entry) orig = tree;
+
+    switch (tree) {
+        case none:
+            tree' = Tree (Entry).none
+        // New syntax:
+        // 'as' keyword declares a case-clause local variable with type and
+        // value corresponding to this specific alternative. This syntax is
+        // allowed only for cases handling exaclty one alternative.
+        case some as root:
+            if (getKey (entry) < getKey (Entry, root))
+                tree' = find (Entry, root.left, entry)
+            else if (getKey (entry) > getKey (Entry, root))
+                tree' = find (Entry, root.right, entry)
+            else
+                tree' = tree;
+    }
+}
+
+hasEntry (type Entry, Tree (Entry) tree, Entry entry : bool found) {
+    found = ! isNone (Node (Entry), findNode (Entry, tree, entry));
+}
+
+insert (type Entry, Tree (Entry) tree, Entry entry : Tree (Entry) tree') {
+    switch (tree) {
+        case none:
+            tree' = leaf (Entry, entry)
+        case some as root:
+            if (getKey (entry) < getKey (Entry, root))
+                // New sytax for replacing parts of compound values (structs,
+                // arrays, etc.):
+                //  EXPRESSION 'with' COMPOSITE-LITERAL
+                // instead of:
+                //  EXPRESSION COMPOSITE-LITERAL
+                // Here 'with' was added to syntactically distinguish such expressions from
+                // array subscripts and function calls.
+                //
+                // NOTE: 'with' keyword used here doesn't confict with the
+                // case when it's used to guard variables shared between
+                // processes.
+                tree' = Tree (Entry).some (root with (left: insert (Entry, root.left, entry)));
+                // Was:
+                //  tree' = (some: root (left: insert (Entry, root.left, entry)));
+            else if (getKey (entry) > getKey (Entry, root))
+                tree' = (some: root with (right: insert (Entry, root.right, entry)))
+            else
+                tree' = tree
+    }
+}
+
+delete (type Entry, Tree (Entry) tree, Entry entry : Tree (Entry) tree') {
+
+    extractMax (Node (Entry) node : Node (Entry) node', Tree (Entry) subtree) {
+        switch (node.right) {
+            case none: {
+                node' = node with (left: empty (Entry), right: empty (Entry));
+                subtree = node.left;
+            }
+            case some as next: {
+                Tree (Entry) st;
+                extractMax (next : node', st);
+                subtree = Tree (Entry).some (node with (right: st));
+            }
+        }
+    }
+
+    deleteNodeRec(Node (Entry) node, int key : Tree tree) {
+        if (key < getKey (Entry, node)) {
+            switch (node.left) {
+                case none:      tree = Tree (Entry).some (node)
+                case some as l: tree = deleteNodeRec (l, key)
+            }
+        } else if (key > getKey (Entry, root)) {
+            switch (node.right) {
+                case none:      tree = Tree (Entry).some (node)
+                case some as r: tree = deleteNodeRec (r, key)
+            }
+        } else {
+            if (isNone (Entry, node.left) & isNone (Entry, node.right))
+                tree = empty (Entry)
+            else if (isNone (Entry, node.right))
+                tree = node.left
+            else switch (node.left) {
+                case none:
+                    tree = node.right
+                case some as l: {
+                    Node (Entry) nmax;
+                    Tree (Entry) st;
+
+                    extractMax (l : nmax, st);
+                    tree = Tree (Entry).some (nmax with (left: st, right: node.right));
+                }
+            }
+        }
+    }
+
+    switch (tree) {
+        case none:         tree' = tree
+        case some as node: tree' = deleteNodeRec (node, getKey (entry))
+    }
+}
+
+rotateLeft (type Entry, Node (Entry) pivot : Node (Entry) pivot') {
+    switch (pivot.right) {
+        case none:
+            pivot' = pivot
+        case some as node:
+            pivot' = node with (left: pivot with (right: node.left))
+    }
+}
+
+rotateRight (type Entry, Node (Entry) pivot : Node (Entry) pivot') {
+    switch (pivot.left) {
+        case none:
+            pivot' = pivot
+        case some as node:
+            pivot' = node with (right: pivot with (left: node.right))
+    }
+}
+
+// Make binary tree balanced using DSW algorithm.
+balance (type Entry, Tree (Entry) tree : Tree (Entry) tree') {
+
+    makeVine (Node (Entry) root, nat size : Node (Entry) root', nat size') {
+        switch (root.left) {
+            case none:
+                switch (root.right) {
+                    case none:
+                        root' = root
+                    case some as r: {
+                        Node (Entry) rnew;
+                        makeVine (Entry, r, size + 1 : rnew, size');
+                        root' = root with (right: Tree (Entry).some (rnew));
+                    }
+                }
+            case some:
+                makeVine (Entry, rotateRight (Entry, root), size : root', size')
+        }
+    }
+
+    fullSize (nat size, nat fsz : nat fsz') {
+        fsz' = (fsz <= sz) ? fullSize (fsz*2 + 1) : fsz/2;
+    }
+
+    compress (Node (Entry) root, nat count : Node (Entry) root') {
+        if (count > 0) {
+            Node (Entry) rnext = rotateLeft (Entry, root);
+
+            switch (rnext.right) {
+                case none:      root' = rnext // Should never happen.
+                case some as r: root' = compress (r, count - 1)
+            }
+        } else {
+            root' = root;
+        }
+    }
+
+    balanceRec (Node (Entry) root, nat count : Node (Entry) root') {
+        root' = count > 1 ? balanceRec (compress (root, count/2), count/2) : root;
+    }
+
+    switch (tree) {
+        case none:
+            tree' = tree
+        case some as root: {
+            nat size;
+            Node (Entry) node;
+
+            makeVine (root, 1 : node, size);
+
+            nat fsz = fullSize (size, 1);
+
+            tree' = Tree (Entry).some (balanceRec (compress (node, size - fsz), fsz));
+        }
+    }
+}
+
+
+// Sample usage (hasn't changed):
+//
+
+import BST;
+
+getKey (int entry : int key) {
+    key = entry;
+}
+
+type t = BST.Tree (int);
+
+t t1 = BST.insert (int, BST.empty (int), 1);
+t t2 = BST.insert (int, t1, 2);
+t t3 = BST.insert (int, t2, 3);
+
+t t4 = BST.balance (int, t3);
+
+bool found = BST.hasEntry (int, t4, 3);
+
+

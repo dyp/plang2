@@ -1,0 +1,9 @@
+
+foo(real _f : int _class) {
+	switch (_f) {
+		case 3.14: _class = 1
+		case 2.72: _class = 2
+		default:   _class = 0
+	}
+}
+

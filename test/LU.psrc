@@ -1,0 +1,45 @@
+module LU;
+
+type Matrix (nat rows, cols) = array (real, 1..rows, 1..cols);
+type Vector (nat size) = array (real, 1..size);
+type Square (nat size) = Matrix (size, size);
+
+sum (Vector (nat size) v : real r) {
+    sumRec (nat i, real s : real s') {
+        s' = select (i > size, s, sumRec (i + 1, s + v[i]));
+    }
+
+    r = sumRec(1, 0);
+}
+
+
+decompose (Square (nat n) a : Square (n) l, u) {
+    decompRec (nat i : Matrix (n, i) l, Matrix (i, n) u) {
+        if (i = 1) {
+            u = [ a[1, 1] ];
+            l = [ 1 ];
+        } else {
+            Matrix (n, i - 1) ll;
+            Matrix (i - 1, n) uu;
+
+            decompRec(i - 1 : ll, uu);
+
+            u = for (1..i, 1..i) as (j, l)
+                    case (1..i-1, _): uu[j, l]
+                    default: a[i, j] - sum (for (1..i-1) as k: ll[i, k]*uu[j, k]);
+
+            v = for (1..i, 1..i) as (j, l)
+                    case (1..i-1, 1..i-1): uu[j, k]
+                    default: a[i, j] - sum (for (1..i-1) as k: ll[i, k]*uu[j, k]);
+
+            l[j, i] = (a[j, i] - sum (for (1..i-1) as k: l[j, k]*u[k, i]))/u[i, i];
+            pl[j] = pl2[j]*
+            //u = [ 1..j-1 as i: uu[i], j: 
+        }
+    }
+
+    u[1, j] = a[1, j];
+    l[i, 1] = a[i, 1]/u[1, 1];
+}
+
+

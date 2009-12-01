@@ -1,0 +1,6 @@
+fibonacci (int n : int m) {
+	if (n < 2)
+		m = n
+	else
+		m = fibonacci (n - 1) + fibonacci (n - 2);
+}

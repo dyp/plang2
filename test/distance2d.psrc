@@ -1,0 +1,6 @@
+
+type point_t = struct (real x, y);
+
+length (point_t a, b : real l) {
+	l = ((a.x - b.x)^2 + (a.y - b.y)^2)^0.5;
+}

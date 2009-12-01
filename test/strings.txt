@@ -1,0 +1,83 @@
+
+
+
+foo(:) {
+	string s;
+	s = "foo";
+}
+
+.function foo {
+	.var %u0 ptr (wchar) // R(%u0) = 0 (uninitialized)
+	.const %c0 wchar 3 "foo" // R(%c0) = 1
+
+	%v0 = ptr %c0
+	ref %v0 // R(%c0) = 2
+
+	%v1 = cast %v0 ptr(int32)
+	ref %v1 // R(%c0) = 3
+
+	%v2 = offset %v1 -1
+	ref %v2 // R(%c0) = 4
+
+	%v3 = load %v2
+	%v4 = add %v3 8 // sizeof(int32) + sizeof(wchar)
+	%v5 = malloc %v4  // R(%v5) = 0
+	ref %v5  // R(%v5) = 1
+
+	memcpy %v5 %v2 %v4
+	%v6 = cast %v5 ptr(int32)
+	ref %v6  // R(%v5) = 2
+
+	%v7 = offset %v6 1
+	ref %v7  // R(%v5) = 3
+
+	%v8 = cast %u0 ptr(wchar)
+	ref %v8  // R(%u0) = 0
+
+	unref %v8 // R(%u0) = 0
+	store %v8 %v7
+	ref %v7  // R(%v5) = 4
+	
+	unref %v0 // R(%c0) = 3
+	unref %v1 // R(%c0) = 2
+	unref %v2 // R(%c0) = 1 // alive
+	unref %v5 // R(%v5) = 3
+	unref %v6 // R(%v5) = 2
+	unref %v7 // R(%v5) = 1
+	unref %v8 // R(%v5) = 0 // dead
+}
+
+
+.function foo {
+	.var %u0 ptr (wchar)
+	.const %c0 wchar 3 "foo"
+
+	%v0 = ptr %c0
+
+	%v1 = cast %v0 ptr(int32)
+	%v2 = offset %v1 -1
+	%v3 = load %v2
+	%v4 = add %v3 8 // sizeof(int32) + sizeof(wchar)
+	%v5 = malloc %v4
+	memcpy %v5 %v2 %v4
+	%v6 = cast %v5 ptr(int32)
+	%v7 = offset %v6 1
+	%v8 = cast %u0 ptr(wchar)
+	store %v8 %v7
+}
+	
+
+.function foo {
+	.var %u0 ptr (char)
+	.var %u1 ptr (char)
+	
+	u0 = malloc(length("foo") + 1 + sizeof(int)) + sizeof(int);
+
+	char * s = "\0\0\0\0x3foo"
+	char * _s = s + 4;
+
+	
+	.const %c0 string [3] "foo"
+	.const %c1 (int16, int32) []
+	.const %c2 int16 [3] [1 2 3]
+}

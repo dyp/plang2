@@ -1,0 +1,15 @@
+fibonacci (int n : int m #ok : #param_err) {
+	if (n < 0) {
+		#param_err
+	} else if (n < 2) {
+		m = n; #ok
+	} else {
+		int m2;
+		int m3;
+		fibonacci (n - 1 : m2 : #param_err);
+		fibonacci (n - 2 : m3 : #param_err);
+		m = m2 + m3;
+		#ok
+	}
+}
+

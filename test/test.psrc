@@ -1,0 +1,137 @@
+module test;
+
+foo(int i : int j #as) {
+	foo(1 : _, int l #as);
+}
+
+/*
+type MATR(nat k) = array (real, 1..k, 1..k);
+type VEC(nat n) = array (real, 1..n);
+
+dot(nat n, VEC(n) x, y, nat i, real p : real r) {
+	r = i < n ? dot(n, x, y, i + 1, p + x[i]*y[i]) : p + x[i]*y[i];
+} 
+
+formula LinEq(nat n, MATR(n) a, VEC(n) b, VEC(n) x) = 
+	! 1..n i . dot(n, a[i], x, 1, 0) = b[i]
+
+formula postLin(nat n, MATR(n) a, VEC(n) b, MATR(n) c, VEC(n) d) = 
+	! VEC(n) x, y . LinEq(n, a, b, x) & LinEq(n, c, d, y) => x = y
+
+formula triangle(nat n, MATR(n) a) =
+	(! 1..n i . a[i, i] = 1) & ! 1..n i, j . (i > j => a[i, j] = 0)
+
+formula triaCol(nat n, k, MATR(n) a) =
+	(! 1..k-1 i . (a[i, i] = 1)) & ! 1..n i, 1..k-1 j . (i > j => a[i, j] = 0)
+
+formula nulCol(nat n, k, MATR(n) a) =
+	! (k+1)..n j . ! 1..j i . a[i, j] = 0
+
+subtrCol(nat n, MATR(n) a, VEC(n) b, nat k : MATR(n) a', VEC(n) b')
+	pre n > 0 & triangle(n, a) & nulCol(n, k, a)
+{
+	b' = b for (1..n i) { case 1..k-1: b[i] - b[k]*a[i, k] };
+	a' = a for (1..n i, j) { case (1..k-1, k): 0 }
+}
+	post nulCol(n, k-1, a) & postLin(n, a, b, a', b')
+
+uniMat(nat n, MATR(n) a, VEC(n) b, nat k : VEC(n) x)
+	pre n > 0 & triangle(n, a) & nulCol(n, k, a)
+{
+	if (k = 1)
+		x = b
+	else {
+		MATR(n) c;
+		VEC(n) d;
+		subtrCol(n, a, b, k : c, d);
+		uniMat(n, c, d, k-1 : x)
+	}
+}
+	post LinEq(n, a, b, x)
+
+subtrLines(nat n, k, MATR(n) a, VEC(n) b : MATR(n) a', VEC(n) b')
+	pre 1 <= k <= n & a[k, k] = 1
+{
+	b' = b for (1..n i) { case k+1..n: b[i] - b[k]*a[i, k] };
+	a' = a for (1..n i, j) { case (k+1..n, k..n): a[i, j] - a[k, j]*a[i, k] }
+}
+	post triaCol(n, k+1, a) & postLin(n, a, b, a', b')
+
+norm(nat n, k, MATR(n) a, VEC(n) b : MATR(n) a', VEC(n) b')
+	pre 1 <= k <= n & a[k, k] != 0
+{
+	b' = b for (1..n j) { case k: b[k]/a[k, k] };
+	a' = a for (1..n i, j) { case (k, k..n): a[k, j]/a[k, k] }
+}
+	post a'[k, k] = 1 & postLin(n, a, b, a', b')
+
+Solution(nat n, MATR(n) a, VEC(n) b : VEC(n) x)
+	pre n > 0 & triangle(n, a)
+{
+	uniMat(n, a, b, n:  x)
+}
+	post LinEq(n, a, b, x)
+
+det(nat n, MATR(n) : real);
+
+perm(nat n, MATR(n) a, VEC(n) b, nat k, m : MATR(n) a', VEC(n) b' : ) 
+	pre 1 <= k <= n & k < m <= n+1 & ! k..m-1 i . a[i, k] = 0
+	pre 1: det(a) != 0
+{
+	if (m>n)
+		#2
+	else if (a[m, k] != 0) {
+		b' = b for (1..n j) {
+			case k: b[m]
+			case m: b[k]
+		};
+		a' = a for (1..n i, j) {
+			case (k, k..n): a[m, j]
+			case (m, k..n): a[k, j]
+		};
+		#1
+	} else
+		perm(n, a, b, k, m + 1 : a', b' #1 : #2)
+}
+	post 1: a'[k, k] != 0 & postLin(n, a, b, a', b')
+
+diagEl(nat n, MATR(n) a, VEC(n) b, nat k : MATR(n) a', VEC(n) b' : )
+	pre 1 <= k <= n
+	pre 1: det(a) != 0
+{
+	if (a[k, k] != 0) { a', b' = a, b; #1 }
+	else perm(n, a, b, k, k+1 : a', b' #1 : #2)
+}
+	post 1: a'[k, k] != 0 & postLin(n, a, b, a', b')
+
+Jord(nat n, MATR(n) a, VEC(n) b, nat k : MATR(n) a', VEC(n) b' : )
+	pre 1 <= k <= n & triaCol(n, k, a)
+	pre 1: det(a) != 0
+{
+	diagEl(n, a, b, k : MATR(n) c, VEC(n) d : #2);
+	norm(n, k, c, d : MATR(n) e, VEC(n) f);
+	subtrLines(n, k, e, f : MATR(n) g, VEC(n) h);
+	if (k = n) { a', b' = g, h; #1 }
+	else Jord(n, g, h, k + 1 :  a', b' #1 : #2);
+}
+	post 1: postLin(n, a, b, a', b') & triangle(n, a')
+
+TriangleMatr(nat n, MATR(n) a, VEC(n) b : MATR(n) a', VEC(n) b' : )
+	pre  n > 0
+	pre 1: det(a) != 0
+{
+	Jord(n, a, b, 1 : a', b' #1 : #2)
+}
+	post 1: postLin(n, a, b, a', b') & triangle(n, a')
+
+Lin(nat n, MATR(n) a, VEC(n) b : VEC(n) x : )
+	pre  n > 0
+	pre 1: det(a) != 0
+{
+	MATR(n) c;
+	VEC(n) d;
+	TriangleMatr(n, a, b : c, d : #2);
+	Solution(n, c, d : x #1)
+}
+	post 1: LinEq(n, a, b, x)
+*/

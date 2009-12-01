@@ -1,0 +1,140 @@
+module LU;
+
+type Matrix (nat rows, cols) = array (real, 1..rows, 1..cols);
+type Vector (nat size) = array (real, 1..size);
+type Square (nat size) = Matrix (size, size);
+
+
+
+
+sum (type U a, type V b : V c) { c = a + b; }
+
+fold (predicate (type U a, type V b : V c), 
+
+sum (var a, var b : var c) {
+}
+
+sum (Vector (nat size) v : real r) {
+    sumRec (nat i, real s : real s') {
+        s' = select (i > size, s, sumRec (i + 1, s + v[i]));
+    }
+
+    r = sumRec(1, 0);
+}
+
+generator (var x : real v, var x' #next : #stop) {
+    
+}
+
+apply GENERATOR >> EXPRESSION >> ACCUMULATOR
+
+
+(var i, j -> i + j)
+
+lambda (nat i: nat j) { j = i*i; }
+
+makeArray(1..10, ints(100) -> (var i : i*2));
+
+apply(range(1, 10), lambda (int k : int r) { r = l[i, k]*u[j, k] }));
+
+for nat i in range(1, 10) i*i do makeArray(1, 10)
+
+for range(1, 10) as i in  
+
+generator ( var x : var x', Result r : #stop);
+
+
+type Generator (type Value, type Result) =
+    struct (
+        Value initialValue,
+        predicate (Value v : Result r, Value v' #next : #stop) step
+    );
+
+
+
+
+range (int low, high : Generator (int, int) g) {
+    g = (initialValue: low,
+        step: lambda (int i : int r, i' #next : #stop) {
+                if (i <= high) r, i' = i, i + 1 #next
+                else #stop
+            }
+        );
+}
+
+exprs (Generator (type X, type Y) g, predicate (Y, type Z) e : Generator (X, Z) f) {
+    f =
+(
+initialValue: g.initialValue,
+step:
+    lambda (X i : Z r, X i' #next : #stop) {
+        X p;
+        g.step (i : p, i' #ok : #stop)
+            case ok: r = e(p) #next;
+    }
+);
+}
+
+exprs(range (1, 10), lambda (int i : int j) { j = i*i })
+
+
+makeArray (exprs (range (1, i), lambda (int k : int r) { r = l[i, k]*u[j, k] }));
+
+Generator range = (
+    initialValue: 
+
+range (int low, int high, int x, predicate (int : real) expr : real v, int x' #next : #stop) {
+    if (x <= high) {
+        v = expr(x);
+        x' = x + 1;
+        #next
+    } else
+        #stop
+}
+
+range (1, 10, _, lambda (int i : real r) { r = a[i]*a[i] })
+
+type G = generator (real);
+
+G g = for (1..i-1) as k: l[i, k]*u[j, k];
+
+accum (type V val, type P prev : type R result);
+
+
+accum (e[n],
+    accum (e[n-1],
+        ...,
+            accum (e[0], initialValue));
+
+makeArray (int i, array [1..(int n)] a : array [1..n+1] a') {
+    a' = a + [n+1: i];
+}
+
+accumulate (makeArray, [], for (1..10) as k: k*k);
+
+
+
+decompose (Square (nat n) a : Square (n) l, u) {
+    decompRec (nat i : Square (i) l, u) {
+        if (i = 1) {
+            u = [ a[1, 1] ];
+            l = [ 1 ];
+        } else {
+            Square (i - 1) ll, uu;
+
+            decompRec(i - 1 : ll, uu);
+
+            sum (for 1..i-1 as k : l[i, k]*u[j, k]);
+
+            u[i, j] = a[i, j] - sum (for (1..i-1) as k: l[i, k]*u[j, k]);
+            l[j, i] = (a[j, i] - pl2[j])/u[i, j];
+            pl[j] = pl2[j]*
+            //u = [ 1..j-1 as i: uu[i], j: 
+        }
+    }
+
+    u[1, j] = a[1, j];
+    l[i, 1] = a[i, 1]/u[1, 1];
+}
+
+

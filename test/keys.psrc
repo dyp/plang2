@@ -1,0 +1,58 @@
+
+getClass(nat(8) _key : int _class) {
+	switch (_key) {
+		case 0:          _class = 0
+		case 32:         _class = 1
+		case 40, 48..57: _class = 2
+		case 65..90:     _class = 3
+		default:         _class = 4
+	}
+}
+
+
+/*
+
+	.arg %0 uint8
+	.result %r int
+
+
+	%v0 = gte %0 48
+	%v1 = lte %0 57
+	%v3 = and %v0 %v1
+	jnz %v3 !l0
+
+	%v4 = gte %0 65
+	%v5 = lte %0 90
+	%v6 = and %v4 %v5
+	jnz %v6 !l2
+
+	switch %v0
+		case 0 !l3
+		case 32 !l4
+		case 40 !l0
+		default !l5
+
+!l2:
+	set %r 0
+	jmp !l1
+!l4:
+	set %r 1
+	jmp !l1
+!l0:
+	set %r 2
+	jmp !l1
+!l2:
+	set %r 3
+	jmp !l1
+!l5:
+	set %r 4
+	jmp !l1
+
+!l1:
+	return %r
+
+
+
+
+*/
+

@@ -1,0 +1,7 @@
+type lst = union (int none, struct (int(64) val, lst l) some);
+
+
+make_lst (int i, lst l1 : lst l2) {
+	lst l3;
+	l3 = (some: (1, l1));
+}

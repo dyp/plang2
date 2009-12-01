@@ -1,0 +1,12 @@
+.cproject	crlf
+.project	crlf
+
+*.txt		crlf
+*.psrc		crlf
+
+*.h		crlf
+*.cpp		crlf
+*.g		crlf
+
+Doxyfile	crlf
+

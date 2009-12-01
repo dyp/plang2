@@ -1,0 +1,12 @@
+type tm_t = struct (int year, month, day, hour, minute, second);
+type ts_t = int;
+type time_t = union (ts_t ts, tm_t tm);
+
+
+now (tm_t tm: time_t t) {
+//	time_t t2;
+	t = (tm: (day: 1));
+//	t = t2;
+}
+
+

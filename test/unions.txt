@@ -1,0 +1,53 @@
+type int_tree_t = union (
+  int leaf,
+  struct (int_tree_t lhs, int v, int_tree_t rhs) tree
+);
+
+int_tree_t foo;
+
+// ...
+
+switch (int_tree_t foo = someReallyComplexExpression()) {
+  case leaf: printf ("leaf %d", foo)
+  case tree: printf ("tree with root %d", foo.v)
+};
+
+
+
+%p = malloc 1000
+%q = cast ptr((int int)) %p
+%w = field %q 1
+%u = call foo %w
+return %u
+
+
+type T = union (int X, real Y);
+
+T t;
+
+switch (t) {
+    case X as x: ...
+    case Y as y: ...
+}
+
+t = (X: 1);
+t = (Y: 42.3);
+
+if (t.X) {
+    ...
+}
+
+
+
+type NodeKind = enum (RED, BLACK);
+
+
+getKey (int n : int key) { key = n; }
+
+Node(int) tree = (0, (none: NONE), (none: NONE));
+
+tree' = insertNode(int, tree, 1);
+
+tree'' = deleteNode(int, tree', 1);
+
+

@@ -1,0 +1,10 @@
+power_rec(int b, int p : int r) {
+	r = (p = 1) ? b : b*power_rec(b, p - 1);
+}
+
+int_power(int b, int p : int r) {
+	if (b = 2)
+		r = 2 << (p - 1)
+	else
+		r = power_rec(b, p);
+}

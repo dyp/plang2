@@ -1,0 +1,69 @@
+module Matrix (type Base);
+
+
+type A = array (int, 0..2);
+
+type Matrix (nat rows, cols) = array (Base, 1..rows, 1..cols);
+type Vector (nat size) = array (Base, 1..size);
+
+init (nat rows, cols, Base n : Matrix (rows, cols) m) {
+	m = for (1..rows, 1..cols): n;
+}
+
+zeroes (nat rows, cols : Matrix (rows, cols) m) {
+	m = init (rows, cols, 0);
+}
+
+ones (nat rows, cols : Matrix (rows, cols) m) {
+	m = init (rows, cols, 1);
+}
+
+diag (nat size : Matrix (size, size) m) {
+	m = for (1..size, 1..size) as (i, j): select (i = j, 1, 0);
+}
+
+extract (Matrix (nat rows, nat cols) m, nat r, c, rs, cs : Matrix (rs, cs) m') {
+	m' = for (1..rs, 1..cs) as (i, j): m [r + i - 1, c + i - 1];
+}
+
+extractRow (Matrix (nat rows, nat cols) m, nat r : Vector (cols) v) {
+	v = for (1..cols) as i: m [r, i];
+}
+
+extractCol (Matrix (nat rows, nat cols) m, nat c : Vector (rows) v) {
+	v = for (1..rows) as i: m [i, c];
+}
+
+transpose (Matrix (nat rows, nat cols) m : Matrix (cols, rows) m') {
+	m' = for (1..cols, 1..rows) as (i, j): m [j, i];
+}
+
+
+swapRows (Matrix (nat cols, rows) m, nat ra, rb : Matrix (cols, rows) m') {
+	m' = for (1..size, 1..size) as (i, j)
+			case (_, ra): m [i, rb]
+			case (_, rb): m [i, ra]
+			default:      m [i, j];
+			
+	m' = m with [(_, ra) as (i, _): m [i, rb], (_, rb) as (i, _): m [i, ra]];
+}
+
+foo (A a : int i) {
+	i = a[1];
+	
+	
+	
+	
+	[ (1..10, 2..20):
+		case (1..5, _) as (i, j)
+	
+	
+	[int i 1..10, 2..20: ]
+	
+	for (int i in 1..10, j in 1..20)
+		case (1..5, _): 5
+		default:        j;
+	
+	a = [ int i in 1..10 : i*i ]
+	a = [ 1 : 2, 1..10 as i: i*i ]
+}

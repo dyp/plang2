@@ -1,0 +1,42 @@
+hasDivisor (nat lim, n, p : bool b) {
+	if (n > lim)
+		b = false
+	else if (p % n = 0)
+		b = true
+	else
+		b = hasDivisor (lim, n + 1, p);
+}
+
+isPrime (nat p : bool b) {
+	if (p < 2)
+		b = false
+	else if (p < 4)
+		b = true
+	else if ((p + 1) % 6 != 0 & (p - 1) % 6 != 0)
+		b = false
+	else
+		b = hasDivisor (p^0.5, 3, p);
+}
+
+nthPrime (nat n, p : nat p') {
+	if (n = 0)
+		p' = p
+	else if (isPrime (p)) {
+		p' = (n > 1) ? nthPrime (n - 1, p + 1) : p;
+	} else
+		p' = nthPrime (n, p + 1);
+}
+
+mainRec (nat n :) {
+	if (n > 1)
+		mainRec (n-1);
+
+	nat p = nthPrime (n, 1);
+	//print (n, "th prime is ", p);
+}
+
+main (:) {
+	nat n = 10;
+	mainRec (n :);
+}
+

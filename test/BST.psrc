@@ -1,0 +1,239 @@
+module BST;
+
+type None = enum (NONE);
+
+type Optional (type Base) = union (None none, Base some);
+
+type Tree;
+
+type Node (type Entry) = struct (
+    Entry entry,
+    Tree (Entry) left,
+    Tree (Entry) right);
+
+type Tree (type Entry) = Optional (Node (Entry));
+
+// We have to pass the ty of tree entries to every function that deals with
+// trees. Some functions (like this one) cannot be made generic enough because
+// of that.
+empty (type Entry : Tree (Entry) tree) {
+    tree = (none: NONE);
+}
+
+isNone (type Base, Optional (Base) opt : bool b) {
+    switch (opt) {
+        case none: b = true
+        default:   b = false
+    }
+}
+
+// Here we assume that getKey() function is globally visible. Otherwise it is
+// required to pass it everywhere as a parameter, just like 'Entry' type.
+getKey (type Entry, Node (Entry) node : int key) {
+    key = getKey(node.entry);
+}
+
+find (type Entry, Tree (Entry) tree, Entry entry : Tree (Entry) tree') {
+    // We have to duplicate original tree here since type of 'tree' parameter
+    // changes inside of switch/case statement (with current semantics).
+    Tree (Entry) orig = tree;
+
+    switch (tree) {
+        case none:
+            // Using the syntax that requires both alternative id and a value
+            // to select degenerate alternative of a union (and creating a type
+            // for that specific purpose) seems quite redundant.
+            tree' = (none: NONE);
+        case some:
+            if (getKey (entry) < getKey (Entry, tree))
+                tree' = find (Entry, tree.left, entry)
+            else if (getKey (entry) > getKey (Entry, tree))
+                tree' = find (Entry, tree.right, entry)
+            else
+                tree' = orig
+    }
+}
+
+hasEntry (type Entry, Tree (Entry) tree, Entry entry : bool found) {
+    found = ! isNone (Node (Entry), findNode (Entry, tree, entry));
+}
+
+insert (type Entry, Tree (Entry) tree, Entry entry : Tree (Entry) tree') {
+    Tree (Entry) root = tree;
+
+    switch (root) {
+        case none:
+            tree' = (some: (entry, (none: NONE), (none: NONE)))
+        case some:
+            if (getKey (entry) < getKey (Entry, root))
+                tree' = (some: root (left: insert (Entry, root.left, entry)))
+            else if (getKey (entry) > getKey (Entry, root))
+                tree' = (some: root (right: insert (Entry, root.right, entry)))
+            else
+                tree' = tree
+    }
+}
+
+delete (type Entry, Tree (Entry) tree, Entry entry : Tree (Entry) tree') {
+
+    extractMax (Node (Entry) node : Node (Entry) node', Tree (Entry) subtree) {
+        Tree (Entry) next = node.right;
+
+        switch (next) {
+            case none: {
+                // Field replacement syntax looks too much like a function
+                // call.
+                node' = node (left: (none: NONE), right: (none: NONE));
+                subtree = node.left;
+            }
+            case some: {
+                Tree (Entry) st;
+                extractMax (next : node', st);
+                subtree = (some: node (right: st));
+            }
+        }
+    }
+
+    deleteNodeRec(Node (Entry) node, int key : Tree tree) {
+        if (key < getKey (Entry, node)) {
+            Tree (Entry) l = node.left;
+            switch (l) {
+                case none: tree = (some: node)
+                case some: tree = deleteNodeRec (l, key)
+            }
+        } else if (key > getKey (Entry, root)) {
+            Tree (Entry) r = node.right;
+            switch (r) {
+                case none: tree = (some: node)
+                case some: tree = deleteNodeRec (r, key)
+            }
+        } else {
+            Tree (Entry) l = node.left;
+            if (isNone(Entry, node.left) & isNone(Entry, node.right))
+                tree = (none: NONE)
+            else if (isNone(Entry, node.right))
+                tree = node.left
+            else switch (l) {
+                case none: tree = node.right
+                case some: {
+                    Node (Entry) nmax;
+                    Optional (Node (Entry)) st;
+
+                    extractMax (l : nmax, st);
+                    tree = (some: nmax (left: st, right: node.right));
+                }
+            }
+        }
+    }
+
+    Tree (Entry) node = tree;
+
+    switch (node) {
+        case none: tree' = tree
+        case some: tree' = deleteNodeRec (node, getKey (entry))
+    }
+}
+
+rotateLeft (type Entry, Node (Entry) pivot : Node (Entry) pivot') {
+    Tree (Entry) node = pivot.right;
+    switch (node) {
+        case none:
+            pivot' = pivot
+        case some:
+            pivot' = node (left: pivot (right: node.left))
+    }
+}
+
+rotateRight (type Entry, Node (Entry) pivot : Node (Entry) pivot') {
+    Tree (Entry) node = pivot.left;
+    switch (node) {
+        case none:
+            pivot' = pivot
+        case some:
+            pivot' = node (right: pivot (left: node.right));
+    }
+}
+
+// Make binary tree balanced using DSW algorithm.
+balance (type Entry, Tree (Entry) tree : Tree (Entry) tree') {
+
+    makeVine (Node (Entry) root, nat size : Node (Entry) root', nat size') {
+        switch (root.left) {
+            case none: {
+                Tree (Entry) r = root.right;
+                switch (r) {
+                    case none:
+                        root' = root
+                    case some: {
+                        Node (Entry) rnew;
+                        makeVine (Entry, r, size + 1 : rnew, size');
+                        root' = root (right: (some: rnew));
+                    }
+                }
+            }
+            case some:
+                makeVine (Entry, rotateRight (Entry, root), size : root', size')
+        }
+    }
+
+    fullSize (nat size, nat fsz : nat fsz') {
+        fsz' = (fsz <= sz) ? fullSize (fsz*2 + 1) : fsz/2;
+    }
+
+    compress (Node (Entry) root, nat count : Node (Entry) root') {
+        if (count > 0) {
+            Node (Entry) rnext = rotateLeft (Entry, root);
+            Tree (Entry) r = rnext.right;
+
+            switch (r) {
+                case none: root' = rnext; // Should never happen.
+                case some: root' = compress (r, count - 1);
+            }
+        } else {
+            root' = root;
+        }
+    }
+
+    balanceRec (Node (Entry) root, nat count : Node (Entry) root') {
+        root' = count > 1 ? balanceRec (compress(root, count/2), count/2) : root;
+    }
+
+    Tree (Entry) root = tree;
+
+    switch (root) {
+        case none:
+            tree' = tree
+        case some: {
+            nat size;
+            Node (Entry) node;
+
+            makeVine (root, 1 : node, size);
+
+            nat fsz = fullSize (size, 1);
+
+            tree' = (some: balanceRec (compress (node, size - fsz), fsz));
+        }
+    }
+}
+
+
+// Sample usage:
+//
+
+import BST;
+
+getKey (int entry : int key) {
+    key = entry;
+}
+
+type t = BST.Tree (int);
+
+t t1 = BST.insert (int, BST.empty (int), 1);
+t t2 = BST.insert (int, t1, 2);
+t t3 = BST.insert (int, t2, 3);
+
+t t4 = BST.balance (int, t3);
+
+bool found = BST.hasEntry (int, t4, 3);
+
+

@@ -1,0 +1,258 @@
+module BST (type Entry, predicate (Entry : int) getKey);
+
+
+type Optional (type Base) = union (none, Base some);
+
+type Tree;
+
+type Node = struct (
+    Entry entry,
+    Tree left,
+    Tree right);
+
+type Tree = Optional (Node);
+
+empty ( : Tree tree) {
+    tree = Tree.none;
+}
+
+leaf (Entry entry : Tree tree) {
+    tree = Tree.some ((entry, Tree.none, Tree.none));
+}
+
+// New syntax:
+//  ALTERNATIVE-CHECK-EXPRESSION ::= EXPRESSION '.' IDENTIFIER '?'
+// where EXPRESSION is an union-typed expression and IDENTIFIER is an
+// identifier of some alternative of corresponding type.
+//
+// Predicate 'isNone' is not needed anymore since alternative checking is
+// handled by new syntax. E.g. old-style usage:
+//  if (isNone (Tree, tree)) ...
+// is equivalent to:
+//  if (tree.none?) ...
+//
+// Was:
+// isNone (type Base, Optional (Base) opt : bool b) {
+//    switch (opt) {
+//        case none: b = true
+//        default:   b = false
+//    }
+// }
+
+find (Tree tree, Entry entry : Tree tree') {
+    switch (tree) {
+        // Unified switch/case between union-typed expressions and other
+        // expressions. Up until now non-union-typed expressions allowed
+        // specifying arbitary (but compatible) expressions in cases
+        // (arithmetics, calls, etc.). E.g.:
+        //  switch (getChar()) {
+        //      case 'a'..'z':           kind = Letter
+        //      case getSystemEscape (): kind = parseEscape()
+        //  }
+        // Not so for union-typed expressions which allowed only identifiers
+        // of their alternatives. If we use fully-qualified alternative ids
+        // (i.e. prepend type specifier to them) at this point we'd make these
+        // ids into syntactically correct expressions, thus making the syntax
+        // consistent with 'usual' switch usage. E.g., following syntax
+        // becomes correct:
+        //  switch (tree) {
+        //      case Tree.none:              description = "Empty tree"
+        //      case getSomeKnownSubtree (): description = "Some known subtree"
+        //      case Tree.some:              description = "Non-empty tree"
+        //  }
+        //
+        // NOTE: Restrictions on 'as' keyword still hold. It can be used only
+        // when dealing with some specific alternative of union-typed
+        // expression.
+        case Tree.none:
+            tree' = Tree.none
+        case Tree.some as root:
+            if (getKey (entry) < getKey (root.entry))
+                tree' = find (Entry, root.left, entry)
+            else if (getKey (entry) > getKey (root.entry))
+                tree' = find (Entry, root.right, entry)
+            else
+                tree' = tree
+    }
+}
+
+hasEntry (Tree tree, Entry entry : bool found) {
+    found = findNode (tree, entry).some?;
+}
+
+insert (Tree tree, Entry entry : Tree tree') {
+    switch (tree) {
+        case Tree.none:
+            tree' = leaf (entry)
+        case Tree.some as root:
+            if (getKey (entry) < getKey (root.entry))
+                tree' = Tree.some (root with (left: insert (root.left, entry)))
+            else if (getKey (entry) > getKey (root.entry))
+                tree' = Tree.some (root with (right: insert (root.right, entry)))
+            else
+                tree' = tree
+    }
+}
+
+delete (Tree tree, Entry entry : Tree tree') {
+
+    extractMax (Node node : Node node', Tree subtree) {
+        switch (node.right) {
+            case Tree.none: {
+                node' = node with (left: Tree.none, right: Tree.none);
+                subtree = node.left;
+            }
+            case Tree.some as next: {
+                Tree st;
+                extractMax (next : node', st);
+                subtree = Tree.some (node with (right: st));
+            }
+        }
+    }
+
+    deleteNodeRec (Node node, int key : Tree tree) {
+        if (key < getKey (node)) {
+            switch (node.left) {
+                case Tree.none:      tree = Tree.some (node)
+                case Tree.some as l: tree = deleteNodeRec (l, key)
+            }
+        } else if (key > getKey (node)) {
+            switch (node.right) {
+                case Tree.none:      tree = Tree.some (node)
+                case Tree.some as r: tree = deleteNodeRec (r, key)
+            }
+        } else {
+            if (node.left.none? & node.right.none?)
+                tree = Tree.none
+            else if (node.right.none?)
+                tree = node.left
+            else switch (node.left) {
+                case Tree.none:
+                    tree = node.right
+                case Tree.some as l: {
+                    Node nmax;
+                    Tree st;
+
+                    extractMax (l : nmax, st);
+                    tree = Tree.some (nmax with (left: st, right: node.right));
+                }
+            }
+        }
+    }
+
+    switch (tree) {
+        case Tree.none:         tree' = tree
+        case Tree.some as node: tree' = deleteNodeRec (node, getKey (entry))
+    }
+}
+
+rotateLeft (Node pivot : Node pivot') {
+    switch (pivot.right) {
+        case Tree.none:
+            pivot' = pivot
+        case Tree.some as node:
+            pivot' = node with (left: pivot with (right: node.left))
+    }
+}
+
+rotateRight (Node pivot : Node pivot') {
+    switch (pivot.left) {
+        case Tree.none:
+            pivot' = pivot
+        case Tree.some as node:
+            pivot' = node with (right: pivot with (left: node.right))
+    }
+}
+
+// Make binary tree balanced using DSW algorithm.
+balance (Tree tree : Tree tree') {
+
+    makeVine (Node root, nat size : Node root', nat size') {
+        switch (root.left) {
+            case Tree.none:
+                switch (root.right) {
+                    case Tree.none:
+                        root' = root
+                    case Tree.some as r: {
+                        Node rnew;
+                        makeVine (r, size + 1 : rnew, size');
+                        root' = root with (right: Tree.some (rnew));
+                    }
+                }
+            case Tree.some:
+                makeVine (rotateRight (root), size : root', size')
+        }
+    }
+
+    fullSize (nat size, nat fsz : nat fsz') {
+        // New syntax:
+        //  SELECT-EXPRESSION ::= 'select' '(' EXPRESSION ',' EXPRESSION ',' EXPRESSION ')'
+        // replaces:
+        //  TERNARY-EXPRESSION ::= EXPRESSION '?' EXPRESSION ':' EXPRESSION
+        // Since '?' token is now used to determine effective alternative of
+        // union-typed expressions, using it in ternary if-then-else
+        // expression can cause collisions. To avoid these collisions a
+        // special 'select (a, b, c)' expression is introduced. It's semantics are the
+        // same as with 'a ? b : c' expression, meaning that:
+        // 1) 'a' should have boolean type;
+        // 2) 'b' and 'c' should have compatible types (type of the result is infered
+        //  based on these types;
+        // 3) the parts of the expression are evaluated lazily, i.e. only 'b' or only 'c'
+        //  is evaluated depending on the value of 'a'.
+        fsz' = select (fsz <= sz, fullSize (fsz*2 + 1), fsz/2);
+    }
+
+    compress (Node root, nat count : Node root') {
+        if (count > 0) {
+            Node rnext = rotateLeft (root);
+
+            switch (rnext.right) {
+                case Tree.none:      root' = rnext // Should never happen.
+                case Tree.some as r: root' = compress (r, count - 1)
+            }
+        } else {
+            root' = root;
+        }
+    }
+
+    balanceRec (Node root, nat count : Node root') {
+        root' = select (count > 1, balanceRec (compress (root, count/2), count/2), root);
+    }
+
+    switch (tree) {
+        case Tree.none:
+            tree' = tree
+        case Tree.some as root: {
+            nat size;
+            Node node;
+
+            makeVine (root, 1 : node, size);
+
+            nat fsz = fullSize (size, 1);
+
+            tree' = Tree.some (balanceRec (compress (node, size - fsz), fsz));
+        }
+    }
+}
+
+
+// Sample usage (syntax hasn't changed):
+//
+
+getKey (int entry : int key) {
+    key = entry;
+}
+
+import BST (int, getKey) as IntBST;
+
+type T = IntBST.Tree;
+
+T t1 = IntBST.insert (IntBST.empty (), 1);
+T t2 = IntBST.insert (t1, 2);
+T t3 = IntBST.insert (t2, 3);
+
+T t4 = IntBST.balance (t3);
+
+bool found = IntBST.hasEntry (t4, 3);
+
+
