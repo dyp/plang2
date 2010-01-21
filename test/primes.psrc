@@ -32,7 +32,7 @@ mainRec (nat n :) {
 		mainRec (n-1);
 
 	nat p = nthPrime (n, 1);
-	//print (n, "th prime is ", p);
+	print (n, "th prime is ", p);
 }
 
 main (:) {

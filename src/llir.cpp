@@ -95,6 +95,7 @@ public:
     void translate(const ir::CBlock & _stmt, instructions_t & _instrs);
     void translate(const ir::CIf & _stmt, instructions_t & _instrs);
     void translate(const ir::CAssignment & _stmt, instructions_t & _instrs);
+    bool translateBuiltin(const ir::CCall & _stmt, instructions_t & _instrs);
     void translate(const ir::CCall & _stmt, instructions_t & _instrs);
     void translate(const ir::CVariableDeclaration & _stmt, instructions_t & _instrs);
     void translate(const ir::CJump & _stmt, instructions_t & _instrs);
@@ -253,7 +254,7 @@ Auto<CStructType> CTranslator::translate(const ir::CStructType & _type) {
 }
 
 Auto<CStructType> CTranslator::translate(const ir::CUnionType & _type) {
-    if (m_pParent)
+/*    if (m_pParent)
         return m_pParent->translate(_type);
 
     if (m_unionType.empty()) {
@@ -265,7 +266,7 @@ Auto<CStructType> CTranslator::translate(const ir::CUnionType & _type) {
 
     addType(& _type, m_unionType);
 
-    return m_unionType;
+    return m_unionType; */
 }
 
 Auto<CType> CTranslator::translate(const ir::CType & _type) {
@@ -525,7 +526,7 @@ COperand CTranslator::translate(const ir::CTernary & _expr, instructions_t & _in
 COperand CTranslator::translate(const ir::CStructConstructor & _expr, instructions_t & _instrs) {
     assert(_expr.getType());
 
-    int kind = _expr.getType()->getKind();
+    //int kind = _expr.getType()->getKind();
 
     if (_expr.getType()->getKind() == ir::CType::Union) {
         assert(_expr.size() == 1);
@@ -732,8 +733,29 @@ void CTranslator::translate(const ir::CJump & _stmt, instructions_t & _instrs) {
     _instrs.push_back(new CUnary(CUnary::Return, COperand(num)));
 }
 
+bool CTranslator::translateBuiltin(const ir::CCall & _stmt, instructions_t & _instrs) {
+    ir::CExpression * pExpr = _stmt.getPredicate();
+
+    if (pExpr->getKind() != ir::CExpression::Predicate)
+        return false;
+
+    ir::CPredicateReference * pPredRef = (ir::CPredicateReference *) pExpr;
+
+    if (! pPredRef->getTarget()->isBuiltin())
+        return false;
+
+    //const std::wstring & name = pPredRef->getTarget()->getName();
+
+    _instrs.push_back(new CInstruction()); // nop.
+
+    return true;
+}
+
 void CTranslator::translate(const ir::CCall & _stmt, instructions_t & _instrs) {
     assert(_stmt.getPredicate()->getType()->getKind() == ir::CType::Predicate);
+
+    if (translateBuiltin(_stmt, _instrs))
+        return;
 
     COperand function = translate(* _stmt.getPredicate(), _instrs);
     ir::CPredicateType & predType = * (ir::CPredicateType *) _stmt.getPredicate()->getType();

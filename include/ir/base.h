@@ -180,6 +180,14 @@ public:
         return true;
     }
 
+    size_t findByNameIdx(const std::wstring & _name) const {
+        for (size_t i = 0; i < size(); ++ i)
+            if (get(i)->getName() == _name)
+                return i;
+
+        return (size_t) -1;
+    }
+
 private:
     std::vector<void *> m_nodes;
 };

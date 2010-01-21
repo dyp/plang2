@@ -5,6 +5,7 @@
 
 #include "parser_context.h"
 #include "ir/numbers.h"
+#include "ir/builtins.h"
 
 using namespace lexer;
 
@@ -158,7 +159,10 @@ ir::CPredicate * CContext::getPredicate(const std::wstring & _strName) const {
             return i->second;
     }
 
-    return m_pParent ? m_pParent->getPredicate(_strName) : NULL;
+    if (m_pParent)
+        return m_pParent->getPredicate(_strName);
+
+    return ir::CBuiltins::instance().find(_strName);
 }
 
 void CContext::addPredicate(ir::CPredicate * _pPred) {

@@ -177,6 +177,7 @@ public:
     CElementDefinition * parseArrayElement(CContext & _ctx);
     CElementDefinition * parseMapElement(CContext & _ctx);
     CStructFieldDefinition * parseFieldDefinition(CContext & _ctx);
+    CUnionConstructorDefinition * parseConstructorDefinition(CContext & _ctx);
 
     template<class _T>
     _T * findByName(const CCollection<_T> & _list, const std::wstring & _name);
@@ -1325,13 +1326,9 @@ CUnionType * CParser::parseUnionType(CContext & _ctx) {
 
     CUnionType * pType = ctx.attach(new CUnionType());
 
-    if (! parseList(ctx, pType->getAlternatives(), & CParser::parseNamedValue,
+    if (! parseList(ctx, pType->getConstructors(), & CParser::parseConstructorDefiniton,
             LeftParen, RightParen, Comma))
         return NULL;
-
-    if (pType->getAlternatives().size() < 2)
-        ERROR(ctx, NULL, L"Union types require at least 2 alternatives, got %d.",
-                pType->getAlternatives().size());
 
     _ctx.mergeChildren();
 
@@ -1722,6 +1719,32 @@ CStructFieldDefinition * CParser::parseFieldDefinition(CContext & _ctx) {
 
     return pField;
 }
+
+CUnionConstructorDefinition * CParser::parseConstructorDefinition(CContext & _ctx) {
+    CContext & ctx = * _ctx.createChild(false);
+
+    if (! ctx.is(Identifier))
+        ERROR(ctx, NULL, L"Constructor name expected.");
+
+    CUnionConstructorDefinition * pCons = ctx.attach(new CUnionConstructorDefinition(ctx.scan()));
+
+    if (! ctx.consume(LeftParen)) {
+        // No fields.
+        _ctx.mergeChildren();
+        return pCons;
+    }
+
+    if (! parseParamList(ctx, pType->getFields(), & CParser::parseVariableName))
+        return NULL;
+
+    if (! ctx.consume(RightParen))
+        UNEXPECTED(ctx, ")");
+
+    _ctx.mergeChildren();
+
+    return pType;
+}
+
 
 CEnumValue * CParser::parseEnumValue(CContext & _ctx) {
     if (! _ctx.is(Identifier))

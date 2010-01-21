@@ -164,8 +164,33 @@ private:
     CCollection<CEnumValue> m_values;
 };
 
+class CUnionType;
+
+class CUnionConstructorDefinition : public CNode {
+public:
+    CUnionConstructorDefinition(const std::wstring & _strName) : m_strName(_strName), m_pUnion(NULL) {}
+
+    /// Get list of constructor fields.
+    /// \return List of fields.
+    CStructType & getStruct() { return m_struct; }
+    const CStructType & getStruct() const { return m_struct; }
+
+    CUnionType * getUnion() const { return m_pUnion; }
+    void setUnion(CUnionType * _pUnion) { m_pUnion = _pUnion; }
+
+    const std::wstring & getName() const { return m_strName; }
+    void setName(const std::wstring & _strName) { m_strName = _strName; }
+
+private:
+    std::wstring m_strName;
+    CStructType m_struct;
+    CUnionType * m_pUnion;
+};
+
+typedef CCollection<CUnionConstructorDefinition> CUnionConstructorDefinitions;
+
 /// Union type.
-/// Contains list of alternatives.
+/// Contains list of constructors.
 class CUnionType : public CType {
 public:
     /// Default constructor.
@@ -175,13 +200,15 @@ public:
     /// \returns #Union.
     virtual int getKind() const { return Union; }
 
-    /// Get list of union alternatives.
-    /// \return List of alternatives.
-    CNamedValues & getAlternatives() { return m_alternatives; }
-    const CNamedValues & getAlternatives() const { return m_alternatives; }
+    /// Get list of union constructors.
+    /// \return List of constructors.
+    CUnionConstructorDefinitions & getConstructors() { return m_constructors; }
+    const CUnionConstructorDefinitions & getConstructors() const { return m_constructors; }
+
+    union_field_idx_t findField(const std::wstring & _strName) const;
 
 private:
-    CNamedValues m_alternatives;
+    CUnionConstructorDefinitions m_constructors;
 };
 
 /// Common base type for arrays, sets, etc.

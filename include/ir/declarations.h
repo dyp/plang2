@@ -16,7 +16,7 @@ class CPredicate : public CAnonymousPredicate {
 public:
     /// Initialize with predicate name.
     /// \param _strName Predicate name.
-    CPredicate(const std::wstring & _strName) : m_strName(_strName) {}
+    CPredicate(const std::wstring & _strName, bool _bBuiltin = false) : m_strName(_strName), m_bBuiltin(_bBuiltin) {}
 
     /// Get statement kind.
     /// \returns #PredicateDeclaration.
@@ -30,8 +30,11 @@ public:
     /// \param _strName Identifier.
     void setName(const std::wstring & _strName) { m_strName = _strName; }
 
+    bool isBuiltin() const { return m_bBuiltin; }
+
 private:
     std::wstring m_strName;
+    bool m_bBuiltin;
 };
 
 /// Message declaration.

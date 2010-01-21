@@ -28,10 +28,23 @@ const CNamedValue * CStructFieldExpr::getField() const {
     return getStructType()->getFields().get(m_cFieldIdx);
 }
 
-CUnionAlternativeExpr::CUnionAlternativeExpr(const CUnionType * _pType, size_t _cIdx) :
-    m_strName(_pType->getAlternatives().get(_cIdx)->getName()), m_pType(_pType), m_cIdx(_cIdx)
+union_field_idx_t CUnionType::findField(const std::wstring & _strName) const {
+    for (size_t i = 0; i < m_constructors.size(); ++ i) {
+        size_t cIdx = m_constructors.get(i)->getStruct().getFields().findByNameIdx(_strName);
+        if (cIdx != (size_t) -1)
+            return union_field_idx_t(i, cIdx);
+    }
+
+    return union_field_idx_t((size_t) -1, (size_t) -1);
+}
+
+CUnionAlternativeExpr::CUnionAlternativeExpr(const CUnionType * _pType, const union_field_idx_t & _idx) :
+    m_strName(_pType->getConstructors().get(_idx.first)->getStruct().getFields().get(_idx.second)->getName()), m_pType(_pType), m_idx(_idx)
 {
 }
+
+const CNamedValue * getField() const;
+const CUnionConstructorDefinition * getConstructor() const;
 
 const CNamedValue * CUnionAlternativeExpr::getAlternative() const {
     return getUnionType()->getAlternatives().get(m_cIdx);

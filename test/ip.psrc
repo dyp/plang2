@@ -1,19 +1,21 @@
 
 
-type addr = union (nat(32) ip, string name);
+type Addr = union (IP (nat(32) ip), Name (string name));
+
+//type addr = union (nat(32) ip, string name);
 type byte = nat(8);
 
-makeIp(byte a, b, c, d : addr ad) {
-	ad = (ip : (a << 24) or (b << 16) or (c << 8) or d);
+makeIp (byte a, b, c, d : Addr ad) {
+	ad = IP ((a << 24) or (b << 16) or (c << 8) or d);
 }
 
-breakIp(addr ad : byte a, b, c, d) {
-	switch(addr ad2 = ad) {
-		case ip: {
-			a = (ad.ip >> 24) & 0xFF;
-			b = (ad.ip >> 16) & 0xFF;
-			c = (ad.ip >> 8) & 0xFF;
-			d = ad.ip & 0xFF;
+breakIp (Addr ad : byte a, b, c, d) {
+	switch (ad) {
+		case IP (ip): {
+			a = (ip >> 24) & 0xFF;
+			b = (ip >> 16) & 0xFF;
+			c = (ip >> 8) & 0xFF;
+			d = ip & 0xFF;
 //			a = 1;
 		}
 	}

@@ -246,6 +246,7 @@ public:
         Unary,
         Binary,
         Call,
+        Builtin,
         If,
         Switch,
         Select,
@@ -507,6 +508,23 @@ public:
 private:
     COperand m_function;
     Auto<CFunctionType> m_type;
+    operands_t m_args;
+};
+
+class CBuiltin : public CInstruction {
+public:
+    CBuiltin(const std::string & _name, const Auto<CType> & _type) : m_name(_name) {
+        m_var = new CVariable(_type);
+    }
+
+    virtual int getKind() const { return Builtin; }
+    operands_t & args() { return m_args; }
+    const operands_t & args() const { return m_args; }
+
+    const std::string & getName() const { return m_name; }
+
+private:
+    std::string m_name;
     operands_t m_args;
 };
 

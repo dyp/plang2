@@ -796,15 +796,17 @@ private:
 };
 
 class CUnionType;
+class CUnionConstructorDefinition;
+typedef std::pair<size_t, size_t> union_field_idx_t;
 
 /// Union alternative name. Only used inside switch/case construct.
 class CUnionAlternativeExpr : public CComponent {
 public:
     CUnionAlternativeExpr(const std::wstring & _strName) :
-        m_strName(_strName), m_pType(NULL), m_cIdx(0)
+        m_strName(_strName), m_pType(NULL), m_idx(-1, -1)
     {}
 
-    CUnionAlternativeExpr(const CUnionType * _pType, size_t _cIdx);
+    CUnionAlternativeExpr(const CUnionType * _pType, const union_field_idx_t & _idx);
 
     /// Get component kind.
     /// \return #UnionAlternative.
@@ -826,16 +828,17 @@ public:
     /// \param _pUnionType Union type.
     void setUnionType(const CUnionType * _pUnionType) { m_pType = (const CType *) _pUnionType; }
 
-    size_t getIdx() const { return m_cIdx; }
+    union_field_idx_t getIdx() const { return m_idx; }
 
-    void setIdx(size_t _cIdx) { m_cIdx = _cIdx; }
+    void setIdx(size_t _cCons, size_t _cField) { m_idx = union_field_idx_t(_cCons, _cField); }
 
-    const CNamedValue * getAlternative() const;
+    const CNamedValue * getField() const;
+    const CUnionConstructorDefinition * getConstructor() const;
 
 private:
     std::wstring m_strName;
     const CType * m_pType;
-    size_t m_cIdx;
+    union_field_idx_t m_idx;
 };
 
 /// Map element.
@@ -1327,14 +1330,16 @@ public:
         /// List initializer.
         ListElements,
         /// Array generator.
-        ArrayIteration
+        ArrayIteration,
+        /// Union constructor.
+        UnionConstructor,
     };
 
     /// Default constructor.
     CConstructor() {}
 
     /// Get expression kind.
-    /// \return #Lambda.
+    /// \return #Constructor.
     virtual int getKind() const { return Constructor; }
 
     /// Get constructor kind (implemented in descendants).
@@ -1353,6 +1358,34 @@ public:
     /// Get constructor kind.
     /// \return #StructFields.
     virtual int getConstructorKind() const { return StructFields; }
+};
+
+class CVariableDeclaration;
+class CUnionCounstructorDefinition;
+
+/// Union value. \extends CConstructor
+/// The class extends struct constructor with union constructor name.
+/// May contain not-fully defined fields (used in switch construct).
+class CUnionConstructor : public CStructConstructor {
+public:
+    CUnionConstructor() {}
+
+    /// Get constructor kind.
+    /// \return #UnionConstructor.
+    virtual int getConstructorKind() const { return UnionConstructor; }
+
+    /// Get list of variables declared as part of the constructor.
+    /// \return List of variables.
+    CCollection<CVariableDeclaration> & getDeclarations() { return m_decls; }
+
+    bool isComplete() const { return m_decls.empty(); }
+
+    CUnionCounstructorDefinition * getDefinition() const { return m_pDef; }
+    void setDefinition(CUnionCounstructorDefinition * _pDef) { m_pDef = _pDef; }
+
+private:
+    CCollection<CVariableDeclaration> m_decls;
+    CUnionCounstructorDefinition * m_pDef;
 };
 
 /// Array value. \extends CConstructor
