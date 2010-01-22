@@ -3,6 +3,8 @@
 
 #include "ir/expressions.h"
 #include "ir/types.h"
+#include "ir/declarations.h"
+#include "ir/statements.h"
 
 namespace ir {
 
@@ -43,11 +45,12 @@ CUnionAlternativeExpr::CUnionAlternativeExpr(const CUnionType * _pType, const un
 {
 }
 
-const CNamedValue * getField() const;
-const CUnionConstructorDefinition * getConstructor() const;
+const CUnionConstructorDefinition * CUnionAlternativeExpr::getConstructor() const {
+    return getUnionType()->getConstructors().get(m_idx.first);
+}
 
-const CNamedValue * CUnionAlternativeExpr::getAlternative() const {
-    return getUnionType()->getAlternatives().get(m_cIdx);
+const CNamedValue * CUnionAlternativeExpr::getField() const {
+    return getConstructor()->getStruct().getFields().get(m_idx.second);
 }
 
 CType * CFunctionCall::getType() const {
