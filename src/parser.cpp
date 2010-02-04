@@ -419,10 +419,11 @@ CExpression * CParser::parseComponent(CContext & _ctx, CExpression & _base) {
                 pExpr = new CStructFieldExpr(pStruct, cFieldIdx, false);
         } else {
             CUnionType * pUnion = (CUnionType *) pBaseType;
-            const size_t cFieldIdx = findByNameIdx(pUnion->getAlternatives(), fieldName);
+            union_field_idx_t idx = pUnion->findField(fieldName);
 
-            if (cFieldIdx != (size_t) -1)
-                pExpr = new CUnionAlternativeExpr(pUnion, cFieldIdx);
+            if (idx.first != (size_t) -1) {
+                pExpr = new CUnionAlternativeExpr(pUnion, idx);
+            }
         }
 
         if (! pExpr)
@@ -1326,7 +1327,7 @@ CUnionType * CParser::parseUnionType(CContext & _ctx) {
 
     CUnionType * pType = ctx.attach(new CUnionType());
 
-    if (! parseList(ctx, pType->getConstructors(), & CParser::parseConstructorDefiniton,
+    if (! parseList(ctx, pType->getConstructors(), & CParser::parseConstructorDefinition,
             LeftParen, RightParen, Comma))
         return NULL;
 
@@ -1734,7 +1735,7 @@ CUnionConstructorDefinition * CParser::parseConstructorDefinition(CContext & _ct
         return pCons;
     }
 
-    if (! parseParamList(ctx, pType->getFields(), & CParser::parseVariableName))
+    if (! parseParamList(ctx, pCons->getStruct().getFields(), & CParser::parseVariableName))
         return NULL;
 
     if (! ctx.consume(RightParen))
@@ -1742,7 +1743,7 @@ CUnionConstructorDefinition * CParser::parseConstructorDefinition(CContext & _ct
 
     _ctx.mergeChildren();
 
-    return pType;
+    return pCons;
 }
 
 
@@ -1928,10 +1929,11 @@ CSwitch * CParser::parseSwitch(CContext & _ctx) {
     bool bUnion = false;
 
     if (pBaseType && pBaseType->getKind() == CType::Union) {
-        CUnionType * pUnion = (CUnionType *) pBaseType;
+        assert(false);
+        /*CUnionType * pUnion = (CUnionType *) pBaseType;
         for (size_t i = 0; i < pUnion->getAlternatives().size(); ++ i)
             mapUnionAlts[pUnion->getAlternatives().get(i)->getName()] = i;
-        bUnion = true;
+        bUnion = true;*/
     }
 
     while (ctx.in(Case)) {
@@ -1939,7 +1941,8 @@ CSwitch * CParser::parseSwitch(CContext & _ctx) {
         //CType * pParamType = NULL;
 
         if (bUnion) {
-            ctx.consume(Case);
+            assert(false);
+            /*ctx.consume(Case);
 
             if (! ctx.is(Identifier))
                 ERROR(ctx, NULL, L"Expected identifier, got: %ls", TOK_S(ctx));
@@ -1964,7 +1967,7 @@ CSwitch * CParser::parseSwitch(CContext & _ctx) {
             }
 
             if (! ctx.consume(Colon))
-                UNEXPECTED(ctx, ":");
+                UNEXPECTED(ctx, ":");*/
         } else {
             if (! parseList(ctx, pCase->getExpressions(),
                     & CParser::parseExpression, Case, Colon, Comma))

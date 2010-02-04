@@ -646,7 +646,7 @@ std::wostream & CPrettyPrinter::print(CStructType & _type) {
 std::wostream & CPrettyPrinter::print(CUnionType & _type) {
     ++ m_nLevel;
     m_os << fmtPair(L"kind", L"union");
-    print(_type.getAlternatives(), L"alternative");
+    //print(_type.getAlternatives(), L"alternative");
     -- m_nLevel;
     return m_os;
 }

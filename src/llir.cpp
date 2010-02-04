@@ -411,6 +411,12 @@ COperand CTranslator::translate(const ir::CStructFieldExpr & _expr, instructions
     return COperand(_instrs.back()->getResult());
 }
 
+/*
+ * union object:
+ * 4 byte: constructor tag
+ * X byte: value or pointer (X = pointer size)
+ */
+
 COperand CTranslator::translate(const ir::CUnionAlternativeExpr & _expr, instructions_t & _instrs) {
     const ir::CUnionType * pUnion = _expr.getUnionType();
     Auto<CStructType> st = translate(* pUnion);
@@ -420,13 +426,30 @@ COperand CTranslator::translate(const ir::CUnionAlternativeExpr & _expr, instruc
     _instrs.push_back(new CField(COperand(_instrs.back()->getResult()), 1));
     _instrs.push_back(new CUnary(CUnary::Load, COperand(_instrs.back()->getResult())));
 
-    const ir::CType * pAltType = pUnion->getAlternatives().get(_expr.getIdx())->getType();
+    const ir::CUnionConstructorDefinition * pCons = _expr.getConstructor();
+    const ir::CStructType & dataType = pCons->getStruct();
+
+    if (dataType.getFields().size() > 1) {
+        // Treat it as a struct.
+        assert(false);
+    } else {
+        // Treat it as a plain value.
+        const ir::CNamedValue * pField = _expr.getField();
+        Auto<CType> type = translate(* pField->getType());
+
+        if (type->sizeOf() <= CType::sizeOf(CType::Pointer)) {
+            _instrs.push_back(new CCast(COperand(_instrs.back()->getResult()), type));
+        } else
+            assert(false);
+    }
+
+    /*const ir::CType * pAltType = pUnion->getAlternatives().get(_expr.getIdx())->getType();
     Auto<CType> type = translate(* pAltType);
 
     if (type->sizeOf() <= CType::sizeOf(CType::Pointer)) {
         _instrs.push_back(new CCast(COperand(_instrs.back()->getResult()), type));
     } else
-        assert(false);
+        assert(false);*/
 
     return COperand(_instrs.back()->getResult());
 }
@@ -529,7 +552,8 @@ COperand CTranslator::translate(const ir::CStructConstructor & _expr, instructio
     //int kind = _expr.getType()->getKind();
 
     if (_expr.getType()->getKind() == ir::CType::Union) {
-        assert(_expr.size() == 1);
+        assert(false);
+/*        assert(_expr.size() == 1);
         // TODO: move to middle-end.
         ir::CStructFieldDefinition * pField = _expr.get(0);
         if (pField->getName().empty()) {
@@ -596,7 +620,7 @@ COperand CTranslator::translate(const ir::CStructConstructor & _expr, instructio
                     return COperand(var);
                 }
             assert(false); // Alternative not found. WTF?!
-        }
+        }*/
     } else {
         assert(_expr.getType()->getKind() == ir::CType::Struct);
         ir::CStructType * pStructType = (ir::CStructType *) _expr.getType();
@@ -944,7 +968,8 @@ void CTranslator::translateSwitchInt(const ir::CSwitch & _stmt,
 void CTranslator::translateSwitchUnion(const ir::CSwitch & _stmt,
         const COperand & _arg, instructions_t & _instrs)
 {
-    assert(_stmt.getParam()->getType()->getKind() == ir::CType::Union);
+    assert(false);
+/*    assert(_stmt.getParam()->getType()->getKind() == ir::CType::Union);
 
 //    const ir::CUnionType & type = (const ir::CUnionType &) * _stmt.getParam()->getType();
 
@@ -985,6 +1010,7 @@ void CTranslator::translateSwitchUnion(const ir::CSwitch & _stmt,
         _instrs.push_back(pSwitch);
     } else if (_stmt.getDefault())
         translate(* _stmt.getDefault(), _instrs);
+*/
 }
 
 void CTranslator::translate(const ir::CSwitch & _stmt, instructions_t & _instrs) {
