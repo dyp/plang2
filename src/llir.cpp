@@ -9,6 +9,7 @@
 #include "ir/statements.h"
 #include "llir.h"
 #include "utils.h"
+#include "llir_process.h"
 
 
 namespace ir {
@@ -76,12 +77,18 @@ public:
 
     CTranslator * addChild();
 
-    Auto<CVariable> resolveVariable(const void * _pVar);
+    Auto<CVariable> resolveVariable(const void * _pVar, bool & _bReference);
     int resolveLabel(const ir::CLabel *);
-    void addVariable(const void * _pOrig, Auto<CVariable> _pNew) { m_vars[_pOrig] = _pNew; }
+    void addVariable(const void * _pOrig, Auto<CVariable> _pNew, bool _bReference = false);
 
     void addType(const ir::CType * _pIRType, const Auto<CType> & _pLLIRType);
     Auto<CType> resolveType(const ir::CType * _pType);
+
+    void addBuiltin(const std::wstring & _strName, const Auto<CFunction> & _pFunc);
+    Auto<CFunction> resolveBuiltin(const std::wstring & _strName);
+
+    void addComparator(const ir::CType * _pType, const Auto<CFunction> & _pFunc);
+    Auto<CFunction> resolveComparator(const ir::CType * _pType);
 
     void translate(const ir::CModule & _module, CModule & _dest);
 
@@ -95,7 +102,7 @@ public:
     void translate(const ir::CBlock & _stmt, instructions_t & _instrs);
     void translate(const ir::CIf & _stmt, instructions_t & _instrs);
     void translate(const ir::CAssignment & _stmt, instructions_t & _instrs);
-    bool translateBuiltin(const ir::CCall & _stmt, instructions_t & _instrs);
+    void translateAsssignment(const ir::CNamedValue * _pLHS, const ir::CExpression * _pExpr, instructions_t & _instrs);
     void translate(const ir::CCall & _stmt, instructions_t & _instrs);
     void translate(const ir::CVariableDeclaration & _stmt, instructions_t & _instrs);
     void translate(const ir::CJump & _stmt, instructions_t & _instrs);
@@ -116,20 +123,31 @@ public:
     COperand translate(const ir::CStructFieldExpr & _expr, instructions_t & _instrs);
     COperand translate(const ir::CUnionAlternativeExpr & _expr, instructions_t & _instrs);
     COperand translate(const ir::CConstructor & _expr, instructions_t & _instrs);
+    COperand translateEq(const ir::CType * _pType, const COperand & _lhs, const COperand & _rhs, instructions_t & _instrs);
+    COperand translateEqUnion(const ir::CUnionType * _pType, const COperand & _lhs, const COperand & _rhs, instructions_t & _instrs);
+    COperand translateEqStruct(const ir::CStructType * _pType, const COperand & _lhs, const COperand & _rhs, instructions_t & _instrs);
+
+    void initStruct(const ir::CStructConstructor & _expr, instructions_t & _instrs, const ir::CType * _pType, const COperand & _ptr);
+
     COperand translate(const ir::CStructConstructor & _expr, instructions_t & _instrs);
+    COperand translate(const ir::CUnionConstructor & _expr, instructions_t & _instrs);
     COperand translateSwitchCond(const ir::CExpression & _expr, const COperand & _arg,
             instructions_t & _instrs);
 
-    void markEOLs(instructions_t & _instrs);
-    void markEOLs(const operands_t & _ops, Auto<CInstruction> _instr);
-    void markEOL(const COperand & _op, Auto<CInstruction> _instr);
-    void insertRefs(instructions_t & _instrs);
-    void insertUnrefs();
+    // Builtins.
+    bool translateBuiltin(const ir::CCall & _stmt, instructions_t & _instrs);
+    void translatePrint(const ir::CCall & _stmt, instructions_t & _instrs);
+    void translatePrintExpr(const ir::CExpression & _expr, instructions_t & _instrs);
+
+    //void insertRefs(instructions_t & _instrs);
+    //void insertUnrefs();
 
 private:
-    typedef std::map<const void *, Auto<CVariable> > variable_map_t;
+    typedef std::map<const void *, std::pair<Auto<CVariable>, bool> > variable_map_t;
     typedef std::map<const ir::CLabel *, int> label_numbers_t;
     typedef std::map<const ir::CType *, Auto<CType> > type_map_t;
+    typedef std::map<const ir::CType *, Auto<CFunction> > compare_map_t;
+    typedef std::map<std::wstring, Auto<CFunction> > builtin_map_t;
 
     Auto<CStructType> m_unionType;
     CTranslator * m_pParent;
@@ -140,6 +158,8 @@ private:
     label_numbers_t m_labels;
     type_map_t m_types;
     args_t m_ptrs;
+    compare_map_t m_comparators;
+    builtin_map_t m_builtins;
 };
 
 CTranslator::~CTranslator() {
@@ -147,18 +167,23 @@ CTranslator::~CTranslator() {
         delete * iChild;
 }
 
+void CTranslator::addVariable(const void * _pOrig, Auto<CVariable> _pNew, bool _bReference) {
+    m_vars[_pOrig] = std::make_pair(_pNew, _bReference);
+}
+
 CTranslator * CTranslator::addChild() {
     m_children.push_back(new CTranslator(this));
     return m_children.back();
 }
 
-Auto<CVariable> CTranslator::resolveVariable(const void * _pVar) {
+Auto<CVariable> CTranslator::resolveVariable(const void * _pVar, bool & _bReference) {
     variable_map_t::iterator iVar = m_vars.find(_pVar);
 
-    if (iVar != m_vars.end())
-        return iVar->second;
-    else if (m_pParent)
-        return m_pParent->resolveVariable(_pVar);
+    if (iVar != m_vars.end()) {
+        _bReference = iVar->second.second;
+        return iVar->second.first;
+    } else if (m_pParent)
+        return m_pParent->resolveVariable(_pVar, _bReference);
     else
         return NULL;
 }
@@ -177,6 +202,38 @@ Auto<CType> CTranslator::resolveType(const ir::CType * _pType) {
     type_map_t::iterator iType = m_types.find(_pType);
 
     return (iType == m_types.end()) ? NULL : iType->second;
+}
+
+void CTranslator::addBuiltin(const std::wstring & _strName, const Auto<CFunction> & _pFunc) {
+    if (! m_pParent)
+        m_builtins[_strName] = _pFunc;
+    else
+        m_pParent->addBuiltin(_strName, _pFunc);
+}
+
+Auto<CFunction> CTranslator::resolveBuiltin(const std::wstring & _strName) {
+    if (m_pParent)
+        return m_pParent->resolveBuiltin(_strName);
+
+    builtin_map_t::iterator iFunc = m_builtins.find(_strName);
+
+    return (iFunc == m_builtins.end()) ? NULL : iFunc->second;
+}
+
+void CTranslator::addComparator(const ir::CType * _pType, const Auto<CFunction> & _pFunc) {
+    if (! m_pParent)
+        m_comparators[_pType] = _pFunc;
+    else
+        m_pParent->addComparator(_pType, _pFunc);
+}
+
+Auto<CFunction> CTranslator::resolveComparator(const ir::CType * _pType) {
+    if (m_pParent)
+        return m_pParent->resolveComparator(_pType);
+
+    compare_map_t::iterator iFunc = m_comparators.find(_pType);
+
+    return (iFunc == m_comparators.end()) ? NULL : iFunc->second;
 }
 
 int CTranslator::resolveLabel(const ir::CLabel * _pLabel) {
@@ -254,7 +311,7 @@ Auto<CStructType> CTranslator::translate(const ir::CStructType & _type) {
 }
 
 Auto<CStructType> CTranslator::translate(const ir::CUnionType & _type) {
-/*    if (m_pParent)
+    if (m_pParent)
         return m_pParent->translate(_type);
 
     if (m_unionType.empty()) {
@@ -266,7 +323,7 @@ Auto<CStructType> CTranslator::translate(const ir::CUnionType & _type) {
 
     addType(& _type, m_unionType);
 
-    return m_unionType; */
+    return m_unionType;
 }
 
 Auto<CType> CTranslator::translate(const ir::CType & _type) {
@@ -307,7 +364,7 @@ Auto<CType> CTranslator::translate(const ir::CType & _type) {
             }
         case ir::CType::Bool: return new CType(CType::Bool);
         case ir::CType::Char: return new CType(CType::WChar);
-        case ir::CType::String: return new CPointerType (new CType(CType::WChar));
+        case ir::CType::String: return new CPointerType(new CType(CType::WChar));
         case ir::CType::Predicate: return translate((ir::CPredicateType &) _type);
         case ir::CType::NamedReference: return translate((ir::CNamedReferenceType &) _type);
         case ir::CType::Struct: return translate((ir::CStructType &) _type);
@@ -323,7 +380,7 @@ static int _selectInstr(int _opKind, int _instrInt, int _instrFloat, int _instrZ
     else if (_opKind & CType::FloatMask) nInstr =_instrFloat;
     else if (_opKind == CType::Gmp_z) nInstr =_instrZ;
     else if (_opKind == CType::Gmp_q) nInstr =_instrQ;
-    assert(nInstr >= 0);
+    //assert(nInstr >= 0);
     return nInstr;
 }
 
@@ -376,9 +433,220 @@ int _selectBinaryInstr(int _op, const Auto<llir::CType> _pType) {
     return -1;
 }
 
+COperand CTranslator::translateEqUnion(const ir::CUnionType * _pType, const COperand & _lhs, const COperand & _rhs, instructions_t & _instrs) {
+    Auto<CFunction> func = resolveComparator(_pType);
+    Auto<CFunctionType> funcType;
+
+    if (! func.empty()) {
+        funcType = func->getType();
+        Auto<CVariable> funcVar = func;
+        Auto<CCall> call = new CCall(funcVar, funcType);
+
+        call->args().push_back(_lhs);
+        call->args().push_back(_rhs);
+        _instrs.push_back(call);
+
+        return COperand(call->getResult());
+    }
+
+    static int nCmpCount = 0;
+
+    func = new CFunction(std::wstring(L"cmp_") + fmtInt(nCmpCount ++), new CType(CType::Bool));
+    funcType = new CFunctionType(new CType(CType::Bool));
+    funcType->argTypes().push_back(_lhs.getType());
+    funcType->argTypes().push_back(_rhs.getType());
+    func->args().push_back(new CVariable(_lhs.getType()));
+    func->args().push_back(new CVariable(_rhs.getType()));
+    func->setType(funcType);
+    addComparator(_pType, func);
+    m_pModule->functions().push_back(func);
+
+    instructions_t & instrs = func->instructions();
+    CTranslator trans(this);
+    Auto<CLabel> labelEnd = new CLabel();
+
+    trans.m_pFunction = func;
+
+    instrs.push_back(new CUnary(CUnary::Ptr, COperand(func->args().front())));
+
+    COperand lPtr = COperand(instrs.back()->getResult());
+
+    instrs.push_back(new CUnary(CUnary::Ptr, COperand(func->args().back())));
+
+    COperand rPtr = COperand(instrs.back()->getResult());
+
+    instrs.push_back(new CField(lPtr, 0));
+    instrs.push_back(new CUnary(CUnary::Load, COperand(instrs.back()->getResult())));
+
+    COperand lTag = COperand(instrs.back()->getResult());
+
+    instrs.push_back(new CField(rPtr, 0));
+    instrs.push_back(new CUnary(CUnary::Load, COperand(instrs.back()->getResult())));
+
+    COperand rTag = COperand(instrs.back()->getResult());
+
+    instrs.push_back(new CBinary(CBinary::Eq, lTag, rTag));
+
+    if (_pType->getConstructors().empty()) {
+        instrs.push_back(new CUnary(CUnary::Return, instrs.back()->getResult()));
+    } else {
+        Auto<CVariable> varResult = func->getResult();
+
+        instrs.push_back(new CBinary(CBinary::Set, varResult, instrs.back()->getResult()));
+        instrs.push_back(new CBinary(CBinary::Jmz, varResult, COperand(labelEnd)));
+
+        instrs.push_back(new CField(lPtr, 1));
+        lPtr = COperand(instrs.back()->getResult());
+        instrs.push_back(new CField(rPtr, 1));
+        rPtr = COperand(instrs.back()->getResult());
+
+        Auto<CSwitch> sw = new CSwitch(lTag);
+
+        for (size_t i = 0; i < _pType->getConstructors().size(); ++ i) {
+            sw->cases().push_back(switch_case_t());
+
+            switch_case_t & swCase = sw->cases().back();
+            instructions_t & body = swCase.body;
+
+            const ir::CUnionConstructorDefinition * pCons = _pType->getConstructors().get(i);
+            const ir::CStructType & dataType = pCons->getStruct();
+
+            swCase.values.push_back(i);
+
+            if (dataType.getFields().size() == 0) {
+                body.push_back(new CBinary(CBinary::Set, varResult,
+                        COperand(CLiteral(new CType(CType::Bool), CNumber((int64_t) 1)))));
+                continue;
+            }
+
+            if (dataType.getFields().size() == 1) {
+                const ir::CType * pFieldType = resolveBaseType(dataType.getFields().get(0)->getType());
+                Auto<CType> fieldType = translate(* pFieldType);
+                COperand l = lPtr, r = rPtr;
+
+                if (fieldType->sizeOf() > CType::sizeOf(CType::Pointer)) {
+                    body.push_back(new CUnary(CUnary::Load, lPtr));
+                    l = COperand(body.back()->getResult());
+                    body.push_back(new CUnary(CUnary::Load, rPtr));
+                    r = COperand(body.back()->getResult());
+                }
+
+                body.push_back(new CCast(l, new CPointerType(fieldType)));
+                body.push_back(new CUnary(CUnary::Load, COperand(body.back()->getResult())));
+                l = COperand(body.back()->getResult());
+                body.push_back(new CCast(r, new CPointerType(fieldType)));
+                body.push_back(new CUnary(CUnary::Load, COperand(body.back()->getResult())));
+                r = COperand(body.back()->getResult());
+
+                COperand eq = trans.translateEq(pFieldType, l, r, body);
+
+                body.push_back(new CBinary(CBinary::Set, varResult, eq));
+                continue;
+            }
+
+            Auto<CStructType> st = translate(dataType);
+            COperand l = lPtr, r = rPtr;
+
+            body.push_back(new CUnary(CUnary::Load, lPtr));
+            body.push_back(new CCast(COperand(body.back()->getResult()), new CPointerType(st)));
+            body.push_back(new CUnary(CUnary::Load, COperand(body.back()->getResult())));
+            l = COperand(body.back()->getResult());
+            body.push_back(new CUnary(CUnary::Load, rPtr));
+            body.push_back(new CCast(COperand(body.back()->getResult()), new CPointerType(st)));
+            body.push_back(new CUnary(CUnary::Load, COperand(body.back()->getResult())));
+            r = COperand(body.back()->getResult());
+
+            COperand eq = trans.translateEqStruct(& dataType, l, r, body);
+
+            body.push_back(new CBinary(CBinary::Set, varResult, eq));
+        }
+
+        instrs.push_back(sw);
+        instrs.push_back(new CInstruction());
+        instrs.back()->setLabel(labelEnd);
+    }
+
+    instrs.push_back(new CUnary(CUnary::Return, func->getResult()));
+
+    processLL<CMarkEOLs>(* func);
+    processLL<CCountLabels>(* func);
+    processLL<CPruneJumps>(* func);
+    processLL<CCollapseReturns>(* func);
+    processLL<CRecycleVars>(* func);
+
+    Auto<CVariable> funcVar = func;
+    Auto<CCall> call = new CCall(funcVar, funcType);
+
+    call->args().push_back(_lhs);
+    call->args().push_back(_rhs);
+    _instrs.push_back(call);
+
+    return COperand(call->getResult());
+}
+
+COperand CTranslator::translateEqStruct(const ir::CStructType * _pType, const COperand & _lhs, const COperand & _rhs, instructions_t & _instrs) {
+    if (_pType->getFields().empty())
+        return COperand(CLiteral(new CType(CType::Bool), CNumber((int64_t) 1)));
+
+    Auto<CLabel> labelEnd = new CLabel();
+    Auto<CVariable> varResult = new CVariable(new CType(CType::Bool));
+
+    addVariable(NULL, varResult, false);
+    m_pFunction->locals().push_back(varResult);
+
+    _instrs.push_back(new CUnary(CUnary::Ptr, _lhs));
+    COperand lPtr = COperand(_instrs.back()->getResult());
+    _instrs.push_back(new CUnary(CUnary::Ptr, _rhs));
+    COperand rPtr = COperand(_instrs.back()->getResult());
+
+    for (size_t i = 0; i < _pType->getFields().size(); ++ i) {
+        const ir::CType * pFieldType = resolveBaseType(_pType->getFields().get(i)->getType());
+
+        _instrs.push_back(new CField(lPtr, i));
+        _instrs.push_back(new CUnary(CUnary::Load, COperand(_instrs.back()->getResult())));
+        COperand lField = COperand(_instrs.back()->getResult());
+        _instrs.push_back(new CField(rPtr, i));
+        _instrs.push_back(new CUnary(CUnary::Load, COperand(_instrs.back()->getResult())));
+        COperand rField = COperand(_instrs.back()->getResult());
+        COperand cmp = translateEq(pFieldType, lField, rField, _instrs);
+
+        _instrs.push_back(new CBinary(CBinary::Set, varResult, cmp));
+        _instrs.push_back(new CBinary(CBinary::Jmz, cmp, COperand(labelEnd)));
+    }
+
+    _instrs.push_back(new CInstruction()); // nop
+    _instrs.back()->setLabel(labelEnd);
+
+    return COperand(varResult);
+}
+
+COperand CTranslator::translateEq(const ir::CType * _pType, const COperand & _lhs, const COperand & _rhs, instructions_t & _instrs) {
+    std::wcerr << L"!! _pType->getKind() = " << _pType->getKind() << std::endl;
+    switch (_pType->getKind()) {
+        case ir::CType::Union:
+            return translateEqUnion((const ir::CUnionType *) _pType, _lhs, _rhs, _instrs);
+        case ir::CType::Struct:
+            return translateEqStruct((const ir::CStructType *) _pType, _lhs, _rhs, _instrs);
+    }
+
+    const int nInstr = _selectInstr(_lhs.getType()->getKind(), CBinary::Eq, CBinary::FEq, CBinary::ZEq, CBinary::QEq);
+
+    if (nInstr < 0) {
+        assert(false && "Cannot compare values of this type");
+    }
+
+    _instrs.push_back(new CBinary(nInstr, _lhs, _rhs));
+
+    return COperand(_instrs.back()->getResult());
+}
+
 COperand CTranslator::translate(const ir::CBinary & _expr, instructions_t & _instrs) {
     COperand left = translate(* _expr.getLeftSide(), _instrs);
     COperand right = translate(* _expr.getRightSide(), _instrs);
+
+    if (_expr.getOperator() == ir::CBinary::Equals)
+        return translateEq(resolveBaseType(_expr.getLeftSide()->getType()), left, right, _instrs);
+
     int nInstr = _selectBinaryInstr(_expr.getOperator(), left.getType());
 
     assert (nInstr >= 0);
@@ -400,7 +668,7 @@ COperand CTranslator::translate(const ir::CComponent & _expr, instructions_t & _
 }
 
 COperand CTranslator::translate(const ir::CStructFieldExpr & _expr, instructions_t & _instrs) {
-    const ir::CStructType * pStruct = _expr.getStructType();
+/*    const ir::CStructType * pStruct = _expr.getStructType();
     Auto<CStructType> st = translate(* pStruct);
     COperand object = translate(* _expr.getObject(), _instrs);
 
@@ -409,13 +677,9 @@ COperand CTranslator::translate(const ir::CStructFieldExpr & _expr, instructions
     _instrs.push_back(new CUnary(CUnary::Load, COperand(_instrs.back()->getResult())));
 
     return COperand(_instrs.back()->getResult());
+*/
+    return COperand();
 }
-
-/*
- * union object:
- * 4 byte: constructor tag
- * X byte: value or pointer (X = pointer size)
- */
 
 COperand CTranslator::translate(const ir::CUnionAlternativeExpr & _expr, instructions_t & _instrs) {
     const ir::CUnionType * pUnion = _expr.getUnionType();
@@ -443,14 +707,6 @@ COperand CTranslator::translate(const ir::CUnionAlternativeExpr & _expr, instruc
             assert(false);
     }
 
-    /*const ir::CType * pAltType = pUnion->getAlternatives().get(_expr.getIdx())->getType();
-    Auto<CType> type = translate(* pAltType);
-
-    if (type->sizeOf() <= CType::sizeOf(CType::Pointer)) {
-        _instrs.push_back(new CCast(COperand(_instrs.back()->getResult()), type));
-    } else
-        assert(false);*/
-
     return COperand(_instrs.back()->getResult());
 }
 
@@ -470,27 +726,25 @@ COperand CTranslator::translate(const ir::CFunctionCall & _expr, instructions_t 
 }
 
 COperand CTranslator::translateStringLiteral(const std::wstring & _str, instructions_t & _instrs) {
-    m_pModule->consts().push_back(new CConstant(new CLiteral(new CType(CType::WChar))));
-    m_pModule->consts().back()->getLiteral()->setWString(_str);
+    m_pModule->consts().push_back(new CConstant(new CLiteral(/*CLiteral::String, new CType(CType::WChar)*/)));
+    m_pModule->consts().back()->setType(new CType(CType::WChar));
+    m_pModule->consts().back()->getLiteral()->setString(_str);
 
     Auto<CVariable> var = m_pModule->consts().back();
 
-    _instrs.push_back(new CUnary(CUnary::Ptr, COperand(var)));
-
-    return COperand(_instrs.back()->getResult());
+    return var;
 }
 
 COperand CTranslator::translate(const ir::CLiteral & _expr, instructions_t & _instrs) {
     if (_expr.getLiteralKind() == ir::CLiteral::String) {
         return translateStringLiteral(_expr.getString(), _instrs);
     } else {
-        CLiteral lit(translate(* _expr.getType()));
+        CLiteral lit(CLiteral::Number, translate(* _expr.getType()));
 
         switch (_expr.getLiteralKind()) {
             case ir::CLiteral::Number: lit.setNumber(_expr.getNumber()); break;
             case ir::CLiteral::Bool:   lit.setBool(_expr.getBool()); break;
-            case ir::CLiteral::Char:   lit.setWChar(_expr.getChar()); break;
-            //case ir::CLiteral::String: lit.setWString(_expr.getString()); break;
+            case ir::CLiteral::Char:   lit.setChar(_expr.getChar()); break;
         }
 
         return COperand(lit);
@@ -498,14 +752,30 @@ COperand CTranslator::translate(const ir::CLiteral & _expr, instructions_t & _in
 }
 
 COperand CTranslator::translate(const ir::CVariableReference & _expr, instructions_t & _instrs) {
-    Auto<CVariable> pVar = resolveVariable(_expr.getTarget());
+    bool bReference = false;
+    Auto<CVariable> pVar = resolveVariable(_expr.getTarget(), bReference);
+
     assert(! pVar.empty());
+
+    if (bReference) {
+        _instrs.push_back(new CUnary(CUnary::Load, COperand(pVar)));
+        return COperand(_instrs.back()->getResult());
+    }
+
     return COperand(pVar);
 }
 
 COperand CTranslator::translate(const ir::CPredicateReference & _expr, instructions_t & _instrs) {
-    Auto<CVariable> pVar = resolveVariable(_expr.getTarget());
+    bool bReference = false;
+    Auto<CVariable> pVar = resolveVariable(_expr.getTarget(), bReference);
+
     assert(! pVar.empty());
+
+    if (bReference) {
+        _instrs.push_back(new CUnary(CUnary::Load, COperand(pVar)));
+        return COperand(_instrs.back()->getResult());
+    }
+
     return COperand(pVar);
 }
 
@@ -546,128 +816,114 @@ COperand CTranslator::translate(const ir::CTernary & _expr, instructions_t & _in
     return COperand(var);
 }
 
+void CTranslator::initStruct(const ir::CStructConstructor & _expr, instructions_t & _instrs, const ir::CType * _pType, const COperand & _ptr) {
+    const ir::CStructType * pStructType = (const ir::CStructType *) _pType;
+
+    for (size_t i = 0; i < _expr.size(); ++ i) {
+        ir::CStructFieldDefinition * pFieldDef = _expr.get(i);
+        ir::CType * pFieldType = (ir::CType *) ir::resolveBaseType(pStructType->getFields().get(i)->getType());
+
+        // FIXME: assumes constant order of constructor values.
+
+        // Should be done by middle end.
+        if (! pFieldDef->getValue()->getType())
+            pFieldDef->getValue()->setType(pFieldType, false);
+
+        COperand rhs = translate(* _expr.get(i)->getValue(), _instrs);
+
+        _instrs.push_back(new CField(_ptr, i));
+        _instrs.push_back(new CBinary(CBinary::Store,
+                COperand(_instrs.back()->getResult()),
+                rhs));
+    }
+}
+
 COperand CTranslator::translate(const ir::CStructConstructor & _expr, instructions_t & _instrs) {
     assert(_expr.getType());
+    assert(_expr.getType()->getKind() == ir::CType::Struct);
 
-    //int kind = _expr.getType()->getKind();
+    Auto<CType> type = translate(* _expr.getType());
+    Auto<CVariable> var = new CVariable(type);
+    Auto<CUnary> ptr = new CUnary(CUnary::Ptr, COperand(var));
 
-    if (_expr.getType()->getKind() == ir::CType::Union) {
-        assert(false);
-/*        assert(_expr.size() == 1);
-        // TODO: move to middle-end.
-        ir::CStructFieldDefinition * pField = _expr.get(0);
-        if (pField->getName().empty()) {
-            // Lookup by type. Unimplemented.
-            assert(false);
-        } else {
-            ir::CUnionType * pUnionType = (ir::CUnionType *) _expr.getType();
-            ir::CNamedValues & fields = pUnionType->getAlternatives();
-            for (size_t i = 0; i < fields.size(); ++ i)
-                if (fields.get(i)->getName() == pField->getName()) {
-                    Auto<CType> unionType = translate(* pUnionType);
-                    Auto<CType> type = translate(* fields.get(i)->getType());
-                    Auto<CVariable> var = new CVariable(unionType);
-                    Auto<CUnary> ptr = new CUnary(CUnary::Ptr, COperand(var));
+    m_pFunction->locals().push_back(var);
+    _instrs.push_back(ptr);
+    initStruct(_expr, _instrs, _expr.getType(), COperand(ptr->getResult()));
 
-                    m_pFunction->locals().push_back(var);
+    return COperand(var);
+}
 
-                    _instrs.push_back(ptr);
-                    _instrs.push_back(new CField(COperand(_instrs.back()->getResult()), 0));
-                    _instrs.push_back(new CBinary(CBinary::Store,
-                            COperand(_instrs.back()->getResult()),
-                            COperand(CLiteral(CType::Int32, CNumber((int64_t) i)))));
-                    _instrs.push_back(new CField(COperand(ptr->getResult()), 1));
+COperand CTranslator::translate(const ir::CUnionConstructor & _expr, instructions_t & _instrs) {
+    assert(_expr.getType());
+    assert(_expr.isComplete());
 
-                    Auto<CInstruction> valueField = new CCast(
-                            COperand(_instrs.back()->getResult()),
-                            new CPointerType(type));
+    ir::CUnionConstructorDefinition * pDef = _expr.getDefinition();
+    Auto<CType> type = translate(* _expr.getType());
+    Auto<CVariable> var = new CVariable(type);
+    Auto<CUnary> ptr = new CUnary(CUnary::Ptr, COperand(var));
 
-                    _instrs.push_back(valueField);
+    m_pFunction->locals().push_back(var);
+    _instrs.push_back(ptr);
+    _instrs.push_back(new CField(COperand(ptr->getResult()), 0));
+    _instrs.push_back(new CBinary(CBinary::Store,
+            COperand(_instrs.back()->getResult()),
+            COperand(CLiteral(new CType(CType::UInt32), (int64_t) pDef->getOrdinal()))));
 
-                    // TODO: this should have been handled by middle-end.
-                    ir::CType * pFieldType = (ir::CType *) ir::resolveBaseType(fields.get(i)->getType());
-                    pField->getValue()->setType(pFieldType, false);
+    const ir::CStructType & dataType = pDef->getStruct();
 
-                    const size_t sz = type->sizeOf();
+    if (dataType.getFields().size() > 1) {
+        Auto<CStructType> st = translate(dataType);
 
-                    if (sz <= CType::sizeOf(CType::Pointer)) {
-                        COperand op = translate(* pField->getValue(), _instrs);
+        _instrs.push_back(new CUnary(CUnary::Malloc,
+                COperand(CLiteral(new CType(CType::UInt64), CNumber((int64_t) st->sizeOf())))));
+        _instrs.push_back(new CCast(_instrs.back()->getResult(), new CPointerType(st)));
 
-                        _instrs.push_back(new CCast(op, type));
-//                        _instrs.push_back(new CCast(COperand(valueField->getResult()),
-//                                new CPointerType(op.getType())));
-                        _instrs.push_back(new CBinary(CBinary::Store,
-                                COperand(valueField->getResult()),
-                                COperand(_instrs.back()->getResult())));
-                    } else {
-                        CUnary * pMalloc = new CUnary(CUnary::Malloc,
-                                COperand(CLiteral(CType::UInt64, CNumber((int64_t) sz))));
+        COperand opBuf(_instrs.back()->getResult());
 
-                        _instrs.push_back(pMalloc);
-                        _instrs.push_back(new CCast(COperand(pMalloc->getResult()),
-                                new CPointerType(type)));
+        _instrs.push_back(new CField(COperand(ptr->getResult()), 1));
+        _instrs.push_back(new CCast(COperand(_instrs.back()->getResult()), new CPointerType(new CPointerType(st))));
+        _instrs.push_back(new CBinary(CBinary::Store,
+                COperand(_instrs.back()->getResult()), opBuf));
 
-                        COperand mem = COperand(_instrs.back()->getResult());
-                        COperand op = translate(* pField->getValue(), _instrs);
+        initStruct(_expr, _instrs, & dataType, opBuf);
+    } else if (! dataType.getFields().empty()) {
+        ir::CStructFieldDefinition * pFieldDef = _expr.get(0);
+        ir::CType * pFieldType = (ir::CType *) ir::resolveBaseType(dataType.getFields().get(0)->getType());
+        Auto<CType> ft = translate(* pFieldType);
 
-                        _instrs.push_back(new CCast(op, type));
-                        _instrs.push_back(new CBinary(CBinary::Store,
-                                mem, COperand(_instrs.back()->getResult())));
-                        _instrs.push_back(new CBinary(CBinary::Store,
-                                COperand(valueField->getResult()), mem));
-                    }
+        // Should be done by middle end.
+        if (! pFieldDef->getValue()->getType())
+            pFieldDef->getValue()->setType(pFieldType, false);
 
-                    return COperand(var);
-                }
-            assert(false); // Alternative not found. WTF?!
-        }*/
-    } else {
-        assert(_expr.getType()->getKind() == ir::CType::Struct);
-        ir::CStructType * pStructType = (ir::CStructType *) _expr.getType();
-        Auto<CType> type = translate(* _expr.getType());
-        Auto<CVariable> var = new CVariable(type);
-        Auto<CUnary> ptr = new CUnary(CUnary::Ptr, COperand(var));
+        COperand rhs = translate(* _expr.get(0)->getValue(), _instrs);
 
-        m_pFunction->locals().push_back(var);
-        _instrs.push_back(ptr);
+        if (ft->sizeOf() > CType::sizeOf(CType::Pointer)) {
+            _instrs.push_back(new CUnary(CUnary::Malloc,
+                    COperand(CLiteral(new CType(CType::UInt64), CNumber((int64_t) ft->sizeOf())))));
+            _instrs.push_back(new CCast(COperand(ptr->getResult()), new CPointerType(ft)));
 
-        for (size_t i = 0; i < _expr.size(); ++ i) {
-            ir::CStructFieldDefinition * pFieldDef = _expr.get(i);
-//            ir::CType * pFieldType = pStructType->getFields().get(i)->getType();
-            ir::CType * pFieldType = (ir::CType *) ir::resolveBaseType(pStructType->getFields().get(i)->getType());
+            COperand opBuf(_instrs.back()->getResult());
 
-            // FIXME: assumes constant order of constructor values.
-
-            if (! pFieldDef->getValue()->getType())
-                pFieldDef->getValue()->setType(pFieldType, false);
-            //pFieldDef->getValue()->setType(pFieldDef->getField()->getType());
-
-//            pFieldDef
-
-//            _expr.
-
-/*            // TODO: this should have been handled by middle-end.
-            ir::CType * pFieldType = (ir::CType *) ir::resolveBaseType(_expr.get(i)->getType());
-            pField->getValue()->setType(pFieldType, false); */
-
-            COperand rhs = translate(* _expr.get(i)->getValue(), _instrs);
-
-            _instrs.push_back(new CField(COperand(ptr->getResult()), i));
-            _instrs.push_back(new CBinary(CBinary::Store,
-                    COperand(_instrs.back()->getResult()),
-                    rhs));
+            _instrs.push_back(new CBinary(CBinary::Store, opBuf, rhs));
+            rhs = opBuf;
         }
 
-        return COperand(var);
+        _instrs.push_back(new CField(COperand(ptr->getResult()), 1));
+        _instrs.push_back(new CCast(COperand(_instrs.back()->getResult()), new CPointerType(ft)));
+        _instrs.push_back(new CBinary(CBinary::Store,
+                COperand(_instrs.back()->getResult()), rhs));
     }
 
-//    assert(false);
+    return COperand(var);
 }
+
 
 COperand CTranslator::translate(const ir::CConstructor & _expr, instructions_t & _instrs) {
     switch (_expr.getConstructorKind()) {
         case ir::CConstructor::StructFields:
             return translate((ir::CStructConstructor &) _expr, _instrs);
+        case ir::CConstructor::UnionConstructor:
+            return translate((ir::CUnionConstructor &) _expr, _instrs);
     }
 
     assert(false);
@@ -694,7 +950,7 @@ COperand CTranslator::translate(const ir::CExpression & _expr, instructions_t & 
     }
 
     assert(false);
-//    return COperand();
+    return COperand();
 }
 
 void CTranslator::translate(const ir::CIf & _stmt, instructions_t & _instrs) {
@@ -707,25 +963,36 @@ void CTranslator::translate(const ir::CIf & _stmt, instructions_t & _instrs) {
         translate(* _stmt.getElse(), pIf->brFalse());
 }
 
-void CTranslator::translate(const ir::CAssignment & _stmt, instructions_t & _instrs) {
-    COperand left = translate(* _stmt.getLValue(), _instrs);
-    COperand right = translate(* _stmt.getExpression(), _instrs);
+void CTranslator::translateAsssignment(const ir::CNamedValue * _pLHS,
+        const ir::CExpression * _pExpr, instructions_t & _instrs)
+{
+    bool bReference = false;
+    Auto<CVariable> pVar = resolveVariable(_pLHS, bReference);
 
-    if (_stmt.getExpression()->getType()->getKind() == ir::CType::String) {
+    assert(! pVar.empty());
+
+    COperand left = COperand(pVar); //translate(* _stmt.getLValue(), _instrs);
+    COperand right = translate(* _pExpr, _instrs);
+
+    if (_pExpr->getType()->getKind() == ir::CType::String) {
         // Copy string.
         _instrs.push_back(new CCast(right,
                 new CPointerType(new CType(CType::UInt32))));
         _instrs.push_back(new CBinary(CBinary::Offset,
                 COperand(_instrs.back()->getResult()),
-                COperand(CLiteral(CType::Int32, CNumber((int64_t) -1)))));
+                COperand(CLiteral(new CType(CType::Int32), CNumber((int64_t) -1)))));
 
         COperand opSrc (_instrs.back()->getResult());
 
         _instrs.push_back(new CUnary(CUnary::Load,
                 COperand(_instrs.back()->getResult())));
+        _instrs.push_back(new CBinary(CBinary::Mul,
+                COperand(_instrs.back()->getResult()),
+                CLiteral(new CType(CType::UInt32), CNumber(
+                        (int64_t) CType::sizeOf(CType::WChar)))));
         _instrs.push_back(new CBinary(CBinary::Add,
                 COperand(_instrs.back()->getResult()),
-                CLiteral(CType::UInt32, CNumber(
+                CLiteral(new CType(CType::UInt32), CNumber(
                         (int64_t) (CType::sizeOf(CType::WChar) +
                         CType::sizeOf(CType::UInt32))))));
 
@@ -740,18 +1007,29 @@ void CTranslator::translate(const ir::CAssignment & _stmt, instructions_t & _ins
                 new CPointerType(new CType(CType::UInt32))));
         _instrs.push_back(new CBinary(CBinary::Offset,
                 COperand(_instrs.back()->getResult()),
-                CLiteral(CType::Int32, CNumber((int64_t) 1))));
+                CLiteral(new CType(CType::Int32), CNumber((int64_t) 1))));
         _instrs.push_back(new CCast(COperand(_instrs.back()->getResult()),
                 new CPointerType(new CType(CType::WChar))));
 
         right = COperand(_instrs.back()->getResult());
     }
 
-    _instrs.push_back(new CBinary(CBinary::Set, left, right));
+    if (bReference)
+        _instrs.push_back(new CBinary(CBinary::Store, left, right));
+    else
+        _instrs.push_back(new CBinary(CBinary::Set, left, right));
+}
+
+void CTranslator::translate(const ir::CAssignment & _stmt, instructions_t & _instrs) {
+    assert(_stmt.getLValue()->getKind() == ir::CExpression::Var);
+
+    const ir::CVariableReference * pLValue = (const ir::CVariableReference *) _stmt.getLValue();
+
+    translateAsssignment(pLValue->getTarget(), _stmt.getExpression(), _instrs);
 }
 
 void CTranslator::translate(const ir::CJump & _stmt, instructions_t & _instrs) {
-    CLiteral num(new CType(CType::Int32));
+    CLiteral num(CLiteral::Number, new CType(CType::Int32));
     const int nLabel = resolveLabel(_stmt.getDestination());
     num.setNumber(CNumber((int64_t) nLabel));
     _instrs.push_back(new CUnary(CUnary::Return, COperand(num)));
@@ -768,15 +1046,83 @@ bool CTranslator::translateBuiltin(const ir::CCall & _stmt, instructions_t & _in
     if (! pPredRef->getTarget()->isBuiltin())
         return false;
 
-    //const std::wstring & name = pPredRef->getTarget()->getName();
+    const std::wstring & name = pPredRef->getTarget()->getName();
 
-    _instrs.push_back(new CInstruction()); // nop.
+    if (name == L"print") {
+        translatePrint(_stmt, _instrs);
+        return true;
+    }
 
-    return true;
+    return false;
+}
+
+void CTranslator::translatePrintExpr(const ir::CExpression & _expr, instructions_t & _instrs) {
+    std::wstring strFunc;
+    Auto<CType> type = translate(* _expr.getType());
+
+    switch (type->getKind()) {
+        case llir::CType::Bool:    strFunc = L"__p_printBool"; break;
+        case llir::CType::WChar:   strFunc = L"__p_printWChar"; break;
+        case llir::CType::Int8:    strFunc = L"__p_printInt8"; break;
+        case llir::CType::Int16:   strFunc = L"__p_printInt16"; break;
+        case llir::CType::Int32:   strFunc = L"__p_printInt32"; break;
+        case llir::CType::Int64:   strFunc = L"__p_printInt64"; break;
+        case llir::CType::UInt8:   strFunc = L"__p_printUInt8"; break;
+        case llir::CType::UInt16:  strFunc = L"__p_printUInt16"; break;
+        case llir::CType::UInt32:  strFunc = L"__p_printUInt32"; break;
+        case llir::CType::UInt64:  strFunc = L"__p_printUInt64"; break;
+        /*case llir::CType::Gmp_z:   strFunc = m_os << "gmpz";
+        case llir::CType::Gmp_q:   strFunc = m_os << "gmpq";
+        case llir::CType::String:  strFunc = m_os << "string";
+        case llir::CType::WString: strFunc = m_os << "wstring";
+        case llir::CType::Float:   strFunc = m_os << "float";
+        case llir::CType::Double:  strFunc = m_os << "double";
+        case llir::CType::Quad:    strFunc = m_os << "quad";*/
+
+        /*case llir::CType::Struct:
+            return generate(_os, (llir::CStructType &) _type);*/
+
+        case llir::CType::Pointer:
+            if (((CPointerType &) * type).getBase()->getKind() == CType::WChar) {
+                strFunc = L"__p_printWString";
+                break;
+            }
+        default:
+            strFunc = L"__p_printPtr";
+    }
+
+    Auto<CFunction> pFunc = resolveBuiltin(strFunc);
+    Auto<CFunctionType> pFuncType;
+
+    if (pFunc.empty()) {
+        pFuncType = new CFunctionType(new CType(CType::Void));
+        pFuncType->argTypes().push_back(type);
+        pFunc = new CFunction(strFunc, new CType(CType::Void));
+        pFunc->setType(pFuncType);
+        addBuiltin(strFunc, pFunc);
+        m_pModule->usedBuiltins().push_back(pFunc);
+    } else
+        pFuncType = pFunc->getType();
+
+    Auto<CVariable> pFuncVar = pFunc;
+    Auto<CCall> pCall = new CCall(COperand(pFuncVar), pFuncType);
+
+    pCall->args().push_back(translate(_expr, _instrs));
+    _instrs.push_back(pCall);
+}
+
+void CTranslator::translatePrint(const ir::CCall & _stmt, instructions_t & _instrs) {
+    for (size_t i = 0; i < _stmt.getParams().size(); ++ i) {
+        const ir::CExpression * pParam = _stmt.getParams().get(i);
+        translatePrintExpr(* pParam, _instrs);
+    }
 }
 
 void CTranslator::translate(const ir::CCall & _stmt, instructions_t & _instrs) {
     assert(_stmt.getPredicate()->getType()->getKind() == ir::CType::Predicate);
+
+    for (size_t i = 0; i < _stmt.getDeclarations().size(); ++ i)
+        translate(* _stmt.getDeclarations().get(i), _instrs);
 
     if (translateBuiltin(_stmt, _instrs))
         return;
@@ -801,12 +1147,6 @@ void CTranslator::translate(const ir::CCall & _stmt, instructions_t & _instrs) {
 
             COperand op = translate(* _stmt.getBranches().get(cBranch)->get(cParam), _instrs);
             _instrs.push_back(new CUnary(CUnary::Ptr, op));
-/*
-            assert(iType->getKind() == CType::Pointer);
-            CPointerType * ptrType = (CPointerType *) & (* iType);
-            CVariable var(ptrType->getBase());
-            m_pFunction->locals().push_back(var);
-            _instrs.push_back(new CUnary(CUnary::Ptr, COperand(& m_pFunction->locals().back()))); */
             pCall->args().push_back(COperand(_instrs.back()->getResult()));
         }
     }
@@ -842,10 +1182,8 @@ void CTranslator::translate(const ir::CVariableDeclaration & _stmt, instructions
     Auto<CVariable> var = m_pFunction->locals().back();
     addVariable(& _stmt.getVariable(), var);
 
-    if (_stmt.getValue()) {
-        COperand val = translate(* _stmt.getValue(), _instrs);
-        _instrs.push_back(new CBinary(CBinary::Set, COperand(var), val));
-    }
+    if (_stmt.getValue())
+        translateAsssignment(& _stmt.getVariable(), _stmt.getValue(), _instrs);
 }
 
 COperand CTranslator::translateSwitchCond(const ir::CExpression & _expr, const COperand & _arg,
@@ -968,61 +1306,255 @@ void CTranslator::translateSwitchInt(const ir::CSwitch & _stmt,
 void CTranslator::translateSwitchUnion(const ir::CSwitch & _stmt,
         const COperand & _arg, instructions_t & _instrs)
 {
-    assert(false);
-/*    assert(_stmt.getParam()->getType()->getKind() == ir::CType::Union);
+    const ir::CType * pParamType = resolveBaseType(_stmt.getParam()->getType());
 
-//    const ir::CUnionType & type = (const ir::CUnionType &) * _stmt.getParam()->getType();
+    assert(pParamType->getKind() == ir::CType::Union);
+
+    const ir::CUnionType * pUnion = (const ir::CUnionType *) pParamType;
+    std::vector<switch_case_t *> cases;
+
+    cases.assign(_stmt.size(), NULL);
 
     _instrs.push_back(new CUnary(CUnary::Ptr, _arg));
-    _instrs.push_back(new CField(COperand(_instrs.back()->getResult()), 0));
+
+    COperand opStructPtr = COperand(_instrs.back()->getResult());
+
+    _instrs.push_back(new CField(opStructPtr, 0));
     _instrs.push_back(new CUnary(CUnary::Load, COperand(_instrs.back()->getResult())));
 
     Auto<CSwitch> pSwitch = new CSwitch(COperand(_instrs.back()->getResult()));
 
+    _instrs.push_back(new CField(opStructPtr, 1));
+    _instrs.push_back(new CUnary(CUnary::Load, COperand(_instrs.back()->getResult())));
+
+    COperand opContents = COperand(_instrs.back()->getResult());
+
+    std::vector<switch_case_t *> caseIdx(pUnion->getConstructors().size());
+    std::vector<Auto<CLabel> > caseLabels(pUnion->getConstructors().size());
+    std::vector<bool> isConstructor;
+
+    // Prepare map.
     for (size_t i = 0; i < _stmt.size(); ++ i) {
         const ir::CCollection<ir::CExpression> & exprs = _stmt.get(i)->getExpressions();
-        switch_case_t * pCase = NULL;
 
         for (size_t j = 0; j < exprs.size(); ++ j) {
-            const ir::CExpression & expr = * exprs.get(j);
+            const ir::CExpression * pExpr = exprs.get(j);
+            bool bIsConstructor = false;
 
-            assert(expr.getKind() == ir::CExpression::Component);
-            assert(((const ir::CComponent &) expr).getComponentKind() == ir::CComponent::UnionAlternative);
+            if (pExpr->getKind() == ir::CExpression::Constructor &&
+                    ((const ir::CConstructor *) pExpr)->getConstructorKind() == ir::CConstructor::UnionConstructor)
+            {
+                const ir::CUnionConstructor * pCons = (const ir::CUnionConstructor *) pExpr;
 
-            const ir::CUnionAlternativeExpr & alt = (const ir::CUnionAlternativeExpr &) expr;
+                if (! pCons->isComplete() || pCons->size() == 0) {
+                    const ir::CUnionConstructorDefinition * pDef = pCons->getDefinition();
+                    const size_t cOrd = pDef->getOrdinal();
 
-            if (! pCase) {
-                pSwitch->cases().push_back(switch_case_t());
-                pCase = & pSwitch->cases().back();
+                    if (caseIdx[cOrd] == NULL) {
+                        pSwitch->cases().push_back(switch_case_t());
+                        pSwitch->cases().back().values.push_back(cOrd);
+                        caseIdx[cOrd] = & pSwitch->cases().back();
+                        caseLabels[cOrd] = new CLabel;
+                    }
+
+                    bIsConstructor = true;
+                }
             }
 
-            pCase->values.push_back(alt.getIdx());
+            isConstructor.push_back(bIsConstructor);
         }
-
-        assert(pCase);
-
-        translate(* _stmt.get(i)->getBody(), pCase->body);
     }
 
-    if (! pSwitch->cases().empty()) {
-        if (_stmt.getDefault())
+    size_t cExprIdx = 0;
+    instructions_t * pInstrs = & _instrs;
+
+    for (size_t i = 0; i < _stmt.size(); ++ i) {
+        const ir::CCollection<ir::CExpression> & exprs = _stmt.get(i)->getExpressions();
+        switch_case_t * pMainCase = NULL;
+        Auto<CLabel> labelBody = new CLabel();
+
+        for (size_t j = 0; j < exprs.size(); ++ j, ++ cExprIdx) {
+            if (! isConstructor[cExprIdx])
+                continue;
+
+            // Got union constructor expression.
+            const ir::CUnionConstructor * pCons = (const ir::CUnionConstructor *) exprs.get(j);;
+            const ir::CUnionConstructorDefinition * pDef = pCons->getDefinition();
+            switch_case_t * pCase = caseIdx[pCons->getDefinition()->getOrdinal()];
+
+            assert(pCase != NULL);
+
+            if (! pMainCase)
+                pMainCase = pCase;
+
+            for (size_t k = 0; k < pCons->getDeclarations().size(); ++ k) {
+                const ir::CVariableDeclaration * pDecl = pCons->getDeclarations().get(k);
+                translate(* pDecl, pCase->body);
+            }
+
+            Auto<CLabel> labelNextCmp = new CLabel();
+
+            instructions_t & body = pCase->body;
+            COperand opValue;
+            bool bStruct = pDef->getStruct().getFields().size() > 1;
+            bool bPointer = (pDef->getStruct().getFields().size() == 1);
+            const bool bCompare = pCons->getDeclarations().size() < pCons->size();
+
+            if (bPointer) {
+                Auto<CType> fieldType = translate(* pDef->getStruct().getFields().get(0)->getType());
+                bPointer = (fieldType->sizeOf() > CType::sizeOf(CType::Pointer));
+            }
+
+            if (bCompare || ! pCons->getDeclarations().empty()) {
+                if (bStruct) {
+                    Auto<CStructType> st = translate(pDef->getStruct());
+
+                    body.push_back(new CCast(opContents, new CPointerType(st)));
+                    opValue = COperand(body.back()->getResult());
+                } else {
+                    Auto<CType> fieldType = translate(* pDef->getStruct().getFields().get(0)->getType());
+
+                    if (bPointer) {
+                        body.push_back(new CCast(opContents, new CPointerType(fieldType)));
+                        body.push_back(new CUnary(CUnary::Load, body.back()->getResult()));
+                    } else
+                        body.push_back(new CCast(opContents, fieldType));
+                }
+
+                opValue = COperand(body.back()->getResult());
+            }
+
+            if (bCompare) {
+                for (size_t k = 0; k < pCons->size(); ++ k) {
+                    const ir::CStructFieldDefinition * pDef = pCons->get(k);
+
+                    if (pDef->getValue()) {
+                        // Compare and jump.
+                        COperand lhs;
+
+                        if (bStruct) {
+                            //body.push_back(new CUnary(CUnary::Ptr, _arg));
+                            body.push_back(new CField(opValue, k));
+                            lhs = COperand(body.back()->getResult());
+                        } else {
+                            assert(k == 0);
+                            lhs = opValue;
+                        }
+
+                        body.push_back(new CUnary(CUnary::Load, lhs));
+                        lhs = COperand(body.back()->getResult());
+
+                        COperand rhs = translate(* pDef->getValue(), body);
+
+                        rhs = translateEq(resolveBaseType(pDef->getValue()->getType()), lhs, rhs, body);
+                        body.push_back(new CBinary(CBinary::Jmz,
+                                rhs, COperand(labelNextCmp)));
+
+                    }
+                }
+            }
+
+            for (size_t k = 0; k < pCons->size(); ++ k) {
+                const ir::CStructFieldDefinition * pDef = pCons->get(k);
+
+                if (! pDef->getValue()) {
+                    // Initialize.
+                    COperand opField;
+                    Auto<CVariable> pFieldVar;
+
+                    if (bStruct) {
+                        //body.push_back(new CUnary(CUnary::Ptr, _arg));
+                        body.push_back(new CField(opValue, k));
+                        pFieldVar = new CVariable(body.back()->getResult()->getType());
+                        body.push_back(new CBinary(CBinary::Set, pFieldVar, COperand(body.back()->getResult())));
+                    } else {
+                        assert(k == 0);
+                        //opField = opValue;
+                        pFieldVar = new CVariable(opValue.getType());
+                        body.push_back(new CBinary(CBinary::Set, pFieldVar, opValue));
+                    }
+
+                    addVariable(pDef->getField(), pFieldVar, bStruct);
+                    m_pFunction->locals().push_back(pFieldVar);
+                    opField = COperand(pFieldVar);
+                    //pFieldVar->setTyoe(opField.getType());
+                }
+            }
+
+            body.push_back(new CUnary(CUnary::Jmp, COperand(labelBody)));
+
+            if (bCompare) {
+                body.push_back(new CInstruction()); // nop
+                body.back()->setLabel(labelNextCmp);
+            }
+        }
+
+        cExprIdx -= exprs.size(); // Reset counter for second iteration.
+
+        COperand lhs;
+
+        for (size_t j = 0; j < exprs.size(); ++ j, ++ cExprIdx) {
+            if (isConstructor[cExprIdx])
+                continue;
+
+            ir::CExpression * pCond = exprs.get(j);
+
+            COperand rhs = translate(* pCond, * pInstrs);
+
+            rhs = translateEq(pParamType, _arg, rhs, * pInstrs);
+
+            if (! lhs.empty()) {
+                pInstrs->push_back(new CBinary(CBinary::BOr, lhs, rhs));
+                lhs = COperand(pInstrs->back()->getResult());
+            } else
+                lhs = rhs;
+        }
+
+        if (! lhs.empty()) {
+            if (pMainCase) {
+                pInstrs->push_back(new CBinary(CBinary::Jnz, lhs, COperand(labelBody)));
+            } else {
+                CIf * pIf = new CIf(lhs);
+
+                pInstrs->push_back(pIf);
+                translate(* _stmt.get(i)->getBody(), pIf->brTrue());
+                pInstrs = & pIf->brFalse();
+            }
+        }
+
+        // Actual case body.
+        if (pMainCase == NULL || _stmt.get(i)->getBody() == NULL)
+            continue;
+
+        instructions_t & body = pMainCase->body;
+
+        body.push_back(new CInstruction()); // nop
+        body.back()->setLabel(labelBody);
+        translate(* _stmt.get(i)->getBody(), body);
+    }
+
+    if (_stmt.getDefault()) {
+        if (pSwitch->cases().empty())
+            translate(* _stmt.getDefault(), * pInstrs);
+        else
             translate(* _stmt.getDefault(), pSwitch->deflt());
-        _instrs.push_back(pSwitch);
-    } else if (_stmt.getDefault())
-        translate(* _stmt.getDefault(), _instrs);
-*/
+    }
+
+    if (! pSwitch->cases().empty())
+        pInstrs->push_back(pSwitch);
 }
 
 void CTranslator::translate(const ir::CSwitch & _stmt, instructions_t & _instrs) {
     if (_stmt.getParamDecl())
         translate(* _stmt.getParamDecl(), _instrs);
 
+    const ir::CType * pParamType = resolveBaseType(_stmt.getParam()->getType());
     COperand arg = translate(* _stmt.getParam(), _instrs);
 
     if (arg.getType()->getKind() & CType::IntMask) {
         translateSwitchInt(_stmt, arg, _instrs);
         return;
-    } else if (_stmt.getParam()->getType()->getKind() == ir::CType::Union) {
+    } else if (pParamType->getKind() == ir::CType::Union) {
         translateSwitchUnion(_stmt, arg, _instrs);
         return;
     }
@@ -1038,16 +1570,11 @@ void CTranslator::translate(const ir::CSwitch & _stmt, instructions_t & _instrs)
         assert(! exprs.empty());
 
         COperand lhs = translate(* exprs.get(0), * pInstrs);
-        pInstrs->push_back(new CBinary(_selectBinaryInstr(ir::CBinary::Equals,
-                lhs.getType()), arg, lhs));
-        lhs = COperand(pInstrs->back()->getResult());
+        lhs = translateEq(pParamType, arg, lhs, * pInstrs);
 
         for (size_t j = 1; j < exprs.size(); ++ j) {
-            //const ir::CExpression & expr = * exprs.get(j);
             COperand rhs = translate(* exprs.get(j), * pInstrs);
-            pInstrs->push_back(new CBinary(_selectBinaryInstr(ir::CBinary::Equals,
-                    rhs.getType()), arg, rhs));
-            rhs = COperand(pInstrs->back()->getResult());
+            rhs = translateEq(pParamType, arg, rhs, * pInstrs);
 
             pInstrs->push_back(new CBinary(CBinary::BOr, lhs, rhs));
             lhs = COperand(pInstrs->back()->getResult());
@@ -1120,7 +1647,7 @@ Auto<CFunction> CTranslator::translate(const ir::CPredicate & _pred) {
                 ir::CNamedValue * pVar = branch.get(j);
                 Auto<CType> argType = pTranslator->translate(* pVar->getType());
                 pFunction->args().push_back(new CVariable(new CPointerType(argType)));
-                addVariable(pVar, pFunction->args().back());
+                addVariable(pVar, pFunction->args().back(), true);
             }
         }
     }
@@ -1130,78 +1657,19 @@ Auto<CFunction> CTranslator::translate(const ir::CPredicate & _pred) {
     pTranslator->m_pFunction = pFunction;
     pTranslator->translate(* _pred.getBlock(), pFunction->instructions());
 
-    pTranslator->markEOLs(pFunction->instructions());
-    pTranslator->insertRefs(pFunction->instructions());
-    pTranslator->insertUnrefs();
-
-    if (returnType->getKind() == CType::Void)
-        pFunction->instructions().push_back(new CUnary(CUnary::Return));
-    else if (pResult)
+    if (returnType->getKind() != CType::Void && pResult)
         pFunction->instructions().push_back(new CUnary(CUnary::Return, pFunction->getResult()));
+
+    processLL<CMarkEOLs>(* pFunction);
+    processLL<CCountLabels>(* pFunction);
+    processLL<CPruneJumps>(* pFunction);
+    processLL<CCollapseReturns>(* pFunction);
+    processLL<CRecycleVars>(* pFunction);
 
     return pFunction;
 }
 
-void CTranslator::markEOL(const COperand & _op, Auto<CInstruction> _instr) {
-    if (_op.getKind() == COperand::Variable)
-        _op.getVariable()->setLastUse(_instr);
-}
-
-void CTranslator::markEOLs(const operands_t & _ops, Auto<CInstruction> _instr) {
-    for (operands_t::const_iterator iOp = _ops.begin(); iOp != _ops.end(); ++ iOp)
-        markEOL(* iOp, _instr);
-}
-
-void CTranslator::markEOLs(instructions_t & _instrs) {
-    for (instructions_t::iterator iInstr = _instrs.begin(); iInstr != _instrs.end(); ++ iInstr) {
-        Auto<CInstruction> pInstr = * iInstr;
-        CInstruction & instr = ** iInstr;
-
-        switch (instr.getKind()) {
-            case CInstruction::Unary:
-                markEOL(((CUnary & ) instr).getOp(), pInstr);
-                break;
-            case CInstruction::Binary:
-                markEOL(((CBinary & ) instr).getOp1(), pInstr);
-                markEOL(((CBinary & ) instr).getOp2(), pInstr);
-                break;
-            case CInstruction::Call:
-                markEOLs(((CCall &) instr).args(), pInstr);
-                break;
-            case CInstruction::If:
-                markEOL(((CIf &) instr).getCondition(), pInstr);
-                markEOLs(((CIf &) instr).brTrue());
-                markEOLs(((CIf &) instr).brFalse());
-                break;
-            case CInstruction::Switch: {
-                CSwitch & sw = (CSwitch &) instr;
-                markEOL(sw.getArg(), pInstr);
-                for (switch_cases_t::iterator iCase = sw.cases().begin(); iCase != sw.cases().end(); ++ iCase)
-                    markEOLs(iCase->body);
-                markEOLs(sw.deflt());
-                break;
-            }
-            case CInstruction::Select:
-                markEOL(((CSelect & ) instr).getCondition(), pInstr);
-                markEOL(((CSelect & ) instr).getTrue(), pInstr);
-                markEOL(((CSelect & ) instr).getFalse(), pInstr);
-                break;
-            case CInstruction::Field:
-                markEOL(((CField & ) instr).getOp(), pInstr);
-                break;
-            case CInstruction::Cast:
-                markEOL(((CCast & ) instr).getOp(), pInstr);
-                break;
-            case CInstruction::Copy:
-                markEOL(((CCopy & ) instr).getDest(), pInstr);
-                markEOL(((CCopy & ) instr).getSrc(), pInstr);
-                markEOL(((CCopy & ) instr).getSize(), pInstr);
-                break;
-        }
-    }
-}
-
-void CTranslator::insertRefs(instructions_t & _instrs) {
+/*void CTranslator::insertRefs(instructions_t & _instrs) {
     for (instructions_t::iterator iInstr = _instrs.begin(); iInstr != _instrs.end(); ++ iInstr) {
         CInstruction & instr = ** iInstr;
         instructions_t::iterator iNext = iInstr;
@@ -1222,17 +1690,6 @@ void CTranslator::insertRefs(instructions_t & _instrs) {
                         ((CField &) instr).getOp().getVariable()->getLastUse() == * iInstr)
                     continue;
                 break;
-                //iInstr = _instrs.insert(iNext, new CUnary(CUnary::Ref, ((CField &) instr).getOp()));
-                //continue;
-/*                op = COperand(instr.getResult());
-                break;
-            case CInstruction::Unary:
-                switch (((CUnary &) instr).getUnaryKind()) {
-                    case CUnary::Malloc:
-                        op = COperand(instr.getResult());
-                        break;
-                }
-                break;*/
             case CInstruction::If:
                 insertRefs(((CIf &) instr).brTrue());
                 insertRefs(((CIf &) instr).brFalse());
@@ -1258,10 +1715,6 @@ void CTranslator::insertRefs(instructions_t & _instrs) {
                             _instrs.insert(iInstr, new CUnary(CUnary::UnrefNd, bin.getOp1()));
                             op = bin.getOp2();
                         }
-/*                        _instrs.insert(iInstr, new CUnary(CUnary::Unref, bin.getOp1()));
-                        if (bin.getOp1().getType()->getKind() == CType::Pointer &&
-                                ((CPointerType &) * bin.getOp1().getType()).getBase()->getKind() == CType::Pointer)
-                            op = bin.getOp1(); */
                         break;
                     case CBinary::Offset:
                         if (bin.getOp1().getKind() == COperand::Variable &&
@@ -1301,7 +1754,7 @@ void CTranslator::insertUnrefs() {
     for (args_t::iterator iVar = m_ptrs.begin(); iVar != m_ptrs.end(); ++ iVar)
         m_pFunction->instructions().push_back(new CUnary(CUnary::Unref, COperand(* iVar)));
 }
-
+*/
 void CTranslator::translate(const ir::CModule & _module, CModule & _dest) {
     m_pModule = & _dest;
 

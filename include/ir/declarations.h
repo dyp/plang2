@@ -37,6 +37,8 @@ private:
     bool m_bBuiltin;
 };
 
+typedef CCollection<CPredicate> Predicates;
+
 /// Message declaration.
 class CMessage : public CNode {
 public:
@@ -237,11 +239,11 @@ public:
         _assign(m_pType, _pType, _bReparent);
     }
 
-    /// Get message name.
+    /// Get type identifier.
     /// \return Identifier.
     const std::wstring & getName() const { return m_strName; }
 
-    /// Set message name.
+    /// Set type identifier.
     /// \param _strName Identifier.
     void setName(const std::wstring & _strName) { m_strName = _strName; }
 

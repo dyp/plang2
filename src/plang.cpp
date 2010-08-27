@@ -17,6 +17,9 @@
 #include "prettyprinter.h"
 #include "llir.h"
 #include "backend_debug.h"
+#include "backend_c.h"
+#include "typecheck.h"
+#include "parser_context.h"
 
 using namespace lexer;
 
@@ -49,6 +52,7 @@ int main(int _argc, const char ** _argv) {
         std::wcout << L"module:\n";
         prettyPrint(* pModule, std::wcout);
         std::wcout << std::endl;
+        return 0;
     }
 
     if (pModule) {
@@ -57,6 +61,10 @@ int main(int _argc, const char ** _argv) {
         llir::translate(module, * pModule);
 
         backend::generateDebug(module, std::wcout);
+
+        std::wofstream ofs((strFile + ".c").c_str());
+
+        backend::generateC(module, ofs);
 
         delete pModule;
     }

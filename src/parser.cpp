@@ -12,6 +12,11 @@
 #include "ir/types.h"
 #include "ir/base.h"
 
+#include "typecheck.h"
+#include "prettyprinter.h"
+#include "collect_constraints.h"
+#include "unify.h"
+
 #include <iostream>
 #include <algorithm>
 #include <map>
@@ -97,7 +102,7 @@ public:
     CExpression * parseCastOrTypeReference(CContext & _ctx, CType * _pType);
 
     CTypeDeclaration * parseTypeDeclaration(CContext & _ctx);
-    CVariableDeclaration * parseVariableDeclaration(CContext & _ctx, bool _bLocal);
+    CVariableDeclaration * parseVariableDeclaration(CContext & _ctx, bool _bLocal, bool _bAllowInit = true);
     CFormulaDeclaration * parseFormulaDeclaration(CContext & _ctx);
     CExpression * parseExpression(CContext & _ctx, int _nFlags);
     CExpression * parseExpression(CContext & _ctx) { return parseExpression(_ctx, 0); }
@@ -177,7 +182,9 @@ public:
     CElementDefinition * parseArrayElement(CContext & _ctx);
     CElementDefinition * parseMapElement(CContext & _ctx);
     CStructFieldDefinition * parseFieldDefinition(CContext & _ctx);
-    CUnionConstructorDefinition * parseConstructorDefinition(CContext & _ctx);
+    CStructFieldDefinition * parseConstructorField(CContext & _ctx);
+    CUnionConstructorDefinition * parseConstructorDeclaration(CContext & _ctx);
+    CUnionConstructor * parseConstructor(CContext & _ctx, CUnionType * _pUnion);
 
     template<class _T>
     _T * findByName(const CCollection<_T> & _list, const std::wstring & _name);
@@ -240,7 +247,7 @@ bool CParser::isTypeVariable(const CNamedValue * _pVar, const CType * & _pType) 
     if (! _pVar || ! _pVar->getType())
         return false;
 
-    const CType * pType = _pVar->getType();
+    const CType * pType = resolveBaseType(_pVar->getType());
 
     if (! pType)
         return false;
@@ -255,12 +262,12 @@ bool CParser::isTypeVariable(const CNamedValue * _pVar, const CType * & _pType) 
     if (pType->getKind() != CType::NamedReference)
         return false;
 
-    const CNamedReferenceType * pRef = (const CNamedReferenceType *) pType;
+    /*const CNamedReferenceType * pRef = (const CNamedReferenceType *) pType;
 
     if (pRef->getDeclaration() != NULL) {
         if (_pType) _pType = pRef->getDeclaration()->getType();
         return true;
-    }
+    }*/
 
     return false;
 }
@@ -403,7 +410,9 @@ CExpression * CParser::parseComponent(CContext & _ctx, CExpression & _base) {
     CExpression * pExpr = NULL;
 
     if (ctx.is(Dot)) {
-        const CType * pBaseType = resolveBaseType(_base.getType());
+        const std::wstring & fieldName = ctx.scan(2, 1);
+        CComponent * pExpr = new CStructFieldExpr(fieldName);
+        /*const CType * pBaseType = resolveBaseType(_base.getType());
 
         if (! pBaseType || (pBaseType->getKind() != CType::Struct && pBaseType->getKind() != CType::Union))
             ERROR(ctx, NULL, L"Struct or union typed expression expected");
@@ -428,7 +437,7 @@ CExpression * CParser::parseComponent(CContext & _ctx, CExpression & _base) {
 
         if (! pExpr)
             ERROR(ctx, NULL, L"Could not find component %ls", fieldName.c_str());
-
+*/
         _ctx.mergeChildren();
         _ctx.attach(pExpr);
         pExpr->setObject(& _base);
@@ -440,6 +449,22 @@ CExpression * CParser::parseComponent(CContext & _ctx, CExpression & _base) {
         if (! pExpr)
             pExpr = parseReplacement(ctx, _base);
     } else if (ctx.is(LeftParen)) {
+        if (_base.getKind() == CExpression::Type) {
+            pExpr = parseExpression(ctx);
+
+            if (! pExpr)
+                return NULL;
+
+            CCastExpr * pCast = new CCastExpr();
+
+            pCast->setToType((CTypeExpr *) & _base, true);
+            pCast->setExpression(pExpr);
+            _ctx.mergeChildren();
+            _ctx.attach(pCast);
+
+            return pCast;
+        }
+
         pExpr = parseFunctionCall(ctx, _base);
 
         if (! pExpr)
@@ -548,7 +573,8 @@ void CParser::initOps() {
 //    m_ops[Colon]      = operator_t(nPrec);
 	m_ops[Or]         = operator_t(++ nPrec, CBinary::BoolOr);
 	m_ops[Xor]        = operator_t(++ nPrec, CBinary::BoolXor);
-	m_ops[Ampersand]  = operator_t(++ nPrec, CBinary::BoolAnd);
+    m_ops[Ampersand]  = operator_t(++ nPrec, CBinary::BoolAnd);
+    m_ops[And]        = operator_t(nPrec, CBinary::BoolAnd);
 	m_ops[Eq]         = operator_t(++ nPrec, CBinary::Equals);
 	m_ops[Ne]         = operator_t(nPrec, CBinary::NotEquals);
 	m_ops[Lt]         = operator_t(++ nPrec, CBinary::Less);
@@ -569,8 +595,8 @@ void CParser::initOps() {
 }
 
 CExpression * CParser::parseCastOrTypeReference(CContext & _ctx, CType * _pType) {
-    CContext & ctx = * _ctx.createChild(false);
     CExpression * pExpr = NULL;
+    CContext & ctx = * _ctx.createChild(false);
 
     if (ctx.in(LeftParen, LeftBracket, LeftMapBracket, LeftBrace, LeftListBracket)) {
         switch (_pType->getKind()) {
@@ -579,9 +605,9 @@ CExpression * CParser::parseCastOrTypeReference(CContext & _ctx, CType * _pType)
             case CType::Set:
             case CType::Map:
             case CType::List:
-            case CType::Optional:
-            case CType::Parameterized:
-            case CType::NamedReference:
+            //case CType::Optional:
+            //case CType::Parameterized:
+            //case CType::NamedReference:
                 pExpr = parseAtom(ctx, RestrictTypes);
                 if (pExpr)
                     pExpr->setType(_pType);
@@ -654,18 +680,35 @@ CExpression * CParser::parseAtom(CContext & _ctx, int _nFlags) {
     _nFlags &= ~RestrictTypes;
 
     switch (ctx.getToken()) {
-        case Integer:
-            pExpr = ctx.attach(new CLiteral(CNumber(ctx.scan())));
-            pExpr->setType(new CType(CType::Int));
-            pExpr->getType()->setBits(ctx.getIntBits());
+        case Integer: {
+            CNumber num(ctx.scan());
+            pExpr = ctx.attach(new CLiteral(num));
+            if (num.getKind() == CNumber::Integer) {
+                if (num.getInt() >= 0) {
+                    pExpr->setType(new CType(CType::Nat));
+                    pExpr->getType()->setBits(num.getBits(true));
+                } else {
+                    pExpr->setType(new CType(CType::Int));
+                    pExpr->getType()->setBits(num.getBits(false));
+                }
+            } else {
+                pExpr->setType(new CType(CType::Int));
+                pExpr->getType()->setBits(CNumber::Generic);
+            }
             break;
+        }
         case Real:
         case Nan:
-        case Inf:
-            pExpr = ctx.attach(new CLiteral(CNumber(ctx.scan())));
+        case Inf: {
+            CNumber num(ctx.scan());
+            pExpr = ctx.attach(new CLiteral(num));
             pExpr->setType(new CType(CType::Real));
-            pExpr->getType()->setBits(ctx.getRealBits());
+            if (num.getKind() == CNumber::Generic)
+                pExpr->getType()->setBits(CNumber::Generic);
+            else
+                pExpr->getType()->setBits(num.getBits());
             break;
+        }
         case True:
         case False:
             pExpr = ctx.attach(new CLiteral(ctx.getToken() == True));
@@ -761,20 +804,29 @@ CExpression * CParser::parseAtom(CContext & _ctx, int _nFlags) {
         }
 
         if ((pVar = ctx.getVariable(str))) {
-            pExpr = ctx.attach(new CVariableReference(pVar));
-            pExpr->setType(pVar->getType(), false);
-            WARNING(ctx, L"kind: %d", pExpr->getType()->getKind());
+            if (bAllowTypes && isTypeVariable(pVar)) {
+                pExpr = ctx.attach(new CTypeExpr(new CNamedReferenceType(pVar)));
+            } else {
+                pExpr = ctx.attach(new CVariableReference(pVar));
+            }
+            //pExpr->setType(pVar->getType(), false);
+            //WARNING(ctx, L"kind: %d", pExpr->getType()->getKind());
             ctx.skip(bLinkedIdentifier ? 2 : 1);
         }
 
         if (bLinkedIdentifier && ! pExpr)
             ERROR(ctx, NULL, L"Parameter with name %ls not found", str.c_str());
 
+        if (! pExpr && _ctx.getConstructor(str) != NULL)
+            pExpr = parseConstructor(ctx, NULL);
+
         const CPredicate * pPred = NULL;
 
         if (! pExpr && (pPred = ctx.getPredicate(str))) {
-            pExpr = ctx.attach(new CPredicateReference(pPred));
-            pExpr->setType(pPred->getType(), false);
+//            pExpr = ctx.attach(new CPredicateReference(pPred));
+//            pExpr->setType(pPred->getType(), false);
+            pExpr = ctx.attach(new CPredicateReference(str));
+            //pExpr->setType(pPred->getType(), false);
             ++ ctx;
         }
 
@@ -794,9 +846,29 @@ CExpression * CParser::parseAtom(CContext & _ctx, int _nFlags) {
             pExpr = pCall;
         }
 
+        CTypeDeclaration * pTypeDecl = NULL;
+        const CType * pRealType = NULL;
+
+        if (! pExpr) {
+            pTypeDecl = ctx.getType(str);
+            if (pTypeDecl != NULL)
+                pRealType = resolveBaseType(pTypeDecl->getType());
+        }
+
+        if (! pExpr && pRealType != NULL && pRealType->getKind() == CType::Union && ctx.nextIs(Dot, Identifier)) {
+            ctx.skip(2);
+            pExpr = parseConstructor(ctx, (CUnionType *) pRealType);
+            if (pExpr == NULL)
+                return NULL;
+        }
+
+        //if (! pExpr && pType != NULL && pType->getKind() == CType::Union && ctx.nextIs(Dot, Identifier)) {
+        //}
+
+
         if (! pExpr && bAllowTypes) {
-            CType * pType = NULL;
-            if ((pType = parseType(ctx)))
+            CType * pType = parseType(ctx);
+            if (pType != NULL)
                 pExpr = parseCastOrTypeReference(ctx, pType);
         }
 
@@ -1114,10 +1186,22 @@ CPredicate * CParser::parsePredicate(CContext & _ctx) {
 
     _ctx.mergeChildren();
 
+    //return pPred;
+
+    tc::Formulas constraints;
+    tc::FreshTypes freshTypes;
+    tc::collect(constraints, * pPred, _ctx, freshTypes);
+    prettyPrint(constraints, std::wcout);
+    if (tc::solve(constraints))
+        tc::apply(constraints, freshTypes);
+    //prettyPrint(constraints, std::wcout);
+    /*std::wcout << L" ***\n";*/
+    //unify(constraints);
+
     return pPred;
 }
 
-CVariableDeclaration * CParser::parseVariableDeclaration(CContext & _ctx, bool _bLocal) {
+CVariableDeclaration * CParser::parseVariableDeclaration(CContext & _ctx, bool _bLocal, bool _bAllowInit) {
     CContext & ctx = * _ctx.createChild(false);
     const bool bMutable = ctx.consume(Mutable);
 
@@ -1133,7 +1217,7 @@ CVariableDeclaration * CParser::parseVariableDeclaration(CContext & _ctx, bool _
     pDecl->getVariable().setType(pType);
     pDecl->getVariable().setMutable(bMutable);
 
-    if (ctx.consume(Eq)) {
+    if (_bAllowInit && ctx.consume(Eq)) {
         CExpression * pExpr = parseExpression(ctx);
 
         if (! pExpr) return NULL;
@@ -1269,7 +1353,7 @@ CNamedReferenceType * CParser::parseTypeReference(CContext & _ctx) {
     } else
         pType = ctx.attach(new CNamedReferenceType(pDecl));
 
-    if (ctx.is(LeftParen)) {
+    if (pDecl != NULL && pDecl->getType() && pDecl->getType()->hasParameters() && ctx.is(LeftParen)) {
         if (! parseActualParameterList(ctx, ((CNamedReferenceType *) pType)->getParams()))
             ERROR(ctx, NULL, L"Garbage in parameter list");
     }
@@ -1327,9 +1411,14 @@ CUnionType * CParser::parseUnionType(CContext & _ctx) {
 
     CUnionType * pType = ctx.attach(new CUnionType());
 
-    if (! parseList(ctx, pType->getConstructors(), & CParser::parseConstructorDefinition,
+    if (! parseList(ctx, pType->getConstructors(), & CParser::parseConstructorDeclaration,
             LeftParen, RightParen, Comma))
         return NULL;
+
+    for (size_t i = 0; i < pType->getConstructors().size(); ++ i) {
+        pType->getConstructors().get(i)->setOrdinal(i);
+        pType->getConstructors().get(i)->setUnion(pType);
+    }
 
     _ctx.mergeChildren();
 
@@ -1695,7 +1784,7 @@ CStructFieldDefinition * CParser::parseFieldDefinition(CContext & _ctx) {
     CContext & ctx = * _ctx.createChild(false);
     CStructFieldDefinition * pField = ctx.attach(new CStructFieldDefinition());
 
-    if (ctx.is(Identifier))
+    if (ctx.is(Identifier, Colon))
         pField->setName(ctx.getValue());
 
     CExpression * pExpr = parseExpression(ctx);
@@ -1721,7 +1810,74 @@ CStructFieldDefinition * CParser::parseFieldDefinition(CContext & _ctx) {
     return pField;
 }
 
-CUnionConstructorDefinition * CParser::parseConstructorDefinition(CContext & _ctx) {
+CStructFieldDefinition * CParser::parseConstructorField(CContext & _ctx) {
+    CContext & ctx = * _ctx.createChild(false);
+    CStructFieldDefinition * pField = ctx.attach(new CStructFieldDefinition());
+    std::wstring strIdent;
+
+    if (ctx.is(Identifier))
+        strIdent = ctx.getValue();
+
+    CExpression * pExpr = parseExpression(ctx, RestrictTypes);
+
+    if (! pExpr) {
+        CVariableDeclaration * pDecl = parseVariableDeclaration(ctx, true, false);
+
+        if (! pDecl && strIdent.empty())
+            ERROR(ctx, NULL, L"Expression, declaration or identifier expected.");
+
+        if (! pDecl) {
+            // Unresolved identifier treated as variable declaration.
+            pDecl = ctx.attach(new CVariableDeclaration(true, ctx.scan()));
+            pDecl->getVariable().setType(new CType(CType::Generic));
+        }
+
+        if (ctx.getCurrentConstructor())
+            ctx.getCurrentConstructor()->getDeclarations().add(pDecl);
+
+        //pExpr = ctx.attach(new CVariableReference(& pDecl->getVariable()));
+        pField->setField(& pDecl->getVariable());
+    } else
+        pField->setValue(pExpr);
+
+    _ctx.mergeChildren();
+
+    return pField;
+}
+
+CUnionConstructor * CParser::parseConstructor(CContext & _ctx, CUnionType * _pUnion) {
+    if (! _ctx.is(Identifier))
+        return NULL;
+
+    CContext & ctx = * _ctx.createChild(false);
+    CUnionConstructor * pCons = ctx.attach(new CUnionConstructor());
+    CUnionConstructorDefinition * pDef = NULL;
+    const std::wstring & strName = ctx.scan();
+
+    if (_pUnion)
+        pDef = _pUnion->getConstructors().get(_pUnion->getConstructors().findByNameIdx(strName));
+    else
+        pDef = _ctx.getConstructor(strName);
+
+    if (! pDef)
+        ERROR(ctx, NULL, L"Unknown or ambiguous union constructor reference: %ls", strName.c_str());
+
+    pCons->setDefinition(pDef);
+
+    if (ctx.is(LeftParen)) {
+        ctx.setCurrentConstructor(pCons);
+        if (! parseList(ctx, * pCons, & CParser::parseConstructorField, LeftParen, RightParen, Comma))
+            ERROR(ctx, NULL, L"Union constructor parameters expected");
+    }
+
+    pCons->setType(pDef->getUnion(), false);
+
+    _ctx.mergeChildren();
+
+    return pCons;
+}
+
+CUnionConstructorDefinition * CParser::parseConstructorDeclaration(CContext & _ctx) {
     CContext & ctx = * _ctx.createChild(false);
 
     if (! ctx.is(Identifier))
@@ -1729,19 +1885,16 @@ CUnionConstructorDefinition * CParser::parseConstructorDefinition(CContext & _ct
 
     CUnionConstructorDefinition * pCons = ctx.attach(new CUnionConstructorDefinition(ctx.scan()));
 
-    if (! ctx.consume(LeftParen)) {
-        // No fields.
-        _ctx.mergeChildren();
-        return pCons;
+    if (ctx.consume(LeftParen)) {
+        if (! parseParamList(ctx, pCons->getStruct().getFields(), & CParser::parseVariableName))
+            return NULL;
+
+        if (! ctx.consume(RightParen))
+            UNEXPECTED(ctx, ")");
     }
 
-    if (! parseParamList(ctx, pCons->getStruct().getFields(), & CParser::parseVariableName))
-        return NULL;
-
-    if (! ctx.consume(RightParen))
-        UNEXPECTED(ctx, ")");
-
     _ctx.mergeChildren();
+    _ctx.addConstructor(pCons);
 
     return pCons;
 }
@@ -1929,7 +2082,7 @@ CSwitch * CParser::parseSwitch(CContext & _ctx) {
     bool bUnion = false;
 
     if (pBaseType && pBaseType->getKind() == CType::Union) {
-        assert(false);
+        //assert(false);
         /*CUnionType * pUnion = (CUnionType *) pBaseType;
         for (size_t i = 0; i < pUnion->getAlternatives().size(); ++ i)
             mapUnionAlts[pUnion->getAlternatives().get(i)->getName()] = i;
@@ -1937,7 +2090,8 @@ CSwitch * CParser::parseSwitch(CContext & _ctx) {
     }
 
     while (ctx.in(Case)) {
-        CSwitchCase * pCase = ctx.attach(new CSwitchCase());
+        CContext & ctxCase = * ctx.createChild(true);
+        CSwitchCase * pCase = ctxCase.attach(new CSwitchCase());
         //CType * pParamType = NULL;
 
         if (bUnion) {
@@ -1969,19 +2123,20 @@ CSwitch * CParser::parseSwitch(CContext & _ctx) {
             if (! ctx.consume(Colon))
                 UNEXPECTED(ctx, ":");*/
         } else {
-            if (! parseList(ctx, pCase->getExpressions(),
+            if (! parseList(ctxCase, pCase->getExpressions(),
                     & CParser::parseExpression, Case, Colon, Comma))
-                ERROR(ctx, NULL, L"Error parsing list of expressions");
+                ERROR(ctxCase, NULL, L"Error parsing list of expressions");
         }
 
 //        CContext & ctxBody = * ctx.createChild(true);
-        CStatement * pStmt = parseStatement(ctx);
+        CStatement * pStmt = parseStatement(ctxCase);
 
         if (! pStmt)
-            ERROR(ctx, NULL, L"Statement required");
+            ERROR(ctxCase, NULL, L"Statement required");
 
         pCase->setBody(pStmt);
         pSwitch->add(pCase);
+        ctx.mergeChildren();
 //        ctx.mergeChildren();
     }
 
@@ -2214,8 +2369,8 @@ CStatement * CParser::parseAssignment(CContext & _ctx) {
 
         // TODO: RHS's type cannot be derived here actually. Tmp solution until
         // proper type inference gets implemented.
-        if (pLHS->getType() && ! pRHS->getType())
-            pRHS->setType((CType *) resolveBaseType(pLHS->getType()), false);
+        //if (pLHS->getType() && ! pRHS->getType())
+        //    pRHS->setType((CType *) resolveBaseType(pLHS->getType()), false);
     } else if (ctx.consume(Comma)) {
         CMultiassignment * pMA = ctx.attach(new CMultiassignment());
 

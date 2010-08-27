@@ -34,6 +34,11 @@ bool CToken::operator ==(const CToken & _other) const {
         m_line  == _other.m_line && m_value == _other.m_value;
 }
 
+bool CToken::operator <(const CToken & _other) const {
+    return m_line < _other.m_line || (m_line == _other.m_line && m_col < _other.m_col);
+}
+
+
 struct lexeme_t {
     std::wstring lexeme;
     int tokenKind;
@@ -151,6 +156,7 @@ CTokenMap::CTokenMap() {
 	_add(L"false", False);
 	_add(L"nil",   Nil);
 	_add(L"in",    In);
+    _add(L"and",   And);
 	_add(L"or",    Or);
     _add(L"xor",   Xor);
     _add(L"forall",    Forall);

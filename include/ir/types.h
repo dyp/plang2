@@ -42,6 +42,8 @@ public:
         _assign(m_pActualType, _pType, _bReparent);
     }
 
+    virtual bool hasParameters() const { return true; }
+
 private:
     CNamedValues m_params;
     CType * m_pActualType;
@@ -109,8 +111,20 @@ public:
     CNamedValues & getFields() { return m_fields; }
     const CNamedValues & getFields() const { return m_fields; }
 
+    virtual bool hasFresh() const;
+    virtual bool rewrite(ir::CType * _pOld, ir::CType * _pNew);
+    virtual int compare(const CType & _other) const;
+    virtual Extremum getMeet(ir::CType & _other);
+    virtual Extremum getJoin(ir::CType & _other);
+    virtual bool less(const CType & _other) const;
+
+    bool allFieldsNamed() const;
+    bool allFieldsUnnamed() const;
 private:
     CNamedValues m_fields;
+    mutable std::map<std::wstring, size_t> m_mapNames;
+
+    void _fillNames() const;
 };
 
 /// Identifier belonging to an enumeration.
@@ -168,7 +182,7 @@ class CUnionType;
 
 class CUnionConstructorDefinition : public CNode {
 public:
-    CUnionConstructorDefinition(const std::wstring & _strName) : m_strName(_strName), m_pUnion(NULL) {}
+    CUnionConstructorDefinition(const std::wstring & _strName, size_t _ord = 0) : m_strName(_strName), m_pUnion(NULL), m_ord(_ord) {}
 
     /// Get list of constructor fields.
     /// \return List of fields.
@@ -181,10 +195,14 @@ public:
     const std::wstring & getName() const { return m_strName; }
     void setName(const std::wstring & _strName) { m_strName = _strName; }
 
+    size_t getOrdinal() const { return m_ord; }
+    void setOrdinal(size_t _ord) { m_ord = _ord; }
+
 private:
     std::wstring m_strName;
     CStructType m_struct;
     CUnionType * m_pUnion;
+    size_t m_ord;
 };
 
 typedef CCollection<CUnionConstructorDefinition> CUnionConstructorDefinitions;
@@ -206,6 +224,8 @@ public:
     const CUnionConstructorDefinitions & getConstructors() const { return m_constructors; }
 
     union_field_idx_t findField(const std::wstring & _strName) const;
+
+    virtual int compare(const CType & _other) const;
 
 private:
     CUnionConstructorDefinitions m_constructors;
@@ -234,6 +254,8 @@ public:
     virtual void setBaseType(CType * _pType, bool _bReparent = true) {
         _assign(m_pBaseType, _pType, _bReparent);
     }
+
+    virtual bool hasParameters() const { return true; }
 
 private:
     CType * m_pBaseType;
@@ -529,6 +551,11 @@ public:
         return m_paramsOut.size() > 1 ||
             (m_paramsOut.size() == 1 && m_paramsOut.get(0)->getLabel() != NULL);
     }
+
+    virtual bool hasFresh() const;
+    virtual bool rewrite(ir::CType * _pOld, ir::CType * _pNew);
+
+    virtual bool hasParameters() const { return true; }
 
 private:
     CParams m_paramsIn;

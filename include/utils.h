@@ -62,7 +62,13 @@ public:
     /*operator T &() { return * m_pObj->ptr; };
     operator const T &() const { return * m_pObj->ptr; };*/
 
-    bool operator ==(const Auto & _other) const { return m_pObj == _other.m_pObj; };
+    bool operator <(const Auto & _other) const {
+        return (m_pObj && _other.m_pObj) ? (* ptr() < * _other.ptr()) : (m_pObj < _other.m_pObj);
+    }
+
+    bool operator ==(const Auto & _other) const {
+        return (m_pObj && _other.m_pObj) ? (* ptr() == * _other.ptr()) : (m_pObj == _other.m_pObj);
+    }
 
     bool empty() const { return m_pObj->ptr == NULL; }
 
@@ -84,6 +90,13 @@ public:
 #define max(X, Y) (((X) > (Y)) ? (X) : (Y))
 #endif
 */
+
+template<typename Iterator>
+Iterator next(Iterator i) { return ++ i; }
+
+template<typename Iterator>
+Iterator prev(Iterator i) { return -- i; }
+
 std::string intToStr(int64_t _n);
 
 std::string strNarrow(const std::wstring & _s);

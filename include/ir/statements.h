@@ -160,6 +160,7 @@ public:
     /// Get list of variables declared as part of output parameter list.
     /// \return List of variables.
     CCollection<CVariableDeclaration> & getDeclarations() { return m_decls; }
+    const CCollection<CVariableDeclaration> & getDeclarations() const { return m_decls; }
 
 private:
     CExpression * m_pPredicate;

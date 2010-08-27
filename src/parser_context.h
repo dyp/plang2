@@ -86,20 +86,21 @@ private:
 };
 
 class CContext {
-private:
-    typedef std::map<std::wstring, ir::CPredicate *> predicate_map_t;
+public:
+    typedef std::multimap<std::wstring, ir::CPredicate *> predicate_map_t;
     typedef std::map<std::wstring, ir::CNamedValue *> variable_map_t;
     typedef std::map<std::wstring, ir::CTypeDeclaration *> type_map_t;
     typedef std::map<std::wstring, ir::CLabel *> label_map_t;
     typedef std::map<std::wstring, ir::CProcess *> process_map_t;
     typedef std::map<std::wstring, ir::CFormulaDeclaration *> formula_map_t;
+    typedef std::multimap<std::wstring, ir::CUnionConstructorDefinition *> cons_map_t;
     typedef std::list<ir::CNode *> nodes_t;
 
 public:
     CContext(lexer::loc_t _loc, bool _bScope = false)
         : m_loc(_loc), m_bScope(_bScope), m_pChild(NULL), m_pParent(NULL), m_pFailed(NULL),
           m_predicates(NULL), m_variables(NULL), m_types(NULL), m_labels(NULL),
-          m_processes(NULL), m_formulas(NULL), m_bFailed(false)
+          m_processes(NULL), m_formulas(NULL), m_constructors(NULL), m_bFailed(false), m_pCons(NULL)
     {}
 
     ~CContext();
@@ -150,6 +151,7 @@ public:
 
     const messages_t & getMessages() const { return m_messages; }
 
+    bool getPredicates(const std::wstring & _strName, ir::Predicates & _predicates) const;
     ir::CPredicate * getPredicate(const std::wstring & _strName) const;
     void addPredicate(ir::CPredicate * _pPred);
 
@@ -167,6 +169,14 @@ public:
 
     ir::CFormulaDeclaration * getFormula(const std::wstring & _strName) const;
     void addFormula(ir::CFormulaDeclaration * _pFormula);
+
+    bool getConstructors(const std::wstring & _strName, ir::CUnionConstructorDefinitions & _cons) const;
+    ir::CUnionConstructorDefinition * getConstructor(const std::wstring & _strName) const;
+    void addConstructor(ir::CUnionConstructorDefinition * _pCons);
+
+    // Constructor-parsing stuff.
+    ir::CUnionConstructor * getCurrentConstructor() const { return m_pCons ? m_pCons : (m_pParent ? m_pParent->getCurrentConstructor() : NULL); }
+    void setCurrentConstructor(ir::CUnionConstructor * _pCons) { m_pCons = _pCons; }
 
     bool isScope() const { return m_bScope; }
 
@@ -190,9 +200,11 @@ private:
     label_map_t * m_labels;
     process_map_t * m_processes;
     formula_map_t * m_formulas;
+    cons_map_t * m_constructors;
     nodes_t m_nodes;
     bool m_bFailed;
     CPragma m_pragma;
+    ir::CUnionConstructor * m_pCons;
 
     void mergeTo(CContext * _pCtx, bool _bMergeFailed);
     void cleanAdopted();

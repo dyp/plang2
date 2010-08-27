@@ -24,7 +24,7 @@ enum {
     SingleQuote, DoubleQuote, Comma, Semicolon, Colon, Dot, DoubleDot,
     Ellipsis, Hash, Pipe, DoublePipe, Underscore,
 
-    Inf, Nan, True, False, Nil, In, Or, Xor, Forall, Exists,
+    Inf, Nan, True, False, Nil, In, And, Or, Xor, Forall, Exists,
 
     Module, Import, Type, Predicate, Formula, Pre, Post, Process, Class,
     Extends, Pragma, Mutable,
@@ -58,6 +58,7 @@ public:
     CToken & operator =(const CToken & _other);
 
     bool operator ==(const CToken & _other) const;
+    bool operator <(const CToken & _other) const;
 
 private:
     int m_kind, m_line, m_col;

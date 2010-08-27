@@ -93,6 +93,9 @@ public:
         /// Struct, array, sequence, set, list or map constructor.
         /// The object can be cast to CConstructor.
         Constructor,
+        /// Cast expression.
+        /// The object can be cast to CCast.
+        Cast,
     };
 
     /// Default constructor.
@@ -615,6 +618,55 @@ private:
     CType * m_pContents;
 };
 
+/// Type as a part of expression.
+class CCastExpr : public CExpression {
+public:
+    /// Default constructor.
+    CCastExpr() : m_pExpression(NULL), m_pToType(NULL) {}
+
+    /// Initialize.
+    /// \param _pExpr Expression being casted.
+    /// \param _pToType Destination type..
+    /// \param _bReparent If specified (default) also sets parent to this node.
+    CCastExpr(CExpression * _pExpr, CTypeExpr * _pToType, bool _bReparent = true) : m_pExpression(NULL), m_pToType(NULL) {
+        _assign(m_pExpression, _pExpr, _bReparent);
+        _assign(m_pToType, _pToType, _bReparent);
+    }
+
+    /// Destructor.
+    virtual ~CCastExpr() { _delete(m_pExpression); _delete(m_pToType); }
+
+    /// Get expression kind.
+    /// \return #Cast.
+    virtual int getKind() const { return Cast; }
+
+    /// Get expression being casted.
+    /// \return Expression being casted.
+    CExpression * getExpression() const { return m_pExpression; }
+
+    /// Get destination type.
+    /// \return Destination type.
+    CTypeExpr * getToType() const { return m_pToType; }
+
+    /// Set expression to cast.
+    /// \param _pExpression Expression.
+    /// \param _bReparent If specified (default) also sets parent of _pExpression to this node.
+    void setExpression(CExpression * _pExpression, bool _bReparent = true) {
+        _assign(m_pExpression, _pExpression, _bReparent);
+    }
+
+    /// Set destination type.
+    /// \param _pType Destination type.
+    /// \param _bReparent If specified (default) also sets parent of _pType to this node.
+    void setToType(CTypeExpr * _pType, bool _bReparent = true) {
+        _assign(m_pToType, _pType, _bReparent);
+    }
+
+private:
+    CExpression * m_pExpression;
+    CTypeExpr * m_pToType;
+};
+
 /// Possibly quantified logical formula.
 class CFormula : public CExpression {
 public:
@@ -749,6 +801,23 @@ class CStructType;
 /// Structure field.
 class CStructFieldExpr : public CComponent {
 public:
+    CStructFieldExpr(const std::wstring & _strField = L"") : m_strField(_strField) {}
+
+    /// Get component kind.
+    /// \return #StructField.
+    virtual int getComponentKind() const { return StructField; }
+
+    const std::wstring & getFieldName() const { return m_strField; }
+
+private:
+    std::wstring m_strField;
+};
+
+/*
+
+/// Structure field.
+class CStructFieldExpr : public CComponent {
+public:
     /// Default constructor.
     CStructFieldExpr() : m_pStructType(NULL), m_cFieldIdx(-1) {}
 
@@ -794,6 +863,8 @@ private:
     CType * m_pStructType;
     size_t m_cFieldIdx;
 };
+
+ */
 
 class CUnionType;
 class CUnionConstructorDefinition;
@@ -1361,7 +1432,7 @@ public:
 };
 
 class CVariableDeclaration;
-class CUnionCounstructorDefinition;
+class CUnionConstructorDefinition;
 
 /// Union value. \extends CConstructor
 /// The class extends struct constructor with union constructor name.
@@ -1377,15 +1448,16 @@ public:
     /// Get list of variables declared as part of the constructor.
     /// \return List of variables.
     CCollection<CVariableDeclaration> & getDeclarations() { return m_decls; }
+    const CCollection<CVariableDeclaration> & getDeclarations() const { return m_decls; }
 
-    bool isComplete() const { return m_decls.empty(); }
+    bool isComplete() const;
 
-    CUnionCounstructorDefinition * getDefinition() const { return m_pDef; }
-    void setDefinition(CUnionCounstructorDefinition * _pDef) { m_pDef = _pDef; }
+    CUnionConstructorDefinition * getDefinition() const { return m_pDef; }
+    void setDefinition(CUnionConstructorDefinition * _pDef) { m_pDef = _pDef; }
 
 private:
     CCollection<CVariableDeclaration> m_decls;
-    CUnionCounstructorDefinition * m_pDef;
+    CUnionConstructorDefinition * m_pDef;
 };
 
 /// Array value. \extends CConstructor

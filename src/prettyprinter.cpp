@@ -9,12 +9,14 @@
 
 using namespace ir;
 
+std::map<ir::CType *, std::wstring> m_freshTypes;
+
 class CPrettyPrinter {
 public:
-    CPrettyPrinter(std::wostream & _os) : m_os(_os), m_nLevel(0) {}
+    CPrettyPrinter(std::wostream & _os, bool _bCompact = false) : m_os(_os), m_nLevel(0), m_bCompact(_bCompact) {}
 
     std::wostream & print(const CNamedValue & _val);
-    std::wostream & print(CNamedValues & _vals, const std::wstring & _name);
+    std::wostream & print(const CNamedValues & _vals, const std::wstring & _name);
     std::wostream & print(CParam & _param);
     std::wostream & print(CParams & _params, const std::wstring & _name);
     std::wostream & print(CEnumValue & _val);
@@ -39,6 +41,7 @@ public:
     std::wostream & print(CSetConstructor & _expr);
     std::wostream & print(CListConstructor & _expr);
     std::wostream & print(CLambda & _expr);
+    std::wostream & print(CCastExpr & _cast);
 
     std::wostream & print(CType & _type);
     std::wostream & print(CParameterizedType & _type);
@@ -72,9 +75,25 @@ public:
 private:
     std::wostream & m_os;
     int m_nLevel;
+    bool m_bCompact;
+
 
     std::wstring fmtPair(const std::wstring & _strName, const std::wstring & _strValue) {
+        if (m_bCompact)
+            return _strValue;
         return fmtIndent(_strName) + L": " + fmtQuote(_strValue) + L"\n";
+    }
+
+    std::wstring fmtBits(int _bits) {
+        std::wstring str;
+        switch (_bits) {
+            case CNumber::Generic: str = L"generic"; break;
+            case CNumber::Native:  str = L"native";  break;
+            default:               str = fmtInt(_bits);
+        }
+        if (m_bCompact)
+            return _bits == CNumber::Generic ? L"" : std::wstring(L"(") + str + L")";
+        return fmtPair(L"bits", str);
     }
 
     std::wstring fmtIndent(const std::wstring & _s) {
@@ -138,11 +157,14 @@ std::wostream & CPrettyPrinter::print(CStructFieldExpr & _expr) {
     ++ m_nLevel;
     m_os << fmtPair(L"component_kind", L"struct_field");
 
-    m_os << fmtIndent(L"field:\n");
+    m_os << fmtPair(L"field", _expr.getFieldName());
+
+    /*m_os << fmtIndent(L"field:\n");
+
     print(* _expr.getField());
 
     m_os << fmtIndent(L"struct_type:\n");
-    print(* _expr.getStructType());
+    print(* _expr.getStructType());*/
 
     -- m_nLevel;
     return m_os;
@@ -393,6 +415,10 @@ std::wostream & CPrettyPrinter::print(CExpression & _expr) {
         -- m_nLevel;
         print(* (CLambda *) (& _expr));
         ++ m_nLevel;
+    } else if (_expr.getKind() == CExpression::Cast) {
+        -- m_nLevel;
+        print(* (CCastExpr *) (& _expr));
+        ++ m_nLevel;
     } else if (_expr.getKind() == CExpression::Formula) {
         m_os << fmtPair(L"kind", L"formula");
 
@@ -468,6 +494,13 @@ std::wostream & CPrettyPrinter::print(CExpression & _expr) {
 }
 
 std::wostream & CPrettyPrinter::print(const CNamedValue & _val) {
+    if (m_bCompact) {
+        print(* _val.getType());
+        if (!_val.getName().empty())
+            m_os << L" " << _val.getName();
+        return m_os;
+    }
+
     ++ m_nLevel;
     m_os << fmtPair(L"name", _val.getName());
     m_os << fmtIndent(L"type:\n");
@@ -488,7 +521,17 @@ std::wostream & CPrettyPrinter::print(CCollection<CExpression> & _exprs, const s
     return m_os;
 }
 
-std::wostream & CPrettyPrinter::print(CNamedValues & _vals, const std::wstring & _name) {
+std::wostream & CPrettyPrinter::print(const CNamedValues & _vals, const std::wstring & _name) {
+    if (m_bCompact) {
+        for (size_t i = 0; i < _vals.size(); ++ i) {
+            if (i > 0)
+                m_os << L", ";
+            print(* _vals.get(i));
+        }
+
+        return m_os;
+    }
+
     for (size_t i = 0; i < _vals.size(); ++ i) {
         m_os << fmtIndent(_name + fmtInt(i,  L" [%d]:\n"));
         print(* _vals.get(i));
@@ -499,14 +542,26 @@ std::wostream & CPrettyPrinter::print(CNamedValues & _vals, const std::wstring &
 
 std::wostream & CPrettyPrinter::print(CParam & _param) {
     print(* (CNamedValue *) (& _param));
-    ++ m_nLevel;
-    m_os << fmtPair(L"is_output", (_param.isOutput() ? L"true" : L"false"));
-    m_os << fmtPair(L"has_linked", (_param.getLinkedParam() ? L"true" : L"false"));
-    -- m_nLevel;
+    if (! m_bCompact) {
+        ++ m_nLevel;
+        m_os << fmtPair(L"is_output", (_param.isOutput() ? L"true" : L"false"));
+        m_os << fmtPair(L"has_linked", (_param.getLinkedParam() ? L"true" : L"false"));
+        -- m_nLevel;
+    }
     return m_os;
 }
 
 std::wostream & CPrettyPrinter::print(CParams & _params, const std::wstring & _name) {
+    if (m_bCompact) {
+        for (size_t i = 0; i < _params.size(); ++ i) {
+            if (i > 0)
+                m_os << L", ";
+            print(* _params.get(i));
+        }
+
+        return m_os;
+    }
+
     for (size_t i = 0; i < _params.size(); ++ i) {
         m_os << fmtIndent(_name + fmtInt(i,  L" [%d]:\n"));
         print(* _params.get(i));
@@ -565,7 +620,9 @@ std::wostream & CPrettyPrinter::print(CParameterizedType & _type) {
 
 std::wostream & CPrettyPrinter::print(CNamedReferenceType & _type) {
     ++ m_nLevel;
-    m_os << fmtPair(L"kind", L"named_reference");
+
+    if (! m_bCompact)
+        m_os << fmtPair(L"kind", L"named_reference");
 
     if (_type.getDeclaration()) {
         m_os << fmtPair(L"declaration", _type.getDeclaration()->getName());
@@ -637,8 +694,14 @@ std::wostream & CPrettyPrinter::print(CArrayType & _type) {
 
 std::wostream & CPrettyPrinter::print(CStructType & _type) {
     ++ m_nLevel;
-    m_os << fmtPair(L"kind", L"struct");
-    print(_type.getFields(), L"field");
+    if (m_bCompact) {
+        m_os << L"(";
+        print(_type.getFields(), L"");
+        m_os << L")";
+    } else {
+        m_os << fmtPair(L"kind", L"struct");
+        print(_type.getFields(), L"field");
+    }
     -- m_nLevel;
     return m_os;
 }
@@ -646,7 +709,25 @@ std::wostream & CPrettyPrinter::print(CStructType & _type) {
 std::wostream & CPrettyPrinter::print(CUnionType & _type) {
     ++ m_nLevel;
     m_os << fmtPair(L"kind", L"union");
-    //print(_type.getAlternatives(), L"alternative");
+    if (m_bCompact) {
+        m_os << L"(";
+        for (size_t i = 0; i < _type.getConstructors().size(); ++ i) {
+            const ir::CUnionConstructorDefinition * pCons = _type.getConstructors().get(i);
+
+            if (i > 0)
+                m_os << L", ";
+
+            m_os << pCons->getName();
+
+            if (! pCons->getStruct().getFields().empty()) {
+                m_os << L"(";
+                print(pCons->getStruct().getFields(), std::wstring(L""));
+                m_os << L")";
+            }
+        }
+        m_os << L")";
+    }
+    //print(_type.getConstructors(), L"constructors");
     -- m_nLevel;
     return m_os;
 }
@@ -683,6 +764,17 @@ std::wostream & CPrettyPrinter::print(CSubtype & _type) {
 }
 
 std::wostream & CPrettyPrinter::print(CPredicateType & _type) {
+    if (m_bCompact) {
+        m_os << L"predicate(";
+        print(_type.getInParams(), L"");
+        for (size_t i = 0; i < _type.getOutParams().size(); ++ i) {
+            m_os << L" : ";
+            print(* _type.getOutParams().get(i));
+        }
+        m_os << L")";
+        return m_os;
+    }
+
     ++ m_nLevel;
     m_os << fmtPair(L"kind", L"predicate");
 
@@ -709,6 +801,11 @@ std::wostream & CPrettyPrinter::print(CPredicateType & _type) {
 
 std::wostream & CPrettyPrinter::print(CType & _type) {
     ++ m_nLevel;
+
+    if (& _type == NULL) {
+        m_os << fmtPair(L"kind", L"NULL");
+        return m_os;
+    }
 
     switch (_type.getKind()) {
         case CType::Unit:    m_os << fmtPair(L"kind", L"unit"); break;
@@ -748,10 +845,33 @@ std::wostream & CPrettyPrinter::print(CType & _type) {
             print(* (CSubtype *) (& _type)); break;
         case CType::Predicate:
             print(* (CPredicateType *) (& _type)); break;
+        case CType::Fresh: {
+            std::wstring strName = m_freshTypes[& _type];
+            if (strName.empty()) {
+                const size_t nType = m_freshTypes.size() - 1;
+                const int nChar = nType%26;
+                const int nNum = nType/26;
+                strName = L"A";
+                strName[0] += nChar;
+                if (nNum > 0)
+                    strName += fmtInt(nNum);
+                m_freshTypes[& _type] = strName;
+            }
+            m_os << fmtPair(L"fresh", strName);
+            if (! m_bCompact)
+                m_os << fmtPair(L"flags", fmtInt(((tc::FreshType &) _type).getFlags(), L"0x%02X")); break;
+            //m_os << strName;
+            break;
+        }
+
     }
 
-    if (_type.getBits() > 0)
-        m_os << fmtPair(L"bits", fmtInt(_type.getBits()));
+    switch (_type.getKind()) {
+        case CType::Int:
+        case CType::Nat:
+        case CType::Real:
+            m_os << fmtBits(_type.getBits());
+    }
 
     -- m_nLevel;
     return m_os;
@@ -1083,6 +1203,22 @@ std::wostream & CPrettyPrinter::print(CCall & _call) {
     return m_os;
 }
 
+std::wostream & CPrettyPrinter::print(CCastExpr & _cast) {
+    ++ m_nLevel;
+
+    m_os << fmtPair(L"kind", L"cast");
+
+    m_os << fmtIndent(L"expression:\n");
+    if (_cast.getExpression())
+        print(* _cast.getExpression());
+    m_os << fmtIndent(L"to_type:\n");
+    if (_cast.getToType())
+        print(* _cast.getToType());
+
+    -- m_nLevel;
+    return m_os;
+}
+
 std::wostream & CPrettyPrinter::print(CPredicate & _pred) {
     ++ m_nLevel;
 
@@ -1189,6 +1325,80 @@ std::wostream & CPrettyPrinter::print(CModule & _module) {
 
     -- m_nLevel;
     return m_os;
+}
+
+void prettyPrint(tc::Formulas & _constraints, std::wostream & _os) {
+    static CPrettyPrinter pp(_os, true);
+
+    _os << L"\n";
+
+    for (tc::Formulas::iterator i = _constraints.begin(); i != _constraints.end(); ++ i) {
+        tc::Formula & f = ** i;
+
+        if (! f.is(tc::Formula::Compound)) {
+            pp.print(* f.getLhs());
+            _os << (f.is(tc::Formula::Equals) ? L" = " :
+                (f.is(tc::Formula::Subtype) ? L" <= " : L" < "));
+            pp.print(* f.getRhs());
+        } else {
+            tc::CompoundFormula & cf = (tc::CompoundFormula &) f;
+
+            for (size_t j = 0; j < cf.size(); ++ j) {
+                if (j > 0)
+                    _os << L"\n  or ";
+                _os << L"(";
+
+                tc::Formulas & part = cf.getPart(j);
+
+                for (tc::Formulas::iterator k = part.begin(); k != part.end(); ++ k) {
+                    tc::Formula & g = ** k;
+                    assert(! g.is(tc::Formula::Compound));
+                    if (k != part.begin())
+                        _os << L" and ";
+                    pp.print(* g.getLhs());
+                    _os << (g.is(tc::Formula::Equals) ? L" = " :
+                        (g.is(tc::Formula::Subtype) ? L" <= " : L" < "));
+                    pp.print(* g.getRhs());
+                }
+                _os << L")";
+
+                if (! part.substs.empty()) {
+                    _os << L"\t|    ";
+
+                    for (tc::FormulaSet::iterator j = part.substs.begin(); j != part.substs.end(); ++ j) {
+                        tc::Formula & g = ** j;
+
+                        if (j != part.substs.begin())
+                            _os << L", ";
+                        assert(g.getLhs() != NULL);
+                        assert(g.getRhs() != NULL);
+
+                        pp.print(* g.getLhs());
+                        _os << L" -> ";
+                        pp.print(* g.getRhs());
+                    }
+                }
+            }
+        }
+        /*pp.print(* i->lhs());
+        _os << L" = ";
+        pp.print(i->rhs());*/
+        _os << L"\n";
+    }
+
+    _os << L"----------\n";
+
+    for (tc::FormulaSet::iterator i = _constraints.substs.begin(); i != _constraints.substs.end(); ++ i) {
+        tc::Formula & f = ** i;
+
+        assert(f.getLhs() != NULL);
+        assert(f.getRhs() != NULL);
+
+        pp.print(* f.getLhs());
+        _os << L" -> ";
+        pp.print(* f.getRhs());
+        _os << L"\n";
+    }
 }
 
 void prettyPrint(CModule & _module, std::wostream & _os) {

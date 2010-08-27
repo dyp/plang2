@@ -22,6 +22,7 @@
 #include <vector>
 #include <algorithm>
 #include <string>
+#include <map>
 
 namespace ir {
 
@@ -58,7 +59,7 @@ public:
     /// Set new parent for the node. Removes the node from the list children of
     /// it's former parent.
     /// \param _pParent New parent.
-    void setParent(CNode * _pParent) { m_pParent = _pParent; }
+    void setParent(CNode * _pParent) const { m_pParent = _pParent; }
 /*
     /// Get assosciated pragmas.
     /// \return Pointer to pragma context relevant for the node.
@@ -73,14 +74,14 @@ public:
     void setPragmas(const CPragmaGroup * _pPragmas) { m_pPragmas = _pPragmas; }
 */
 protected:
-    CNode * m_pParent;
+    mutable CNode * m_pParent;
 //    const CPragmaGroup * m_pPragmas;
 
     /// Delete _pChild if it's parent is this node or NULL.
     /// \param _pChild Node to delete.
     void _delete(CNode * _pChild) const {
-        if (_pChild != NULL && _pChild->getParent() == this)
-            delete _pChild;
+//        if (_pChild != NULL && _pChild->getParent() == this)
+//            delete _pChild;
     }
 
     /// Assign a subnode performing necessary checks and deleting old subnode if needed.
@@ -192,17 +193,23 @@ private:
     std::vector<void *> m_nodes;
 };
 
+class CType;
+
+typedef std::map<CType *, CType *> TypeSubst;
+
 /// Virtual ancestor of all types.
 class CType : public CNode {
 public:
     /// Type kind.
     enum {
+        /// Fresh type (for typechecking purposes).
+        Fresh,
         /// Unit type (\c nil, (), [], etc.)
         Unit,
-        /// \c int type. Use getBits() and setBits() to access bitness.
-        Int,
         /// \c nat type. Use getBits() and setBits() to access bitness.
         Nat,
+        /// \c int type. Use getBits() and setBits() to access bitness.
+        Int,
         /// \c real type. Use getBits() and setBits() to access bitness.
         Real,
         /// \c bool type.
@@ -247,7 +254,7 @@ public:
 
     /// Initialize with kind.
     /// \param _kind One of built-in types (#Unit, #Int, #Nat, #Real, #Bool, #Char, #String, #Type or #Generic).
-    CType(int _kind) : m_kind(_kind), m_nBits(0) {}
+    CType(int _kind, int _bits = 0) : m_kind(_kind), m_nBits(_bits) {}
 
     /// Destructor.
     virtual ~CType() {}
@@ -257,12 +264,47 @@ public:
     virtual int getKind() const { return m_kind; }
 
     /// Get bitness (for numeric types only).
-    /// \return #Native, #Unbounded or number of bits.
+    /// \return #Native, #Generic or number of bits.
     int getBits() const { return m_nBits; }
 
     /// Set bitness (for numeric types only).
-    /// \param _nBits #Native, #Unbounded or number of bits.
+    /// \param _nBits #Native, #Generic or number of bits.
     void setBits(int _nBits) { m_nBits = _nBits; }
+
+    enum {
+        OrdUnknown = 0x01,
+        OrdNone    = 0x02,
+        OrdSub     = 0x04,
+        OrdSuper   = 0x08,
+        OrdEquals  = 0x10,
+    };
+
+    virtual int compare(const CType & _other) const;
+    bool compare(const CType & _other, int _order) const;
+
+    // For comparison/sorting only, no subtyping relation is implied.
+    bool operator <(const CType & _other) const;
+    bool operator ==(const CType & _other) const;
+    bool operator !=(const CType & _other) const;
+    virtual bool less(const CType & _other) const;
+
+    /*bool operator ==(const CType & _other) const { return compare(_other) == OrdEquals; }
+    bool operator <(const CType & _other) const { return compare(_other) == OrdSub; }
+    bool operator <=(const CType & _other) const {
+        const int n = compare(_other);
+        return n == OrdSub || n == OrdEquals;
+    }*/
+
+    // .second  is true if extremum doesn't exist.
+    typedef std::pair<CType *, bool> Extremum;
+    virtual Extremum getJoin(ir::CType & _other); // Supremum.
+    virtual Extremum getMeet(ir::CType & _other); // Infinum.
+
+    virtual ir::CType * clone() const;
+    virtual bool hasFresh() const;
+    virtual bool rewrite(ir::CType * _pOld, ir::CType * _pNew) { return false; }
+
+    virtual bool hasParameters() const { return m_kind == Int || m_kind == Nat || m_kind == Real; }
 
 protected:
     /// Default constructor.

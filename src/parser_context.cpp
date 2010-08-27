@@ -23,6 +23,7 @@ CContext::~CContext() {
     delete m_labels;
     delete m_processes;
     delete m_formulas;
+    delete m_constructors;
     delete m_pChild;
 
     if (m_pParent)
@@ -48,7 +49,8 @@ void CContext::mergeTo(CContext * _pCtx, bool _bMergeFailed) {
         return;
 
     mergeChildren(_bMergeFailed);
-    _pCtx->m_loc = m_loc;
+    if (* _pCtx->m_loc < * m_loc)
+        _pCtx->m_loc = m_loc;
     _pCtx->m_messages.splice(_pCtx->m_messages.end(), m_messages);
     _pCtx->m_bFailed = m_bFailed;
 
@@ -103,6 +105,13 @@ void CContext::mergeTo(CContext * _pCtx, bool _bMergeFailed) {
         else
             _pCtx->m_formulas->insert(m_formulas->begin(), m_formulas->end());
     }
+
+    if (m_constructors) {
+        if (! _pCtx->m_constructors)
+            std::swap(_pCtx->m_constructors, m_constructors);
+        else
+            _pCtx->m_constructors->insert(m_constructors->begin(), m_constructors->end());
+    }
 }
 
 void CContext::mergeChildren(bool _bMergeFailed) {
@@ -152,6 +161,19 @@ CContext * CContext::createChild(bool _bScope) {
     return m_pChild;
 }
 
+bool CContext::getPredicates(const std::wstring & _strName, ir::Predicates & _predicates) const {
+    if (m_predicates) {
+        std::pair<predicate_map_t::iterator, predicate_map_t::iterator> bounds = m_predicates->equal_range(_strName);
+        for (predicate_map_t::iterator i = bounds.first; i != bounds.second; ++ i)
+            _predicates.add(i->second, false);
+    }
+
+    if (m_pParent)
+        m_pParent->getPredicates(_strName, _predicates);
+
+    return ! _predicates.empty();
+}
+
 ir::CPredicate * CContext::getPredicate(const std::wstring & _strName) const {
     if (m_predicates) {
         predicate_map_t::const_iterator i = m_predicates->find(_strName);
@@ -168,7 +190,7 @@ ir::CPredicate * CContext::getPredicate(const std::wstring & _strName) const {
 void CContext::addPredicate(ir::CPredicate * _pPred) {
     if (! m_predicates)
         m_predicates = new predicate_map_t();
-    (* m_predicates)[_pPred->getName()] = _pPred;
+    m_predicates->insert(std::make_pair(_pPred->getName(), _pPred));
 }
 
 ir::CNamedValue * CContext::getVariable(const std::wstring & _strName, bool _bLocal) const {
@@ -251,6 +273,32 @@ void CContext::addFormula(ir::CFormulaDeclaration * _pFormula) {
     (* m_formulas)[_pFormula->getName()] = _pFormula;
 }
 
+bool CContext::getConstructors(const std::wstring & _strName, ir::CUnionConstructorDefinitions & _cons) const {
+    if (m_constructors) {
+        std::pair<cons_map_t::iterator, cons_map_t::iterator> bounds = m_constructors->equal_range(_strName);
+        for (cons_map_t::iterator iCons = bounds.first; iCons != bounds.second; ++ iCons)
+            _cons.add(iCons->second, false);
+    }
+
+    if (m_pParent)
+        m_pParent->getConstructors(_strName, _cons);
+
+    return ! _cons.empty();
+}
+
+ir::CUnionConstructorDefinition * CContext::getConstructor(const std::wstring & _strName) const {
+    ir::CUnionConstructorDefinitions cons;
+    getConstructors(_strName, cons);
+
+    return cons.size() == 1 ? cons.get(0) : NULL;
+}
+
+void CContext::addConstructor(ir::CUnionConstructorDefinition * _pCons) {
+    if (! m_constructors)
+        m_constructors = new cons_map_t();
+    m_constructors->insert(std::make_pair(_pCons->getName(), _pCons));
+}
+
 bool CContext::consume(int _token1, int _token2, int _token3, int _token4) {
     if (::in(m_loc, _token1, _token2, _token3, _token4)) {
         ++ m_loc;
@@ -275,13 +323,15 @@ void CContext::skip(int _nSkip) {
 int CContext::getIntBits() const {
     if (m_pragma.isSet(CPragma::IntBitness))
         return m_pragma.getIntBitness();
-    return getParent() ? getParent()->getIntBits() : CNumber::Native;
+    return getParent() ? getParent()->getIntBits() : CNumber::Generic;
+//    return getParent() ? getParent()->getIntBits() : CNumber::Native;
 }
 
 int CContext::getRealBits() const {
     if (m_pragma.isSet(CPragma::RealBitness))
         return m_pragma.getRealBitness();
-    return getParent() ? getParent()->getRealBits() : CNumber::Native;
+    return getParent() ? getParent()->getRealBits() : CNumber::Generic;
+//    return getParent() ? getParent()->getRealBits() : CNumber::Native;
 }
 
 const ir::COverflow & CContext::getOverflow() const {

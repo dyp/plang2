@@ -8,8 +8,10 @@
 #include <iostream>
 
 #include "ir/declarations.h"
+#include "typecheck.h"
 
 void prettyPrint(ir::CModule & _module, std::wostream & _os);
+void prettyPrint(tc::Formulas & _constraints, std::wostream & _os);
 
 
 #endif /* PRETTYPRINTER_H_ */

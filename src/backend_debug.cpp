@@ -58,6 +58,7 @@ private:
     int m_nVar;
     int m_nConst;
     int m_nLabel;
+    const llir::CInstruction * m_pCurrentInstr;
 
     typedef std::map<const void *, std::wstring> name_map_t;
     name_map_t m_vars;
@@ -127,8 +128,8 @@ std::wostream & CDebugGenerator::generate(const llir::CConstant & _const) {
 
 
     if (_const.getType()->getKind() == llir::CType::WChar) {
-        m_os << _const.getLiteral()->getWString().size() << L" ";
-        m_os << "L\"" << _const.getLiteral()->getWString() << L'"';
+        m_os << _const.getLiteral()->getString().size() << L" ";
+        m_os << "L\"" << _const.getLiteral()->getString() << L'"';
     }
 
     m_os << "\n";
@@ -168,8 +169,8 @@ std::wostream & CDebugGenerator::generate(const llir::CType & _type) {
         case llir::CType::Void:    return m_os << "void";
         case llir::CType::Gmp_z:   return m_os << "gmpz";
         case llir::CType::Gmp_q:   return m_os << "gmpq";
-        case llir::CType::String:  return m_os << "string";
-        case llir::CType::WString: return m_os << "wstring";
+        /*case llir::CType::String:  return m_os << "string";
+        case llir::CType::WString: return m_os << "wstring";*/
         case llir::CType::Int8:    return m_os << "int8";
         case llir::CType::Int16:   return m_os << "int16";
         case llir::CType::Int32:   return m_os << "int32";
@@ -179,7 +180,7 @@ std::wostream & CDebugGenerator::generate(const llir::CType & _type) {
         case llir::CType::UInt32:  return m_os << "uint32";
         case llir::CType::UInt64:  return m_os << "uint64";
         case llir::CType::Bool:    return m_os << "bool";
-        case llir::CType::Char:    return m_os << "char";
+        //case llir::CType::Char:    return m_os << "char";
         case llir::CType::WChar:   return m_os << "wchar";
         case llir::CType::Float:   return m_os << "float";
         case llir::CType::Double:  return m_os << "double";
@@ -215,14 +216,14 @@ std::wostream & CDebugGenerator::generate(const llir::CLiteral & _lit) {
             return m_os << _lit.getNumber().toString();
         case llir::CType::Bool:
             return m_os << (_lit.getBool() ? "true" : "false");
-        case llir::CType::Char:
+        /*case llir::CType::Char:
             return m_os << "\'" << _lit.getChar() << "\'";
         case llir::CType::WChar:
             return m_os << "L\'" << _lit.getWChar() << "\'";
         case llir::CType::String:
             return m_os << "\"" << _lit.getString().c_str() << "\"";
         case llir::CType::WString:
-            return m_os << "L\"" << _lit.getWString() << "\"";
+            return m_os << "L\"" << _lit.getWString() << "\"";*/
     }
 
     return m_os;
@@ -232,8 +233,12 @@ std::wostream & CDebugGenerator::generate(const llir::COperand & _op) {
     switch (_op.getKind()) {
         case llir::COperand::Literal:
             return generate(_op.getLiteral());
-        case llir::COperand::Variable:
-            return m_os << "%" << resolveVariable(& * _op.getVariable());
+        case llir::COperand::Variable: {
+            m_os << "%" << resolveVariable(& * _op.getVariable());
+            if (m_pCurrentInstr == & * _op.getVariable()->getLastUse())
+                m_os << ".";
+            return m_os;
+        }
         case llir::COperand::Label:
             return m_os << "$" << resolveLabel(* _op.getLabel());
     }
@@ -400,6 +405,7 @@ std::wostream & CDebugGenerator::generate(const llir::CUnary & _instr) {
         case llir::CUnary::Ref: strInstr = L"ref"; break;
         case llir::CUnary::Unref: strInstr = L"unref"; break;
         case llir::CUnary::UnrefNd: strInstr = L"unrefnd"; break;
+        case llir::CUnary::Jmp: strInstr = L"jmp"; break;
     }
 
     m_os << strInstr << " ";
@@ -439,40 +445,62 @@ std::wostream & CDebugGenerator::generate(const llir::CCast & _instr) {
 }
 
 std::wostream & CDebugGenerator::generate(const llir::CInstruction & _instr) {
+    m_pCurrentInstr = & _instr;
+
     if (! _instr.getLabel().empty())
         m_os << resolveLabel(* _instr.getLabel()) << L":\n";
 
     if (! _instr.getResult().empty()) {
-        std::wstring strName = fmtInt(m_nVar ++, L"v%llu");
-        m_vars[_instr.getResult().ptr()] = strName;
+        const llir::CVariable * pVar = _instr.getResult().ptr();
+        std::wstring strName = resolveVariable(pVar);
+        if (strName.empty()) {
+            strName = fmtInt(m_nVar ++, L"v%llu");
+            m_vars[pVar] = strName;
+        }
         m_os << fmtIndent(L"%") << strName << " = ";
     } else
         m_os << fmtIndent(L"");
 
     switch (_instr.getKind()) {
         case llir::CInstruction::Unary:
-            return generate((llir::CUnary &) _instr);
+            generate((llir::CUnary &) _instr);
+            break;
         case llir::CInstruction::Binary:
-            return generate((llir::CBinary &) _instr);
+            generate((llir::CBinary &) _instr);
+            break;
         case llir::CInstruction::Select:
-            return generate((llir::CSelect &) _instr);
+            generate((llir::CSelect &) _instr);
+            break;
         case llir::CInstruction::Call:
-            return generate((llir::CCall &) _instr);
+            generate((llir::CCall &) _instr);
+            break;
         case llir::CInstruction::If:
-            return generate((llir::CIf &) _instr);
+            generate((llir::CIf &) _instr);
+            break;
         case llir::CInstruction::Switch:
-            return generate((llir::CSwitch &) _instr);
+            generate((llir::CSwitch &) _instr);
+            break;
         case llir::CInstruction::Field:
-            return generate((llir::CField &) _instr);
+            generate((llir::CField &) _instr);
+            break;
         case llir::CInstruction::Cast:
-            return generate((llir::CCast &) _instr);
+            generate((llir::CCast &) _instr);
+            break;
         case llir::CInstruction::Copy:
-            return generate((llir::CCopy &) _instr);
-        case llir::CInstruction::Nop:
-            return m_os << L"nop";
+            generate((llir::CCopy &) _instr);
+            break;
+        //case llir::CInstruction::Nop:
+        default:
+            m_os << L"nop";
     }
 
-    m_os << fmtIndent(fmtInt(_instr.getKind()));
+    if (! _instr.getResult().empty() && ! _instr.getResult()->getType().empty()) {
+        m_os << "    ## ";
+        generate(* _instr.getResult()->getType());
+        m_os << "; uc: " << _instr.getResultUsageCount();
+    }
+
+    //m_os << fmtIndent(fmtInt(_instr.getKind()));
 
     return m_os;
 }
@@ -493,7 +521,7 @@ std::wostream & CDebugGenerator::generate(const llir::CFunction & _function) {
     }
 
     for (llir::args_t::const_iterator iArg = _function.args().begin(); iArg != _function.args().end(); ++ iArg) {
-        std::wstring strName = fmtInt(m_nParam ++);
+        std::wstring strName = fmtInt(getChild()->m_nParam ++);
         getChild()->m_vars[iArg->ptr()] = strName;
         m_os << getChild()->fmtIndent(L".arg %") << strName << " ";
         getChild()->generate(* (* iArg)->getType()) << "\n";
