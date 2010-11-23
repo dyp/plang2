@@ -31,9 +31,43 @@ bool FormulaCmp::operator()(const FormulaCmp::T & _lhs,
     if (_rhs->getKind() < _lhs->getKind())
         return false;
 
-    if (_lhs->is(Formula::Compound))
-        return ((const CompoundFormula *) _lhs)->size() == ((const CompoundFormula *) _rhs)->size() ? _lhs < _rhs :
-            ((const CompoundFormula *) _lhs)->size() < ((const CompoundFormula *) _rhs)->size();
+    if (_lhs->is(Formula::Compound)) {
+        const CompoundFormula &lhs = *(const CompoundFormula *)_lhs;
+        const CompoundFormula &rhs = *(const CompoundFormula *)_rhs;
+
+        if (lhs.size() != rhs.size())
+            return lhs.size() < rhs.size();
+
+        for (size_t i = 0; i < lhs.size(); ++i) {
+            const Formulas &l = lhs.getPart(i);
+            const Formulas &r = rhs.getPart(i);
+
+            if (l.size() != r.size())
+                return l.size() < r.size();
+
+            if (l.substs.size() != r.substs.size())
+                return l.substs.size() < r.substs.size();
+
+            FormulaSet::const_iterator jl = l.begin();
+            FormulaSet::const_iterator jr = r.begin();
+
+            for (; jl != l.end(); ++jl, ++jr) {
+                if ((*this)(*jl, *jr))
+                    return true;
+                if ((*this)(*jr, *jl))
+                    return false;
+            }
+
+            for (jl = l.substs.begin(), jr = r.substs.begin(); jl != l.substs.end(); ++jl, ++jr) {
+                if ((*this)(*jl, *jr))
+                    return true;
+                if ((*this)(*jr, *jl))
+                    return false;
+            }
+        }
+
+        return false;
+    }
 
     if (_lhs->getLhs() == NULL && _rhs->getLhs() != NULL)
         return true;

@@ -148,6 +148,7 @@ public:
 
     size_t size() const { return m_parts.size(); }
     Formulas & getPart(size_t _i) { return * m_parts[_i]; }
+    const Formulas & getPart(size_t _i) const { return * m_parts[_i]; }
     Formulas & addPart();
     void removePart(size_t _i) { m_parts.erase(m_parts.begin() + _i); }
 
