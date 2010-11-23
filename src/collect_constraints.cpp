@@ -28,6 +28,7 @@ public:
     void collectLiteral(CLiteral * _pLiteral);
     void collectVariable(CVariableReference * _pVariable);
     void collectBinary(CBinary * _pBinary);
+    void collectUnary(CUnary * _pUnary);
     void collectPredicateReference(CPredicateReference * _pRef);
     void collectExpression(CExpression * _pExpression);
     void collectStructConstructor(CStructConstructor * _pCons);
@@ -147,6 +148,33 @@ void Collector::collectFunctionCall(CFunctionCall * _pCall) {
             _pCall->getPredicate()->getType(), pType));
 }
 
+void Collector::collectUnary(CUnary * _pUnary) {
+    collectExpression(_pUnary->getExpression());
+    _pUnary->setType(createFresh(_pUnary));
+
+    switch (_pUnary->getOperator()) {
+        case CUnary::Plus:
+        case CUnary::Minus:
+            m_constraints.insert(new tc::Formula(tc::Formula::Subtype,
+                    _pUnary->getExpression()->getType(), _pUnary->getType()));
+            m_constraints.insert(new tc::Formula(tc::Formula::Subtype,
+                    _pUnary->getExpression()->getType(), new CType(CType::Real, CNumber::Generic)));
+            m_constraints.insert(new tc::Formula(tc::Formula::Subtype,
+                    _pUnary->getType(), new CType(CType::Real, CNumber::Generic)));
+            break;
+        case CUnary::BoolNegate:
+            m_constraints.insert(new tc::Formula(tc::Formula::Equals,
+                    _pUnary->getExpression()->getType(), new CType(CType::Bool)));
+            m_constraints.insert(new tc::Formula(tc::Formula::Equals,
+                    _pUnary->getType(), new CType(CType::Bool)));
+            break;
+        case CUnary::BitwiseNegate:
+            m_constraints.insert(new tc::Formula(tc::Formula::Equals,
+                    _pUnary->getExpression()->getType(), _pUnary->getType()));
+            m_constraints.insert(new tc::Formula(tc::Formula::Subtype,
+                    _pUnary->getExpression()->getType(), new CType(CType::Int, CNumber::Generic)));
+    }
+}
 
 void Collector::collectBinary(CBinary * _pBinary) {
     collectExpression(_pBinary->getLeftSide());
@@ -352,6 +380,9 @@ void Collector::collectExpression(CExpression * _pExpression) {
             break;
         case CExpression::Var:
             collectVariable((CVariableReference *) _pExpression);
+            break;
+        case CExpression::Unary:
+            collectUnary((CUnary *) _pExpression);
             break;
         case CExpression::Binary:
             collectBinary((CBinary *) _pExpression);
