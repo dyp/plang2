@@ -491,6 +491,8 @@ bool Solver::refute(tc::Formula & _f, tc::Formulas & _formulas) {
             CHECK(Comparable, b, c,    NoJoin, c, a);
             CHECK(Subtype, c, a,       SubtypeStrict, b, c);
             CHECK(SubtypeStrict, c, a, Subtype, b, c);
+            CHECK(SubtypeStrict, c, a, Incomparable, b, c);  // C < A && B !~ C
+            CHECK(Subtype,       c, a, Incomparable, b, c);  // C <= A && B !~ C
             break;
         case tc::Formula::Subtype:                           // A <= B
             CHECK(Comparable, a, c,    NoMeet, c, b);
@@ -499,6 +501,8 @@ bool Solver::refute(tc::Formula & _f, tc::Formulas & _formulas) {
             CHECK(SubtypeStrict, c, a, Subtype, b, c);       // B <= C < A
             CHECK(Subtype, b, c,       SubtypeStrict, c, a); // B <= C < A
             CHECK(SubtypeStrict, b, c, Subtype, c, a);       // B < C <= A
+            CHECK(SubtypeStrict, c, a, Incomparable, b, c);  // C < A && B !~ C
+            CHECK(Subtype,       c, a, Incomparable, b, c);  // C <= A && B !~ C
             break;
     }
 
