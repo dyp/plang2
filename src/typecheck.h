@@ -131,6 +131,8 @@ public:
 
     bool isSymmetric() const;
 
+    virtual Formula *clone() const;
+
 //    int invKind() const;
 
 private:
@@ -152,6 +154,7 @@ struct Formulas : public FormulaSet {
     bool rewrite(ir::CType * _pOld, ir::CType * _pNew, bool _bKeepOrig = false);
     Formula * lookup(int _op, int _ordLhs, ir::CType * _pLhs, int _ordRhs, ir::CType * _pRhs);
     bool implies(Formula & _f) const;
+    virtual Formulas *clone() const;
 };
 
 class CompoundFormula : public Formula {
@@ -162,12 +165,14 @@ public:
     Formulas & getPart(size_t _i) { return * m_parts[_i]; }
     const Formulas & getPart(size_t _i) const { return * m_parts[_i]; }
     Formulas & addPart();
+    void addPart(Formulas *_pFormulas);
     void removePart(size_t _i) { m_parts.erase(m_parts.begin() + _i); }
 
     virtual bool rewrite(ir::CType * _pOld, ir::CType * _pNew);
     void merge(Formulas & _dest);
     virtual int eval();
     size_t count() const;
+    virtual Formula *clone() const;
 
 private:
     std::vector<Formulas *> m_parts;

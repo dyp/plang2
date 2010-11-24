@@ -101,6 +101,28 @@ bool Formula::hasFresh() const {
             (m_pRhs != NULL && m_pRhs->getKind() == ir::CType::Fresh);
 }
 
+Formula *Formula::clone() const {
+    return new Formula(m_kind, m_pLhs->clone(), m_pRhs->clone());
+}
+
+Formulas *Formulas::clone() const {
+    Formulas *pNew = new Formulas();
+
+    for (FormulaSet::const_iterator i = begin(); i != end(); ++i)
+        pNew->insert((*i)->clone());
+
+    return pNew;
+}
+
+Formula *CompoundFormula::clone() const {
+    CompoundFormula *pCF = new CompoundFormula();
+
+    for (size_t i = 0; i < size(); ++i)
+        pCF->addPart(getPart(i).clone());
+
+    return pCF;
+}
+
 //int Formula::invKind() const {
 //    switch (getKind()) {
 //        case Equals: return Equals;
@@ -257,6 +279,10 @@ Formula * Formula::mergeOr(Formula & _other) {
     }
 
     return NULL;
+}
+
+void CompoundFormula::addPart(Formulas *_pFormulas) {
+    m_parts.push_back(_pFormulas);
 }
 
 Formulas & CompoundFormula::addPart() {
