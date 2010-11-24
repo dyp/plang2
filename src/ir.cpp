@@ -314,6 +314,8 @@ bool CPredicateType::rewrite(ir::CType * _pOld, ir::CType * _pNew) {
     return bResult;
 }
 
+// Unions.
+
 int CUnionType::compare(const CType & _other) const {
     if (_other.getKind() == Fresh)
         return OrdUnknown;
@@ -339,6 +341,8 @@ int CUnionType::compare(const CType & _other) const {
 
     return cOtherUnmatched == 0 ? OrdSuper : OrdNone;
 }
+
+// Structs.
 
 bool CStructType::hasFresh() const {
     for (size_t i = 0; i < m_fields.size(); ++ i)
@@ -557,13 +561,13 @@ CType::Extremum CStructType::getMeet(ir::CType & _other) {
 }
 
 CType::Extremum CStructType::getJoin(ir::CType & _other) {
-    Extremum meet = CType::getMeet(_other);
+    Extremum join = CType::getJoin(_other);
 
-    if (!meet.second)
-        return meet;
+    if (!join.second)
+        return join;
 
     if (_other.getKind() != Struct)
-        return meet;
+        return join;
 
     const CStructType & other = (const CStructType &) _other;
 
@@ -601,6 +605,62 @@ CType::Extremum CStructType::getJoin(ir::CType & _other) {
     }
 
     return Extremum(pStruct, false);
+}
+
+// Derived types.
+
+bool CDerivedType::rewrite(CType * _pOld, CType * _pNew) {
+    return tc::rewriteType(m_pBaseType, _pOld, _pNew);
+}
+
+int CDerivedType::compare(const CType & _other) const {
+    if (_other.getKind() == Fresh)
+        return OrdUnknown;
+
+    if (_other.getKind() != getKind())
+        return OrdNone;
+
+    return getBaseType()->compare(*((const CDerivedType &)_other).getBaseType());
+}
+
+bool CDerivedType::less(const CType & _other) const {
+    return getBaseType()->less(*((const CDerivedType &)_other).getBaseType());
+}
+
+// Sets.
+
+CType::Extremum CSetType::getMeet(CType & _other) {
+    Extremum meet = CType::getMeet(_other);
+
+    if (!meet.second)
+        return meet;
+
+    if (_other.getKind() != Struct)
+        return meet;
+
+    meet = getBaseType()->getMeet(*((const CSetType &)_other).getBaseType());
+
+    if (meet.first != NULL)
+        meet.first = new CSetType(meet.first);
+
+    return meet;
+}
+
+CType::Extremum CSetType::getJoin(CType & _other) {
+    Extremum join = CType::getJoin(_other);
+
+    if (!join.second)
+        return join;
+
+    if (_other.getKind() != Set)
+        return join;
+
+    join = getBaseType()->getJoin(*((const CSetType &)_other).getBaseType());
+
+    if (join.first != NULL)
+        join.first = new CSetType(join.first);
+
+    return join;
 }
 
 };

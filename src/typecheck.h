@@ -22,16 +22,26 @@ public:
     virtual void setType(ir::CType * _pType) = 0;
 };
 
-template <typename Node>
+template <typename Node, void (Node::*Method)(ir::CType *, bool)>
 class TypeSetter : public TypeSetterBase {
 public:
     TypeSetter(Node * _pNode) : m_pNode(_pNode) {}
 
-    virtual void setType(ir::CType * _pType) { m_pNode->setType(_pType); }
+    virtual void setType(ir::CType * _pType) { ((*m_pNode).*(Method))(_pType, true); }
 
-private:
+protected:
     Node * m_pNode;
 };
+
+template <typename Node>
+inline TypeSetterBase *createTypeSetter(Node *_pNode) {
+    return new TypeSetter<Node, &Node::setType>(_pNode);
+}
+
+template <typename Node>
+inline TypeSetterBase *createBaseTypeSetter(Node *_pNode) {
+    return new TypeSetter<Node, &Node::setBaseType>(_pNode);
+}
 
 class FreshType : public ir::CType {
 public:
@@ -52,6 +62,8 @@ public:
     int getFlags() const { return m_flags; }
     void setFlags(int _flags) { m_flags = _flags; }
     int addFlags(int _flags) { m_flags |= _flags; return m_flags; }
+
+    virtual bool rewriteFlags(int _flags) { addFlags(_flags); return true; }
 
     //void replaceType(ir::CType * _pType) { m_pTypeSetter->setType(_pType); }
 

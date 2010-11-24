@@ -257,6 +257,12 @@ public:
 
     virtual bool hasParameters() const { return true; }
 
+    virtual bool hasFresh() const { return m_pBaseType->hasFresh(); }
+    virtual bool rewrite(CType * _pOld, CType * _pNew);
+    virtual int compare(const CType & _other) const;
+    virtual bool less(const CType & _other) const;
+    virtual bool rewriteFlags(int _flags) { return m_pBaseType->rewriteFlags(_flags); }
+
 private:
     CType * m_pBaseType;
 };
@@ -441,6 +447,9 @@ public:
     /// Get type kind.
     /// \returns #Set.
     virtual int getKind() const { return Set; }
+
+    virtual Extremum getMeet(CType & _other);
+    virtual Extremum getJoin(CType & _other);
 };
 
 /// Map type.

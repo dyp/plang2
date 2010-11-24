@@ -114,8 +114,8 @@ bool tc::rewriteType(ir::CType * & _pType, ir::CType * _pOld, ir::CType * _pNew)
         return false;
 
     if (* _pType == * _pOld) {
-        if (_pNew->getKind() == ir::CType::Fresh)
-            ((FreshType *) _pNew)->addFlags(((FreshType *) _pOld)->getFlags());
+        if (_pOld->getKind() == ir::CType::Fresh)
+            _pNew->rewriteFlags(((FreshType *) _pOld)->getFlags());
         _pType = _pNew;
         return true;
     }

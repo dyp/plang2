@@ -303,6 +303,7 @@ public:
     virtual ir::CType * clone() const;
     virtual bool hasFresh() const;
     virtual bool rewrite(ir::CType * _pOld, ir::CType * _pNew) { return false; }
+    virtual bool rewriteFlags(int _flags) { return false; }
 
     virtual bool hasParameters() const { return m_kind == Int || m_kind == Nat || m_kind == Real; }
 

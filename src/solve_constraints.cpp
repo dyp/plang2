@@ -35,6 +35,7 @@ protected:
     void collectGuessesOut(tc::Formulas & _formulas, TypeMap & _dest);
     bool expandPredicateSubtype(CPredicateType * _pLhs, CPredicateType * _pRhs, tc::FormulaList & _formulas);
     bool expandStructSubtype(CStructType * _pLhs, CStructType * _pRhs, tc::FormulaList & _formulas);
+    bool expandSetSubtype(CSetType * _pLhs, CSetType * _pRhs, tc::FormulaList & _formulas);
 
 private:
     tc::Formulas & m_formulas;
@@ -717,6 +718,11 @@ bool Solver::expandStructSubtype(CStructType * _pLhs, CStructType * _pRhs, tc::F
     return true;
 }
 
+bool Solver::expandSetSubtype(CSetType * _pLhs, CSetType * _pRhs, tc::FormulaList & _formulas) {
+    _formulas.push_back(new tc::Formula(tc::Formula::Subtype, _pLhs->getBaseType(), _pRhs->getBaseType()));
+    return true;
+}
+
 bool Solver::expand(tc::Formulas & _formulas, int & _result) {
     tc::FormulaList formulas;
     bool bModified = false;
@@ -733,6 +739,9 @@ bool Solver::expand(tc::Formulas & _formulas, int & _result) {
             } else if (pLhs->getKind() == CType::Struct && pRhs->getKind() == CType::Struct) {
                 bResult = expandStructSubtype((CStructType *) pLhs, (CStructType *) pRhs, formulas);
                 _formulas.erase(i ++);
+            } else if (pLhs->getKind() == CType::Set && pRhs->getKind() == CType::Set) {
+                bResult = expandSetSubtype((CSetType *)pLhs, (CSetType *)pRhs, formulas);
+                _formulas.erase(i++);
             } else
                 ++ i;
         } else if (f.is(tc::Formula::Compound)) {

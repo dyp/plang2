@@ -32,6 +32,7 @@ public:
     void collectPredicateReference(CPredicateReference * _pRef);
     void collectExpression(CExpression * _pExpression);
     void collectStructConstructor(CStructConstructor * _pCons);
+    void collectSetConstructor(CSetConstructor *_pCons);
     void collectConstructor(CConstructor * _pCons);
     void collectField(CStructFieldExpr * _pField);
     void collectCast(CCastExpr * _pCast);
@@ -42,20 +43,18 @@ public:
     void collectIf(CIf * _pIf);
 
 protected:
-    tc::FreshType * createFresh(CNamedValue * _pParam);
-    tc::FreshType * createFresh(CExpression * _pParam);
+    template<typename Node>
+    tc::FreshType * createFreshGeneric(Node * _pParam);
 
-    void setFreshType(CExpression * _pParam, CType * _pType) {
-        _pParam->setType(_pType);
-        if (_pType->getKind() == CType::Fresh)
-            m_types.insert(std::make_pair((tc::FreshType *) _pType, new tc::TypeSetter<CExpression>(_pParam)));
-    }
+    // Need these wrappers since e.g. CBinary::setType() is actually CExpression::setType() but
+    // _pParam won't be implicitly downcast to CExpression*.
+    tc::FreshType * createFresh(CExpression * _pParam) { return createFreshGeneric(_pParam); }
+    tc::FreshType * createFresh(CNamedValue * _pParam) { return createFreshGeneric(_pParam); }
 
-    void setFreshType(CNamedValue * _pParam, CType * _pType) {
-        _pParam->setType(_pType);
-        if (_pType->getKind() == CType::Fresh)
-            m_types.insert(std::make_pair((tc::FreshType *) _pType, new tc::TypeSetter<CNamedValue>(_pParam)));
-    }
+    tc::FreshType * createFresh(CDerivedType * _pParam);
+
+    template<typename Node>
+    void setFreshType(Node * _pParam, CType * _pType);
 
 private:
     tc::Formulas & m_constraints;
@@ -70,20 +69,25 @@ Collector::Collector(tc::Formulas & _constraints,
 {
 }
 
-tc::FreshType * Collector::createFresh(CNamedValue * _pParam) {
+template<typename Node>
+void Collector::setFreshType(Node * _pParam, CType * _pType) {
+    _pParam->setType(_pType);
+    if (_pType->getKind() == CType::Fresh)
+        m_types.insert(std::make_pair((tc::FreshType *) _pType, tc::createTypeSetter<Node>(_pParam)));
+}
+
+template<typename Node>
+tc::FreshType * Collector::createFreshGeneric(Node * _pParam) {
     tc::FreshType *pType = new tc::FreshType(/*_pParam*/);
-    m_types.insert(std::make_pair(pType, new tc::TypeSetter<CNamedValue>(_pParam)));
+    m_types.insert(std::make_pair(pType, tc::createTypeSetter(_pParam)));
     return pType;
 }
 
-tc::FreshType * Collector::createFresh(CExpression * _pParam) {
-    tc::FreshType *pType = new tc::FreshType(/*_pParam*/);
-    m_types.insert(std::make_pair(pType, new tc::TypeSetter<CExpression>(_pParam)));
+tc::FreshType * Collector::createFresh(CDerivedType * _pParam) {
+    tc::FreshType *pType = new tc::FreshType();
+    m_types.insert(std::make_pair(pType, tc::createBaseTypeSetter(_pParam)));
     return pType;
 }
-
-/*template<typename _Node>
-void*/
 
 void Collector::collectParam(CNamedValue * _pParam) {
     CType * pFresh = createFresh(_pParam);
@@ -104,7 +108,7 @@ void Collector::collectLiteral(CLiteral * _pLiteral) {
 }
 
 void Collector::collectVariable(CVariableReference * _pVariable) {
-    setFreshType(_pVariable, _pVariable->getTarget()->getType());
+    setFreshType<CExpression>(_pVariable, _pVariable->getTarget()->getType());
     /*_pVariable->setType(createFresh(_pVariable));
     m_constraints.insert(new tc::Formula(tc::Formula::Equals,
             _pVariable->getType(), _pVariable->getTarget()->getType()));*/
@@ -163,10 +167,33 @@ void Collector::collectUnary(CUnary * _pUnary) {
                     _pUnary->getType(), new CType(CType::Real, CNumber::Generic)));
             break;
         case CUnary::BoolNegate:
-            m_constraints.insert(new tc::Formula(tc::Formula::Equals,
-                    _pUnary->getExpression()->getType(), new CType(CType::Bool)));
-            m_constraints.insert(new tc::Formula(tc::Formula::Equals,
-                    _pUnary->getType(), new CType(CType::Bool)));
+            //               ! x : A = y : B
+            // ------------------------------------------------
+            // (A = bool and B = bool) or (A = {C} and B = {C})
+            {
+                tc::CompoundFormula *p = new tc::CompoundFormula();
+
+                // Boolean negation.
+                tc::Formulas &part1 = p->addPart();
+
+                part1.insert(new tc::Formula(tc::Formula::Equals,
+                        _pUnary->getExpression()->getType(), new CType(CType::Bool)));
+                part1.insert(new tc::Formula(tc::Formula::Equals,
+                        _pUnary->getType(), new CType(CType::Bool)));
+
+                // Set negation.
+                tc::Formulas &part2 = p->addPart();
+                CSetType *pSet = m_ctx.attach(new CSetType(NULL));
+
+                pSet->setBaseType(createFresh(pSet));
+                part2.insert(new tc::Formula(tc::Formula::Equals,
+                        _pUnary->getExpression()->getType(), pSet));
+                part2.insert(new tc::Formula(tc::Formula::Equals,
+                        _pUnary->getType(), pSet));
+
+                m_constraints.insert(p);
+            }
+
             break;
         case CUnary::BitwiseNegate:
             m_constraints.insert(new tc::Formula(tc::Formula::Equals,
@@ -184,9 +211,71 @@ void Collector::collectBinary(CBinary * _pBinary) {
     switch (_pBinary->getOperator()) {
         case CBinary::Add:
         case CBinary::Subtract:
+            //                       x : A + y : B = z :C
+            // ----------------------------------------------------------------
+            // (A <= B and C = B and A <= real and B <= real and C <= real)
+            //   or (B < A and C = A and A <= real and B <= real and C <= real)
+            //   or (A <= C and B <= C and C = {D})
+            {
+                tc::CompoundFormula * p = new tc::CompoundFormula();
+                tc::Formulas & part1 = p->addPart();
+                tc::Formulas & part2 = p->addPart();
+
+                // Numeric operations.
+                part1.insert(new tc::Formula(tc::Formula::Subtype,
+                        _pBinary->getLeftSide()->getType(),
+                        _pBinary->getRightSide()->getType()));
+                part1.insert(new tc::Formula(tc::Formula::Equals,
+                        _pBinary->getType(),
+                        _pBinary->getRightSide()->getType()));
+                part1.insert(new tc::Formula(tc::Formula::Subtype,
+                        _pBinary->getLeftSide()->getType(),
+                        new CType(CType::Real, CNumber::Generic)));
+                part1.insert(new tc::Formula(tc::Formula::Subtype,
+                        _pBinary->getRightSide()->getType(),
+                        new CType(CType::Real, CNumber::Generic)));
+                part1.insert(new tc::Formula(tc::Formula::Subtype,
+                        _pBinary->getType(),
+                        new CType(CType::Real, CNumber::Generic)));
+                part2.insert(new tc::Formula(tc::Formula::SubtypeStrict,
+                        _pBinary->getRightSide()->getType(),
+                        _pBinary->getLeftSide()->getType()));
+                part2.insert(new tc::Formula(tc::Formula::Equals,
+                        _pBinary->getType(),
+                        _pBinary->getLeftSide()->getType()));
+                part2.insert(new tc::Formula(tc::Formula::Subtype,
+                        _pBinary->getLeftSide()->getType(),
+                        new CType(CType::Real, CNumber::Generic)));
+                part2.insert(new tc::Formula(tc::Formula::Subtype,
+                        _pBinary->getRightSide()->getType(),
+                        new CType(CType::Real, CNumber::Generic)));
+                part2.insert(new tc::Formula(tc::Formula::Subtype,
+                        _pBinary->getType(),
+                        new CType(CType::Real, CNumber::Generic)));
+
+                // Set operations.
+                tc::Formulas & part3 = p->addPart();
+                CSetType * pSet = m_ctx.attach(new CSetType(NULL));
+
+                pSet->setBaseType(createFresh(pSet));
+
+                part3.insert(new tc::Formula(tc::Formula::Subtype,
+                        _pBinary->getLeftSide()->getType(),
+                        _pBinary->getType()));
+                part3.insert(new tc::Formula(tc::Formula::Subtype,
+                        _pBinary->getRightSide()->getType(),
+                        _pBinary->getType()));
+                part3.insert(new tc::Formula(tc::Formula::Equals,
+                        _pBinary->getType(), pSet));
+
+                m_constraints.insert(p);
+            }
+            break;
+
         case CBinary::Multiply:
         case CBinary::Divide:
         case CBinary::Remainder:
+        case CBinary::Power:
             //         x : A * y : B = z :C
             // -----------------------------------
             // (A <= B and C = B) or (B < A and C = A)
@@ -220,14 +309,16 @@ void Collector::collectBinary(CBinary * _pBinary) {
 
             break;
 
-        /*case CBinary::Power:
-            return _selectInstr(_pType->getKind(), CBinary::Pow, CBinary::FPow, CBinary::ZPow, CBinary::QPow);
-
         case CBinary::ShiftLeft:
-            return _selectInstr(_pType->getKind(), CBinary::Shl, -1, CBinary::ZShl, -1);
         case CBinary::ShiftRight:
-            return _selectInstr(_pType->getKind(), CBinary::Shr, -1, CBinary::ZShr, -1);
-        */
+            m_constraints.insert(new tc::Formula(tc::Formula::Subtype,
+                    _pBinary->getLeftSide()->getType(), new CType(CType::Int, CNumber::Generic)));
+            m_constraints.insert(new tc::Formula(tc::Formula::Subtype,
+                    _pBinary->getRightSide()->getType(), new CType(CType::Int, CNumber::Generic)));
+            m_constraints.insert(new tc::Formula(tc::Formula::Subtype,
+                    _pBinary->getLeftSide()->getType(), _pBinary->getType()));
+            break;
+
         case CBinary::Less:
         case CBinary::LessOrEquals:
         case CBinary::Greater:
@@ -272,6 +363,7 @@ void Collector::collectBinary(CBinary * _pBinary) {
             //   (C = bool and A = bool and B = bool)
             //     or (A <= B and C = B and B <= int)      (bitwise AND)
             //     or (B < A and C = A and A <= int)
+            //     or (A <= C and B <= C and C = {D})      (set operations)
             {
                 tc::CompoundFormula * p = new tc::CompoundFormula();
                 tc::Formulas & part1 = p->addPart();
@@ -304,21 +396,48 @@ void Collector::collectBinary(CBinary * _pBinary) {
                         _pBinary->getLeftSide()->getType(),
                         new CType(CType::Int, CNumber::Generic)));
 
+                // Set operations.
+                tc::Formulas & part4 = p->addPart();
+                CSetType * pSet = m_ctx.attach(new CSetType(NULL));
+
+                pSet->setBaseType(createFresh(pSet));
+
+                part4.insert(new tc::Formula(tc::Formula::Subtype,
+                        _pBinary->getLeftSide()->getType(),
+                        _pBinary->getType()));
+                part4.insert(new tc::Formula(tc::Formula::Subtype,
+                        _pBinary->getRightSide()->getType(),
+                        _pBinary->getType()));
+                part4.insert(new tc::Formula(tc::Formula::Equals,
+                        _pBinary->getType(), pSet));
+
                 m_constraints.insert(p);
             }
             break;
 
-        /*
-        // TODO: use boolean instructions when type inference gets implemented.
-        case CBinary::BoolAnd:
-        case CBinary::BitwiseAnd:
-            return _selectInstr(_pType->getKind(), CBinary::And, -1, CBinary::ZAnd, -1);
-        case CBinary::BoolOr:
-        case CBinary::BitwiseOr:
-            return _selectInstr(_pType->getKind(), CBinary::Or, -1, CBinary::ZOr, -1);
-        case CBinary::BoolXor:
-        case CBinary::BitwiseXor:
-            return _selectInstr(_pType->getKind(), CBinary::Xor, -1, CBinary::ZXor, -1);*/
+        case CBinary::Implies:
+        case CBinary::Iff:
+            m_constraints.insert(new tc::Formula(tc::Formula::Equals,
+                    _pBinary->getLeftSide()->getType(), new CType(CType::Bool)));
+            m_constraints.insert(new tc::Formula(tc::Formula::Equals,
+                    _pBinary->getRightSide()->getType(), new CType(CType::Bool)));
+            m_constraints.insert(new tc::Formula(tc::Formula::Equals,
+                    _pBinary->getType(), new CType(CType::Bool)));
+            break;
+
+        case CBinary::In:
+            {
+                CSetType *pSet = m_ctx.attach(new CSetType(NULL));
+
+                pSet->setBaseType(createFresh(pSet));
+                m_constraints.insert(new tc::Formula(tc::Formula::Equals,
+                        _pBinary->getRightSide()->getType(), pSet));
+                m_constraints.insert(new tc::Formula(tc::Formula::Subtype,
+                        _pBinary->getLeftSide()->getType(), pSet->getBaseType()));
+                m_constraints.insert(new tc::Formula(tc::Formula::Equals,
+                        _pBinary->getType(), pSet));
+            }
+            break;
     }
 }
 
@@ -364,10 +483,29 @@ void Collector::collectStructConstructor(CStructConstructor * _pCons) {
     //CStructType *
 }
 
+void Collector::collectSetConstructor(CSetConstructor *_pCons) {
+    CSetType * pSet = m_ctx.attach(new CSetType(NULL));
+
+    pSet->setBaseType(createFresh(pSet));
+
+    for (size_t i = 0; i < _pCons->size(); ++i) {
+        CExpression *pElement = _pCons->get(i);
+
+        collectExpression(pElement);
+        m_constraints.insert(new tc::Formula(tc::Formula::Subtype,
+                pElement->getType(), pSet->getBaseType()));
+    }
+
+    _pCons->setType(pSet);
+}
+
 void Collector::collectConstructor(CConstructor * _pCons) {
     switch (_pCons->getConstructorKind()) {
         case CConstructor::StructFields:
             collectStructConstructor((CStructConstructor *) _pCons);
+            break;
+        case CConstructor::SetElements:
+            collectSetConstructor((CSetConstructor *)_pCons);
             break;
     }
 }

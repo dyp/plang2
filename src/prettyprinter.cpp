@@ -49,6 +49,7 @@ public:
     std::wostream & print(CRange & _type);
     std::wostream & print(CArrayType & _type);
     std::wostream & print(CDerivedType & _type, const std::wstring & _name);
+    std::wostream & print(CSetType & _type);
     std::wostream & print(CMapType & _type);
     std::wostream & print(CStructType & _type);
     std::wostream & print(CUnionType & _type);
@@ -666,6 +667,17 @@ std::wostream & CPrettyPrinter::print(CDerivedType & _type, const std::wstring &
     return m_os;
 }
 
+std::wostream & CPrettyPrinter::print(CSetType & _type) {
+    if (m_bCompact) {
+        m_os << L"{";
+        print(*_type.getBaseType());
+        m_os << L"}";
+    } else
+        print(* (CDerivedType *) (& _type), L"set");
+
+    return m_os;
+}
+
 std::wostream & CPrettyPrinter::print(CMapType & _type) {
     print(* (CDerivedType *) (& _type), L"map");
     ++ m_nLevel;
@@ -832,7 +844,7 @@ std::wostream & CPrettyPrinter::print(CType & _type) {
         case CType::Seq:
             print(* (CDerivedType *) (& _type), L"seq"); break;
         case CType::Set:
-            print(* (CDerivedType *) (& _type), L"set"); break;
+            print(* (CSetType *) (& _type)); break;
         case CType::List:
             print(* (CDerivedType *) (& _type), L"list"); break;
         case CType::Struct:
