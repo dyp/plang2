@@ -624,7 +624,7 @@ int CDerivedType::compare(const CType & _other) const {
 }
 
 bool CDerivedType::less(const CType & _other) const {
-    return getBaseType()->less(*((const CDerivedType &)_other).getBaseType());
+    return *getBaseType() < *((const CDerivedType &)_other).getBaseType();
 }
 
 // Sets.
