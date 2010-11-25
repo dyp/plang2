@@ -45,20 +45,10 @@ bool FormulaCmp::operator()(const FormulaCmp::T & _lhs,
             if (l.size() != r.size())
                 return l.size() < r.size();
 
-            if (l.substs.size() != r.substs.size())
-                return l.substs.size() < r.substs.size();
-
             FormulaSet::const_iterator jl = l.begin();
             FormulaSet::const_iterator jr = r.begin();
 
             for (; jl != l.end(); ++jl, ++jr) {
-                if ((*this)(*jl, *jr))
-                    return true;
-                if ((*this)(*jr, *jl))
-                    return false;
-            }
-
-            for (jl = l.substs.begin(), jr = r.substs.begin(); jl != l.substs.end(); ++jl, ++jr) {
                 if ((*this)(*jl, *jr))
                     return true;
                 if ((*this)(*jr, *jl))
@@ -165,7 +155,7 @@ bool Formula::isSymmetric() const {
     }
 }
 
-int Formula::eval() {
+int Formula::eval() const {
     assert(getKind() != Compound);
 
     const int nCmp = getLhs()->compare(* getRhs());
@@ -295,12 +285,20 @@ void _check(Formulas & _fs) {
     if (_fs.size() > 1) {
         Formulas::iterator i = _fs.begin();
         FormulaCmp cmp;
-        for (Formulas::iterator j = next(i); j != _fs.end(); ++ i, ++ j) {
+        size_t c = 0;
+
+        for (Formulas::iterator j = next(i); j != _fs.end(); ++ i, ++ j, ++c) {
             Formula * p1 = * i;
             Formula * p2 = * j;
 
             bool b1 = cmp(p1, p2);
             bool b2 = cmp(p2, p1);
+
+            if (!b1 || b2) {
+                std::wcout << std::endl << L"Inconsistency at " << c << ":" << std::endl;
+                prettyPrint(_fs, std::wcout);
+            }
+
             assert(b1);
             assert(! b2);
         }
@@ -405,46 +403,29 @@ bool CompoundFormula::rewrite(ir::CType * _pOld, ir::CType * _pNew) {
     return bResult;
 }
 
-int CompoundFormula::eval() {
+int CompoundFormula::eval() const {
     int result = False;
 
-    for (size_t i = 0; i < size();) {
-        Formulas & part = getPart(i);
+    for (size_t i = 0; i < size(); ++i) {
+        const Formulas & part = getPart(i);
         int r = True;
 
-        for (Formulas::iterator j = part.begin(); j != part.end();) {
-            const int cmp = (* j)->eval();
-
-            ++ j;
-
-            if (cmp == True) {
-                part.erase(prev(j));
-            } else if (cmp == False) {
-                r = False;
-                break;
-            } else if (cmp == Unknown)
-                r = Unknown;
+        for (Formulas::iterator j = part.begin(); j != part.end(); ++j) {
+            switch (int cmp = (* j)->eval()) {
+                case Unknown:
+                    if (r == False)
+                        break;
+                    // no break;
+                case False:
+                    r = cmp;
+            }
         }
 
-        if (r == False) {
-            if (size() > 1)
-                removePart(i);
-            else
-                break;
-        } else if (r == True) {
-            /*if (i < size() - 1)
-                m_parts.erase(m_parts.begin() + i + 1, m_parts.end());
-            if (i > 0)
-                m_parts.erase(m_parts.begin(), m_parts.begin() + i);*/
-            result = True;
-            ++ i;
-            //part.clear();
-            //break;
-        } else {
-            if (result == False)
-                result = Unknown;
-            ++ i;
-        }
+        if (r == True)
+            return True;
+
+        if (r == Unknown)
+            result = Unknown;
     }
 
     return result;

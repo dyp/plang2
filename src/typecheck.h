@@ -119,7 +119,7 @@ public:
 
     virtual bool rewrite(ir::CType * _pOld, ir::CType * _pNew);
 
-    virtual int eval();
+    virtual int eval() const;
 
     // return A && B if it can be expressed as a single formula.
     Formula * mergeAnd(Formula & _other);
@@ -170,7 +170,7 @@ public:
 
     virtual bool rewrite(ir::CType * _pOld, ir::CType * _pNew);
     void merge(Formulas & _dest);
-    virtual int eval();
+    virtual int eval() const;
     size_t count() const;
     virtual Formula *clone() const;
 

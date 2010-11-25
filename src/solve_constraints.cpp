@@ -338,10 +338,12 @@ bool Solver::compact() {
 
 bool Solver::prune() {
     tc::FormulaSet::iterator iCF = beginCompound(m_formulas);
+    tc::FormulaList formulas;
     bool bModified = false;
 
-    for (tc::Formulas::iterator i = iCF; i != m_formulas.end(); ++ i) {
+    for (tc::Formulas::iterator i = iCF; i != m_formulas.end();) {
         tc::CompoundFormula & cf = * (tc::CompoundFormula *) * i;
+        bool bFormulaModified = false;
 
         assert(cf.is(tc::Formula::Compound));
 
@@ -369,13 +371,25 @@ bool Solver::prune() {
 
             if (bImplies) {
                 cf.removePart(j);
-                bModified = true;
-                continue;
-            }
-
-            ++ j;
+                bFormulaModified = true;
+            } else
+                ++j;
         }
+
+        if (bFormulaModified) {
+            if (cf.size() == 1)
+                formulas.insert(formulas.end(), cf.getPart(0).begin(), cf.getPart(0).end());
+            else if (cf.size() > 0)
+                formulas.push_back(&cf);
+
+            m_formulas.erase(i++);
+            bModified = true;
+        } else
+            ++i;
     }
+
+    if (bModified)
+        m_formulas.insert(formulas.begin(), formulas.end());
 
     return bModified;
 }
@@ -468,6 +482,9 @@ bool Solver::refute(tc::Formula & _f, tc::Formulas & _formulas) {
     CType * b = _f.getRhs();
     CType * c = NULL;
 
+    if (_f.eval() == tc::Formula::False)
+        return true;
+
     // Check if there exists such c for which the relations P and Q hold.
 #define CHECK(P,PL,PR,Q,QL,QR) \
         if (find(_formulas, tc::Formula(tc::Formula::P, PL, PR), \
@@ -528,9 +545,11 @@ bool Solver::refute(tc::Formulas & _formulas, int & _result) {
     }
 
     bool bModified = false;
+    tc::FormulaList formulas;
 
-    for (tc::FormulaSet::iterator i = iCF; i != _formulas.end(); ++ i) {
+    for (tc::FormulaSet::iterator i = iCF; i != _formulas.end();) {
         tc::CompoundFormula & cf = * (tc::CompoundFormula *) * i;
+        bool bFormulaModified = false;
 
         assert(cf.is(tc::Formula::Compound));
 
@@ -541,14 +560,31 @@ bool Solver::refute(tc::Formulas & _formulas, int & _result) {
             if (refute(part, result)) {
                 assert(result == tc::Formula::False);
                 cf.removePart(j);
-                bModified = true;
+                bFormulaModified = true;
             } else
-                ++ j;
+                ++j;
         }
 
-        if (cf.size() == 0) {
-            _result = tc::Formula::False;
-            return true;
+        if (bFormulaModified) {
+            if (cf.size() == 0)
+                _result = tc::Formula::False;
+            else if (cf.size() == 1)
+                formulas.insert(formulas.end(), cf.getPart(0).begin(), cf.getPart(0).end());
+            else if (cf.size() > 0)
+                formulas.push_back(&cf);
+
+            m_formulas.erase(i++);
+            bModified = true;
+        } else
+            ++i;
+    }
+
+    if (bModified)
+        m_formulas.insert(formulas.begin(), formulas.end());
+
+    return bModified;
+}
+
         }
     }
 
@@ -595,83 +631,64 @@ bool Solver::infere(tc::Formulas & _formulas) {
 }
 
 bool Solver::lift() {
-    bool bResult = false;
-    tc::FormulaList formulas, substs;
+    bool bModified = false;
+    tc::FormulaList formulas;
 
     for (tc::FormulaSet::iterator i = beginCompound(m_formulas);
             i != m_formulas.end();)
     {
         tc::CompoundFormula & cf = * (tc::CompoundFormula *) * i;
+
         assert(cf.is(tc::Formula::Compound));
+        assert(cf.size() > 1);
 
-        if (cf.size() > 1) {
-            tc::FormulaSet & base = cf.getPart(0);
+        tc::FormulaSet & base = cf.getPart(0);
+        bool bFormulaModified = false;
 
-            for (tc::FormulaSet::iterator j = base.begin(); j != base.end();) {
-                tc::Formula * pFormula = * j;
-                bool bFound = true;
+        for (tc::FormulaSet::iterator j = base.begin(); j != base.end();) {
+            tc::Formula *pFormula = *j;
+            bool bFound = true;
 
-                for (size_t k = 1; bFound && k < cf.size(); ++ k) {
-                    tc::FormulaSet & part = cf.getPart(k);
-                    bFound = (part.find(pFormula) != part.end());
-                }
-
-                if (bFound) {
-                    formulas.push_back(pFormula);
-                    base.erase(j ++);
-                    for (size_t k = 1; k < cf.size(); ++ k)
-                        cf.getPart(k).erase(pFormula);
-                } else
-                    ++ j;
+            for (size_t k = 1; bFound && k < cf.size(); ++ k) {
+                tc::FormulaSet & part = cf.getPart(k);
+                bFound = (part.find(pFormula) != part.end());
             }
 
-//            tc::FormulaSet & baseSubsts = cf.getPart(0).substs;
-//
-//            for (tc::FormulaSet::iterator j = baseSubsts.begin(); j != baseSubsts.end();) {
-//                tc::Formula * pFormula = * j;
-//                bool bFound = true;
-//
-//                for (size_t k = 1; bFound && k < cf.size(); ++ k) {
-//                    tc::FormulaSet & part = cf.getPart(k).substs;
-//                    bFound = (part.find(pFormula) != part.end());
-//                }
-//
-//                if (bFound) {
-//                    substs.push_back(pFormula);
-//                    baseSubsts.erase(j ++);
-//                    for (size_t k = 1; k < cf.size(); ++ k)
-//                        cf.getPart(k).substs.erase(pFormula);
-//                } else
-//                    ++ j;
-//            }
+            if (bFound) {
+                formulas.push_back(pFormula);
+                base.erase(j++);
+                bFormulaModified = true;
 
-//            for (size_t k = 0; k < cf.size();) {
-//                tc::Formulas & part = cf.getPart(k);
-//                if (part.empty() && part.substs.empty())
-//                    cf.removePart(k);
-//                else
-//                    ++ k;
-//            }
+                for (size_t k = 1; k < cf.size();) {
+                    cf.getPart(k).erase(pFormula);
+                    if (cf.getPart(k).size() == 0)
+                        cf.removePart(k);
+                    else
+                        ++k;
+                }
+
+                if (cf.size() == 1)
+                    break;
+            } else
+                ++j;
         }
 
-        if (cf.size() == 1) {
-            formulas.insert(formulas.end(), cf.getPart(0).begin(), cf.getPart(0).end());
-            substs.insert(substs.end(), cf.getPart(0).substs.begin(), cf.getPart(0).substs.end());
-        }
+        if (bFormulaModified) {
+            if (cf.size() == 1)
+                formulas.insert(formulas.end(), cf.getPart(0).begin(), cf.getPart(0).end());
+            else if (cf.size() > 0)
+                formulas.push_back(&cf);
 
-        if (cf.size() <= 1) {
-            m_formulas.erase(i ++);
-            bResult = true;
+            m_formulas.erase(i++);
+            bModified = true;
         } else
-            ++ i;
+            ++i;
     }
 
-    const size_t c = m_formulas.size();
+    if (bModified)
+        m_formulas.insert(formulas.begin(), formulas.end());
 
-    m_formulas.insert(formulas.begin(), formulas.end());
-    m_formulas.insert(substs.begin(), substs.end());
-
-    return bResult || m_formulas.size() > c;
+    return bModified;
 }
 
 bool Solver::expandPredicateSubtype(CPredicateType * _pLhs, CPredicateType * _pRhs, tc::FormulaList & _formulas) {
@@ -723,52 +740,66 @@ bool Solver::expandSetSubtype(CSetType * _pLhs, CSetType * _pRhs, tc::FormulaLis
     return true;
 }
 
-bool Solver::expand(tc::Formulas & _formulas, int & _result) {
+bool Solver::expand(tc::Formulas &_formulas, int & _result) {
     tc::FormulaList formulas;
     bool bModified = false;
 
+    _result = tc::Formula::Unknown;
+
     for (tc::Formulas::iterator i = _formulas.begin(); i != _formulas.end();) {
-        tc::Formula & f = ** i;
-        CType * pLhs = f.getLhs(), * pRhs = f.getRhs();
-        bool bResult = true;
+        tc::Formula &f = **i;
+        CType *pLhs = f.getLhs(), *pRhs = f.getRhs();
+        bool bFormulaModified = false;
 
         if (f.is(tc::Formula::Subtype)) {
-            if (pLhs->getKind() == CType::Predicate && pRhs->getKind() == CType::Predicate) {
-                bResult = expandPredicateSubtype((CPredicateType *) pLhs, (CPredicateType *) pRhs, formulas);
-                _formulas.erase(i ++);
-            } else if (pLhs->getKind() == CType::Struct && pRhs->getKind() == CType::Struct) {
-                bResult = expandStructSubtype((CStructType *) pLhs, (CStructType *) pRhs, formulas);
-                _formulas.erase(i ++);
-            } else if (pLhs->getKind() == CType::Set && pRhs->getKind() == CType::Set) {
+            bool bResult = true;
+
+            bFormulaModified = true;
+
+            if (pLhs->getKind() == CType::Predicate && pRhs->getKind() == CType::Predicate)
+                bResult = expandPredicateSubtype((CPredicateType *)pLhs, (CPredicateType *)pRhs, formulas);
+            else if (pLhs->getKind() == CType::Struct && pRhs->getKind() == CType::Struct)
+                bResult = expandStructSubtype((CStructType *)pLhs, (CStructType *)pRhs, formulas);
+            else if (pLhs->getKind() == CType::Set && pRhs->getKind() == CType::Set)
                 bResult = expandSetSubtype((CSetType *)pLhs, (CSetType *)pRhs, formulas);
+            else
+                bFormulaModified = false;
+
+            if (bFormulaModified) {
+                bModified = true;
                 _formulas.erase(i++);
             } else
-                ++ i;
-        } else if (f.is(tc::Formula::Compound)) {
-            tc::CompoundFormula & cf = (tc::CompoundFormula &) f;
+                ++i;
 
-            for (size_t j = 0; j != cf.size(); ++ j) {
-                bModified |= expand(cf.getPart(j), _result);
+            if (!bResult)
+                _result = tc::Formula::False;
+        } else if (f.is(tc::Formula::Compound)) {
+            tc::CompoundFormula &cf = (tc::CompoundFormula &)f;
+
+            for (size_t j = 0; j != cf.size(); ++j) {
+                bFormulaModified |= expand(cf.getPart(j), _result);
 
                 if (_result == tc::Formula::False)
                     break;
             }
 
-            ++ i;
+            if (bFormulaModified) {
+                formulas.push_back(&cf);
+                _formulas.erase(i++);
+                bModified = true;
+            } else
+                ++i;
         } else
-            ++ i;
+            ++i;
 
-        if (! bResult) {
-            _result = tc::Formula::False;
+        if (_result == tc::Formula::False)
             return true;
-        }
     }
 
-    const size_t c = _formulas.size();
+    if (bModified)
+        m_formulas.insert(formulas.begin(), formulas.end());
 
-    _formulas.insert(formulas.begin(), formulas.end());
-
-    return bModified || (c != _formulas.size());
+    return bModified;
 }
 
 bool Solver::unify(tc::Formulas & _formulas) {
@@ -815,46 +846,39 @@ bool Solver::unify(tc::Formulas & _formulas) {
 
 //    std::wcout << L"Found " << std::distance(beginCompound(_formulas), _formulas.end()) << " compound formulas" << std::endl;
 
-    for (tc::FormulaSet::iterator iCf = beginCompound(_formulas);
-            iCf != _formulas.end(); ++ iCf)
-    {
-        tc::CompoundFormula & cf = * (tc::CompoundFormula *) * iCf;
+    tc::FormulaList formulas;
+
+    for (tc::FormulaSet::iterator i = beginCompound(_formulas); i != _formulas.end();) {
+        tc::CompoundFormula &cf = *(tc::CompoundFormula *)*i;
+        bool bFormulaModified = false;
+
         assert(cf.is(tc::Formula::Compound));
-        for (size_t i = 0; i < cf.size(); ++ i) {
-            bResult |= unify(cf.getPart(i));
-//            cf.getPart(i).insert(cf.getPart(i).substs.begin(), cf.getPart(i).substs.end());
-//            cf.getPart(i).substs.clear();
-        }
+
+        for (size_t j = 0; j < cf.size(); ++j)
+            bFormulaModified |= unify(cf.getPart(j));
+
+        if (bFormulaModified) {
+            formulas.push_back(&cf);
+            _formulas.erase(i++);
+            bResult = true;
+        } else
+            ++i;
     }
+
+    if (bResult)
+        m_formulas.insert(formulas.begin(), formulas.end());
 
     return bResult;
 }
 
 bool Solver::eval(int & _result) {
     bool bChanged = false;
-    tc::FormulaList substs;
 
     _result = tc::Formula::True;
 
     for (tc::Formulas::iterator i = m_formulas.begin(); i != m_formulas.end();) {
         tc::Formula & f = ** i;
-        int r;
-
-        if (f.is(tc::Formula::Compound)) {
-            tc::CompoundFormula & cf = (tc::CompoundFormula &) f;
-            const size_t cOldSize = cf.count();
-
-            r = cf.eval();
-            bChanged |= (cf.count() != cOldSize);
-
-            // Ignore non-unique results.
-            if (cf.size() > 1 && r == tc::Formula::True)
-                r = r == tc::Formula::Unknown;
-
-            if (r == tc::Formula::True)
-                substs.insert(substs.end(), cf.getPart(0).substs.begin(), cf.getPart(0).substs.end());
-        } else
-            r = f.eval();
+        const int r = f.eval();
 
         if (r == tc::Formula::False) {
             _result = tc::Formula::False;
@@ -872,9 +896,7 @@ bool Solver::eval(int & _result) {
         bChanged = true;
     }
 
-    m_formulas.insert(substs.begin(), substs.end());
-
-    return bChanged || ! substs.empty();
+    return bChanged;
 }
 
 bool Solver::run() {
