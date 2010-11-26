@@ -585,12 +585,6 @@ bool Solver::refute(tc::Formulas & _formulas, int & _result) {
     return bModified;
 }
 
-        }
-    }
-
-    return bModified;
-}
-
 bool Solver::infere(tc::Formulas & _formulas) {
     tc::FormulaList formulas;
     bool bModified = false;

@@ -6,6 +6,7 @@
 #include "utils.h"
 #include "typecheck.h"
 #include "collect_constraints.h"
+#include "prettyprinter.h"
 
 using namespace tc;
 
