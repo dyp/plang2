@@ -208,6 +208,10 @@ public:
         _assign(m_pValue, _pExpression, _bReparent);
     }
 
+    void setType(CType *_pType, bool _bReparent = true) {
+        m_var.setType(_pType, _bReparent);
+    }
+
 private:
     CVariable m_var;
     CExpression * m_pValue;

@@ -102,7 +102,7 @@ public:
     CExpression * parseCastOrTypeReference(CContext & _ctx, CType * _pType);
 
     CTypeDeclaration * parseTypeDeclaration(CContext & _ctx);
-    CVariableDeclaration * parseVariableDeclaration(CContext & _ctx, bool _bLocal, bool _bAllowInit = true);
+    CVariableDeclaration * parseVariableDeclaration(CContext & _ctx, int _nFlags);
     CFormulaDeclaration * parseFormulaDeclaration(CContext & _ctx);
     CExpression * parseExpression(CContext & _ctx, int _nFlags);
     CExpression * parseExpression(CContext & _ctx) { return parseExpression(_ctx, 0); }
@@ -150,6 +150,11 @@ public:
         AllowEmptyNames = 0x01,
         OutputParams = 0x02,
         AllowAstersk = 0x04,
+
+        // Variable declarations.
+        AllowInitialization = 0x08,
+        LocalVariable = 0x10,
+        PartOfList = 0x20,
     };
 
     // Expression parsing constants.
@@ -1201,23 +1206,29 @@ CPredicate * CParser::parsePredicate(CContext & _ctx) {
     return pPred;
 }
 
-CVariableDeclaration * CParser::parseVariableDeclaration(CContext & _ctx, bool _bLocal, bool _bAllowInit) {
+CVariableDeclaration * CParser::parseVariableDeclaration(CContext & _ctx, int _nFlags) {
     CContext & ctx = * _ctx.createChild(false);
     const bool bMutable = ctx.consume(Mutable);
+    CType * pType = NULL;
 
-    CType * pType = parseType(ctx);
+    if ((_nFlags & PartOfList) == 0) {
+        parseType(ctx);
 
-    if (! pType)
-        return NULL;
+        if (! pType)
+            return NULL;
+    }
 
     if (! ctx.is(Identifier))
         ERROR(ctx, NULL, L"Expected identifier, got: %ls", TOK_S(ctx));
 
-    CVariableDeclaration * pDecl = ctx.attach(new CVariableDeclaration(_bLocal, ctx.scan()));
-    pDecl->getVariable().setType(pType);
+    CVariableDeclaration * pDecl = ctx.attach(new CVariableDeclaration(_nFlags & LocalVariable, ctx.scan()));
+
+    if ((_nFlags & PartOfList) == 0)
+        pDecl->getVariable().setType(pType);
+
     pDecl->getVariable().setMutable(bMutable);
 
-    if (_bAllowInit && ctx.consume(Eq)) {
+    if ((_nFlags & AllowInitialization) && ctx.consume(Eq)) {
         CExpression * pExpr = parseExpression(ctx);
 
         if (! pExpr) return NULL;
@@ -1634,11 +1645,9 @@ bool CParser::parseParamList(CContext & _ctx, CCollection<_Param> & _params,
     CCollection<_Param> params;
 
     do {
-        DEBUG(ctx.getValue().c_str());
-
         const bool bNeedType = ! pType
             || ! ctx.is(Identifier)
-            || ! ctx.nextIn(Comma, RightParen, Colon, Dot)
+            || ! (ctx.nextIn(Comma, RightParen, Colon, Dot) ||  ctx.nextIn(Semicolon, Eq))
             || ((_nFlags & AllowEmptyNames) && isTypeName(ctx, ctx.getValue()));
 
         if (bNeedType) {
@@ -1660,8 +1669,6 @@ bool CParser::parseParamList(CContext & _ctx, CCollection<_Param> & _params,
             ERROR(ctx, false, L"Variable or parameter definition required");
 
         pParam->setType(pType, ! pType->getParent());
-        if (pParam->getType())
-            DEBUG(L"Kind: %d", pParam->getType()->getKind());
         params.add(pParam, false);
     } while (ctx.consume(Comma));
 
@@ -1821,7 +1828,7 @@ CStructFieldDefinition * CParser::parseConstructorField(CContext & _ctx) {
     CExpression * pExpr = parseExpression(ctx, RestrictTypes);
 
     if (! pExpr) {
-        CVariableDeclaration * pDecl = parseVariableDeclaration(ctx, true, false);
+        CVariableDeclaration * pDecl = parseVariableDeclaration(ctx, LocalVariable);
 
         if (! pDecl && strIdent.empty())
             ERROR(ctx, NULL, L"Expression, declaration or identifier expected.");
@@ -2051,7 +2058,7 @@ CSwitch * CParser::parseSwitch(CContext & _ctx) {
     if (! ctx.consume(LeftParen))
         UNEXPECTED(ctx, "(");
 
-    CVariableDeclaration * pDecl = parseVariableDeclaration(ctx, true);
+    CVariableDeclaration * pDecl = parseVariableDeclaration(ctx, LocalVariable | AllowInitialization);
     CExpression * pExpr = NULL;
 
     if (! pDecl) {
@@ -2267,7 +2274,7 @@ CFor * CParser::parseFor(CContext & _ctx) {
     CFor * pFor = _ctx.attach(new CFor());
 
     if (! ctx.in(Semicolon)) {
-        CVariableDeclaration * pDecl = parseVariableDeclaration(ctx, true);
+        CVariableDeclaration * pDecl = parseVariableDeclaration(ctx, LocalVariable | AllowInitialization);
         if (! pDecl)
             ERROR(ctx, NULL, L"Variable declaration expected");
         pFor->setIterator(pDecl);
@@ -2553,7 +2560,25 @@ CStatement * CParser::parseStatement(CContext & _ctx) {
         case Type: return parseTypeDeclaration(_ctx);
 
         case Predicate:
-        CASE_BUILTIN_TYPE: return parseVariableDeclaration(_ctx, true);
+        CASE_BUILTIN_TYPE: {
+            CCollection<CVariableDeclaration> decls;
+
+            parseParamList(_ctx, decls, &CParser::parseVariableDeclaration, LocalVariable | AllowInitialization | PartOfList);
+
+            if (decls.empty())
+                return NULL;
+
+            if (decls.size() == 1)
+                return decls.get(0);
+
+            // decls.size() > 1
+            CParallelBlock *pBlock = new CParallelBlock();
+
+            pBlock->append(decls, true);
+            _ctx.mergeChildren();
+
+            return pBlock;
+        }
     }
 
     CStatement * pStmt = NULL;
@@ -2584,7 +2609,7 @@ CStatement * CParser::parseStatement(CContext & _ctx) {
     }
 
     if (_ctx.getType(_ctx.getValue()))
-        return parseVariableDeclaration(_ctx, true);
+        return parseVariableDeclaration(_ctx, LocalVariable | AllowInitialization);
 
     CContext & ctx = * _ctx.createChild(false);
 
@@ -2792,7 +2817,7 @@ bool CParser::parseDeclarations(CContext & _ctx, CModule & _module) {
             }
             CASE_BUILTIN_TYPE:
             case Mutable: {
-                CVariableDeclaration * pDecl = parseVariableDeclaration(* pCtx, false);
+                CVariableDeclaration * pDecl = parseVariableDeclaration(* pCtx, AllowInitialization);
                 if (! pDecl)
                     ERROR(* pCtx, false, L"Failed parsing variable declaration");
                 if (! pCtx->consume(Semicolon))
