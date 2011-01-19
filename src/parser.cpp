@@ -2815,6 +2815,9 @@ bool CParser::parseDeclarations(CContext & _ctx, CModule & _module) {
             default:
                 return false;
         }
+
+        while (pCtx->consume(Semicolon))
+            ;
     }
 
     _ctx.mergeChildren();
