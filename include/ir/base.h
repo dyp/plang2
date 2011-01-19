@@ -570,6 +570,10 @@ public:
     virtual bool isBlockLike() const { return false; }
 };
 
+bool isTypeVariable(const CNamedValue *_pVar, const CType *&_pType);
+
+const CType *resolveBaseType(const CType *_pType);
+
 } // namespace ir
 
 #endif /* BASE_H_ */

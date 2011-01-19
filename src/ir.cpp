@@ -9,6 +9,46 @@
 
 namespace ir {
 
+bool isTypeVariable(const CNamedValue * _pVar, const CType * & _pType) {
+    if (! _pVar || ! _pVar->getType())
+        return false;
+
+    return _pVar->getType()->getKind() == CType::Type;
+}
+
+const CType * resolveBaseType(const CType * _pType) {
+    if (! _pType)
+        return NULL;
+
+    while (_pType) {
+        if (_pType->getKind() == CType::NamedReference) {
+            const CNamedReferenceType * pRef = (CNamedReferenceType *) _pType;
+
+            if (pRef->getDeclaration() != NULL && pRef->getDeclaration()->getType() != NULL)
+                _pType = pRef->getDeclaration()->getType();
+            else
+                break;
+        } else if (_pType->getKind() == CType::Parameterized) {
+            _pType = ((CParameterizedType *) _pType)->getActualType();
+        } else
+            break;
+    }
+
+    return _pType;
+}
+
+std::wstring CNamedReferenceType::getName() const {
+    return m_pDecl != NULL ? m_pDecl->getName() : (m_pVar != NULL ? m_pVar->getName() : L"");
+}
+
+std::wstring CFormulaCall::getName() const {
+    return m_pTarget != NULL ? m_pTarget->getName() : L"";
+}
+
+const std::wstring &CPredicateReference::getName() const {
+    return m_pTarget != NULL ? m_pTarget->getName() : m_strName;
+}
+
 bool CUnionConstructor::isComplete() const {
     return m_decls.empty() && m_pDef && size() == m_pDef->getStruct().getFields().size();
 }

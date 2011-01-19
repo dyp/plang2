@@ -214,68 +214,14 @@ private:
     int getUnaryOp(int _token) const;
     int getBinaryOp(int _token) const;
 
-    const CType * resolveBaseType(const CType * _pType) const;
-    bool isTypeVariable(const CNamedValue * _pVar, const CType * & _pType) const;
     bool isTypeName(CContext & _ctx, const std::wstring & _name) const;
     bool fixupAsteriskedParameters(CContext & _ctx, CParams & _in, CParams & _out);
 
     bool isTypeVariable(const CNamedValue * _pVar) const {
         const CType * pType = NULL;
-        return isTypeVariable(_pVar, pType);
+        return ir::isTypeVariable(_pVar, pType);
     }
 };
-
-const CType * CParser::resolveBaseType(const CType * _pType) const {
-    if (! _pType)
-        return NULL;
-
-    while (_pType) {
-        if (_pType->getKind() == CType::NamedReference) {
-            const CNamedReferenceType * pRef = (CNamedReferenceType *) _pType;
-
-            if (pRef->getDeclaration()) {
-                _pType = pRef->getDeclaration()->getType();
-            } else if (pRef->getVariable()) {
-                if (! isTypeVariable(pRef->getVariable(), _pType))
-                    return _pType;
-            }
-        } else if (_pType->getKind() == CType::Parameterized) {
-            _pType = ((CParameterizedType *) _pType)->getActualType();
-        } else
-            break;
-    }
-
-    return _pType;
-}
-
-bool CParser::isTypeVariable(const CNamedValue * _pVar, const CType * & _pType) const {
-    if (! _pVar || ! _pVar->getType())
-        return false;
-
-    const CType * pType = resolveBaseType(_pVar->getType());
-
-    if (! pType)
-        return false;
-
-    DEBUG(L"kind: %d", pType->getKind());
-
-    if (pType->getKind() == CType::Type) {
-        if (_pType) _pType = pType;
-        return true;
-    }
-
-    if (pType->getKind() != CType::NamedReference)
-        return false;
-
-    /*const CNamedReferenceType * pRef = (const CNamedReferenceType *) pType;
-
-    if (pRef->getDeclaration() != NULL) {
-        if (_pType) _pType = pRef->getDeclaration()->getType();
-        return true;
-    }*/
-
-    return false;
-}
 
 template<class _Node, class _Base>
 bool CParser::parseList(CContext & _ctx, CCollection<_Node,_Base> & _list, PARSER_FN(_Node,_parser),

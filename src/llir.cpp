@@ -11,59 +11,6 @@
 #include "utils.h"
 #include "llir_process.h"
 
-
-namespace ir {
-
-bool isTypeVariable(const CNamedValue * _pVar, const CType * & _pType) {
-    if (! _pVar || ! _pVar->getType())
-        return false;
-
-    const CType * pType = _pVar->getType();
-
-    if (! pType)
-        return false;
-
-    if (pType->getKind() == CType::Type) {
-        if (_pType) _pType = pType;
-        return true;
-    }
-
-    if (pType->getKind() != CType::NamedReference)
-        return false;
-
-    const CNamedReferenceType * pRef = (const CNamedReferenceType *) pType;
-
-    if (pRef->getDeclaration() != NULL) {
-        if (_pType) _pType = pRef->getDeclaration()->getType();
-        return true;
-    }
-
-    return false;
-}
-const CType * resolveBaseType(const CType * _pType) {
-    if (! _pType)
-        return NULL;
-
-    while (_pType) {
-        if (_pType->getKind() == CType::NamedReference) {
-            const CNamedReferenceType * pRef = (CNamedReferenceType *) _pType;
-
-            if (pRef->getDeclaration()) {
-                _pType = pRef->getDeclaration()->getType();
-            } else if (pRef->getVariable()) {
-                if (! isTypeVariable(pRef->getVariable(), _pType))
-                    return _pType;
-            }
-        } else if (_pType->getKind() == CType::Parameterized) {
-            _pType = ((CParameterizedType *) _pType)->getActualType();
-        } else
-            break;
-    }
-
-    return _pType;
-}
-};
-
 namespace llir {
 
 class CTranslator {

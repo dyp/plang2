@@ -11,10 +11,6 @@
 
 using namespace ir;
 
-namespace ir {
-    const CType * resolveBaseType(const CType * _pType);
-};
-
 class Collector {
 public:
     Collector(tc::Formulas & _constraints, CPredicate * _pPredicate,
