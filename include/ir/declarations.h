@@ -176,13 +176,13 @@ private:
 class CVariableDeclaration : public CStatement {
 public:
     /// Default constructor.
-    CVariableDeclaration() : m_var(true), m_pValue(NULL) { m_var.setDeclaration(this); }
+    CVariableDeclaration() : m_pVar(NULL), m_pValue(NULL) { }
 
     /// Initialize with variable name.
     /// \param _bLocal Specifies if it is a local variable.
     /// \param _strName Variable name.
-    CVariableDeclaration(bool _bLocal, const std::wstring & _strName) : m_var(_bLocal, _strName), m_pValue(NULL) {
-        m_var.setDeclaration(this);
+    CVariableDeclaration(bool _bLocal, const std::wstring & _strName) : m_pVar(NULL), m_pValue(NULL) {
+        setVariable(new CVariable(_bLocal, _strName));
     }
 
     /// Destructor.
@@ -193,9 +193,13 @@ public:
     virtual int getKind() const { return VariableDeclaration; }
 
     /// Get underlying variable.
-    /// \return Variable reference.
-    CVariable & getVariable() { return m_var; }
-    const CVariable & getVariable() const { return m_var; }
+    /// \return Variable.
+    CVariable * getVariable() const { return m_pVar; }
+
+    void setVariable(CVariable *_pVar, bool _bReparent = true) {
+        _assign(m_pVar, _pVar, _bReparent);
+        m_pVar->setDeclaration(this);
+    }
 
     /// Get value expression. Possibly NULL if variable is not initialized.
     /// \return Value.
@@ -209,11 +213,13 @@ public:
     }
 
     void setType(CType *_pType, bool _bReparent = true) {
-        m_var.setType(_pType, _bReparent);
+        m_pVar->setType(_pType, _bReparent);
     }
 
+    std::wstring getName() const;
+
 private:
-    CVariable m_var;
+    CVariable *m_pVar;
     CExpression * m_pValue;
 };
 

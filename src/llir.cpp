@@ -1177,13 +1177,13 @@ void CTranslator::translate(const ir::CBlock & _stmt, instructions_t & _instrs) 
 }
 
 void CTranslator::translate(const ir::CVariableDeclaration & _stmt, instructions_t & _instrs) {
-    Auto<CType> type = translate(* _stmt.getVariable().getType());
+    Auto<CType> type = translate(* _stmt.getVariable()->getType());
     m_pFunction->locals().push_back(new CVariable(type));
     Auto<CVariable> var = m_pFunction->locals().back();
-    addVariable(& _stmt.getVariable(), var);
+    addVariable(_stmt.getVariable(), var);
 
     if (_stmt.getValue())
-        translateAsssignment(& _stmt.getVariable(), _stmt.getValue(), _instrs);
+        translateAsssignment(_stmt.getVariable(), _stmt.getValue(), _instrs);
 }
 
 COperand CTranslator::translateSwitchCond(const ir::CExpression & _expr, const COperand & _arg,

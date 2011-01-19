@@ -1212,7 +1212,7 @@ CVariableDeclaration * CParser::parseVariableDeclaration(CContext & _ctx, int _n
     CType * pType = NULL;
 
     if ((_nFlags & PartOfList) == 0) {
-        parseType(ctx);
+        pType = parseType(ctx);
 
         if (! pType)
             return NULL;
@@ -1224,9 +1224,9 @@ CVariableDeclaration * CParser::parseVariableDeclaration(CContext & _ctx, int _n
     CVariableDeclaration * pDecl = ctx.attach(new CVariableDeclaration(_nFlags & LocalVariable, ctx.scan()));
 
     if ((_nFlags & PartOfList) == 0)
-        pDecl->getVariable().setType(pType);
+        pDecl->getVariable()->setType(pType);
 
-    pDecl->getVariable().setMutable(bMutable);
+    pDecl->getVariable()->setMutable(bMutable);
 
     if ((_nFlags & AllowInitialization) && ctx.consume(Eq)) {
         CExpression * pExpr = parseExpression(ctx);
@@ -1236,7 +1236,7 @@ CVariableDeclaration * CParser::parseVariableDeclaration(CContext & _ctx, int _n
     }
 
     _ctx.mergeChildren();
-    _ctx.addVariable(& pDecl->getVariable());
+    _ctx.addVariable(pDecl->getVariable());
 
     return pDecl;
 }
@@ -1836,14 +1836,14 @@ CStructFieldDefinition * CParser::parseConstructorField(CContext & _ctx) {
         if (! pDecl) {
             // Unresolved identifier treated as variable declaration.
             pDecl = ctx.attach(new CVariableDeclaration(true, ctx.scan()));
-            pDecl->getVariable().setType(new CType(CType::Generic));
+            pDecl->getVariable()->setType(new CType(CType::Generic));
         }
 
         if (ctx.getCurrentConstructor())
             ctx.getCurrentConstructor()->getDeclarations().add(pDecl);
 
         //pExpr = ctx.attach(new CVariableReference(& pDecl->getVariable()));
-        pField->setField(& pDecl->getVariable());
+        pField->setField(pDecl->getVariable());
     } else
         pField->setValue(pExpr);
 
@@ -2074,7 +2074,7 @@ CSwitch * CParser::parseSwitch(CContext & _ctx) {
 
     if (pDecl) {
         pSwitch->setParamDecl(pDecl);
-        pExpr = new CVariableReference(& pDecl->getVariable());
+        pExpr = new CVariableReference(pDecl->getVariable());
         pExpr->setType((CType *) resolveBaseType(pExpr->getType()));
         pSwitch->setParam(pExpr, true);
     } else
@@ -2408,10 +2408,10 @@ CExpression * CParser::parseCallResult(CContext & _ctx, CVariableDeclaration * &
     if (pType && pCtx->is(Identifier)) {
         // TODO Need to check (was: don't attach to context, caller is responsible for management of this object.)
         _pDecl = pCtx->attach(new CVariableDeclaration(true, pCtx->scan()));
-        _pDecl->getVariable().setType(pType);
-        _pDecl->getVariable().setMutable(false);
-        pExpr = pCtx->attach(new CVariableReference(& _pDecl->getVariable()));
-        _ctx.addVariable(& _pDecl->getVariable());
+        _pDecl->getVariable()->setType(pType);
+        _pDecl->getVariable()->setMutable(false);
+        pExpr = pCtx->attach(new CVariableReference(_pDecl->getVariable()));
+        _ctx.addVariable(_pDecl->getVariable());
     }
 
     if (! pExpr) {

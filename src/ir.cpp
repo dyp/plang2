@@ -31,9 +31,9 @@ void CAnonymousPredicate::updateType() const {
     const_cast<CAnonymousPredicate *>(this)->_assign(m_pType, pType, true);
 }
 
-/*const CNamedValue * CStructFieldExpr::getField() const {
-    return getStructType()->getFields().get(m_cFieldIdx);
-}*/
+std::wstring CVariableDeclaration::getName() const {
+    return m_pVar != NULL ? m_pVar->getName() : L"";
+}
 
 union_field_idx_t CUnionType::findField(const std::wstring & _strName) const {
     for (size_t i = 0; i < m_constructors.size(); ++ i) {
