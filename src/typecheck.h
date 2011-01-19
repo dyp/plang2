@@ -71,9 +71,11 @@ public:
     /// \returns #Fresh.
     virtual int getKind() const { return Fresh; }
 
-    bool operator <(const CType & _other) const;
+    virtual bool less(const ir::CType & _other) const;
 
     virtual ir::CType * clone() const;
+
+    size_t getOrdinal() const { return m_cOrd; }
 
 private:
     /*FreshType(TypeSetterBase * _pTypeSetter, size_t _cOrd) : m_pTypeSetter(_pTypeSetter), m_cOrd(_cOrd) {

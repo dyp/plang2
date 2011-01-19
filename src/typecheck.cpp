@@ -16,10 +16,7 @@ ir::CType * FreshType::clone() const {
     return new FreshType(* this);
 }
 
-bool FreshType::operator <(const CType & _other) const {
-    if (_other.getKind() != ir::CType::Fresh)
-        return true;
-
+bool FreshType::less(const CType &_other) const {
     return m_cOrd < ((const FreshType &) _other).m_cOrd;
 }
 
