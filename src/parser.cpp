@@ -1891,7 +1891,7 @@ CTypeDeclaration * CParser::parseTypeDeclaration(CContext & _ctx) {
             ERROR(* pCtx, NULL, L"Expected \")\", got: %ls", TOK_S(* pCtx));
     }
 
-    _ctx.addType(pDecl); // So that recursice definitions would work.
+    _ctx.addType(pDecl); // So that recursive definitions would work.
 
     if (pCtx->consume(Eq)) {
         CType * pType = parseType(* pCtx);

@@ -228,9 +228,9 @@ public:
         Struct,
         /// Union type. Can be cast to CUnionType.
         Union,
-        /// Optional type. Can be cast to COptionalType.
+        /// Optional type. Can be cast to COptionalType. (deprecated)
         Optional,
-        /// Sequence type. Can be cast to CSeqType.
+        /// Sequence type. Can be cast to CSeqType. (deprecated)
         Seq,
         /// Array type. Can be cast to CArrayType.
         Array,

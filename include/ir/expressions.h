@@ -94,7 +94,7 @@ public:
         /// The object can be cast to CConstructor.
         Constructor,
         /// Cast expression.
-        /// The object can be cast to CCast.
+        /// The object can be cast to CCastExpr.
         Cast,
     };
 
