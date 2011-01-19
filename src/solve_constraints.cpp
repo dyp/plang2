@@ -33,9 +33,11 @@ protected:
     CType * find(tc::Formulas & _formulas, const tc::Formula & _f, const tc::Formula & _cond);
     void collectGuessesIn(tc::Formulas & _formulas, TypeMap & _dest);
     void collectGuessesOut(tc::Formulas & _formulas, TypeMap & _dest);
-    bool expandPredicateSubtype(CPredicateType * _pLhs, CPredicateType * _pRhs, tc::FormulaList & _formulas);
-    bool expandStructSubtype(CStructType * _pLhs, CStructType * _pRhs, tc::FormulaList & _formulas);
-    bool expandSetSubtype(CSetType * _pLhs, CSetType * _pRhs, tc::FormulaList & _formulas);
+    bool expandPredicate(int _kind, CPredicateType * _pLhs, CPredicateType * _pRhs, tc::FormulaList & _formulas);
+    bool expandStruct(int _kind, CStructType * _pLhs, CStructType * _pRhs, tc::FormulaList & _formulas);
+    bool expandSet(int _kind, CSetType * _pLhs, CSetType * _pRhs, tc::FormulaList & _formulas);
+    bool expandList(int _kind, CListType * _pLhs, CListType * _pRhs, tc::FormulaList & _formulas);
+    bool expandType(int _kind, CTypeType * _pLhs, CTypeType * _pRhs, tc::FormulaList & _formulas);
 
 private:
     tc::Formulas & m_formulas;
@@ -685,7 +687,7 @@ bool Solver::lift() {
     return bModified;
 }
 
-bool Solver::expandPredicateSubtype(CPredicateType * _pLhs, CPredicateType * _pRhs, tc::FormulaList & _formulas) {
+bool Solver::expandPredicate(int _kind, CPredicateType * _pLhs, CPredicateType * _pRhs, tc::FormulaList & _formulas) {
     if (_pLhs->getInParams().size() != _pRhs->getInParams().size())
         return false;
 
@@ -695,7 +697,11 @@ bool Solver::expandPredicateSubtype(CPredicateType * _pLhs, CPredicateType * _pR
     for (size_t i = 0; i < _pLhs->getInParams().size(); ++ i) {
         CParam & p = * _pLhs->getInParams().get(i);
         CParam & q = * _pRhs->getInParams().get(i);
-        _formulas.push_back(new tc::Formula(tc::Formula::Subtype, q.getType(), p.getType()));
+
+        if (p.getType()->getKind() == CType::Type || q.getType()->getKind() == CType::Type)
+            _formulas.push_back(new tc::Formula(tc::Formula::Equals, p.getType(), q.getType()));
+        else
+            _formulas.push_back(new tc::Formula(_kind, p.getType(), q.getType()));
     }
 
     for (size_t j = 0; j < _pLhs->getOutParams().size(); ++ j) {
@@ -708,7 +714,7 @@ bool Solver::expandPredicateSubtype(CPredicateType * _pLhs, CPredicateType * _pR
         for (size_t i = 0; i < b.size(); ++ i) {
             CParam & p = * b.get(i);
             CParam & q = * c.get(i);
-            _formulas.push_back(new tc::Formula(tc::Formula::Subtype, p.getType(), q.getType()));
+            _formulas.push_back(new tc::Formula(_kind, q.getType(), p.getType()));
         }
     }
 
@@ -716,21 +722,34 @@ bool Solver::expandPredicateSubtype(CPredicateType * _pLhs, CPredicateType * _pR
 }
 
 // It should be more sophisticated than that really. Field names and such..
-bool Solver::expandStructSubtype(CStructType * _pLhs, CStructType * _pRhs, tc::FormulaList & _formulas) {
+bool Solver::expandStruct(int _kind, CStructType * _pLhs, CStructType * _pRhs, tc::FormulaList & _formulas) {
     if (_pLhs->getFields().size() != _pRhs->getFields().size())
         return false;
 
     for (size_t i = 0; i < _pLhs->getFields().size(); ++ i) {
         CNamedValue & p = * _pLhs->getFields().get(i);
         CNamedValue & q = * _pRhs->getFields().get(i);
-        _formulas.push_back(new tc::Formula(tc::Formula::Subtype, p.getType(), q.getType()));
+        _formulas.push_back(new tc::Formula(_kind, p.getType(), q.getType()));
     }
 
     return true;
 }
 
-bool Solver::expandSetSubtype(CSetType * _pLhs, CSetType * _pRhs, tc::FormulaList & _formulas) {
-    _formulas.push_back(new tc::Formula(tc::Formula::Subtype, _pLhs->getBaseType(), _pRhs->getBaseType()));
+bool Solver::expandSet(int _kind, CSetType * _pLhs, CSetType * _pRhs, tc::FormulaList & _formulas) {
+    _formulas.push_back(new tc::Formula(_kind, _pLhs->getBaseType(), _pRhs->getBaseType()));
+    return true;
+}
+
+bool Solver::expandList(int _kind, CListType * _pLhs, CListType * _pRhs, tc::FormulaList & _formulas) {
+    _formulas.push_back(new tc::Formula(_kind, _pLhs->getBaseType(), _pRhs->getBaseType()));
+    return true;
+}
+
+bool Solver::expandType(int _kind, CTypeType * _pLhs, CTypeType * _pRhs, tc::FormulaList & _formulas) {
+    if (_pLhs->getDeclaration() != NULL && _pLhs->getDeclaration()->getType() != NULL &&
+            _pRhs->getDeclaration() != NULL && _pRhs->getDeclaration()->getType() != NULL)
+        _formulas.push_back(new tc::Formula(_kind, _pLhs->getDeclaration()->getType(),
+                _pRhs->getDeclaration()->getType()));
     return true;
 }
 
@@ -745,17 +764,21 @@ bool Solver::expand(tc::Formulas &_formulas, int & _result) {
         CType *pLhs = f.getLhs(), *pRhs = f.getRhs();
         bool bFormulaModified = false;
 
-        if (f.is(tc::Formula::Subtype)) {
+        if (f.is(tc::Formula::Equals | tc::Formula::Subtype | tc::Formula::SubtypeStrict)) {
             bool bResult = true;
 
             bFormulaModified = true;
 
             if (pLhs->getKind() == CType::Predicate && pRhs->getKind() == CType::Predicate)
-                bResult = expandPredicateSubtype((CPredicateType *)pLhs, (CPredicateType *)pRhs, formulas);
+                bResult = expandPredicate(f.getKind(), (CPredicateType *)pLhs, (CPredicateType *)pRhs, formulas);
             else if (pLhs->getKind() == CType::Struct && pRhs->getKind() == CType::Struct)
-                bResult = expandStructSubtype((CStructType *)pLhs, (CStructType *)pRhs, formulas);
+                bResult = expandStruct(f.getKind(), (CStructType *)pLhs, (CStructType *)pRhs, formulas);
             else if (pLhs->getKind() == CType::Set && pRhs->getKind() == CType::Set)
-                bResult = expandSetSubtype((CSetType *)pLhs, (CSetType *)pRhs, formulas);
+                bResult = expandSet(f.getKind(), (CSetType *)pLhs, (CSetType *)pRhs, formulas);
+            else if (pLhs->getKind() == CType::List && pRhs->getKind() == CType::List)
+                bResult = expandList(f.getKind(), (CListType *)pLhs, (CListType *)pRhs, formulas);
+            else if (pLhs->getKind() == CType::Type && pRhs->getKind() == CType::Type)
+                bResult = expandType(f.getKind(), (CTypeType *)pLhs, (CTypeType *)pRhs, formulas);
             else
                 bFormulaModified = false;
 

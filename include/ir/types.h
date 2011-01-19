@@ -96,6 +96,33 @@ private:
     CCollection<CExpression> m_params;
 };
 
+/// Parameter type. Used in a predicate or type declaration only.
+class CTypeType : public CType {
+public:
+    /// Default constructor.
+    CTypeType();
+
+    /// Destructor.
+    virtual ~CTypeType();
+
+    /// Get type kind.
+    /// \returns #Type.
+    virtual int getKind() const { return Type; }
+
+    CTypeDeclaration * getDeclaration() const { return m_pDecl; }
+
+    void setDeclaration(CTypeDeclaration *_pDecl, bool _bReparent = true) {
+        _assign(m_pDecl, _pDecl, _bReparent);
+    }
+
+    virtual bool rewrite(ir::CType * _pOld, ir::CType * _pNew);
+    virtual int compare(const CType & _other) const;
+    virtual bool less(const CType & _other) const;
+
+private:
+    CTypeDeclaration *m_pDecl;
+};
+
 /// Struct type.
 /// Contains list of fields.
 class CStructType : public CType {

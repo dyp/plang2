@@ -1510,7 +1510,7 @@ CType * CParser::parseType(CContext & _ctx) {
         case BoolType:   pType = ctx.attach(new CType(CType::Bool)); ++ ctx; break;
         case CharType:   pType = ctx.attach(new CType(CType::Char)); ++ ctx; break;
         case StringType: pType = ctx.attach(new CType(CType::String)); ++ ctx; break;
-        case Type:       pType = ctx.attach(new CType(CType::Type)); ++ ctx; break;
+        case Type:       pType = ctx.attach(new CTypeType()); ++ ctx; break;
         case Var:        pType = ctx.attach(new CType(CType::Generic)); ++ ctx; break;
 
         case Struct:
@@ -1613,6 +1613,12 @@ bool CParser::parseParamList(CContext & _ctx, CCollection<_Param> & _params,
 
         if (! pParam)
             ERROR(ctx, false, L"Variable or parameter definition required");
+
+        if (pType->getKind() == CType::Type) {
+            CTypeDeclaration *pDecl = ((CTypeType *)pType)->getDeclaration();
+            pDecl->setName(pParam->getName());
+            _ctx.addType(pDecl);
+        }
 
         pParam->setType(pType, ! pType->getParent());
         params.add(pParam, false);

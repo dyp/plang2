@@ -235,7 +235,12 @@ bool CType::less(const CType & _other) const {
     if (getKind() == Fresh)
         return (this < & _other);
 
-    return CType::compare(_other) == OrdSub;
+    const int nOrder = CType::compare(_other);
+
+    // Should be comparable.
+    assert(nOrder == OrdSub || nOrder == OrdSuper || nOrder == OrdEquals);
+
+    return nOrder == OrdSub;
 }
 
 bool CType::operator <(const CType & _other) const {
@@ -701,6 +706,62 @@ CType::Extremum CSetType::getJoin(CType & _other) {
         join.first = new CSetType(join.first);
 
     return join;
+}
+
+// 'type' type.
+
+CTypeType::CTypeType() : m_pDecl(NULL) {
+    setDeclaration(new CTypeDeclaration());
+}
+
+CTypeType::~CTypeType() {
+    _delete(m_pDecl);
+}
+
+bool CTypeType::rewrite(ir::CType * _pOld, ir::CType * _pNew) {
+    if (m_pDecl == NULL || m_pDecl->getType() == NULL)
+        return false;
+
+    CType *p = m_pDecl->getType();
+
+    if (tc::rewriteType(p, _pOld, _pNew)) {
+        m_pDecl->setType(p, false);
+        return true;
+    }
+
+    return false;
+}
+
+int CTypeType::compare(const CType &_other) const {
+    if (_other.getKind() == Fresh)
+        return OrdUnknown;
+
+    if (_other.getKind() != getKind())
+        return OrdNone;
+
+    const CTypeType &other = (const CTypeType &)_other;
+
+    if (m_pDecl != NULL && m_pDecl->getType() != NULL) {
+        if (other.m_pDecl != NULL && other.m_pDecl->getType() != NULL)
+            return m_pDecl->getType()->compare(*other.m_pDecl->getType());
+
+        return OrdNone;
+    }
+
+    return (other.m_pDecl != NULL && other.m_pDecl->getType() != NULL) ? OrdNone : OrdEquals;
+}
+
+bool CTypeType::less(const CType & _other) const {
+    const CTypeType &other = (const CTypeType &)_other;
+
+    if (m_pDecl != NULL && m_pDecl->getType() != NULL) {
+        if (other.m_pDecl != NULL && other.m_pDecl->getType() != NULL)
+            return *m_pDecl->getType() < *other.m_pDecl->getType();
+
+        return false;
+    }
+
+    return other.m_pDecl != NULL && other.m_pDecl->getType() != NULL;
 }
 
 };

@@ -218,10 +218,10 @@ public:
         Char,
         /// \c string type.
         String,
-        /// \c type type. Used as predicate or type parameter only.
-        Type,
         /// \c var type. Actual type should be determined at typechecking phase.
         Generic,
+        /// \c type type. Used as predicate or type parameter only. Can be cast to CTypeType.
+        Type,
         /// \c enum type. Can be cast to CEnumType.
         Enum,
         /// Struct type. Can be cast to CStructType.
