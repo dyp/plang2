@@ -291,7 +291,7 @@ public:
 
     /// Get name of the predicate.
     /// \returns Identifier.
-    const std::wstring & getName() const { return m_strName; }
+    const std::wstring & getName() const;
 
     /// Set name of the predicate.
     /// \param _strName Identifier.
@@ -366,7 +366,7 @@ public:
 
     /// Get or set overflow strategy.
     /// \return Reference to overflow handling descriptor.
-    COverflow & overflow() { return m_overflow; }
+    COverflow & getOverflow() { return m_overflow; }
 
 private:
     int m_operator;
@@ -508,7 +508,7 @@ public:
 
     /// Get or set overflow strategy.
     /// \return Reference to overflow handling descriptor.
-    COverflow & overflow() { return m_overflow; }
+    COverflow & getOverflow() { return m_overflow; }
 
 private:
     int m_operator;
@@ -1128,6 +1128,8 @@ public:
     /// Get list of actual parameters.
     /// \return List of expressions.
     CCollection<CExpression> & getParams() { return m_params; }
+
+    std::wstring getName() const;
 
 private:
     const CFormulaDeclaration * m_pTarget;

@@ -897,13 +897,13 @@ CExpression * CParser::parseSubexpression(CContext & _ctx, CExpression * _lhs, i
             if (unaryOp < 0)
                 ERROR(ctx, NULL, L"Unary operator expected");
             _lhs = ctx.attach(new CUnary(unaryOp, rhs));
-            ((CUnary *) _lhs)->overflow().set(_ctx.getOverflow());
+            ((CUnary *) _lhs)->getOverflow().set(_ctx.getOverflow());
         } else {
             const int binaryOp = getBinaryOp(op);
             if (binaryOp < 0)
                 ERROR(ctx, NULL, L"Binary operator expected");
             _lhs = ctx.attach(new CBinary(binaryOp, _lhs, rhs));
-            ((CBinary *) _lhs)->overflow().set(_ctx.getOverflow());
+            ((CBinary *) _lhs)->getOverflow().set(_ctx.getOverflow());
         }
     }
 

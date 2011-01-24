@@ -85,6 +85,7 @@ public:
     /// \param _pVar Target variable or parameter declaration (NULL if it wasn't declared as a variable or a parameter.)
     void setVariable(const CNamedValue * _pVar) { m_pVar = _pVar; }
 
+    std::wstring getName() const;
     /// Get list of actual parameters.
     /// \return List of expressions.
     CCollection<CExpression> & getParams() { return m_params; }
