@@ -10,7 +10,7 @@
 #include "ir/declarations.h"
 #include "typecheck.h"
 
-void prettyPrint(ir::CModule & _module, std::wostream & _os);
+void prettyPrint(ir::Module & _module, std::wostream & _os);
 void prettyPrint(tc::Formulas & _constraints, std::wostream & _os);
 
 
