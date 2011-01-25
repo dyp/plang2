@@ -6,6 +6,7 @@
 #include <assert.h>
 
 #include "typecheck.h"
+#include "prettyprinter.h"
 
 #include <ir/statements.h>
 #include <ir/visitor.h>

@@ -5,7 +5,6 @@
 
 namespace ir {
 
-
 Builtins & Builtins::instance() {
     static Builtins builtins;
     return builtins;
@@ -25,4 +24,3 @@ Builtins::Builtins() {
 }
 
 }
-
