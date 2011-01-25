@@ -11,57 +11,59 @@
 #include "llir.h"
 #include "backend_c.h"
 
+using namespace llir;
+
 namespace backend {
 
-class CCGenerator {
+class CGenerator {
 public:
-    CCGenerator() :
+    CGenerator() :
         m_pParent(NULL), /*m_os(_os),*/ m_nLevel(0), m_pChild(NULL), m_nParam(0),
         m_nVar(0), m_nConst(0), m_nLabel(0) {}
-    CCGenerator(CCGenerator & _parent) :
+    CGenerator(CGenerator & _parent) :
         m_pParent(& _parent), /*m_os(_parent.m_os),*/ m_nLevel(_parent.m_nLevel + 1),
         m_pChild(NULL), m_nParam(0), m_nVar(0), m_nConst(0), m_nLabel(0) {}
-    ~CCGenerator();
+    ~CGenerator();
 
-    CCGenerator * addChild();
-    CCGenerator * getChild();
+    CGenerator * addChild();
+    CGenerator * getChild();
 
-    std::wostream & generate(std::wostream & _os, const llir::CModule & _module);
-    std::wostream & generate(std::wostream & _os, const llir::CFunction & _function);
-    std::wostream & generate(std::wostream & _os, const llir::CType & _type);
-    std::wostream & generate(std::wostream & _os, const llir::CStructType & _struct);
-    std::wostream & generateTypeDef(std::wostream & _os, const llir::CType & _type);
-    std::wostream & generate(std::wostream & _os, const llir::CConstant & _const);
+    std::wostream & generate(std::wostream & _os, const Module & _module);
+    std::wostream & generate(std::wostream & _os, const Function & _function);
+    std::wostream & generate(std::wostream & _os, const Type & _type);
+    std::wostream & generate(std::wostream & _os, const StructType & _struct);
+    std::wostream & generateTypeDef(std::wostream & _os, const Type & _type);
+    std::wostream & generate(std::wostream & _os, const Constant & _const);
 
-    std::wostream & generate(std::wostream & _os, const llir::CInstruction & _instr, bool _bInline, bool _bLast);
-    std::wostream & generate(std::wostream & _os, const llir::CBinary & _instr);
-    std::wostream & generate(std::wostream & _os, const llir::CUnary & _instr);
-    std::wostream & generate(std::wostream & _os, const llir::CLiteral & _lit);
-    std::wostream & generate(std::wostream & _os, const llir::COperand & _op);
-    std::wostream & generate(std::wostream & _os, const llir::CIf & _instr);
-    std::wostream & generate(std::wostream & _os, const llir::CCall & _instr);
-    std::wostream & generate(std::wostream & _os, const llir::CField & _instr);
-    std::wostream & generate(std::wostream & _os, const llir::CCast & _instr);
-    std::wostream & generate(std::wostream & _os, const llir::CCopy & _instr);
-    std::wostream & generate(std::wostream & _os, const llir::CSwitch & _instr);
+    std::wostream & generate(std::wostream & _os, const Instruction & _instr, bool _bInline, bool _bLast);
+    std::wostream & generate(std::wostream & _os, const Binary & _instr);
+    std::wostream & generate(std::wostream & _os, const Unary & _instr);
+    std::wostream & generate(std::wostream & _os, const Literal & _lit);
+    std::wostream & generate(std::wostream & _os, const Operand & _op);
+    std::wostream & generate(std::wostream & _os, const If & _instr);
+    std::wostream & generate(std::wostream & _os, const Call & _instr);
+    std::wostream & generate(std::wostream & _os, const Field & _instr);
+    std::wostream & generate(std::wostream & _os, const Cast & _instr);
+    std::wostream & generate(std::wostream & _os, const Copy & _instr);
+    std::wostream & generate(std::wostream & _os, const Switch & _instr);
 
-    std::wstring resolveType(const void * _p) { return resolveName(& CCGenerator::m_types, _p); }
+    std::wstring resolveType(const void * _p) { return resolveName(& CGenerator::m_types, _p); }
 
     std::wstring resolveVariable(const void * _p) {
-        std::wstring s = resolveName(& CCGenerator::m_args, _p);
-        return s.empty() ? resolveName(& CCGenerator::m_vars, _p) : s;
+        std::wstring s = resolveName(& CGenerator::m_args, _p);
+        return s.empty() ? resolveName(& CGenerator::m_vars, _p) : s;
     }
 
-    std::wstring resolveLabel(const llir::CLabel & _label);
+    std::wstring resolveLabel(const Label & _label);
 
-    bool canInline(const llir::CInstruction & _instr) const;
-    //const llir::CInstruction * getInlineByResult(const Auto<llir::CVariable> & _var) const;
+    bool canInline(const Instruction & _instr) const;
+    //const Instruction * getInlineByResult(const Auto<Variable> & _var) const;
 
 private:
-    CCGenerator * m_pParent;
+    CGenerator * m_pParent;
     //std::wostream & m_os;
     int m_nLevel;
-    CCGenerator * m_pChild;
+    CGenerator * m_pChild;
     int m_nParam;
     int m_nVar;
     int m_nConst;
@@ -73,8 +75,8 @@ private:
     name_map_t m_types;
     name_map_t m_labels;
 
-    typedef std::pair<std::wstring, const llir::CInstruction *> inline_instr_t;
-    typedef std::map<const llir::CVariable *, inline_instr_t> inline_map_t;
+    typedef std::pair<std::wstring, const Instruction *> inline_instr_t;
+    typedef std::map<const Variable *, inline_instr_t> inline_map_t;
     inline_map_t m_inlinedInstrs;
 
 
@@ -87,28 +89,28 @@ private:
         return res + _s;
     }
 
-    std::wstring resolveName(name_map_t CCGenerator::* _map, const void * _p);
+    std::wstring resolveName(name_map_t CGenerator::* _map, const void * _p);
 };
 
-CCGenerator::~CCGenerator() {
+CGenerator::~CGenerator() {
     if (m_pChild)
         delete m_pChild;
 }
 
-CCGenerator * CCGenerator::getChild() {
+CGenerator * CGenerator::getChild() {
     if (! m_pChild)
         return addChild();
     return m_pChild;
 }
 
-CCGenerator * CCGenerator::addChild() {
+CGenerator * CGenerator::addChild() {
     if (m_pChild)
         delete m_pChild;
-    m_pChild = new CCGenerator(* this);
+    m_pChild = new CGenerator(* this);
     return m_pChild;
 }
 
-std::wstring CCGenerator::resolveName(name_map_t CCGenerator::* _map, const void * _p) {
+std::wstring CGenerator::resolveName(name_map_t CGenerator::* _map, const void * _p) {
     name_map_t::iterator iName = (this->*_map).find(_p);
 
     if (iName != (this->*_map).end())
@@ -119,11 +121,11 @@ std::wstring CCGenerator::resolveName(name_map_t CCGenerator::* _map, const void
         return L"";
 }
 
-std::wstring CCGenerator::resolveLabel(const llir::CLabel & _label) {
+std::wstring CGenerator::resolveLabel(const Label & _label) {
     if (m_pParent)
         return m_pParent->resolveLabel(_label);
 
-    std::wstring strName = resolveName(& CCGenerator::m_labels, & _label);
+    std::wstring strName = resolveName(& CGenerator::m_labels, & _label);
 
     if (strName.empty()) {
         strName = fmtInt(m_nLabel ++, L"___l%llu");
@@ -133,14 +135,14 @@ std::wstring CCGenerator::resolveLabel(const llir::CLabel & _label) {
     return strName;
 }
 
-bool CCGenerator::canInline(const llir::CInstruction & _instr) const {
+bool CGenerator::canInline(const Instruction & _instr) const {
     if (! _instr.getLabel().empty() && _instr.getLabel()->getUsageCount() > 0)
         return false;
 
-    if (_instr.getKind() == llir::CInstruction::Unary) {
-        switch (((const llir::CUnary &) _instr).getUnaryKind()) {
-            case llir::CUnary::Ptr:
-            case llir::CUnary::Load:
+    if (_instr.getKind() == Instruction::UNARY) {
+        switch (((const Unary &) _instr).getUnaryKind()) {
+            case Unary::PTR:
+            case Unary::LOAD:
                 return true;
             default:
                 return false;
@@ -151,48 +153,48 @@ bool CCGenerator::canInline(const llir::CInstruction & _instr) const {
         return false;
 
     switch (_instr.getKind()) {
-        case llir::CInstruction::Binary:
-        case llir::CInstruction::Select:
-        case llir::CInstruction::Field:
-        case llir::CInstruction::Cast:
+        case Instruction::BINARY:
+        case Instruction::SELECT:
+        case Instruction::FIELD:
+        case Instruction::CAST:
             return true;
     }
 
     return false;
 }
 
-/*const llir::CInstruction * CCGenerator::getInlineByResult(const Auto<llir::CVariable> & _var) const {
+/*const Instruction * CGenerator::getInlineByResult(const Auto<Variable> & _var) const {
     inline_map_t::const_iterator iInstr = m_inlinedInstrs.find(_var.ptr());
 
     return iInstr != m_inlinedInstrs.end() ? iInstr->second : NULL;
 }*/
 
-std::wostream & CCGenerator::generate(std::wostream & _os, const llir::CModule & _module) {
+std::wostream & CGenerator::generate(std::wostream & _os, const Module & _module) {
 
-    for (llir::functions_t::const_iterator iFunc = _module.functions().begin(); iFunc != _module.functions().end(); ++ iFunc)
+    for (Functions::const_iterator iFunc = _module.functions().begin(); iFunc != _module.functions().end(); ++ iFunc)
         m_vars[iFunc->ptr()] = (* iFunc)->getName();
 
-    for (llir::functions_t::const_iterator iFunc = _module.usedBuiltins().begin(); iFunc != _module.usedBuiltins().end(); ++ iFunc)
+    for (Functions::const_iterator iFunc = _module.usedBuiltins().begin(); iFunc != _module.usedBuiltins().end(); ++ iFunc)
         m_vars[iFunc->ptr()] = (* iFunc)->getName();
 
     _os << "/* Auto-generated by PLang compiler */\n";
     _os << "#include <plang.h>\n";
     _os << "\n";
 
-    /*for (llir::consts_t::const_iterator iConst = _module.consts().begin(); iConst != _module.consts().end(); ++ iConst)
+    /*for (Consts::const_iterator iConst = _module.consts().begin(); iConst != _module.consts().end(); ++ iConst)
         getChild()->generate(** iConst);*/
 
-    for (llir::consts_t::const_iterator iConst = _module.consts().begin(); iConst != _module.consts().end(); ++ iConst)
+    for (Consts::const_iterator iConst = _module.consts().begin(); iConst != _module.consts().end(); ++ iConst)
         getChild()->generate(_os, ** iConst);
 
     _os << "\n";
 
-    for (llir::types_t::const_iterator iType = _module.types().begin(); iType != _module.types().end(); ++ iType) {
+    for (Types::const_iterator iType = _module.types().begin(); iType != _module.types().end(); ++ iType) {
         getChild()->generateTypeDef(_os, ** iType);
         _os << "\n";
     }
 
-    for (llir::functions_t::const_iterator iFunc = _module.functions().begin(); iFunc != _module.functions().end(); ++ iFunc) {
+    for (Functions::const_iterator iFunc = _module.functions().begin(); iFunc != _module.functions().end(); ++ iFunc) {
         getChild()->generate(_os, ** iFunc);
         _os << "\n";
     }
@@ -202,36 +204,36 @@ std::wostream & CCGenerator::generate(std::wostream & _os, const llir::CModule &
     return _os;
 }
 
-std::wostream & CCGenerator::generate(std::wostream & _os, const llir::CLiteral & _lit) {
+std::wostream & CGenerator::generate(std::wostream & _os, const Literal & _lit) {
     switch (_lit.getKind()) {
-        case llir::CLiteral::Number:
+        case Literal::NUMBER:
             return _os << L"(" << _lit.getNumber().toString() << L")";
-        case llir::CLiteral::Bool:
+        case Literal::BOOL:
             return _os << (_lit.getBool() ? "true" : "false");
-        /*case llir::CType::Char:
+        /*case Type::Char:
             return _os << "\'" << _lit.getChar() << "\'";*/
-        case llir::CLiteral::Char:
+        case Literal::CHAR:
             return _os << "L\'" << _lit.getChar() << "\'";
-        case llir::CLiteral::String:
+        case Literal::STRING:
             return _os << "\"" << _lit.getString().c_str() << "\"";
-        /*case llir::CType::WString:
+        /*case Type::WString:
             return _os << "L\"" << _lit.getWString() << "\"";*/
     }
 
     return _os;
 }
 
-std::wostream & CCGenerator::generate(std::wostream & _os, const llir::COperand & _op) {
+std::wostream & CGenerator::generate(std::wostream & _os, const Operand & _op) {
     switch (_op.getKind()) {
-        case llir::COperand::Literal:
+        case Operand::LITERAL:
             return generate(_os, _op.getLiteral());
-        case llir::COperand::Variable: {
+        case Operand::VARIABLE: {
             inline_map_t::iterator iInstr = m_inlinedInstrs.find(_op.getVariable().ptr());
-            //const llir::CInstruction * pInstr = getInlineByResult(_op.getVariable().ptr());
+            //const Instruction * pInstr = getInlineByResult(_op.getVariable().ptr());
 
             if (iInstr != m_inlinedInstrs.end()) {
                 _os /*<< L"("*/ << iInstr->second.first /*<< L")"*/;
-                //const llir::CInstruction * pInstr = iInstr->second;
+                //const Instruction * pInstr = iInstr->second;
                 iInstr->second.second->decResultUsageCount();
                 if (iInstr->second.second->getResultUsageCount() == 0)
                     m_inlinedInstrs.erase(iInstr);
@@ -246,19 +248,19 @@ std::wostream & CCGenerator::generate(std::wostream & _os, const llir::COperand 
 
             return _os;
         }
-        case llir::COperand::Label:
+        case Operand::LABEL:
             return _os << resolveLabel(* _op.getLabel());
     }
 
     return _os;
 }
 
-std::wostream & CCGenerator::generate(std::wostream & _os, const llir::CBinary & _instr) {
+std::wostream & CGenerator::generate(std::wostream & _os, const Binary & _instr) {
 
-    if (_instr.getBinaryKind() == llir::CBinary::Jmz || _instr.getBinaryKind() == llir::CBinary::Jnz) {
+    if (_instr.getBinaryKind() == Binary::JMZ || _instr.getBinaryKind() == Binary::JNZ) {
         _os << L"if (";
 
-        if (_instr.getBinaryKind() == llir::CBinary::Jmz) {
+        if (_instr.getBinaryKind() == Binary::JMZ) {
             _os << L"! (";
             generate(_os, _instr.getOp1());
             _os << L")";
@@ -269,7 +271,7 @@ std::wostream & CCGenerator::generate(std::wostream & _os, const llir::CBinary &
         generate(_os, _instr.getOp2());
 
         return _os;
-    } else if (_instr.getBinaryKind() == llir::CBinary::Store) {
+    } else if (_instr.getBinaryKind() == Binary::STORE) {
         _os << L"(* ";
         generate(_os, _instr.getOp1());
         _os << L") = ";
@@ -279,7 +281,7 @@ std::wostream & CCGenerator::generate(std::wostream & _os, const llir::CBinary &
     }
 
     switch (_instr.getBinaryKind()) {
-        case llir::CBinary::Set:
+        case Binary::SET:
             generate(_os, _instr.getOp1());
             _os << L" = ";
             generate(_os, _instr.getOp2());
@@ -294,80 +296,80 @@ std::wostream & CCGenerator::generate(std::wostream & _os, const llir::CBinary &
 //    _os << L")";
 
     switch (_instr.getBinaryKind()) {
-        case llir::CBinary::Add: strInstr = L"+"; break;
-        case llir::CBinary::Sub: strInstr = L"-"; break;
-        case llir::CBinary::Mul: strInstr = L"*"; break;
-        case llir::CBinary::Div: strInstr = L"/"; break;
-        case llir::CBinary::Rem: strInstr = L"%"; break;
-        case llir::CBinary::Shl: strInstr = L"<<"; break;
-        case llir::CBinary::Shr: strInstr = L">>"; break;
-        case llir::CBinary::Pow: assert(false && "Unimplemented"); break;
-        case llir::CBinary::And: strInstr = L"&"; break;
-        case llir::CBinary::Or:  strInstr = L"|";  break;
-        case llir::CBinary::Xor: strInstr = L"^"; break;
+        case Binary::ADD: strInstr = L"+"; break;
+        case Binary::SUB: strInstr = L"-"; break;
+        case Binary::MUL: strInstr = L"*"; break;
+        case Binary::DIV: strInstr = L"/"; break;
+        case Binary::REM: strInstr = L"%"; break;
+        case Binary::SHL: strInstr = L"<<"; break;
+        case Binary::SHR: strInstr = L">>"; break;
+        case Binary::POW: assert(false && "Unimplemented"); break;
+        case Binary::AND: strInstr = L"&"; break;
+        case Binary::OR:  strInstr = L"|";  break;
+        case Binary::XOR: strInstr = L"^"; break;
 
-        case llir::CBinary::Offset: strInstr = L"+"; break;
+        case Binary::OFFSET: strInstr = L"+"; break;
 
-        /*case llir::CBinary::BAnd: strInstr = L"band"; break;
-        case llir::CBinary::BOr:  strInstr = L"bor";  break;
-        case llir::CBinary::BXor: strInstr = L"bxor"; break;
+        /*case Binary::BAnd: strInstr = L"band"; break;
+        case Binary::BOr:  strInstr = L"bor";  break;
+        case Binary::BXor: strInstr = L"bxor"; break;
 
-        case llir::CBinary::FAdd: strInstr = L"fadd"; break;
-        case llir::CBinary::FSub: strInstr = L"fsub"; break;
-        case llir::CBinary::FMul: strInstr = L"fmul"; break;
-        case llir::CBinary::FDiv: strInstr = L"fdiv"; break;
-        case llir::CBinary::FPow: strInstr = L"fpow"; break;
+        case Binary::FAdd: strInstr = L"fadd"; break;
+        case Binary::FSub: strInstr = L"fsub"; break;
+        case Binary::FMul: strInstr = L"fmul"; break;
+        case Binary::FDiv: strInstr = L"fdiv"; break;
+        case Binary::FPow: strInstr = L"fpow"; break;
 
-        case llir::CBinary::ZAdd: strInstr = L"zadd"; break;
-        case llir::CBinary::ZSub: strInstr = L"zsub"; break;
-        case llir::CBinary::ZMul: strInstr = L"zmul"; break;
-        case llir::CBinary::ZDiv: strInstr = L"zdiv"; break;
-        case llir::CBinary::ZRem: strInstr = L"zrem"; break;
-        case llir::CBinary::ZShl: strInstr = L"zshl"; break;
-        case llir::CBinary::ZShr: strInstr = L"zshr"; break;
-        case llir::CBinary::ZPow: strInstr = L"zpow"; break;
-        case llir::CBinary::ZAnd: strInstr = L"zand"; break;
-        case llir::CBinary::ZOr:  strInstr = L"zor";  break;
-        case llir::CBinary::ZXor: strInstr = L"zxor"; break;
+        case Binary::ZAdd: strInstr = L"zadd"; break;
+        case Binary::ZSub: strInstr = L"zsub"; break;
+        case Binary::ZMul: strInstr = L"zmul"; break;
+        case Binary::ZDiv: strInstr = L"zdiv"; break;
+        case Binary::ZRem: strInstr = L"zrem"; break;
+        case Binary::ZShl: strInstr = L"zshl"; break;
+        case Binary::ZShr: strInstr = L"zshr"; break;
+        case Binary::ZPow: strInstr = L"zpow"; break;
+        case Binary::ZAnd: strInstr = L"zand"; break;
+        case Binary::ZOr:  strInstr = L"zor";  break;
+        case Binary::ZXor: strInstr = L"zxor"; break;
 
-        case llir::CBinary::QAdd: strInstr = L"qadd"; break;
-        case llir::CBinary::QSub: strInstr = L"qsub"; break;
-        case llir::CBinary::QMul: strInstr = L"qmul"; break;
-        case llir::CBinary::QDiv: strInstr = L"qdiv"; break;
-        case llir::CBinary::QPow: strInstr = L"qpow"; break;*/
+        case Binary::QAdd: strInstr = L"qadd"; break;
+        case Binary::QSub: strInstr = L"qsub"; break;
+        case Binary::QMul: strInstr = L"qmul"; break;
+        case Binary::QDiv: strInstr = L"qdiv"; break;
+        case Binary::QPow: strInstr = L"qpow"; break;*/
 
-        case llir::CBinary::Eq:  strInstr = L"==";  break;
-        case llir::CBinary::Ne:  strInstr = L"!=";  break;
-        case llir::CBinary::Lt:  strInstr = L"<";  break;
-        case llir::CBinary::Lte: strInstr = L"<="; break;
-        case llir::CBinary::Gt:  strInstr = L">";  break;
-        case llir::CBinary::Gte: strInstr = L">="; break;
+        case Binary::EQ:  strInstr = L"==";  break;
+        case Binary::NE:  strInstr = L"!=";  break;
+        case Binary::LT:  strInstr = L"<";  break;
+        case Binary::LTE: strInstr = L"<="; break;
+        case Binary::GT:  strInstr = L">";  break;
+        case Binary::GTE: strInstr = L">="; break;
 
-        /*case llir::CBinary::FEq:  strInstr = L"feq";  break;
-        case llir::CBinary::FNe:  strInstr = L"fne";  break;
-        case llir::CBinary::FLt:  strInstr = L"flt";  break;
-        case llir::CBinary::FLte: strInstr = L"flte"; break;
-        case llir::CBinary::FGt:  strInstr = L"fgt";  break;
-        case llir::CBinary::FGte: strInstr = L"fgte"; break;
+        /*case Binary::FEq:  strInstr = L"feq";  break;
+        case Binary::FNe:  strInstr = L"fne";  break;
+        case Binary::FLt:  strInstr = L"flt";  break;
+        case Binary::FLte: strInstr = L"flte"; break;
+        case Binary::FGt:  strInstr = L"fgt";  break;
+        case Binary::FGte: strInstr = L"fgte"; break;
 
-        case llir::CBinary::ZEq:  strInstr = L"zeq";  break;
-        case llir::CBinary::ZNe:  strInstr = L"zne";  break;
-        case llir::CBinary::ZLt:  strInstr = L"zlt";  break;
-        case llir::CBinary::ZLte: strInstr = L"zlte"; break;
-        case llir::CBinary::ZGt:  strInstr = L"zgt";  break;
-        case llir::CBinary::ZGte: strInstr = L"zgte"; break;
+        case Binary::ZEq:  strInstr = L"zeq";  break;
+        case Binary::ZNe:  strInstr = L"zne";  break;
+        case Binary::ZLt:  strInstr = L"zlt";  break;
+        case Binary::ZLte: strInstr = L"zlte"; break;
+        case Binary::ZGt:  strInstr = L"zgt";  break;
+        case Binary::ZGte: strInstr = L"zgte"; break;
 
-        case llir::CBinary::QEq:  strInstr = L"qeq";  break;
-        case llir::CBinary::QNe:  strInstr = L"qne";  break;
-        case llir::CBinary::QLt:  strInstr = L"qlt";  break;
-        case llir::CBinary::QLte: strInstr = L"qlte"; break;
-        case llir::CBinary::QGt:  strInstr = L"qgt";  break;
-        case llir::CBinary::QGte: strInstr = L"qgte"; break;*/
+        case Binary::QEq:  strInstr = L"qeq";  break;
+        case Binary::QNe:  strInstr = L"qne";  break;
+        case Binary::QLt:  strInstr = L"qlt";  break;
+        case Binary::QLte: strInstr = L"qlte"; break;
+        case Binary::QGt:  strInstr = L"qgt";  break;
+        case Binary::QGte: strInstr = L"qgte"; break;*/
 
-        /*case llir::CBinary::Store: strInstr = L"store"; break;
-        case llir::CBinary::Jmz: strInstr = L"jmz"; break;
-        case llir::CBinary::Jnz: strInstr = L"jnz"; break;
-        case llir::CBinary::Offset: strInstr = L"offset"; break;*/
+        /*case Binary::Store: strInstr = L"store"; break;
+        case Binary::Jmz: strInstr = L"jmz"; break;
+        case Binary::Jnz: strInstr = L"jnz"; break;
+        case Binary::Offset: strInstr = L"offset"; break;*/
     }
 
     _os << L" " << strInstr << L" ";
@@ -378,34 +380,34 @@ std::wostream & CCGenerator::generate(std::wostream & _os, const llir::CBinary &
     return _os;
 }
 
-std::wostream & CCGenerator::generate(std::wostream & _os, const llir::CUnary & _instr) {
+std::wostream & CGenerator::generate(std::wostream & _os, const Unary & _instr) {
 //    std::wstring strInstr = L"!!!";
 
     switch (_instr.getUnaryKind()) {
-        case llir::CUnary::Return:
+        case Unary::RETURN:
             _os << L"return ";
             generate(_os, _instr.getOp());
             break;
-        case llir::CUnary::Ptr:
+        case Unary::PTR:
             _os << L"(& ";
             generate(_os, _instr.getOp());
             _os << L")";
             break;
-        case llir::CUnary::Load:
+        case Unary::LOAD:
             _os << L"(* ";
             generate(_os, _instr.getOp());
             _os << L")";
             break;
-        case llir::CUnary::Malloc:
+        case Unary::MALLOC:
             _os << L"__p_alloc(";
             generate(_os, _instr.getOp());
             _os << L")";
             break;
-        /*case llir::CUnary::Free: strInstr = L"free"; break;
-        case llir::CUnary::Ref: strInstr = L"ref"; break;
-        case llir::CUnary::Unref: strInstr = L"unref"; break;
-        case llir::CUnary::UnrefNd: strInstr = L"unrefnd"; break;*/
-        case llir::CUnary::Jmp:
+        /*case Unary::Free: strInstr = L"free"; break;
+        case Unary::Ref: strInstr = L"ref"; break;
+        case Unary::Unref: strInstr = L"unref"; break;
+        case Unary::UnrefNd: strInstr = L"unrefnd"; break;*/
+        case Unary::JMP:
             _os << L"goto ";
             generate(_os, _instr.getOp());
             break;
@@ -414,14 +416,14 @@ std::wostream & CCGenerator::generate(std::wostream & _os, const llir::CUnary & 
     return _os;
 }
 
-std::wostream & CCGenerator::generate(std::wostream & _os, const llir::CCall & _instr) {
+std::wostream & CGenerator::generate(std::wostream & _os, const Call & _instr) {
     _os << L"(";
     generate(_os, _instr.getFunction());
     _os << L") (";
 
     size_t cArgs = _instr.args().size();
 
-    for (llir::operands_t::const_iterator iArg = _instr.args().begin(); iArg != _instr.args().end(); ++ iArg, -- cArgs) {
+    for (Operands::const_iterator iArg = _instr.args().begin(); iArg != _instr.args().end(); ++ iArg, -- cArgs) {
         generate(_os, * iArg);
         if (cArgs > 1)
             _os << L", ";
@@ -432,23 +434,23 @@ std::wostream & CCGenerator::generate(std::wostream & _os, const llir::CCall & _
     return _os;
 }
 
-std::wostream & CCGenerator::generate(std::wostream & _os, const llir::CIf & _instr) {
+std::wostream & CGenerator::generate(std::wostream & _os, const If & _instr) {
     _os << L"if (";
     generate(_os, _instr.getCondition()) << L") {\n";
 
     if (! _instr.brTrue().empty()) {
-        llir::instructions_t::const_iterator iLast = prev(_instr.brTrue().end());
+        Instructions::const_iterator iLast = prev(_instr.brTrue().end());
         ++ m_nLevel;
-        for (llir::instructions_t::const_iterator iInstr = _instr.brTrue().begin(); iInstr != _instr.brTrue().end(); ++ iInstr)
+        for (Instructions::const_iterator iInstr = _instr.brTrue().begin(); iInstr != _instr.brTrue().end(); ++ iInstr)
             generate(_os, ** iInstr, false, iInstr == iLast);
         -- m_nLevel;
     }
 
     if (! _instr.brFalse().empty()) {
         _os << fmtIndent(L"} else {\n");
-        llir::instructions_t::const_iterator iLast = prev(_instr.brFalse().end());
+        Instructions::const_iterator iLast = prev(_instr.brFalse().end());
         ++ m_nLevel;
-        for (llir::instructions_t::const_iterator iInstr = _instr.brFalse().begin(); iInstr != _instr.brFalse().end(); ++ iInstr)
+        for (Instructions::const_iterator iInstr = _instr.brFalse().begin(); iInstr != _instr.brFalse().end(); ++ iInstr)
             generate(_os, ** iInstr, false, iInstr == iLast);
         -- m_nLevel;
     }
@@ -458,40 +460,40 @@ std::wostream & CCGenerator::generate(std::wostream & _os, const llir::CIf & _in
     return _os;
 }
 
-std::wostream & CCGenerator::generate(std::wostream & _os, const llir::CType & _type) {
+std::wostream & CGenerator::generate(std::wostream & _os, const Type & _type) {
     std::wstring strName = resolveType(& _type);
 
     if (! strName.empty())
         return _os << strName;
 
     switch (_type.getKind()) {
-        case llir::CType::Void:    return _os << L"void";
+        case Type::VOID:    return _os << L"void";
 
-        case llir::CType::Bool:    return _os << L"bool";
-        //case llir::CType::Char:    return _os << L"char";
-        case llir::CType::WChar:   return _os << L"wchar_t";
+        case Type::BOOL:    return _os << L"bool";
+        //case Type::Char:    return _os << L"char";
+        case Type::WCHAR:   return _os << L"wchar_t";
 
-        case llir::CType::Int8:    return _os << L"int8_t";
-        case llir::CType::Int16:   return _os << L"int16_t";
-        case llir::CType::Int32:   return _os << L"int32_t";
-        case llir::CType::Int64:   return _os << L"int64_t";
-        case llir::CType::UInt8:   return _os << L"uint8_t";
-        case llir::CType::UInt16:  return _os << L"uint16_t";
-        case llir::CType::UInt32:  return _os << L"uint32_t";
-        case llir::CType::UInt64:  return _os << L"uint64_t";
-        /*case llir::CType::Gmp_z:   return m_os << "gmpz";
-        case llir::CType::Gmp_q:   return m_os << "gmpq";
-        case llir::CType::String:  return m_os << "string";
-        case llir::CType::WString: return m_os << "wstring";
-        case llir::CType::Float:   return m_os << "float";
-        case llir::CType::Double:  return m_os << "double";
-        case llir::CType::Quad:    return m_os << "quad";*/
+        case Type::INT8:    return _os << L"int8_t";
+        case Type::INT16:   return _os << L"int16_t";
+        case Type::INT32:   return _os << L"int32_t";
+        case Type::INT64:   return _os << L"int64_t";
+        case Type::UINT8:   return _os << L"uint8_t";
+        case Type::UINT16:  return _os << L"uint16_t";
+        case Type::UINT32:  return _os << L"uint32_t";
+        case Type::UINT64:  return _os << L"uint64_t";
+        /*case Type::Gmp_z:   return m_os << "gmpz";
+        case Type::Gmp_q:   return m_os << "gmpq";
+        case Type::String:  return m_os << "string";
+        case Type::WString: return m_os << "wstring";
+        case Type::Float:   return m_os << "float";
+        case Type::Double:  return m_os << "double";
+        case Type::Quad:    return m_os << "quad";*/
 
-        case llir::CType::Struct:
-            return generate(_os, (llir::CStructType &) _type);
+        case Type::STRUCT:
+            return generate(_os, (StructType &) _type);
 
-        case llir::CType::Pointer:
-            generate(_os, * ((llir::CPointerType &) _type).getBase());
+        case Type::POINTER:
+            generate(_os, * ((PointerType &) _type).getBase());
             _os << L" *";
             return _os;
     }
@@ -499,14 +501,14 @@ std::wostream & CCGenerator::generate(std::wostream & _os, const llir::CType & _
     return _os << L"t" << _type.getKind();
 }
 
-std::wostream & CCGenerator::generate(std::wostream & _os, const llir::CField & _instr) {
+std::wostream & CGenerator::generate(std::wostream & _os, const Field & _instr) {
     _os << L"& ";
     generate(_os, _instr.getOp()) << L"->f";
     _os << _instr.getIndex();
     return _os;
 }
 
-std::wostream & CCGenerator::generate(std::wostream & _os, const llir::CCast & _instr) {
+std::wostream & CGenerator::generate(std::wostream & _os, const Cast & _instr) {
     _os << L"(";
     generate(_os, * _instr.getType());
     _os << L") ";
@@ -514,7 +516,7 @@ std::wostream & CCGenerator::generate(std::wostream & _os, const llir::CCast & _
     return _os;
 }
 
-std::wostream & CCGenerator::generate(std::wostream & _os, const llir::CCopy & _instr) {
+std::wostream & CGenerator::generate(std::wostream & _os, const Copy & _instr) {
     _os << L"memcpy(";
     generate(_os, _instr.getDest());
     _os << L", ";
@@ -525,18 +527,18 @@ std::wostream & CCGenerator::generate(std::wostream & _os, const llir::CCopy & _
     return _os;
 }
 
-std::wostream & CCGenerator::generate(std::wostream & _os, const llir::CSwitch & _instr) {
+std::wostream & CGenerator::generate(std::wostream & _os, const Switch & _instr) {
     _os << L"switch (";
     generate(_os, _instr.getArg()) << L") {\n";
     ++ m_nLevel;
-    for (llir::switch_cases_t::const_iterator iCase = _instr.cases().begin(); iCase != _instr.cases().end(); ++ iCase) {
+    for (SwitchCases::const_iterator iCase = _instr.cases().begin(); iCase != _instr.cases().end(); ++ iCase) {
         for (size_t i = 0; i < iCase->values.size(); ++ i) {
             _os << fmtIndent(fmtInt(iCase->values[i], L"case %llu:"));
             _os << L"\n";
         }
 
         ++ m_nLevel;
-        for (llir::instructions_t::const_iterator iInstr = iCase->body.begin(); iInstr != iCase->body.end(); ++ iInstr)
+        for (Instructions::const_iterator iInstr = iCase->body.begin(); iInstr != iCase->body.end(); ++ iInstr)
             generate(_os, ** iInstr, false, false);
         _os << fmtIndent(L"break;") << L"\n";
         -- m_nLevel;
@@ -544,9 +546,9 @@ std::wostream & CCGenerator::generate(std::wostream & _os, const llir::CSwitch &
 
     if (! _instr.deflt().empty()) {
         _os << fmtIndent(L"default:\n");
-        llir::instructions_t::const_iterator iLast = prev(_instr.deflt().end());
+        Instructions::const_iterator iLast = prev(_instr.deflt().end());
         ++ m_nLevel;
-        for (llir::instructions_t::const_iterator iInstr = _instr.deflt().begin(); iInstr != _instr.deflt().end(); ++ iInstr)
+        for (Instructions::const_iterator iInstr = _instr.deflt().begin(); iInstr != _instr.deflt().end(); ++ iInstr)
             generate(_os, ** iInstr, false, iInstr == iLast);
         -- m_nLevel;
     }
@@ -558,8 +560,8 @@ std::wostream & CCGenerator::generate(std::wostream & _os, const llir::CSwitch &
     return _os;
 }
 
-std::wostream & CCGenerator::generate(std::wostream & _os,
-        const llir::CInstruction & _instr, bool _bInline, bool _bLast)
+std::wostream & CGenerator::generate(std::wostream & _os,
+        const Instruction & _instr, bool _bInline, bool _bLast)
 {
     if (! _bInline && canInline(_instr)) {
         std::wstringstream ss;
@@ -577,13 +579,13 @@ std::wostream & CCGenerator::generate(std::wostream & _os,
         if (bHasLabel)
             _os << resolveLabel(* _instr.getLabel()) << L":" << L" /* " << _instr.getLabel()->getUsageCount() << L" */" << std::endl;
 
-        if (_instr.getKind() == llir::CInstruction::Nop && ! _bLast)
+        if (_instr.getKind() == Instruction::NOP && ! _bLast)
             return _os;
 
         _os << fmtIndent(L"");
 
         if (! _instr.getResult().empty()) {
-            llir::CVariable * pVar = _instr.getResult().ptr();
+            Variable * pVar = _instr.getResult().ptr();
             pVar->setUsed(true);
             std::wstring strName = resolveVariable(pVar);
             assert(! strName.empty());
@@ -592,32 +594,32 @@ std::wostream & CCGenerator::generate(std::wostream & _os,
     }
 
     switch (_instr.getKind()) {
-        case llir::CInstruction::Unary:
-            generate(_os, (llir::CUnary &) _instr);
+        case Instruction::UNARY:
+            generate(_os, (Unary &) _instr);
             break;
-        case llir::CInstruction::Binary:
-            generate(_os, (llir::CBinary &) _instr);
+        case Instruction::BINARY:
+            generate(_os, (Binary &) _instr);
             break;
-        /*case llir::CInstruction::Select:
-            generate((llir::CSelect &) _instr);
+        /*case Instruction::Select:
+            generate((Select &) _instr);
             break;*/
-        case llir::CInstruction::Call:
-            generate(_os, (llir::CCall &) _instr);
+        case Instruction::CALL:
+            generate(_os, (Call &) _instr);
             break;
-        case llir::CInstruction::If:
-            generate(_os, (llir::CIf &) _instr);
+        case Instruction::IF:
+            generate(_os, (If &) _instr);
             break;
-        case llir::CInstruction::Switch:
-            generate(_os, (llir::CSwitch &) _instr);
+        case Instruction::SWITCH:
+            generate(_os, (Switch &) _instr);
             break;
-        case llir::CInstruction::Field:
-            generate(_os, (llir::CField &) _instr);
+        case Instruction::FIELD:
+            generate(_os, (Field &) _instr);
             break;
-        case llir::CInstruction::Cast:
-            generate(_os, (llir::CCast &) _instr);
+        case Instruction::CAST:
+            generate(_os, (Cast &) _instr);
             break;
-        case llir::CInstruction::Copy:
-            generate(_os, (llir::CCopy &) _instr);
+        case Instruction::COPY:
+            generate(_os, (Copy &) _instr);
             break;
         /*default:
             m_os << L"nop";*/
@@ -635,14 +637,14 @@ std::wostream & CCGenerator::generate(std::wostream & _os,
     return _os;
 }
 
-std::wostream & CCGenerator::generate(std::wostream & _os, const llir::CFunction & _function) {
+std::wostream & CGenerator::generate(std::wostream & _os, const Function & _function) {
     if (! _function.getResult().empty()) {
         getChild()->generate(_os, * _function.getReturnType());
         _os << std::endl;
 
 /*        getChild()->m_vars[_function.getResult().ptr()] = L"r";
         m_os << getChild()->fmtIndent(L".result %r ");
-        //const size_t c = sizeof(llir::CType);
+        //const size_t c = sizeof(Type);
         getChild()->generate(* _function.getReturnType()) << "\n"; */
     } else {
         _os << L"void" << std::endl;
@@ -655,7 +657,7 @@ std::wostream & CCGenerator::generate(std::wostream & _os, const llir::CFunction
 
     size_t cArgs = _function.args().size();
 
-    for (llir::args_t::const_iterator iArg = _function.args().begin(); iArg != _function.args().end(); ++ iArg, -- cArgs) {
+    for (Args::const_iterator iArg = _function.args().begin(); iArg != _function.args().end(); ++ iArg, -- cArgs) {
         std::wstring strName = fmtInt(getChild()->m_nParam ++, L"a%llu");
         getChild()->m_args[iArg->ptr()] = strName;
 
@@ -669,7 +671,7 @@ std::wostream & CCGenerator::generate(std::wostream & _os, const llir::CFunction
 
     _os << L") {" << std::endl;
 
-    if (! _function.getResult().empty() && _function.getResult()->getType()->getKind() != llir::CType::Void) {
+    if (! _function.getResult().empty() && _function.getResult()->getType()->getKind() != Type::VOID) {
         getChild()->m_vars[_function.getResult().ptr()] = L"r";
 
         /*_os << getChild()->fmtIndent(L"");
@@ -679,7 +681,7 @@ std::wostream & CCGenerator::generate(std::wostream & _os, const llir::CFunction
 
     int nVar = 0;
 
-    for (llir::args_t::const_iterator iVar = _function.locals().begin(); iVar != _function.locals().end(); ++ iVar) {
+    for (Args::const_iterator iVar = _function.locals().begin(); iVar != _function.locals().end(); ++ iVar) {
         std::wstring strName = fmtInt(nVar ++, L"u%llu");
         getChild()->m_vars[iVar->ptr()] = strName;
         (* iVar)->setUsed(false);
@@ -688,13 +690,13 @@ std::wostream & CCGenerator::generate(std::wostream & _os, const llir::CFunction
     std::wstringstream ss;
 
     if (! _function.instructions().empty()) {
-        llir::instructions_t::const_iterator iLast = prev(_function.instructions().end());
-        for (llir::instructions_t::const_iterator iInstr = _function.instructions().begin(); iInstr != _function.instructions().end(); ++ iInstr)
+        Instructions::const_iterator iLast = prev(_function.instructions().end());
+        for (Instructions::const_iterator iInstr = _function.instructions().begin(); iInstr != _function.instructions().end(); ++ iInstr)
             getChild()->generate(ss, ** iInstr, false, iInstr == iLast);
     }
 
     for (name_map_t::iterator iVar = getChild()->m_vars.begin(); iVar != getChild()->m_vars.end(); ++ iVar) {
-        const llir::CVariable * pVar = (const llir::CVariable *) iVar->first;
+        const Variable * pVar = (const Variable *) iVar->first;
 
         if (pVar->isUsed()) {
             _os << getChild()->fmtIndent(L"");
@@ -705,7 +707,7 @@ std::wostream & CCGenerator::generate(std::wostream & _os, const llir::CFunction
 /*
     nVar = 0;
 
-    for (llir::args_t::const_iterator iVar = _function.locals().begin(); iVar != _function.locals().end(); ++ iVar) {
+    for (Args::const_iterator iVar = _function.locals().begin(); iVar != _function.locals().end(); ++ iVar) {
         if (! (* iVar)->isUsed())
             continue;
 
@@ -727,11 +729,11 @@ std::wostream & CCGenerator::generate(std::wostream & _os, const llir::CFunction
     if (! _function.getResult().empty()) {
         getChild()->m_vars[_function.getResult().ptr()] = L"r";
         m_os << getChild()->fmtIndent(L".result %r ");
-        //const size_t c = sizeof(llir::CType);
+        //const size_t c = sizeof(Type);
         getChild()->generate(* _function.getReturnType()) << "\n";
     }
 
-    for (llir::args_t::const_iterator iArg = _function.args().begin(); iArg != _function.args().end(); ++ iArg) {
+    for (Args::const_iterator iArg = _function.args().begin(); iArg != _function.args().end(); ++ iArg) {
         std::wstring strName = fmtInt(getChild()->m_nParam ++);
         getChild()->m_vars[iArg->ptr()] = strName;
         m_os << getChild()->fmtIndent(L".arg %") << strName << " ";
@@ -740,14 +742,14 @@ std::wostream & CCGenerator::generate(std::wostream & _os, const llir::CFunction
 
     int nVar = 0;
 
-    for (llir::args_t::const_iterator iVar = _function.locals().begin(); iVar != _function.locals().end(); ++ iVar) {
+    for (Args::const_iterator iVar = _function.locals().begin(); iVar != _function.locals().end(); ++ iVar) {
         std::wstring strName = fmtInt(nVar ++, L"u%llu");
         getChild()->m_vars[iVar->ptr()] = strName;
         m_os << getChild()->fmtIndent(L".var %") << strName << " ";
         getChild()->generate(* (* iVar)->getType()) << "\n";
     }
 
-    for (llir::instructions_t::const_iterator iInstr = _function.instructions().begin(); iInstr != _function.instructions().end(); ++ iInstr) {
+    for (Instructions::const_iterator iInstr = _function.instructions().begin(); iInstr != _function.instructions().end(); ++ iInstr) {
         getChild()->generate(** iInstr) << "\n";
     }
 
@@ -756,7 +758,7 @@ std::wostream & CCGenerator::generate(std::wostream & _os, const llir::CFunction
     return _os;
 }
 
-std::wostream & CCGenerator::generateTypeDef(std::wostream & _os, const llir::CType & _type) {
+std::wostream & CGenerator::generateTypeDef(std::wostream & _os, const Type & _type) {
     std::wstring strName = fmtInt(m_types.size(), L"td%llu");
 
     _os << L"typedef ";
@@ -768,12 +770,12 @@ std::wostream & CCGenerator::generateTypeDef(std::wostream & _os, const llir::CT
     return _os;
 }
 
-std::wostream & CCGenerator::generate(std::wostream & _os, const llir::CStructType & _struct) {
+std::wostream & CGenerator::generate(std::wostream & _os, const StructType & _struct) {
     _os << L"struct {\n";
 
     size_t cField = 0;
 
-    for (llir::types_t::const_iterator iType = _struct.fieldTypes().begin(); iType != _struct.fieldTypes().end(); ++ iType, ++ cField) {
+    for (Types::const_iterator iType = _struct.fieldTypes().begin(); iType != _struct.fieldTypes().end(); ++ iType, ++ cField) {
         _os << fmtIndent(L"");
         generate(_os, ** iType);
         _os << L" " << fmtInt(cField, L"f%llu") << L";\n";
@@ -785,10 +787,10 @@ std::wostream & CCGenerator::generate(std::wostream & _os, const llir::CStructTy
 }
 
 
-std::wostream & CCGenerator::generate(std::wostream & _os, const llir::CConstant & _const) {
+std::wostream & CGenerator::generate(std::wostream & _os, const Constant & _const) {
     std::wstring strName = fmtInt(m_nConst ++, L"c%llu");
 
-    if (_const.getLiteral()->getKind() == llir::CLiteral::String) {
+    if (_const.getLiteral()->getKind() == Literal::STRING) {
         _os << L"__P_STRING_CONST(" << strName << L", "
                 << _const.getLiteral()->getString().size() <<  L", "
                 << "L\"" << _const.getLiteral()->getString() << L"\")";
@@ -802,7 +804,7 @@ std::wostream & CCGenerator::generate(std::wostream & _os, const llir::CConstant
         generate(_os, * _const.getLiteral());
     }
 
-    /*if (_const.getType()->getKind() == llir::CType::WChar) {
+    /*if (_const.getType()->getKind() == Type::WChar) {
         //_os << _const.getLiteral()->getWString().size() << L" ";
         _os << "L\"" << _const.getLiteral()->getWString() << L'"';
     }*/
@@ -813,8 +815,8 @@ std::wostream & CCGenerator::generate(std::wostream & _os, const llir::CConstant
     return _os;
 }
 
-void generateC(const llir::CModule & _module, std::wostream & _os) {
-    CCGenerator gen;
+void generateC(const Module & _module, std::wostream & _os) {
+    CGenerator gen;
 
     gen.generate(_os, _module);
 }

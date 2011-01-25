@@ -10,9 +10,9 @@
 
 /// Parse token stream.
 /// \param _tokens Sequence of tokens to parse.
-/// \param _pModule Reference to CModule pointer. Will be allocated when parssing.
+/// \param _pModule Reference to Module pointer. Will be allocated when parssing.
 ///     Caller is responsible for deleting it.
 /// \return True if parsed successfully, false otherwise.
-bool parse(lexer::tokens_t & _tokens, ir::CModule * & _pModule);
+bool parse(lexer::Tokens & _tokens, ir::Module * & _pModule);
 
 #endif /* PARSER_H_ */

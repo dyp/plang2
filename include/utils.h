@@ -12,22 +12,22 @@
 template<typename T>
 class Auto {
 public:
-    struct counted_t {
+    struct Counted {
         T * ptr;
         mutable size_t cRefs;
 
-        counted_t(T * _ptr) : ptr(_ptr), cRefs(1) {}
+        Counted(T * _ptr) : ptr(_ptr), cRefs(1) {}
 
 //        template<typename Q>
-//        counted_t(Q * _ptr) : ptr(static_cast<T *>(_ptr)), cRefs(1) {}
+//        Counted(Q * _ptr) : ptr(static_cast<T *>(_ptr)), cRefs(1) {}
 
-        ~counted_t() { if (ptr) delete ptr; }
+        ~Counted() { if (ptr) delete ptr; }
     };
 
 //public:
-//    Auto() : m_pObj(new counted_t(new T)) {}
-    Auto() : m_pObj(new counted_t(NULL)) {}
-//    Auto(const T & _value) : m_pObj(new counted_t(new T(_value))) {}
+//    Auto() : m_pObj(new Counted(new T)) {}
+    Auto() : m_pObj(new Counted(NULL)) {}
+//    Auto(const T & _value) : m_pObj(new Counted(new T(_value))) {}
     Auto(const Auto & _other) : m_pObj(_other.m_pObj) { ++ m_pObj->cRefs; }
 
     template<typename Q>
@@ -35,13 +35,13 @@ public:
 //        Q * q = _other.m_pObj->ptr;
 //        T * t = dynamic_cast<T *> (q);
         if (_other.m_pObj == NULL || _other.m_pObj->ptr == NULL || dynamic_cast<T *> (_other.m_pObj->ptr) != NULL)
-            m_pObj = (counted_t *) _other.m_pObj;
+            m_pObj = (Counted *) _other.m_pObj;
         else
             assert(false);
         ++ m_pObj->cRefs;
     }
 
-    Auto(T * _ptr) : m_pObj(new counted_t(_ptr)) {}
+    Auto(T * _ptr) : m_pObj(new Counted(_ptr)) {}
     ~Auto() { release(); }
 
     Auto & operator =(const Auto & _other) {
@@ -73,7 +73,7 @@ public:
     bool empty() const { return m_pObj->ptr == NULL; }
 
 //private:
-    counted_t * m_pObj;
+    Counted * m_pObj;
 
     void release() {
         -- m_pObj->cRefs;

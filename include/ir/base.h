@@ -4,14 +4,14 @@
 /// \mainpage Internal representation reference
 ///
 /// \section sec_root_classes Root classes
-/// \subsection sec_CNode CNode : Base class for all internal representation objects
-/// \copydetails ir::CNode
+/// \subsection sec_Node Node : Base class for all internal representation objects
+/// \copydetails ir::Node
 ///
-/// \subsection sec_CPragma CPragma : Compiler directive
-/// \copydetails ir::CPragma
+/// \subsection sec_Pragma Pragma : Compiler directive
+/// \copydetails ir::Pragma
 ///
-/// \subsection sec_CNumber CNumber : Representation of numeric literals
-/// \copydetails CNumber
+/// \subsection sec_Number Number : Representation of numeric literals
+/// \copydetails Number
 ///
 /// \section sec_other_classes Other classes
 /// Please follow Classes or Files link to see complete documentation.
@@ -28,7 +28,7 @@ namespace ir {
 
 /// Base class for all internal representation objects.
 ///
-/// Purpose of CNode class is to provide management of deallocation of IR objects
+/// Purpose of Node class is to provide management of deallocation of IR objects
 /// and to hold description of object context.
 ///
 /// IR object can have it's parent assigned by some set*() call of another node
@@ -41,45 +41,68 @@ namespace ir {
 /// call setParent(NULL) on this object. That way manual deallocation management
 /// of this object is assumed until it is deleted or adopted by a new parent.
 ///
-/// CNode class also contains a (possibly NULL) pointer to list of pragmas
+/// Node class also contains a (possibly NULL) pointer to list of pragmas
 /// relevant to the node's location in source code.
 ///
-class CNode {
+class Node {
 public:
+    /// Node kind.
+    enum {
+        NONE,
+        COLLECTION,
+        TYPE,
+        NAMED_VALUE,
+        STATEMENT,
+        EXPRESSION,
+        MODULE,
+        CLASS,
+        LABEL,
+        MESSAGE,
+        PROCESS,
+        UNION_CONSTRUCTOR_DECLARATION,
+        ELEMENT_DEFINITION,
+        STRUCT_FIELD_DEFINITION,
+        ARRAY_PART_DEFINITION,
+        SWITCH_CASE,
+        MESSAGE_HANDLER,
+    };
+
     /// Default constructor.
-    CNode() : m_pParent(NULL) /*, m_pPragmas(NULL)*/ {}
+    Node() : m_pParent(NULL) /*, m_pPragmas(NULL)*/ {}
 
     /// Destructor.
-    virtual ~CNode() {}
+    virtual ~Node() {}
+
+    virtual int getNodeKind() const { return NONE; }
 
     /// Get pointer to parent.
     /// \return Parent of the parent node.
-    CNode * getParent() const { return m_pParent; }
+    Node * getParent() const { return m_pParent; }
 
     /// Set new parent for the node. Removes the node from the list children of
     /// it's former parent.
     /// \param _pParent New parent.
-    void setParent(CNode * _pParent) const { m_pParent = _pParent; }
+    void setParent(Node * _pParent) const { m_pParent = _pParent; }
 /*
     /// Get assosciated pragmas.
     /// \return Pointer to pragma context relevant for the node.
-    const CPragmaGroup * getPragmas() const {
+    const PragmaGroup * getPragmas() const {
         return (m_pPragmas || ! m_pParent) ? m_pPragmas : m_pParent->getPragmas();
     }
 
     /// Set pragma context relevant for the node.
     /// \param _pPragmas Pointer to the list of pragmas. Should point to the
-    ///   object stored in CModule.
-    /// \see CModule
-    void setPragmas(const CPragmaGroup * _pPragmas) { m_pPragmas = _pPragmas; }
+    ///   object stored in Module.
+    /// \see Module
+    void setPragmas(const PragmaGroup * _pPragmas) { m_pPragmas = _pPragmas; }
 */
 protected:
-    mutable CNode * m_pParent;
-//    const CPragmaGroup * m_pPragmas;
+    mutable Node * m_pParent;
+//    const PragmaGroup * m_pPragmas;
 
     /// Delete _pChild if it's parent is this node or NULL.
     /// \param _pChild Node to delete.
-    void _delete(CNode * _pChild) const {
+    void _delete(Node * _pChild) const {
 //        if (_pChild != NULL && _pChild->getParent() == this)
 //            delete _pChild;
     }
@@ -105,19 +128,25 @@ protected:
 /// Provides functionality to add, replace and remove objects of class _Node.
 ///
 /// \param _Node Class of elements.
-/// \param _Base Base class of the result (default is CNode).
+/// \param _Base Base class of the result (default is Node).
 ///
 /// The elements are stored in separate list than children and are not required
 /// to be the children of the collection.
-template<class _Node, class _Base = CNode>
-class CCollection : public _Base {
+template<class _Node, class _Base = Node>
+class Collection : public _Base {
 public:
     /// Default constructor.
-    CCollection() {}
+    Collection() {}
 
-    virtual ~CCollection() {
+    virtual ~Collection() {
         for (size_t i = size(); i > 0; -- i)
             _delete(get(i - 1));
+    }
+
+    virtual int getNodeKind() const {
+        if (_Base::getNodeKind() != Node::NONE)
+            return _Base::getNodeKind();
+        return Node::COLLECTION;
     }
 
     /// Get element count.
@@ -148,7 +177,7 @@ public:
     /// \param _other Other collection.
     /// \param _bReparent If specified (default) also sets parent of new nodes to this node.
     template<typename _OtherNode>
-    void append(const CCollection<_OtherNode> & _other, bool _bReparent = true) {
+    void append(const Collection<_OtherNode> & _other, bool _bReparent = true) {
         for (size_t i = 0; i < _other.size(); ++ i)
             add(_other.get(i), _bReparent);
     }
@@ -193,71 +222,73 @@ private:
     std::vector<void *> m_nodes;
 };
 
-class CType;
+class Type;
 
-typedef std::map<CType *, CType *> TypeSubst;
+typedef std::map<Type *, Type *> TypeSubst;
 
 /// Virtual ancestor of all types.
-class CType : public CNode {
+class Type : public Node {
 public:
     /// Type kind.
     enum {
         /// Fresh type (for typechecking purposes).
-        Fresh,
+        FRESH,
         /// Unit type (\c nil, (), [], etc.)
-        Unit,
+        UNIT,
         /// \c nat type. Use getBits() and setBits() to access bitness.
-        Nat,
+        NAT,
         /// \c int type. Use getBits() and setBits() to access bitness.
-        Int,
+        INT,
         /// \c real type. Use getBits() and setBits() to access bitness.
-        Real,
+        REAL,
         /// \c bool type.
-        Bool,
+        BOOL,
         /// \c char type.
-        Char,
+        CHAR,
         /// \c string type.
-        String,
+        STRING,
         /// \c var type. Actual type should be determined at typechecking phase.
-        Generic,
-        /// \c type type. Used as predicate or type parameter only. Can be cast to CTypeType.
-        Type,
-        /// \c enum type. Can be cast to CEnumType.
-        Enum,
-        /// Struct type. Can be cast to CStructType.
-        Struct,
-        /// Union type. Can be cast to CUnionType.
-        Union,
-        /// Optional type. Can be cast to COptionalType. (deprecated)
-        Optional,
-        /// Sequence type. Can be cast to CSeqType. (deprecated)
-        Seq,
-        /// Array type. Can be cast to CArrayType.
-        Array,
-        /// Set type. Can be cast to CSetType.
-        Set,
-        /// Map type. Can be cast to CMapType.
-        Map,
-        /// List type. Can be cast to CListType.
-        List,
-        /// Subtype. Can be cast to CSubtype.
-        Subtype,
-        /// Range. Can be cast to CRange.
-        Range,
-        /// Predicate type. Can be cast to CPredicateType.
-        Predicate,
-        /// Parameterized type. Can be cast to CParameterizedType.
-        Parameterized,
-        /// User-defined type referenced by name. Can be cast to CNamedReferenceType.
-        NamedReference,
+        GENERIC,
+        /// \c type type. Used as predicate or type parameter only. Can be cast to TypeType.
+        TYPE,
+        /// \c enum type. Can be cast to EnumType.
+        ENUM,
+        /// Struct type. Can be cast to StructType.
+        STRUCT,
+        /// Union type. Can be cast to UnionType.
+        UNION,
+        /// Optional type. Can be cast to OptionalType. (deprecated)
+        OPTIONAL,
+        /// Sequence type. Can be cast to SeqType. (deprecated)
+        SEQ,
+        /// Array type. Can be cast to ArrayType.
+        ARRAY,
+        /// Set type. Can be cast to SetType.
+        SET,
+        /// Map type. Can be cast to MapType.
+        MAP,
+        /// List type. Can be cast to ListType.
+        LIST,
+        /// Subtype. Can be cast to Subtype.
+        SUBTYPE,
+        /// Range. Can be cast to Range.
+        RANGE,
+        /// Predicate type. Can be cast to PredicateType.
+        PREDICATE,
+        /// Parameterized type. Can be cast to ParameterizedType.
+        PARAMETERIZED,
+        /// User-defined type referenced by name. Can be cast to NamedReferenceType.
+        NAMED_REFERENCE,
     };
 
     /// Initialize with kind.
     /// \param _kind One of built-in types (#Unit, #Int, #Nat, #Real, #Bool, #Char, #String, #Type or #Generic).
-    CType(int _kind, int _bits = 0) : m_kind(_kind), m_nBits(_bits) {}
+    Type(int _kind, int _bits = 0) : m_kind(_kind), m_nBits(_bits) {}
 
     /// Destructor.
-    virtual ~CType() {}
+    virtual ~Type() {}
+
+    virtual int getNodeKind() const { return Node::TYPE; }
 
     /// Get type kind.
     /// \return Specific kind.
@@ -272,45 +303,48 @@ public:
     void setBits(int _nBits) { m_nBits = _nBits; }
 
     enum {
-        OrdUnknown = 0x01,
-        OrdNone    = 0x02,
-        OrdSub     = 0x04,
-        OrdSuper   = 0x08,
-        OrdEquals  = 0x10,
+        ORD_UNKNOWN = 0x01,
+        ORD_NONE    = 0x02,
+        ORD_SUB     = 0x04,
+        ORD_SUPER   = 0x08,
+        ORD_EQUALS  = 0x10,
     };
 
-    virtual int compare(const CType & _other) const;
-    bool compare(const CType & _other, int _order) const;
+    virtual int compare(const Type & _other) const;
+    bool compare(const Type & _other, int _order) const;
 
     // For comparison/sorting only, no subtyping relation is implied.
-    bool operator <(const CType & _other) const;
-    bool operator ==(const CType & _other) const;
-    bool operator !=(const CType & _other) const;
-    virtual bool less(const CType & _other) const;
+    bool operator <(const Type & _other) const;
+    bool operator ==(const Type & _other) const;
+    bool operator !=(const Type & _other) const;
+    virtual bool less(const Type & _other) const;
 
-    /*bool operator ==(const CType & _other) const { return compare(_other) == OrdEquals; }
-    bool operator <(const CType & _other) const { return compare(_other) == OrdSub; }
-    bool operator <=(const CType & _other) const {
+    /*bool operator ==(const Type & _other) const { return compare(_other) == OrdEquals; }
+    bool operator <(const Type & _other) const { return compare(_other) == OrdSub; }
+    bool operator <=(const Type & _other) const {
         const int n = compare(_other);
         return n == OrdSub || n == OrdEquals;
     }*/
 
     // .second  is true if extremum doesn't exist.
-    typedef std::pair<CType *, bool> Extremum;
-    virtual Extremum getJoin(ir::CType & _other); // Supremum.
-    virtual Extremum getMeet(ir::CType & _other); // Infinum.
+    typedef std::pair<Type *, bool> Extremum;
+    virtual Extremum getJoin(ir::Type & _other); // Supremum.
+    virtual Extremum getMeet(ir::Type & _other); // Infinum.
 
-    virtual ir::CType * clone() const;
+    virtual ir::Type * clone() const;
     virtual bool hasFresh() const;
-    virtual bool rewrite(ir::CType * _pOld, ir::CType * _pNew) { return false; }
+    virtual bool rewrite(ir::Type * _pOld, ir::Type * _pNew) { return false; }
     virtual bool rewriteFlags(int _flags) { return false; }
 
-    virtual bool hasParameters() const { return m_kind == Int || m_kind == Nat || m_kind == Real; }
+    // Check if _pType is structurally contained.
+    virtual bool contains(const ir::Type *_pType) const { return false; }
+
+    virtual bool hasParameters() const { return m_kind == INT || m_kind == NAT || m_kind == REAL; }
 
 protected:
     /// Default constructor.
     /// Only descendant classes should use this.
-    CType() : m_kind (0), m_nBits(0) {}
+    Type() : m_kind (0), m_nBits(0) {}
 
 private:
     int m_kind;
@@ -319,45 +353,47 @@ private:
 
 /// Simple typed and named value.
 ///
-/// CNamedValue represents local and global variables, predicate parameters,
+/// NamedValue represents local and global variables, predicate parameters,
 /// type parameters, iterators, etc. Particular kind of the value can be
 /// determined by getKind.
-class CNamedValue : public CNode {
+class NamedValue : public Node {
 public:
     /// Kind of the value.
     enum {
         /// Simple combination of type and identifier (type parameters,
         /// iterators, etc.)
-        Generic,
-        /// Predicate parameter. The object can be cast to CParam if needed.
-        EnumValue,
-        /// Predicate parameter. The object can be cast to CParam if needed.
-        PredicateParameter,
+        GENERIC,
+        /// Predicate parameter. The object can be cast to Param if needed.
+        ENUM_VALUE,
+        /// Predicate parameter. The object can be cast to Param if needed.
+        PREDICATE_PARAMETER,
         /// Local variable.
-        Local,
+        LOCAL,
         /// Global variable.
-        Global
+        GLOBAL
      };
 
     /// Default constructor.
-    CNamedValue() : m_pType(NULL), m_strName(L"") {}
+    NamedValue() : m_pType(NULL), m_strName(L"") {}
 
     /// Constructor for initializing using name.
     /// \param _strName Identifier.
     /// \param _pType Type associated with value.
     /// \param _bReparent If specified (default) also sets parent of _pType to this node.
-    CNamedValue(const std::wstring & _strName, CType * _pType = NULL, bool _bReparent = true)
+    NamedValue(const std::wstring & _strName, Type * _pType = NULL, bool _bReparent = true)
         : m_pType(NULL), m_strName(_strName)
     {
         _assign(m_pType, _pType, _bReparent);
     }
 
     /// Destructor.
-    virtual ~CNamedValue() { _delete(m_pType); }
+    virtual ~NamedValue() { _delete(m_pType); }
+
+    virtual int getNodeKind() const { return Node::NAMED_VALUE; }
 
     /// Get value kind.
     /// \returns Value kind (#Generic, #PredicateParameter, #Local or #Global).
-    virtual int getKind() const { return Generic; }
+    virtual int getKind() const { return GENERIC; }
 
     /// Get name of the value.
     /// \returns Identifier.
@@ -369,17 +405,17 @@ public:
 
     /// Get type of the value.
     /// \returns Type associated with value.
-    CType * getType() const { return m_pType; }
+    Type * getType() const { return m_pType; }
 
     /// Set type of the value.
     /// \param _pType Type associated with value.
     /// \param _bReparent If specified (default) also sets parent of _pType to this node.
-    void setType(CType * _pType, bool _bReparent = true) {
+    void setType(Type * _pType, bool _bReparent = true) {
         _assign(m_pType, _pType, _bReparent);
     }
 
 private:
-    CType * m_pType;
+    Type * m_pType;
     std::wstring m_strName;
 };
 
@@ -388,32 +424,32 @@ private:
 /// Offers a possibility to specify linked parameter. Consider:
 /// \code foo (int x : int x') \endcode
 /// In the above declaration parameters \c x and \c x' are linked.
-class CParam : public CNamedValue {
+class Param : public NamedValue {
 public:
     /// Default constructor.
-    CParam() : m_pLinkedParam(NULL), m_bOutput(false) {}
+    Param() : m_pLinkedParam(NULL), m_bOutput(false) {}
 
     /// Constructor for initializing using name.
     /// \param _strName Identifier.
     /// \param _pType Type associated with value.
     /// \param _bReparent If specified (default) also sets parent of _pType to this node.
-    CParam(const std::wstring & _strName, CType * _pType = NULL, bool _bReparent = true)
-        : CNamedValue(_strName, _pType, _bReparent), m_pLinkedParam(NULL), m_bOutput(false) {}
+    Param(const std::wstring & _strName, Type * _pType = NULL, bool _bReparent = true)
+        : NamedValue(_strName, _pType, _bReparent), m_pLinkedParam(NULL), m_bOutput(false) {}
 
     /// Destructor.
-    virtual ~CParam() {}
+    virtual ~Param() {}
 
     /// Get value kind.
     /// \returns #PredicateParameter.
-    virtual int getKind() const { return PredicateParameter; }
+    virtual int getKind() const { return PREDICATE_PARAMETER; }
 
     /// Get pointer to (constant) linked parameter.
     /// \returns Linked parameter.
-    const CParam * getLinkedParam() const { return m_pLinkedParam; }
+    const Param * getLinkedParam() const { return m_pLinkedParam; }
 
     /// Set linked parameter pointer.
     /// \param _pParam Linked parameter.
-    void setLinkedParam(const CParam * _pParam) { m_pLinkedParam = _pParam; }
+    void setLinkedParam(const Param * _pParam) { m_pLinkedParam = _pParam; }
 
     /// Check if a linked parameter is needed.
     /// \returns True if a linked parameter is needed, false otherwise.
@@ -424,34 +460,36 @@ public:
     void setOutput(bool _bValue) { m_bOutput = _bValue; }
 
 private:
-    const CParam * m_pLinkedParam;
+    const Param * m_pLinkedParam;
     bool m_bOutput;
 };
 
 /// Collection of predicate parameters.
-/// \extends CNode
-class CParams : public CCollection<CParam> {
+/// \extends Node
+class Params : public Collection<Param> {
 };
 
 /// Collection of generic named values (e.g. type parameters).
-/// \extends CNode
-class CNamedValues : public CCollection<CNamedValue> {
+/// \extends Node
+class NamedValues : public Collection<NamedValue> {
 };
 
 /// Named label used to specify return branch.
 /// \code foo (int x : #ok : #error) \endcode
 /// In the above declaration parameters \c \#ok and \c \#error are labels.
-class CLabel : public CNode {
+class Label : public Node {
 public:
     /// Default constructor.
-    CLabel() : m_strName(L"") {}
+    Label() : m_strName(L"") {}
 
     /// Constructor for initializing using name.
     /// \param _strName Label name.
-    CLabel(const std::wstring & _strName) : m_strName(_strName) {}
+    Label(const std::wstring & _strName) : m_strName(_strName) {}
 
     /// Destructor.
-    virtual ~CLabel() {}
+    virtual ~Label() {}
+
+    virtual int getNodeKind() const { return Node::LABEL; }
 
     /// Get name of the value.
     /// \returns Label name.
@@ -466,67 +504,69 @@ private:
 };
 
 /// Virtual ancestor of all statements.
-class CStatement : public CNode {
+class Statement : public Node {
 public:
     /// Statement kind.
     enum {
         /// Statement that does nothing (appears if a label is placed at the end of block).
-        Nop,
-        /// A block of statements. Can be cast to CBlock.
-        Block,
-        /// Collection of statements that can be executed simultaneously. Can be cast to CParallelBlock.
-        ParallelBlock,
-        /// Jump statement. Can be cast to CJump.
-        Jump,
-        /// Assignment. Can be cast to CAssignment.
-        Assignment,
-        /// Multiassignment. Can be cast to CMultiassignment.
-        Multiassignment,
-        /// Predicate call. Can be cast to CCall.
-        Call,
-        /// Switch statement. Can be cast to CSwitch.
-        Switch,
-        /// Conditional statement. Can be cast to CIf.
-        If,
-        /// Imperative for-loop. Can be cast to CFor.
-        For,
-        /// Imperative while-loop. Can be cast to CWhile.
-        While,
-        /// Imperative break statement. Can be cast to CBreak.
-        Break,
-        /// Synchronized statement header. Can be cast to CWith.
-        With,
-        /// Receive message statement. Can be cast to CReceive.
-        Receive,
-        /// Send message statement. Can be cast to CSend.
-        Send,
-        /// Declaration of a user-defined type. Can be cast to CTypeDeclaration.
-        TypeDeclaration,
-        /// Declaration of a variable. Can be cast to CVariableDeclaration.
-        VariableDeclaration,
-        /// Declaration of a formula. Can be cast to CFormulaDeclaration.
-        FormulaDeclaration,
-        /// Declaration of a (nested) predicate. Can be cast to CPredicate.
-        PredicateDeclaration,
+        NOP,
+        /// A block of statements. Can be cast to Block.
+        BLOCK,
+        /// Collection of statements that can be executed simultaneously. Can be cast to ParallelBlock.
+        PARALLEL_BLOCK,
+        /// Jump statement. Can be cast to Jump.
+        JUMP,
+        /// Assignment. Can be cast to Assignment.
+        ASSIGNMENT,
+        /// Multiassignment. Can be cast to Multiassignment.
+        MULTIASSIGNMENT,
+        /// Predicate call. Can be cast to Call.
+        CALL,
+        /// Switch statement. Can be cast to Switch.
+        SWITCH,
+        /// Conditional statement. Can be cast to If.
+        IF,
+        /// Imperative for-loop. Can be cast to For.
+        FOR,
+        /// Imperative while-loop. Can be cast to While.
+        WHILE,
+        /// Imperative break statement. Can be cast to Break.
+        BREAK,
+        /// Synchronized statement header. Can be cast to With.
+        WITH,
+        /// Receive message statement. Can be cast to Receive.
+        RECEIVE,
+        /// Send message statement. Can be cast to Send.
+        SEND,
+        /// Declaration of a user-defined type. Can be cast to TypeDeclaration.
+        TYPE_DECLARATION,
+        /// Declaration of a variable. Can be cast to VariableDeclaration.
+        VARIABLE_DECLARATION,
+        /// Declaration of a formula. Can be cast to FormulaDeclaration.
+        FORMULA_DECLARATION,
+        /// Declaration of a (nested) predicate. Can be cast to Predicate.
+        PREDICATE_DECLARATION,
     };
 
     /// Default constructor.
-    CStatement() : m_pLabel(NULL) {}
+    Statement() : m_pLabel(NULL) {}
 
-    virtual ~CStatement() { _delete(m_pLabel); }
+    virtual ~Statement() { _delete(m_pLabel); }
+
+    virtual int getNodeKind() const { return Node::STATEMENT; }
 
     /// Get statement kind.
     /// \returns Statement kind.
-    virtual int getKind() const { return Nop; }
+    virtual int getKind() const { return NOP; }
 
     /// Get optional label that can be associated with the statement.
     /// \return Label pointer (possibly NULL).
-    CLabel * getLabel() const { return m_pLabel; }
+    Label * getLabel() const { return m_pLabel; }
 
     /// Associated a label with the statement.
     /// \param _pLabel Label pointer (possibly NULL).
     /// \param _bReparent If specified (default) also sets parent of _pLabel to this node.
-    void setLabel(CLabel * _pLabel, bool _bReparent = true) {
+    void setLabel(Label * _pLabel, bool _bReparent = true) {
         _assign(m_pLabel, _pLabel, _bReparent);
     }
 
@@ -535,20 +575,20 @@ public:
     virtual bool isBlockLike() const { return false; }
 
 private:
-    CLabel * m_pLabel;
+    Label * m_pLabel;
 };
 
 /// Block of statements (statements surrounded by curly braces in source code).
-/// Use CCollection methods to access statements inside of block.
-/// \extends CStatement
-class CBlock : public CCollection<CStatement, CStatement> {
+/// Use Collection methods to access statements inside of block.
+/// \extends Statement
+class Block : public Collection<Statement, Statement> {
 public:
     /// Default constructor.
-    CBlock() {}
+    Block() {}
 
     /// Get statement kind.
     /// \returns #Block.
-    virtual int getKind() const { return Block; }
+    virtual int getKind() const { return BLOCK; }
 
     // Check if the statement ends like a block (i.e. separating semicolon is not needed).
     // \return True.
@@ -556,23 +596,23 @@ public:
 };
 
 /// Collection of statements that can be executed simultaneously.
-class CParallelBlock : public CBlock {
+class ParallelBlock : public Block {
 public:
     /// Default constructor.
-    CParallelBlock() {}
+    ParallelBlock() {}
 
     /// Get statement kind.
     /// \returns #ParallelBlock.
-    virtual int getKind() const { return ParallelBlock; }
+    virtual int getKind() const { return PARALLEL_BLOCK; }
 
     // Check if the statement ends like a block (i.e. separating semicolon is not needed).
     // \return False.
     virtual bool isBlockLike() const { return false; }
 };
 
-bool isTypeVariable(const CNamedValue *_pVar, const CType *&_pType);
+bool isTypeVariable(const NamedValue *_pVar, const Type *&_pType);
 
-const CType *resolveBaseType(const CType *_pType);
+const Type *resolveBaseType(const Type *_pType);
 
 } // namespace ir
 

@@ -13,28 +13,28 @@
 #include <map>
 #include <set>
 
-struct message_t {
+struct StatusMessage {
     enum { Warning, Error };
     int kind;
-    lexer::CToken where;
+    lexer::Token where;
     std::wstring str;
 
-    message_t() : kind(0) {}
-    message_t(int _kind, const lexer::CToken & _where, const std::wstring & _str)
+    StatusMessage() : kind(0) {}
+    StatusMessage(int _kind, const lexer::Token & _where, const std::wstring & _str)
         : kind(_kind), where(_where), str(_str) {}
 };
 
-std::wostream & operator << (std::wostream & _os, const message_t & _msg);
+std::wostream & operator << (std::wostream & _os, const StatusMessage & _msg);
 
-typedef std::list<message_t> messages_t;
+typedef std::list<StatusMessage> StatusMessages;
 
 /// Compiler directive.
 /// Following pragmas are supported: int_bitness, real_bitness, overflow.
-class CPragma : public ir::CNode {
+class Pragma : public ir::Node {
 public:
     /// Kind of compiler directive.
     /// Currently only bit size of primitive types and overflow handling can be
-    /// specified. Passed as a parameter to CPragma constructor.
+    /// specified. Passed as a parameter to Pragma constructor.
     enum {
         IntBitness  = 0x01, ///< pragma(int_bitness, ...)
         RealBitness = 0x02, ///< pragma(real_bitness, ...)
@@ -42,7 +42,7 @@ public:
         PragmaMask  = 0xFF
     };
 
-    CPragma() : m_fields(0), m_intBitness(0), m_realBitness(0) {}
+    Pragma() : m_fields(0), m_intBitness(0), m_realBitness(0) {}
 
     /// Check if specific pragma is set.
     /// \param _flag One of #IntBitness, #RealBitness or #Overflow.
@@ -72,53 +72,53 @@ public:
 
     /// Get or set overflow strategy.
     /// \return Reference to overflow handling descriptor.
-    ir::COverflow & overflow() { return m_overflow; }
+    ir::Overflow & overflow() { return m_overflow; }
 
     /// Get overflow strategy.
     /// \return Reference to overflow handling descriptor.
-    const ir::COverflow & overflow() const { return m_overflow; }
+    const ir::Overflow & overflow() const { return m_overflow; }
 
 private:
     int m_fields;
     int m_intBitness;
     int m_realBitness;
-    ir::COverflow m_overflow;
+    ir::Overflow m_overflow;
 };
 
-class CContext {
+class Context {
 public:
-    typedef std::multimap<std::wstring, ir::CPredicate *> predicate_map_t;
-    typedef std::map<std::wstring, ir::CNamedValue *> variable_map_t;
-    typedef std::map<std::wstring, ir::CTypeDeclaration *> type_map_t;
-    typedef std::map<std::wstring, ir::CLabel *> label_map_t;
-    typedef std::map<std::wstring, ir::CProcess *> process_map_t;
-    typedef std::map<std::wstring, ir::CFormulaDeclaration *> formula_map_t;
-    typedef std::multimap<std::wstring, ir::CUnionConstructorDefinition *> cons_map_t;
-    typedef std::list<ir::CNode *> nodes_t;
+    typedef std::multimap<std::wstring, ir::Predicate *> PredicateMap;
+    typedef std::map<std::wstring, ir::NamedValue *> VariableMap;
+    typedef std::map<std::wstring, ir::TypeDeclaration *> TypeMap;
+    typedef std::map<std::wstring, ir::Label *> LabelMap;
+    typedef std::map<std::wstring, ir::Process *> ProcessMap;
+    typedef std::map<std::wstring, ir::FormulaDeclaration *> FormulaMap;
+    typedef std::multimap<std::wstring, ir::UnionConstructorDeclaration *> ConsMap;
+    typedef std::list<ir::Node *> Nodes;
 
 public:
-    CContext(lexer::loc_t _loc, bool _bScope = false)
+    Context(lexer::Loc _loc, bool _bScope = false)
         : m_loc(_loc), m_bScope(_bScope), m_pChild(NULL), m_pParent(NULL), m_pFailed(NULL),
           m_predicates(NULL), m_variables(NULL), m_types(NULL), m_labels(NULL),
           m_processes(NULL), m_formulas(NULL), m_constructors(NULL), m_bFailed(false), m_pCons(NULL)
     {}
 
-    ~CContext();
+    ~Context();
 
-    CContext * getParent() const { return m_pParent; }
-    void setParent(CContext * _pParent) { m_pParent = _pParent; }
+    Context * getParent() const { return m_pParent; }
+    void setParent(Context * _pParent) { m_pParent = _pParent; }
 
-    CContext * getChild() const { return m_pChild; }
-    void setChild(CContext * _pChild) { m_pChild = _pChild; }
+    Context * getChild() const { return m_pChild; }
+    void setChild(Context * _pChild) { m_pChild = _pChild; }
 
-    CContext * createChild(bool _bScope = false);
+    Context * createChild(bool _bScope = false);
 
     void mergeChildren(bool _bMergeFailed = false);
 
     template<class _Node>
     inline _Node * attach(_Node * _node);
 
-    lexer::loc_t & loc() { return m_loc; }
+    lexer::Loc & loc() { return m_loc; }
 
     const std::wstring & getValue() const { return m_loc->getValue(); }
 
@@ -136,8 +136,8 @@ public:
     bool nextIn(int _t1, int _t2 = -1, int _t3 = -1, int _t4 = -1, int _t5 = -1, int _t6 = -1) const
         { return lexer::in(next(m_loc), _t1, _t2, _t3, _t4, _t5, _t6); }
 
-    CContext & operator ++ () { ++ m_loc; return * this; }
-    CContext & operator -- () { -- m_loc; return * this; }
+    Context & operator ++ () { ++ m_loc; return * this; }
+    Context & operator -- () { -- m_loc; return * this; }
 
     bool consume(int _token1, int _token2 = -1, int _token3 = -1, int _token4 = -1);
 
@@ -149,69 +149,69 @@ public:
 
     void fmtError(const wchar_t * _strFmt, ...);
 
-    const messages_t & getMessages() const { return m_messages; }
+    const StatusMessages & getMessages() const { return m_messages; }
 
     bool getPredicates(const std::wstring & _strName, ir::Predicates & _predicates) const;
-    ir::CPredicate * getPredicate(const std::wstring & _strName) const;
-    void addPredicate(ir::CPredicate * _pPred);
+    ir::Predicate * getPredicate(const std::wstring & _strName) const;
+    void addPredicate(ir::Predicate * _pPred);
 
-    ir::CNamedValue * getVariable(const std::wstring & _strName, bool _bLocal = false) const;
-    void addVariable(ir::CNamedValue * _pVar);
+    ir::NamedValue * getVariable(const std::wstring & _strName, bool _bLocal = false) const;
+    void addVariable(ir::NamedValue * _pVar);
 
-    ir::CTypeDeclaration * getType(const std::wstring & _strName) const;
-    void addType(ir::CTypeDeclaration * _pType);
+    ir::TypeDeclaration * getType(const std::wstring & _strName) const;
+    void addType(ir::TypeDeclaration * _pType);
 
-    ir::CLabel * getLabel(const std::wstring & _strName) const;
-    void addLabel(ir::CLabel * _pLabel);
+    ir::Label * getLabel(const std::wstring & _strName) const;
+    void addLabel(ir::Label * _pLabel);
 
-    ir::CProcess * getProcess(const std::wstring & _strName) const;
-    void addProcess(ir::CProcess * _pProcess);
+    ir::Process * getProcess(const std::wstring & _strName) const;
+    void addProcess(ir::Process * _pProcess);
 
-    ir::CFormulaDeclaration * getFormula(const std::wstring & _strName) const;
-    void addFormula(ir::CFormulaDeclaration * _pFormula);
+    ir::FormulaDeclaration * getFormula(const std::wstring & _strName) const;
+    void addFormula(ir::FormulaDeclaration * _pFormula);
 
-    bool getConstructors(const std::wstring & _strName, ir::CUnionConstructorDefinitions & _cons) const;
-    ir::CUnionConstructorDefinition * getConstructor(const std::wstring & _strName) const;
-    void addConstructor(ir::CUnionConstructorDefinition * _pCons);
+    bool getConstructors(const std::wstring & _strName, ir::UnionConstructorDeclarations & _cons) const;
+    ir::UnionConstructorDeclaration * getConstructor(const std::wstring & _strName) const;
+    void addConstructor(ir::UnionConstructorDeclaration * _pCons);
 
     // Constructor-parsing stuff.
-    ir::CUnionConstructor * getCurrentConstructor() const { return m_pCons ? m_pCons : (m_pParent ? m_pParent->getCurrentConstructor() : NULL); }
-    void setCurrentConstructor(ir::CUnionConstructor * _pCons) { m_pCons = _pCons; }
+    ir::UnionConstructor * getCurrentConstructor() const { return m_pCons ? m_pCons : (m_pParent ? m_pParent->getCurrentConstructor() : NULL); }
+    void setCurrentConstructor(ir::UnionConstructor * _pCons) { m_pCons = _pCons; }
 
     bool isScope() const { return m_bScope; }
 
     void fail() { m_bFailed = true; }
     bool failed() const { return m_bFailed; }
 
-    CPragma & getPragma() { return m_pragma; }
+    Pragma & getPragma() { return m_pragma; }
 
     int getIntBits() const;
     int getRealBits() const;
-    const ir::COverflow & getOverflow() const;
+    const ir::Overflow & getOverflow() const;
 
 private:
-    lexer::loc_t m_loc;
+    lexer::Loc m_loc;
     bool m_bScope;
-    CContext * m_pChild, * m_pParent, * m_pFailed;
-    messages_t m_messages;
-    predicate_map_t * m_predicates;
-    variable_map_t * m_variables;
-    type_map_t * m_types;
-    label_map_t * m_labels;
-    process_map_t * m_processes;
-    formula_map_t * m_formulas;
-    cons_map_t * m_constructors;
-    nodes_t m_nodes;
+    Context * m_pChild, * m_pParent, * m_pFailed;
+    StatusMessages m_messages;
+    PredicateMap * m_predicates;
+    VariableMap * m_variables;
+    TypeMap * m_types;
+    LabelMap * m_labels;
+    ProcessMap * m_processes;
+    FormulaMap * m_formulas;
+    ConsMap * m_constructors;
+    Nodes m_nodes;
     bool m_bFailed;
-    CPragma m_pragma;
-    ir::CUnionConstructor * m_pCons;
+    Pragma m_pragma;
+    ir::UnionConstructor * m_pCons;
 
-    void mergeTo(CContext * _pCtx, bool _bMergeFailed);
+    void mergeTo(Context * _pCtx, bool _bMergeFailed);
     void cleanAdopted();
 };
 
 template<class _Node>
-inline _Node * CContext::attach(_Node * _node) {
+inline _Node * Context::attach(_Node * _node) {
     if (_node && ! _node->getParent())
         m_nodes.push_back(_node);
 

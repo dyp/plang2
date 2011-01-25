@@ -10,19 +10,19 @@
 
 namespace ir {
 
-class CType;
+class Type;
 
 /// Overflow handling description.
-class COverflow {
+class Overflow {
 public:
     enum {
-        Saturate,
-        Strict,
-        Return,
-        Wrap,
+        SATURATE,
+        STRICT,
+        RETURN,
+        WRAP,
     };
 
-    COverflow() : m_overflow(Wrap), m_pLabel(NULL) {}
+    Overflow() : m_overflow(WRAP), m_pLabel(NULL) {}
 
     /// Get overflow handling strategy.
     /// \return Overflow handling strategy.
@@ -31,78 +31,80 @@ public:
     /// Set overflow handling strategy.
     /// \param _overflow Overflow handling strategy.
     /// \param _pLabel return label (optional).
-    void set(int _overflow, const CLabel * _pLabel = NULL) { m_overflow = _overflow; m_pLabel = _pLabel; }
+    void set(int _overflow, const Label * _pLabel = NULL) { m_overflow = _overflow; m_pLabel = _pLabel; }
 
     /// Set overflow handling strategy.
     /// \param _overflow Overflow handling strategy and (optionally) return label.
-    void set(const COverflow & _other) { set(_other.get(), _other.getLabel()); }
+    void set(const Overflow & _other) { set(_other.get(), _other.getLabel()); }
 
-    /// \return Pointer to CLabel object (assuming type is IntOverflow or
+    /// \return Pointer to Label object (assuming type is IntOverflow or
     ///     RealOverflow and overflow handling strategy is Label.)
-    const CLabel * getLabel() const { return m_pLabel; }
+    const Label * getLabel() const { return m_pLabel; }
 
 private:
     int m_overflow;
-    const CLabel * m_pLabel;
+    const Label * m_pLabel;
 };
 
 /// Virtual ancestor of all expressions.
-class CExpression : public CNode {
+class Expression : public Node {
 public:
     /// Kind of the expression.
     enum {
         /// Numeric, character, string or unit literal.
-        /// The object can be cast to CLiteral.
-        Literal,
+        /// The object can be cast to Literal.
+        LITERAL,
         /// Variable or parameter.
-        /// The object can be cast to CVariableReference.
-        Var,
+        /// The object can be cast to VariableReference.
+        VAR,
         /// Predicate reference.
-        /// The object can be cast to CPredicateReference.
-        Predicate,
+        /// The object can be cast to PredicateReference.
+        PREDICATE,
         /// Unary expression.
-        /// The object can be cast to CUnary.
-        Unary,
+        /// The object can be cast to Unary.
+        UNARY,
         /// Binary expression.
-        /// The object can be cast to CBinary.
-        Binary,
+        /// The object can be cast to Binary.
+        BINARY,
         /// Ternary expression.
-        /// The object can be cast to CTernary.
-        Ternary,
+        /// The object can be cast to Ternary.
+        TERNARY,
         /// Type expression.
-        /// The object can be cast to CTypeExpr.
-        Type,
+        /// The object can be cast to TypeExpr.
+        TYPE,
         /// Struct field, or subscript of array, sequence, list or map.
-        /// The object can be cast to CComponent.
-        Component,
+        /// The object can be cast to Component.
+        COMPONENT,
         /// Function call.
-        /// The object can be cast to CFunctionCall.
-        FunctionCall,
+        /// The object can be cast to FunctionCall.
+        FUNCTION_CALL,
         /// Formula call.
-        /// The object can be cast to CFunctionCall.
-        FormulaCall,
+        /// The object can be cast to FunctionCall.
+        FORMULA_CALL,
         /// Anonymous function.
-        /// The object can be cast to CLambda.
-        Lambda,
+        /// The object can be cast to Lambda.
+        LAMBDA,
         /// Partially applied predicate.
-        /// The object can be cast to CBinder.
-        Binder,
+        /// The object can be cast to Binder.
+        BINDER,
         /// Precondition or postcondition formula.
-        /// The object can be cast to CFormula.
-        Formula,
+        /// The object can be cast to Formula.
+        FORMULA,
         /// Struct, array, sequence, set, list or map constructor.
-        /// The object can be cast to CConstructor.
-        Constructor,
+        /// The object can be cast to Constructor.
+        CONSTRUCTOR,
         /// Cast expression.
-        /// The object can be cast to CCastExpr.
-        Cast,
+        /// The object can be cast to CastExpr.
+        CAST,
     };
 
     /// Default constructor.
-    CExpression () : m_pType(NULL) {}
+    Expression() : m_pType(NULL) {}
 
     /// Destructor.
-    virtual ~CExpression() { _delete(m_pType); }
+    virtual ~Expression() { _delete(m_pType); }
+
+    virtual int getNodeKind() const { return Node::EXPRESSION; }
 
     /// Get expression kind.
     /// \returns Expression kind.
@@ -110,74 +112,74 @@ public:
 
     /// Get type of the expression.
     /// \returns Type associated with expression.
-    virtual CType * getType() const { return m_pType; }
+    virtual Type * getType() const { return m_pType; }
 
     /// Set type of the expression.
     /// \param _pType Type associated with expression.
     /// \param _bReparent If specified (default) also sets parent of _pType to this node.
-    void setType(CType * _pType, bool _bReparent = true) {
+    void setType(Type * _pType, bool _bReparent = true) {
         _assign(m_pType, _pType, _bReparent);
     }
 
 private:
-    CType * m_pType;
+    Type * m_pType;
 };
 
 /// Representation of nil and numeric, character and string literals.
-class CLiteral : public CExpression {
+class Literal : public Expression {
 public:
     /// Kind of the literal.
     enum {
         /// Unit literal (\c nil or empty constructor).
-        Unit,
+        UNIT,
         /// Numeric literal. Use getNumber() and setNumber() accessors.
-        Number,
+        NUMBER,
         /// Boolean literal. Use getBool() and setBool() accessors.
-        Bool,
+        BOOL,
         /// Character literal. Use getChar() and setChar() accessors.
-        Char,
+        CHAR,
         /// String literal. Use getString() and setString() accessors.
-        String
+        STRING
     };
 
     /// Default constructor.
-    CLiteral () : m_literalKind(Unit) {}
+    Literal () : m_literalKind(UNIT) {}
 
     /// Initialize the literal with numeric value (sets kind to #Number).
     /// \param _number Value.
-    CLiteral (const CNumber & _number) : m_literalKind(Number), m_number(_number) {}
+    Literal (const Number & _number) : m_literalKind(NUMBER), m_number(_number) {}
 
     /// Initialize the literal with boolean value (sets kind to #Bool).
     /// \param _number Value.
-    CLiteral (bool _b) : m_literalKind(Bool), m_bool(_b) {}
+    Literal (bool _b) : m_literalKind(BOOL), m_bool(_b) {}
 
     /// Initialize the literal with character value (sets kind to #Char).
     /// \param _c Value.
-    CLiteral (wchar_t _c) : m_literalKind(Char), m_char(_c) {}
+    Literal (wchar_t _c) : m_literalKind(CHAR), m_char(_c) {}
 
     /// Initialize the literal with string value (sets kind to #String).
     /// \param _str Value.
-    CLiteral (const std::wstring & _str) : m_literalKind(String), m_string(_str) {}
+    Literal (const std::wstring & _str) : m_literalKind(STRING), m_string(_str) {}
 
     /// Get expression kind.
     /// \return #Literal.
-    virtual int getKind() const { return Literal; }
+    virtual int getKind() const { return LITERAL; }
 
     /// Get literal kind.
     /// \return Literal kind (#Unit, #Number, #Char or #String).
     int getLiteralKind() const { return m_literalKind; }
 
     /// Set kind to #Unit.
-    void setUnit() { m_literalKind = Unit; }
+    void setUnit() { m_literalKind = UNIT; }
 
     /// Get numeric value. Only valid if literal kind is #Number.
     /// \return Numeric value.
-    const CNumber & getNumber() const { return m_number; }
+    const Number & getNumber() const { return m_number; }
 
     /// Set numeric value. Also changes kind to #Number.
     /// \param _number Value.
-    void setNumber(const CNumber & _number) {
-        m_literalKind = Number;
+    void setNumber(const Number & _number) {
+        m_literalKind = NUMBER;
         m_number = _number;
     }
 
@@ -188,7 +190,7 @@ public:
     /// Set boolean value. Also changes kind to #Bool.
     /// \param _b Value.
     void setBool(bool _b) {
-        m_literalKind = Bool;
+        m_literalKind = BOOL;
         m_bool = _b;
     }
 
@@ -199,7 +201,7 @@ public:
     /// Set character value. Also changes kind to #Char.
     /// \param _c Value.
     void setChar(wchar_t _c) {
-        m_literalKind = Char;
+        m_literalKind = CHAR;
         m_char = _c;
     }
 
@@ -210,7 +212,7 @@ public:
     /// Set string value. Also changes kind to #String.
     /// \param _str Value.
     void setString(const std::wstring & _str) {
-        m_literalKind = String;
+        m_literalKind = STRING;
         m_string = _str;
     }
 
@@ -218,29 +220,29 @@ private:
     int m_literalKind;
     std::wstring m_string;
     wchar_t m_char;
-    CNumber m_number;
+    Number m_number;
     bool m_bool;
 };
 
 /// Expression containing reference to a variable or a parameter.
-class CVariableReference : public CExpression {
+class VariableReference : public Expression {
 public:
     /// Default constructor.
-    CVariableReference() : m_pTarget(NULL) {}
+    VariableReference() : m_pTarget(NULL) {}
 
     /// Initialize using name.
     /// \param _strName Identifier.
-    CVariableReference(const std::wstring & _strName) : m_pTarget(NULL), m_strName(_strName) {}
+    VariableReference(const std::wstring & _strName) : m_pTarget(NULL), m_strName(_strName) {}
 
     /// Initialize using referenced variable. Name is set accordingly.
     /// \param _pTarget Referenced variable.
-    CVariableReference(const CNamedValue * _pTarget) {
+    VariableReference(const NamedValue * _pTarget) {
         setTarget(_pTarget);
     }
 
     /// Get expression kind.
     /// \return #Var.
-    virtual int getKind() const { return Var; }
+    virtual int getKind() const { return VAR; }
 
     /// Get name of the variable.
     /// \returns Identifier.
@@ -252,11 +254,11 @@ public:
 
     /// Get referenced variable.
     /// \return Referenced variable.
-    const CNamedValue * getTarget() const { return m_pTarget; }
+    const NamedValue * getTarget() const { return m_pTarget; }
 
     /// Set referenced variable.
     /// \param _pTarget Referenced variable.
-    void setTarget(const CNamedValue * _pTarget) {
+    void setTarget(const NamedValue * _pTarget) {
         m_pTarget = _pTarget;
         if (_pTarget) {
             m_strName = _pTarget->getName();
@@ -265,29 +267,29 @@ public:
     }
 
 private:
-    const CNamedValue * m_pTarget;
+    const NamedValue * m_pTarget;
     std::wstring m_strName;
 };
 
-class CPredicate;
+class Predicate;
 
 /// Expression containing reference to a predicate.
-class CPredicateReference : public CExpression {
+class PredicateReference : public Expression {
 public:
     /// Default constructor.
-    CPredicateReference() : m_pTarget(NULL) {}
+    PredicateReference() : m_pTarget(NULL) {}
 
     /// Initialize using name.
     /// \param _strName Identifier.
-    CPredicateReference(const std::wstring & _strName) : m_pTarget(NULL), m_strName(_strName) {}
+    PredicateReference(const std::wstring & _strName) : m_pTarget(NULL), m_strName(_strName) {}
 
     /// Initialize using referenced predicate.
     /// \param _pTarget Referenced variable.
-    CPredicateReference(const CPredicate * _pTarget) : m_pTarget(_pTarget) {}
+    PredicateReference(const Predicate * _pTarget) : m_pTarget(_pTarget) {}
 
     /// Get expression kind.
     /// \return #Predicate.
-    virtual int getKind() const { return Predicate; }
+    virtual int getKind() const { return PREDICATE; }
 
     /// Get name of the predicate.
     /// \returns Identifier.
@@ -299,51 +301,51 @@ public:
 
     /// Get referenced predicate.
     /// \return Referenced predicate.
-    const CPredicate * getTarget() const { return m_pTarget; }
+    const Predicate * getTarget() const { return m_pTarget; }
 
     /// Set referenced predicate.
     /// \param _pTarget Referenced predicate.
-    void setTarget(const CPredicate * _pTarget) { m_pTarget = _pTarget; }
+    void setTarget(const Predicate * _pTarget) { m_pTarget = _pTarget; }
 
 private:
-    const CPredicate * m_pTarget;
+    const Predicate * m_pTarget;
     std::wstring m_strName;
 };
 
 /// Unary expression.
-class CUnary : public CExpression {
+class Unary : public Expression {
 public:
     /// Unary operator.
     enum {
         /// Unary plus.
-        Plus,
+        PLUS,
         /// Unary minus.
-        Minus,
+        MINUS,
         /// Logical negation ('!').
-        BoolNegate,
+        BOOL_NEGATE,
         /// Bitwise negation ('~').
-        BitwiseNegate
+        BITWISE_NEGATE
     };
 
     /// Default constructor.
-    CUnary() : m_operator(0), m_pExpression(NULL) {}
+    Unary() : m_operator(0), m_pExpression(NULL) {}
 
     /// Initialize with operator.
     /// \param _operator Operator (one of #Minus, #BoolNegate and #BitwiseNegate).
     /// \param _pExpression Subexpression.
     /// \param _bReparent If specified (default) also sets parent of _pExpression to this node.
-    CUnary(int _operator, CExpression * _pExpression = NULL, bool _bReparent = true)
+    Unary(int _operator, Expression * _pExpression = NULL, bool _bReparent = true)
         : m_operator(_operator), m_pExpression(NULL)
     {
         _assign(m_pExpression, _pExpression, _bReparent);
     }
 
     /// Destructor.
-    virtual ~CUnary() { _delete(m_pExpression); }
+    virtual ~Unary() { _delete(m_pExpression); }
 
     /// Get expression kind.
     /// \return #Unary.
-    virtual int getKind() const { return Unary; }
+    virtual int getKind() const { return UNARY; }
 
     /// Get operator.
     /// \return Operator (one of #Minus, #BoolNegate and #BitwiseNegate).
@@ -355,111 +357,111 @@ public:
 
     /// Get subexpression to which the operator is applied.
     /// \return Subexpression.
-    CExpression * getExpression() const { return m_pExpression; }
+    Expression * getExpression() const { return m_pExpression; }
 
     /// Set subexpression to which the operator is applied.
     /// \param _pExpression Subexpression.
     /// \param _bReparent If specified (default) also sets parent of _pExpression to this node.
-    void setExpression(CExpression * _pExpression, bool _bReparent = true) {
+    void setExpression(Expression * _pExpression, bool _bReparent = true) {
         _assign(m_pExpression, _pExpression, _bReparent);
     }
 
     /// Get or set overflow strategy.
     /// \return Reference to overflow handling descriptor.
-    COverflow & getOverflow() { return m_overflow; }
+    Overflow & getOverflow() { return m_overflow; }
 
 private:
     int m_operator;
-    CExpression * m_pExpression;
-    COverflow m_overflow;
+    Expression * m_pExpression;
+    Overflow m_overflow;
 };
 
 /// Binary expression.
-class CBinary : public CExpression {
+class Binary : public Expression {
 public:
     /// Binary operator.
     enum {
         /// Binary plus.
         /// Addition (when applied to numeric values), set or array union, or
         /// string concatenation.
-        Add,
+        ADD,
         /// Binary minus.
         /// Subtraction (when applied to numeric values) or set difference.
-        Subtract,
+        SUBTRACT,
         /// Multiplication.
         /// Applicable only to numeric values.
-        Multiply,
+        MULTIPLY,
         /// Division.
         /// Applicable only to numeric values.
-        Divide,
+        DIVIDE,
         /// Remainder.
         /// Applicable only to integral values.
-        Remainder,
+        REMAINDER,
         /// Power.
         /// Applicable only to numeric values.
-        Power,
+        POWER,
         /// Bitwise shift left.
         /// Equivalent to multiplication by corresponding power of 2.
         /// Applicable only to integral values.
-        ShiftLeft,
+        SHIFT_LEFT,
         /// Bitwise shift right.
         /// Equivalent to integer division by corresponding power of 2.
         /// Applicable only to integral values.
-        ShiftRight,
+        SHIFT_RIGHT,
         /// Containment test.
         /// Applicable to sets, ranges, sequences, arrays and maps.
-        In,
+        IN,
         /// Less than comparison.
         /// Applicable only to numeric values.
-        Less,
+        LESS,
         /// Less than or equals comparison.
         /// Applicable only to numeric values.
-        LessOrEquals,
+        LESS_OR_EQUALS,
         /// Greater than comparison.
         /// Applicable only to numeric values.
-        Greater,
+        GREATER,
         /// Greater than or equals comparison.
         /// Applicable only to numeric values.
-        GreaterOrEquals,
+        GREATER_OR_EQUALS,
         /// Equality comparison.
-        Equals,
+        EQUALS,
         /// Inequality comparison.
-        NotEquals,
+        NOT_EQUALS,
         /// Logical AND.
         /// Applicable only to boolean values.
-        BoolAnd,
+        BOOL_AND,
         /// Logical OR.
         /// Applicable only to boolean values.
-        BoolOr,
+        BOOL_OR,
         /// Logical XOR.
         /// Applicable only to boolean values.
-        BoolXor,
+        BOOL_XOR,
         /// Bitwise AND.
         /// Applicable only to integral values.
-        BitwiseAnd,
+        BITWISE_AND,
         /// Bitwise OR.
         /// Applicable only to integral values.
-        BitwiseOr,
+        BITWISE_OR,
         /// Bitwise XOR.
         /// Applicable only to integral values.
-        BitwiseXor,
+        BITWISE_XOR,
         /// Implication.
         /// Applicable only to boolean values.
-        Implies,
+        IMPLIES,
         /// Equivalence.
         /// Applicable only to boolean values.
-        Iff
+        IFF
     };
 
     /// Default constructor.
-    CBinary() : m_operator(0), m_pLeft(NULL), m_pRight(NULL) {}
+    Binary() : m_operator(0), m_pLeft(NULL), m_pRight(NULL) {}
 
     /// Initialize with operator.
     /// \param _operator Operator (#Add, #Subtract, etc.)
     /// \param _pLeft Left subexpression.
     /// \param _pRight Right subexpression.
     /// \param _bReparent If specified (default) also sets parent of _pLeft and _pRight to this node.
-    CBinary(int _operator, CExpression * _pLeft = NULL, CExpression * _pRight = NULL, bool _bReparent = true)
+    Binary(int _operator, Expression * _pLeft = NULL, Expression * _pRight = NULL, bool _bReparent = true)
         : m_operator(_operator), m_pLeft(NULL), m_pRight(NULL)
     {
         _assign(m_pLeft, _pLeft, _bReparent);
@@ -467,14 +469,14 @@ public:
     }
 
     /// Destructor.
-    virtual ~CBinary() {
+    virtual ~Binary() {
         _delete(m_pLeft);
         _delete(m_pRight);
     }
 
     /// Get expression kind.
     /// \return #Binary.
-    virtual int getKind() const { return Binary; }
+    virtual int getKind() const { return BINARY; }
 
     /// Get operator.
     /// \return Operator (#Add, #Subtract, etc.)
@@ -486,48 +488,48 @@ public:
 
     /// Get left operand.
     /// \return Subexpression.
-    CExpression * getLeftSide() const { return m_pLeft; }
+    Expression * getLeftSide() const { return m_pLeft; }
 
     /// Set left operand.
     /// \param _pExpression Subexpression.
     /// \param _bReparent If specified (default) also sets parent of _pExpression to this node.
-    void setLeftSide(CExpression * _pExpression, bool _bReparent = true) {
+    void setLeftSide(Expression * _pExpression, bool _bReparent = true) {
         _assign(m_pLeft, _pExpression, _bReparent);
     }
 
     /// Get right operand.
     /// \return Subexpression.
-    CExpression * getRightSide() const { return m_pRight; }
+    Expression * getRightSide() const { return m_pRight; }
 
     /// Set right operand.
     /// \param _pExpression Subexpression.
     /// \param _bReparent If specified (default) also sets parent of _pExpression to this node.
-    void setRightSide(CExpression * _pExpression, bool _bReparent = true) {
+    void setRightSide(Expression * _pExpression, bool _bReparent = true) {
         _assign(m_pRight, _pExpression, _bReparent);
     }
 
     /// Get or set overflow strategy.
     /// \return Reference to overflow handling descriptor.
-    COverflow & getOverflow() { return m_overflow; }
+    Overflow & getOverflow() { return m_overflow; }
 
 private:
     int m_operator;
-    CExpression * m_pLeft, * m_pRight;
-    COverflow m_overflow;
+    Expression * m_pLeft, * m_pRight;
+    Overflow m_overflow;
 };
 
 /// Ternary ("condition ? then part : else part") expression.
-class CTernary : public CExpression {
+class Ternary : public Expression {
 public:
     /// Default constructor.
-    CTernary() :  m_pIf(NULL), m_pThen(NULL), m_pElse(NULL) {}
+    Ternary() :  m_pIf(NULL), m_pThen(NULL), m_pElse(NULL) {}
 
     /// Initialize with operands.
     /// \param _pIf If-subexpression.
     /// \param _pThen Then-subexpression.
     /// \param _pElse Else-subexpression.
     /// \param _bReparent If specified (default) also sets parent of subexpressions to this node.
-    CTernary(CExpression * _pIf = NULL, CExpression * _pThen = NULL, CExpression * _pElse = NULL, bool _bReparent = true)
+    Ternary(Expression * _pIf = NULL, Expression * _pThen = NULL, Expression * _pElse = NULL, bool _bReparent = true)
         : m_pIf(NULL), m_pThen(NULL), m_pElse(NULL)
     {
         _assign(m_pIf, _pIf, _bReparent);
@@ -536,7 +538,7 @@ public:
     }
 
     /// Destructor.
-    virtual ~CTernary() {
+    virtual ~Ternary() {
         _delete(m_pIf);
         _delete(m_pThen);
         _delete(m_pElse);
@@ -544,159 +546,159 @@ public:
 
     /// Get expression kind.
     /// \return #Ternary.
-    virtual int getKind() const { return Ternary; }
+    virtual int getKind() const { return TERNARY; }
 
     /// Get logical condition.
     /// \return Condition.
-    CExpression * getIf() const { return m_pIf; }
+    Expression * getIf() const { return m_pIf; }
 
     /// Set logical condition.
     /// \param _pExpression Condition.
     /// \param _bReparent If specified (default) also sets parent of _pExpression to this node.
-    void setIf(CExpression * _pExpression, bool _bReparent = true) {
+    void setIf(Expression * _pExpression, bool _bReparent = true) {
         _assign(m_pIf, _pExpression, _bReparent);
     }
 
     /// Get 'then' part.
     /// \return Expression that should be evaluated if condition is true.
-    CExpression * getThen() const { return m_pThen; }
+    Expression * getThen() const { return m_pThen; }
 
     /// Set 'then' part.
     /// \param _pExpression Expression that should be evaluated if condition is true.
     /// \param _bReparent If specified (default) also sets parent of _pExpression to this node.
-    void setThen(CExpression * _pExpression, bool _bReparent = true) {
+    void setThen(Expression * _pExpression, bool _bReparent = true) {
         _assign(m_pThen, _pExpression, _bReparent);
     }
 
     /// Get 'else' part.
     /// \return Expression that should be evaluated if condition is false.
-    CExpression * getElse() const { return m_pElse; }
+    Expression * getElse() const { return m_pElse; }
 
     /// Set 'else' part.
     /// \param _pExpression Expression that should be evaluated if condition is false.
     /// \param _bReparent If specified (default) also sets parent of _pExpression to this node.
-    void setElse(CExpression * _pExpression, bool _bReparent = true) {
+    void setElse(Expression * _pExpression, bool _bReparent = true) {
         _assign(m_pElse, _pExpression, _bReparent);
     }
 
 private:
-    CExpression * m_pIf, * m_pThen, * m_pElse;
+    Expression * m_pIf, * m_pThen, * m_pElse;
 };
 
 /// Type as a part of expression.
-class CTypeExpr : public CExpression {
+class TypeExpr : public Expression {
 public:
     /// Default constructor.
-    CTypeExpr() : m_pContents(NULL) {}
+    TypeExpr() : m_pContents(NULL) {}
 
     /// Initialize with contained type.
     /// \param _pContents Contained type.
     /// \param _bReparent If specified (default) also sets parent of _pContents to this node.
-    CTypeExpr(CType * _pContents, bool _bReparent = true) : m_pContents(NULL) {
+    TypeExpr(Type * _pContents, bool _bReparent = true) : m_pContents(NULL) {
         _assign(m_pContents, _pContents, _bReparent);
     }
 
     /// Destructor.
-    virtual ~CTypeExpr() { _delete(m_pContents); }
+    virtual ~TypeExpr() { _delete(m_pContents); }
 
     /// Get expression kind.
     /// \return #Type.
-    virtual int getKind() const { return Type; }
+    virtual int getKind() const { return TYPE; }
 
     /// Get contained type.
     /// \return Contained type.
-    CType * getContents() const { return m_pContents; }
+    Type * getContents() const { return m_pContents; }
 
     /// Set contained type.
     /// \param _pContents Contained type.
     /// \param _bReparent If specified (default) also sets parent of _pContents to this node.
-    void setContents(CType * _pContents, bool _bReparent = true) {
+    void setContents(Type * _pContents, bool _bReparent = true) {
         _assign(m_pContents, _pContents, _bReparent);
     }
 
 private:
-    CType * m_pContents;
+    Type * m_pContents;
 };
 
 /// Type as a part of expression.
-class CCastExpr : public CExpression {
+class CastExpr : public Expression {
 public:
     /// Default constructor.
-    CCastExpr() : m_pExpression(NULL), m_pToType(NULL) {}
+    CastExpr() : m_pExpression(NULL), m_pToType(NULL) {}
 
     /// Initialize.
     /// \param _pExpr Expression being casted.
     /// \param _pToType Destination type..
     /// \param _bReparent If specified (default) also sets parent to this node.
-    CCastExpr(CExpression * _pExpr, CTypeExpr * _pToType, bool _bReparent = true) : m_pExpression(NULL), m_pToType(NULL) {
+    CastExpr(Expression * _pExpr, TypeExpr * _pToType, bool _bReparent = true) : m_pExpression(NULL), m_pToType(NULL) {
         _assign(m_pExpression, _pExpr, _bReparent);
         _assign(m_pToType, _pToType, _bReparent);
     }
 
     /// Destructor.
-    virtual ~CCastExpr() { _delete(m_pExpression); _delete(m_pToType); }
+    virtual ~CastExpr() { _delete(m_pExpression); _delete(m_pToType); }
 
     /// Get expression kind.
     /// \return #Cast.
-    virtual int getKind() const { return Cast; }
+    virtual int getKind() const { return CAST; }
 
     /// Get expression being casted.
     /// \return Expression being casted.
-    CExpression * getExpression() const { return m_pExpression; }
+    Expression * getExpression() const { return m_pExpression; }
 
     /// Get destination type.
     /// \return Destination type.
-    CTypeExpr * getToType() const { return m_pToType; }
+    TypeExpr * getToType() const { return m_pToType; }
 
     /// Set expression to cast.
     /// \param _pExpression Expression.
     /// \param _bReparent If specified (default) also sets parent of _pExpression to this node.
-    void setExpression(CExpression * _pExpression, bool _bReparent = true) {
+    void setExpression(Expression * _pExpression, bool _bReparent = true) {
         _assign(m_pExpression, _pExpression, _bReparent);
     }
 
     /// Set destination type.
     /// \param _pType Destination type.
     /// \param _bReparent If specified (default) also sets parent of _pType to this node.
-    void setToType(CTypeExpr * _pType, bool _bReparent = true) {
+    void setToType(TypeExpr * _pType, bool _bReparent = true) {
         _assign(m_pToType, _pType, _bReparent);
     }
 
 private:
-    CExpression * m_pExpression;
-    CTypeExpr * m_pToType;
+    Expression * m_pExpression;
+    TypeExpr * m_pToType;
 };
 
 /// Possibly quantified logical formula.
-class CFormula : public CExpression {
+class Formula : public Expression {
 public:
     /// Quantifier.
     enum {
         /// No quantifier.
-        None,
+        NONE,
         /// Universal quantifier.
-        Universal,
+        UNIVERSAL,
         /// Existential quantifier.
-        Existential
+        EXISTENTIAL
     };
 
     /// Default constructor.
-    CFormula() : m_quantifier(None), m_pSubformula(NULL) {}
+    Formula() : m_quantifier(NONE), m_pSubformula(NULL) {}
 
     /// Initialize with quantifier and subformula.
     /// \param _quantifier Quantifier (one of #None, #Universal, #Existential).
     /// \param _pSubformula Formula.
     /// \param _bReparent If specified (default) also sets parent of _pExpression to this node.
-    CFormula(int _quantifier, CExpression * _pSubformula = NULL, bool _bReparent = true) : m_quantifier(_quantifier), m_pSubformula(NULL) {
+    Formula(int _quantifier, Expression * _pSubformula = NULL, bool _bReparent = true) : m_quantifier(_quantifier), m_pSubformula(NULL) {
         _assign(m_pSubformula, _pSubformula, _bReparent);
     }
 
     /// Destructor.
-    virtual ~CFormula() { _delete(m_pSubformula); }
+    virtual ~Formula() { _delete(m_pSubformula); }
 
     /// Get expression kind.
     /// \return #Formula.
-    virtual int getKind() const { return Formula; }
+    virtual int getKind() const { return FORMULA; }
 
     /// Get quantifier.
     /// \return Quantifier (one of #None, #Universal, #Existential).
@@ -708,55 +710,55 @@ public:
 
     /// Get list of bound variables.
     /// \return Refernce to bound variables list.
-    CNamedValues & getBoundVariables() { return m_boundVariables; }
+    NamedValues & getBoundVariables() { return m_boundVariables; }
 
     /// Get subformula.
     /// \return Formula. E.g. given quantified formula "! X . Y" this
     ///   method returns "Y".
-    CExpression * getSubformula() const { return m_pSubformula; }
+    Expression * getSubformula() const { return m_pSubformula; }
 
     /// Set subformula.
     /// \param _pExpression Formula.
     /// \param _bReparent If specified (default) also sets parent of _pExpression to this node.
-    void setSubformula(CExpression * _pExpression, bool _bReparent = true) {
+    void setSubformula(Expression * _pExpression, bool _bReparent = true) {
         _assign(m_pSubformula, _pExpression, _bReparent);
     }
 
 private:
     int m_quantifier;
-    CExpression * m_pSubformula;
-    CNamedValues m_boundVariables;
+    Expression * m_pSubformula;
+    NamedValues m_boundVariables;
 };
 
 /// Component of a compound value (e.g. array element or field of structure).
-class CComponent : public CExpression {
+class Component : public Expression {
 public:
     /// Component kind.
     enum {
         /// Part of an array (itself is another array).
-        ArrayPart,
+        ARRAY_PART,
         /// Field of a structure.
-        StructField,
+        STRUCT_FIELD,
         /// Union alternative name. Only used in switch/case construct.
-        /// The object can be cast to CUnionAlternativeReference.
-        UnionAlternative,
+        /// The object can be cast to UnionAlternativeReference.
+        UNION_ALTERNATIVE,
         /// Map element.
-        MapElement,
+        MAP_ELEMENT,
         /// List element.
-        ListElement,
+        LIST_ELEMENT,
         /// Replacement of a part of compound value.
-        Replacement,
+        REPLACEMENT,
     };
 
     /// Default constructor.
-    CComponent() : m_pObject(NULL) {}
+    Component() : m_pObject(NULL) {}
 
     /// Destructor.
-    virtual ~CComponent() { _delete(m_pObject); }
+    virtual ~Component() { _delete(m_pObject); }
 
     /// Get expression kind.
     /// \return #Formula.
-    virtual int getKind() const { return Component; }
+    virtual int getKind() const { return COMPONENT; }
 
     /// Get component kind (implemented in descendants).
     /// \return Component kind.
@@ -764,48 +766,48 @@ public:
 
     /// Get expression to which the subscript is applied.
     /// \return Expression of compound type.
-    CExpression * getObject() const { return m_pObject; }
+    Expression * getObject() const { return m_pObject; }
 
     /// Set expression to which the subscript is applied.
     /// \param _pExpression Expression of compound type.
     /// \param _bReparent If specified (default) also sets parent of _pExpression to this node.
-    void setObject(CExpression * _pExpression, bool _bReparent = true) {
+    void setObject(Expression * _pExpression, bool _bReparent = true) {
         _assign(m_pObject, _pExpression, _bReparent);
     }
 
 private:
-    CExpression * m_pObject;
+    Expression * m_pObject;
 };
 
 /// Array or sequence element or array part.
-class CArrayPartExpr : public CComponent {
+class ArrayPartExpr : public Component {
 public:
     /// Default constructor.
-    CArrayPartExpr() {}
+    ArrayPartExpr() {}
 
     /// Get component kind.
     /// \return #ArrayPart.
-    virtual int getComponentKind() const { return ArrayPart; }
+    virtual int getComponentKind() const { return ARRAY_PART; }
 
     /// Get list of subscripts.
     /// \return List of indices.
-    CCollection<CExpression> & getIndices() { return m_indices; }
+    Collection<Expression> & getIndices() { return m_indices; }
 
 private:
-    CCollection<CExpression> m_indices;
+    Collection<Expression> m_indices;
 };
 
 // Found in types.h
-class CStructType;
+class StructType;
 
 /// Structure field.
-class CStructFieldExpr : public CComponent {
+class StructFieldExpr : public Component {
 public:
-    CStructFieldExpr(const std::wstring & _strField = L"") : m_strField(_strField) {}
+    StructFieldExpr(const std::wstring & _strField = L"") : m_strField(_strField) {}
 
     /// Get component kind.
     /// \return #StructField.
-    virtual int getComponentKind() const { return StructField; }
+    virtual int getComponentKind() const { return STRUCT_FIELD; }
 
     const std::wstring & getFieldName() const { return m_strField; }
 
@@ -816,21 +818,21 @@ private:
 /*
 
 /// Structure field.
-class CStructFieldExpr : public CComponent {
+class StructFieldExpr : public Component {
 public:
     /// Default constructor.
-    CStructFieldExpr() : m_pStructType(NULL), m_cFieldIdx(-1) {}
+    StructFieldExpr() : m_pStructType(NULL), m_cFieldIdx(-1) {}
 
     /// Initialize with type and field.
     /// \param _pStructType Structure type.
     /// \param _cFieldIdx Structure field index.
     /// \param _bReparent If specified (default) also sets parent of _pStructType to this node.
-    CStructFieldExpr(CType * _pStructType, size_t _cFieldIdx, bool _bReparent = true) : m_pStructType(NULL), m_cFieldIdx(_cFieldIdx) {
-        _assign(m_pStructType, (CType *) _pStructType, _bReparent);
+    StructFieldExpr(Type * _pStructType, size_t _cFieldIdx, bool _bReparent = true) : m_pStructType(NULL), m_cFieldIdx(_cFieldIdx) {
+        _assign(m_pStructType, (Type *) _pStructType, _bReparent);
     }
 
     /// Destructor.
-    virtual ~CStructFieldExpr() { _delete(m_pStructType); }
+    virtual ~StructFieldExpr() { _delete(m_pStructType); }
 
     /// Get component kind.
     /// \return #StructField.
@@ -838,18 +840,18 @@ public:
 
     /// Get corresponding structure type.
     /// \return Structure type.
-    CStructType * getStructType() const { return (CStructType *) m_pStructType; }
+    StructType * getStructType() const { return (StructType *) m_pStructType; }
 
     /// Set corresponding structure type.
     /// \param _pStructType Structure type.
     /// \param _bReparent If specified (default) also sets parent of _pStructType to this node.
-    void setStructType(CStructType * _pStructType, bool _bReparent = true) {
-        _assign(m_pStructType, (CType *) _pStructType, _bReparent);
+    void setStructType(StructType * _pStructType, bool _bReparent = true) {
+        _assign(m_pStructType, (Type *) _pStructType, _bReparent);
     }
 
     /// Get corresponding structure field.
     /// \return Structure field.
-    const CNamedValue * getField() const;
+    const NamedValue * getField() const;
 
     /// Get corresponding structure field index.
     /// \return Structure field index.
@@ -860,28 +862,28 @@ public:
     void setField(size_t _cFieldIdx) { m_cFieldIdx = _cFieldIdx; }
 
 private:
-    CType * m_pStructType;
+    Type * m_pStructType;
     size_t m_cFieldIdx;
 };
 
  */
 
-class CUnionType;
-class CUnionConstructorDefinition;
-typedef std::pair<size_t, size_t> union_field_idx_t;
+class UnionType;
+class UnionConstructorDeclaration;
+typedef std::pair<size_t, size_t> UnionFieldIdx;
 
 /// Union alternative name. Only used inside switch/case construct.
-class CUnionAlternativeExpr : public CComponent {
+class UnionAlternativeExpr : public Component {
 public:
-    CUnionAlternativeExpr(const std::wstring & _strName) :
+    UnionAlternativeExpr(const std::wstring & _strName) :
         m_strName(_strName), m_pType(NULL), m_idx(-1, -1)
     {}
 
-    CUnionAlternativeExpr(const CUnionType * _pType, const union_field_idx_t & _idx);
+    UnionAlternativeExpr(const UnionType * _pType, const UnionFieldIdx & _idx);
 
     /// Get component kind.
     /// \return #UnionAlternative.
-    virtual int getComponentKind() const { return UnionAlternative; }
+    virtual int getComponentKind() const { return UNION_ALTERNATIVE; }
 
     /// Get name of the alternative.
     /// \returns Identifier.
@@ -893,257 +895,257 @@ public:
 
     /// Get corresponding union type.
     /// \return Union type.
-    CUnionType * getUnionType() const { return (CUnionType *) m_pType; }
+    UnionType * getUnionType() const { return (UnionType *) m_pType; }
 
     /// Set corresponding union type.
     /// \param _pUnionType Union type.
-    void setUnionType(const CUnionType * _pUnionType) { m_pType = (const CType *) _pUnionType; }
+    void setUnionType(const UnionType * _pUnionType) { m_pType = (const Type *) _pUnionType; }
 
-    union_field_idx_t getIdx() const { return m_idx; }
+    UnionFieldIdx getIdx() const { return m_idx; }
 
-    void setIdx(size_t _cCons, size_t _cField) { m_idx = union_field_idx_t(_cCons, _cField); }
+    void setIdx(size_t _cCons, size_t _cField) { m_idx = UnionFieldIdx(_cCons, _cField); }
 
-    const CNamedValue * getField() const;
-    const CUnionConstructorDefinition * getConstructor() const;
+    const NamedValue * getField() const;
+    const UnionConstructorDeclaration * getConstructor() const;
 
 private:
     std::wstring m_strName;
-    const CType * m_pType;
-    union_field_idx_t m_idx;
+    const Type * m_pType;
+    UnionFieldIdx m_idx;
 };
 
 /// Map element.
-class CMapElementExpr : public CComponent {
+class MapElementExpr : public Component {
 public:
     /// Default constructor.
-    CMapElementExpr() : m_pIndex(NULL) {}
+    MapElementExpr() : m_pIndex(NULL) {}
 
     /// Destructor.
-    virtual ~CMapElementExpr() { _delete(m_pIndex); }
+    virtual ~MapElementExpr() { _delete(m_pIndex); }
 
     /// Get component kind.
     /// \return #MapElement.
-    virtual int getComponentKind() const { return MapElement; }
+    virtual int getComponentKind() const { return MAP_ELEMENT; }
 
     /// Get index expression.
     /// \return Element index.
-    CExpression * getIndex() const { return m_pIndex; }
+    Expression * getIndex() const { return m_pIndex; }
 
     /// Set index expression.
     /// \param _pExpression Element index.
     /// \param _bReparent If specified (default) also sets parent of _pExpression to this node.
-    void setIndex(CExpression * _pExpression, bool _bReparent = true) {
+    void setIndex(Expression * _pExpression, bool _bReparent = true) {
         _assign(m_pIndex, _pExpression, _bReparent);
     }
 
 private:
-    CExpression * m_pIndex;
+    Expression * m_pIndex;
 };
 
 /// List element.
-class CListElementExpr : public CComponent {
+class ListElementExpr : public Component {
 public:
     /// Default constructor.
-    CListElementExpr() : m_pIndex(NULL) {}
+    ListElementExpr() : m_pIndex(NULL) {}
 
     /// Destructor.
-    virtual ~CListElementExpr() { _delete(m_pIndex); }
+    virtual ~ListElementExpr() { _delete(m_pIndex); }
 
     /// Get component kind.
     /// \return #ListElement.
-    virtual int getComponentKind() const { return ListElement; }
+    virtual int getComponentKind() const { return LIST_ELEMENT; }
 
     /// Get index expression.
     /// \return Element index.
-    CExpression * getIndex() const { return m_pIndex; }
+    Expression * getIndex() const { return m_pIndex; }
 
     /// Set index expression.
     /// \param _pExpression Element index.
     /// \param _bReparent If specified (default) also sets parent of _pExpression to this node.
-    void setIndex(CExpression * _pExpression, bool _bReparent = true) {
+    void setIndex(Expression * _pExpression, bool _bReparent = true) {
         _assign(m_pIndex, _pExpression, _bReparent);
     }
 
 private:
-    CExpression * m_pIndex;
+    Expression * m_pIndex;
 };
 
 // Declared below.
-class CConstructor;
+class Constructor;
 
 /// Replacement expression. Result is a new expression of compound type with
 /// some elements replaced.
-class CReplacement : public CComponent {
+class Replacement : public Component {
 public:
     /// Default constructor.
-    CReplacement() : m_pConstructor(NULL) {}
+    Replacement() : m_pConstructor(NULL) {}
 
     /// Desctructor.
-    virtual ~CReplacement() { _delete(m_pConstructor); }
+    virtual ~Replacement() { _delete(m_pConstructor); }
 
     /// Get component kind.
     /// \return #Replacement.
-    virtual int getComponentKind() const { return Replacement; }
+    virtual int getComponentKind() const { return REPLACEMENT; }
 
     /// Get expression of compound type containing new values.
     /// \return Expression containing new values.
-    CConstructor * getNewValues() const { return (CConstructor *) m_pConstructor; }
+    Constructor * getNewValues() const { return (Constructor *) m_pConstructor; }
 
     /// Set expression of compound type containing new values.
     /// \param _pConstructor Expression containing new values.
     /// \param _bReparent If specified (default) also sets parent of _pConstructor to this node.
-    void setNewValues(CConstructor * _pConstructor, bool _bReparent = true) {
-        _assign(m_pConstructor, (CExpression *) _pConstructor, _bReparent);
+    void setNewValues(Constructor * _pConstructor, bool _bReparent = true) {
+        _assign(m_pConstructor, (Expression *) _pConstructor, _bReparent);
     }
 
 private:
-    CExpression * m_pConstructor;
+    Expression * m_pConstructor;
 };
 
 /// Function call as a part of an expression.
-class CFunctionCall : public CExpression {
+class FunctionCall : public Expression {
 public:
     /// Default constructor.
-    CFunctionCall() : m_pPredicate(NULL) {}
+    FunctionCall() : m_pPredicate(NULL) {}
 
     /// Destructor.
-    virtual ~CFunctionCall() { _delete(m_pPredicate); }
+    virtual ~FunctionCall() { _delete(m_pPredicate); }
 
-    virtual int getKind() const { return FunctionCall; }
+    virtual int getKind() const { return FUNCTION_CALL; }
 
     /// Get predicate expression which is called.
     /// \return Expression of predicate type.
-    CExpression * getPredicate() const { return m_pPredicate; }
+    Expression * getPredicate() const { return m_pPredicate; }
 
     /// Set predicate expression which is called.
     /// \param _pExpression Expression of predicate type.
     /// \param _bReparent If specified (default) also sets parent of _pExpression to this node.
-    void setPredicate(CExpression * _pExpression, bool _bReparent = true) {
+    void setPredicate(Expression * _pExpression, bool _bReparent = true) {
         _assign(m_pPredicate, _pExpression, _bReparent);
     }
 
     /// Get list of actual parameters.
     /// \return List of expressions.
-    CCollection<CExpression> & getParams() { return m_params; }
-    const CCollection<CExpression> & getParams() const { return m_params; }
+    Collection<Expression> & getParams() { return m_params; }
+    const Collection<Expression> & getParams() const { return m_params; }
 
     /// Get type of the expression.
     /// \returns Type associated with expression.
-    virtual CType * getType() const;
+    virtual Type * getType() const;
 
 private:
-    CExpression * m_pPredicate;
-    CCollection<CExpression> m_params;
+    Expression * m_pPredicate;
+    Collection<Expression> m_params;
 };
 /*
-class CParamBinding : public CNode {
+class ParamBinding : public Node {
 public:
-    CParamBinding() : m_pValue(NULL), m_pParam(NULL) {}
+    ParamBinding() : m_pValue(NULL), m_pParam(NULL) {}
 
-    CParamBinding(CExpression * _pValue, const CParam * _pParam = NULL, bool _bReparent = true)
+    ParamBinding(Expression * _pValue, const Param * _pParam = NULL, bool _bReparent = true)
         : m_pValue(NULL), m_pParam(_pParam)
     {
         _assign(m_pValue, _pValue, _bReparent);
     }
 
-    virtual ~CParamBinding() { _delete(m_pValue); }
+    virtual ~ParamBinding() { _delete(m_pValue); }
 
     /// Get predicate expression which is called.
     /// \return Expression of predicate type.
-    CExpression * getValue() const { return m_pPredicate; }
+    Expression * getValue() const { return m_pPredicate; }
 
     /// Set predicate expression which is called.
     /// \param _pExpression Expression of predicate type.
     /// \param _bReparent If specified (default) also sets parent of _pExpression to this node.
-    void setValue(CExpression * _pValue, bool _bReparent = true) {
+    void setValue(Expression * _pValue, bool _bReparent = true) {
         _assign(m_pValue, _pValue, _bReparent);
     }
 
     /// Get predicate expression which is called.
     /// \return Expression of predicate type.
-    CExpression * getParam() const { return m_pPredicate; }
+    Expression * getParam() const { return m_pPredicate; }
 
     /// Set predicate expression which is called.
     /// \param _pExpression Expression of predicate type.
     /// \param _bReparent If specified (default) also sets parent of _pExpression to this node.
-    void setParam(CParam * _pValue, bool _bReparent = true) {
+    void setParam(Param * _pValue, bool _bReparent = true) {
         _assign(m_pValue, _pValue, _bReparent);
     }
 
 private:
-    CExpression * m_pValue;
-    const CParam * m_pParam;
+    Expression * m_pValue;
+    const Param * m_pParam;
 };
 */
 
 /// Partially applied predicate.
-class CBinder : public CExpression {
+class Binder : public Expression {
 public:
     /// Default constructor.
-    CBinder() : m_pPredicate(NULL) {}
+    Binder() : m_pPredicate(NULL) {}
 
     /// Destructor.
-    virtual ~CBinder() { _delete(m_pPredicate); }
+    virtual ~Binder() { _delete(m_pPredicate); }
 
-    virtual int getKind() const { return Binder; }
+    virtual int getKind() const { return BINDER; }
 
     /// Get predicate expression whose parameters are bound.
     /// \return Expression of predicate type.
-    CExpression * getPredicate() const { return m_pPredicate; }
+    Expression * getPredicate() const { return m_pPredicate; }
 
     /// Set predicate expression.
     /// \param _pExpression Expression of predicate type.
     /// \param _bReparent If specified (default) also sets parent of _pExpression to this node.
-    void setPredicate(CExpression * _pExpression, bool _bReparent = true) {
+    void setPredicate(Expression * _pExpression, bool _bReparent = true) {
         _assign(m_pPredicate, _pExpression, _bReparent);
     }
 
     /// Get list of bound parameters. Can contain NULL values.
     /// \return List of expressions.
-    CCollection<CExpression> & getParams() { return m_params; }
+    Collection<Expression> & getParams() { return m_params; }
 
 private:
-    CExpression * m_pPredicate;
-    CCollection<CExpression> m_params;
+    Expression * m_pPredicate;
+    Collection<Expression> m_params;
 };
 
-class CFormulaDeclaration;
+class FormulaDeclaration;
 
 /// Function call as a part of an expression.
-class CFormulaCall : public CExpression {
+class FormulaCall : public Expression {
 public:
     /// Default constructor.
-    CFormulaCall() : m_pTarget(NULL) {}
+    FormulaCall() : m_pTarget(NULL) {}
 
-    virtual int getKind() const { return FormulaCall; }
+    virtual int getKind() const { return FORMULA_CALL; }
 
     /// Get formula which is called.
     /// \return Formula declaration.
-    const CFormulaDeclaration * getTarget() const { return m_pTarget; }
+    const FormulaDeclaration * getTarget() const { return m_pTarget; }
 
     /// Set formula declaration which is called.
     /// \param _pFormula Formula.
-    void setTarget(const CFormulaDeclaration * _pFormula) { m_pTarget = _pFormula; }
+    void setTarget(const FormulaDeclaration * _pFormula) { m_pTarget = _pFormula; }
 
     /// Get list of actual parameters.
     /// \return List of expressions.
-    CCollection<CExpression> & getParams() { return m_params; }
+    Collection<Expression> & getParams() { return m_params; }
 
     std::wstring getName() const;
 
 private:
-    const CFormulaDeclaration * m_pTarget;
-    CCollection<CExpression> m_params;
+    const FormulaDeclaration * m_pTarget;
+    Collection<Expression> m_params;
 };
 
 /// Output branch of a predicate.
-class CBranch : public CParams {
+class Branch : public Params {
 public:
     /// Default constructor.
-    CBranch() : m_pLabel(NULL), m_pPreCondition(NULL), m_pPostCondition(NULL) {}
+    Branch() : m_pLabel(NULL), m_pPreCondition(NULL), m_pPostCondition(NULL) {}
 
     /// Destructor.
-    virtual ~CBranch() {
+    virtual ~Branch() {
         _delete(m_pLabel);
         _delete(m_pPreCondition);
         _delete(m_pPostCondition);
@@ -1152,100 +1154,100 @@ public:
     /// Get label associated with the branch.
     /// Possibly NULL if it is the only branch.
     /// \return Label.
-    CLabel * getLabel() const { return m_pLabel; }
+    Label * getLabel() const { return m_pLabel; }
 
     /// Set label associated with the branch.
     /// \param _pLabel Label of the output branch.
     /// \param _bReparent If specified (default) also sets parent of _pLabel to this node.
-    void setLabel(CLabel * _pLabel, bool _bReparent = true) {
+    void setLabel(Label * _pLabel, bool _bReparent = true) {
         _assign(m_pLabel, _pLabel, _bReparent);
     }
 
     /// Get branch precondition.
     /// \return Precondition.
-    CFormula * getPreCondition() const { return m_pPreCondition; }
+    Formula * getPreCondition() const { return m_pPreCondition; }
 
     /// Set branch precondition.
     /// \param _pCondition Precondition.
     /// \param _bReparent If specified (default) also sets parent of _pCondition to this node.
-    void setPreCondition(CFormula * _pCondition, bool _bReparent = true) {
+    void setPreCondition(Formula * _pCondition, bool _bReparent = true) {
         _assign(m_pPreCondition, _pCondition, _bReparent);
     }
 
     /// Get branch precondition.
     /// \return Postcondition.
-    CFormula * getPostCondition() const { return m_pPostCondition; }
+    Formula * getPostCondition() const { return m_pPostCondition; }
 
     /// Set branch postcondition.
     /// \param _pCondition Postcondition.
     /// \param _bReparent If specified (default) also sets parent of _pCondition to this node.
-    void setPostCondition(CFormula * _pCondition, bool _bReparent = true) {
+    void setPostCondition(Formula * _pCondition, bool _bReparent = true) {
         _assign(m_pPostCondition, _pCondition, _bReparent);
     }
 
 private:
-    CLabel * m_pLabel;
-    CFormula * m_pPreCondition, * m_pPostCondition;
+    Label * m_pLabel;
+    Formula * m_pPreCondition, * m_pPostCondition;
 };
 
 /// Collection of output branches.
 /// Used in predicate, process and lambda declarations.
-/// \extends CNode
-class CBranches : public CCollection<CBranch> {
+/// \extends Node
+class Branches : public Collection<Branch> {
 };
 
-class CPredicateType;
+class PredicateType;
 
-/// Predicate declaration base (also used by CLambda).
-class CAnonymousPredicate : public CStatement {
+/// Predicate declaration base (also used by Lambda).
+class AnonymousPredicate : public Statement {
 public:
     /// Default constructor.
-    CAnonymousPredicate() : m_pPreCond(NULL), m_pPostCond(NULL), m_pBlock(NULL), m_pType(NULL) {}
+    AnonymousPredicate() : m_pPreCond(NULL), m_pPostCond(NULL), m_pBlock(NULL), m_pType(NULL) {}
 
     /// Destructor.
-    virtual ~CAnonymousPredicate();
+    virtual ~AnonymousPredicate();
 
     /// Get list of formal input parameters.
     /// \return List of parameters.
-    CParams & getInParams() { return m_paramsIn; }
-    const CParams & getInParams() const { return m_paramsIn; }
+    Params & getInParams() { return m_paramsIn; }
+    const Params & getInParams() const { return m_paramsIn; }
 
     /// Get list of output branches. Each branch can contain a list of parameters,
     /// a precondition and a postcondition.
     /// \return List of branches.
-    CBranches & getOutParams() { return m_paramsOut; }
-    const CBranches & getOutParams() const { return m_paramsOut; }
+    Branches & getOutParams() { return m_paramsOut; }
+    const Branches & getOutParams() const { return m_paramsOut; }
 
     /// Set predicate body.
     /// \param _pBlock Predicate body.
     /// \param _bReparent If specified (default) also sets parent of _pBlock to this node.
-    void setBlock(CBlock * _pBlock, bool _bReparent = true) {
+    void setBlock(Block * _pBlock, bool _bReparent = true) {
         _assign(m_pBlock, _pBlock, _bReparent);
     }
 
     /// Get predicate body.
     /// \return Predicate body.
-    CBlock * getBlock() const { return m_pBlock; }
+    Block * getBlock() const { return m_pBlock; }
 
     /// Get precondition common for all branches.
     /// \return Precondition.
-    CFormula * getPreCondition() const { return m_pPreCond; }
+    Formula * getPreCondition() const { return m_pPreCond; }
 
     /// Set precondition common for all branches.
     /// \param _pCondition Precondition.
     /// \param _bReparent If specified (default) also sets parent of _pCondition to this node.
-    void setPreCondition(CFormula * _pCondition, bool _bReparent = true) {
+    void setPreCondition(Formula * _pCondition, bool _bReparent = true) {
         _assign(m_pPreCond, _pCondition, _bReparent);
     }
 
     /// Get postcondition common for all branches.
     /// \return Postcondition.
-    CFormula * getPostCondition() const { return m_pPostCond; }
+    Formula * getPostCondition() const { return m_pPostCond; }
 
     /// Set postcondition common for all branches.
     /// \param _pCondition Postcondition.
     /// \param _bReparent If specified (default) also sets parent of _pCondition to this node.
-    void setPostCondition(CFormula * _pCondition, bool _bReparent = true) {
+    void setPostCondition(Formula * _pCondition, bool _bReparent = true) {
         _assign(m_pPostCond, _pCondition, _bReparent);
     }
 
@@ -1261,7 +1263,7 @@ public:
     // \return True.
     virtual bool isBlockLike() const { return true; }
 
-    CPredicateType * getType() const {
+    PredicateType * getType() const {
         if (! m_pType) updateType();
         return m_pType;
     }
@@ -1269,106 +1271,110 @@ public:
     void updateType() const;
 
 private:
-    CParams m_paramsIn;
-    CBranches m_paramsOut;
-    CFormula * m_pPreCond, * m_pPostCond;
-    CBlock * m_pBlock;
-    mutable CPredicateType * m_pType;
+    Params m_paramsIn;
+    Branches m_paramsOut;
+    Formula * m_pPreCond, * m_pPostCond;
+    Block * m_pBlock;
+    mutable PredicateType * m_pType;
 };
 
 /// Anonymous predicate.
-class CLambda : public CExpression {
+class Lambda : public Expression {
 public:
     /// Default constructor.
-    CLambda() {}
+    Lambda() {}
 
     /// Get expression kind.
     /// \return #Lambda.
-    virtual int getKind() const { return Lambda; }
+    virtual int getKind() const { return LAMBDA; }
 
-    CAnonymousPredicate & getPredicate() { return m_pred; }
+    AnonymousPredicate & getPredicate() { return m_pred; }
 
 private:
-    CAnonymousPredicate m_pred;
+    AnonymousPredicate m_pred;
 };
 
 /// Indexed element.
-class CElementDefinition : public CNode {
+class ElementDefinition : public Node {
 public:
     /// Default constructor.
-    CElementDefinition() : m_pIndex(NULL), m_pValue(NULL) {}
+    ElementDefinition() : m_pIndex(NULL), m_pValue(NULL) {}
 
-    virtual ~CElementDefinition() {
+    virtual ~ElementDefinition() {
         _delete(m_pIndex);
         _delete(m_pValue);
     }
 
+    virtual int getNodeKind() const { return Node::ELEMENT_DEFINITION; }
+
     /// Get index expression.
     /// \return Element index.
-    CExpression * getIndex() const { return m_pIndex; }
+    Expression * getIndex() const { return m_pIndex; }
 
     /// Set index expression.
     /// \param _pExpression Element index.
     /// \param _bReparent If specified (default) also sets parent of _pExpression to this node.
-    void setIndex(CExpression * _pExpression, bool _bReparent = true) {
+    void setIndex(Expression * _pExpression, bool _bReparent = true) {
         _assign(m_pIndex, _pExpression, _bReparent);
     }
 
     /// Get value expression.
     /// \return Element value.
-    CExpression * getValue() const { return m_pValue; }
+    Expression * getValue() const { return m_pValue; }
 
     /// Set value expression.
     /// \param _pExpression Element value.
     /// \param _bReparent If specified (default) also sets parent of _pExpression to this node.
-    void setValue(CExpression * _pExpression, bool _bReparent = true) {
+    void setValue(Expression * _pExpression, bool _bReparent = true) {
         _assign(m_pValue, _pExpression, _bReparent);
     }
 
 private:
-    CExpression * m_pIndex;
-    CExpression * m_pValue;
+    Expression * m_pIndex;
+    Expression * m_pValue;
 };
 
 /// Literal of \c struct type.
-class CStructFieldDefinition : public CNode {
+class StructFieldDefinition : public Node {
 public:
     /// Default constructor.
-    CStructFieldDefinition() : m_pValue(NULL) {}
+    StructFieldDefinition() : m_pValue(NULL) {}
 
     /// Initialize with struct and field references.
     /// \param _pStructType Type of structure.
     /// \param _pField Field.
-    CStructFieldDefinition(const CStructType * _pStructType, const CNamedValue * _pField)
+    StructFieldDefinition(const StructType * _pStructType, const NamedValue * _pField)
         : m_pValue(NULL), m_pStructType(_pStructType), m_pField(_pField) {}
 
     /// Destructor.
-    virtual ~CStructFieldDefinition() { _delete(m_pValue); }
+    virtual ~StructFieldDefinition() { _delete(m_pValue); }
+
+    virtual int getNodeKind() const { return Node::STRUCT_FIELD_DEFINITION; }
 
     /// Get type of structure.
     /// \return Type of structure.
-    const CStructType * getStructType() const { return m_pStructType; }
+    const StructType * getStructType() const { return m_pStructType; }
 
     /// Set type of structure.
     /// \param _pStructType Type of structure.
-    void setStructType(const CStructType * _pStructType) { m_pStructType = _pStructType; }
+    void setStructType(const StructType * _pStructType) { m_pStructType = _pStructType; }
 
     /// Get field reference.
     /// \return Field reference.
-    const CNamedValue * getField() const { return m_pField; }
+    const NamedValue * getField() const { return m_pField; }
 
     /// Set field reference.
     /// \param _pField Field reference.
-    void setField(const CNamedValue * _pField) { m_pField = _pField; }
+    void setField(const NamedValue * _pField) { m_pField = _pField; }
 
     /// Get value expression.
     /// \return Field value.
-    CExpression * getValue() const { return m_pValue; }
+    Expression * getValue() const { return m_pValue; }
 
     /// Set value expression.
     /// \param _pExpression Field value.
     /// \param _bReparent If specified (default) also sets parent of _pExpression to this node.
-    void setValue(CExpression * _pExpression, bool _bReparent = true) {
+    void setValue(Expression * _pExpression, bool _bReparent = true) {
         _assign(m_pValue, _pExpression, _bReparent);
     }
 
@@ -1381,137 +1387,137 @@ public:
     void setName(const std::wstring & _strName) { m_strName = _strName; }
 
 private:
-    CExpression * m_pValue;
-    const CStructType * m_pStructType;
-    const CNamedValue * m_pField;
+    Expression * m_pValue;
+    const StructType * m_pStructType;
+    const NamedValue * m_pField;
     std::wstring m_strName;
 };
 
 /// Constructor of compound value (array, set, struct, etc.)
-class CConstructor : public CExpression {
+class Constructor : public Expression {
 public:
     /// Kind of constructor.
     enum {
         /// Struct initializer.
-        StructFields,
+        STRUCT_FIELDS,
         /// Array initializer.
-        ArrayElements,
+        ARRAY_ELEMENTS,
         /// Set initializer.
-        SetElements,
+        SET_ELEMENTS,
         /// Map initializer.
-        MapElements,
+        MAP_ELEMENTS,
         /// List initializer.
-        ListElements,
+        LIST_ELEMENTS,
         /// Array generator.
-        ArrayIteration,
+        ARRAY_ITERATION,
         /// Union constructor.
-        UnionConstructor,
+        UNION_CONSTRUCTOR,
     };
 
     /// Default constructor.
-    CConstructor() {}
+    Constructor() {}
 
     /// Get expression kind.
     /// \return #Constructor.
-    virtual int getKind() const { return Constructor; }
+    virtual int getKind() const { return CONSTRUCTOR; }
 
     /// Get constructor kind (implemented in descendants).
     /// \return Constructor kind.
     virtual int getConstructorKind() const = 0;
 };
 
-/// Structure value. \extends CConstructor
-/// This object is a collection of CStructFieldDefinition instances, use methods
-/// of CCollection to access field definitions.
-class CStructConstructor : public CCollection<CStructFieldDefinition, CConstructor> {
+/// Structure value. \extends Constructor
+/// This object is a collection of StructFieldDefinition instances, use methods
+/// of Collection to access field definitions.
+class StructConstructor : public Collection<StructFieldDefinition, Constructor> {
 public:
     /// Default constructor.
-    CStructConstructor() {}
+    StructConstructor() {}
 
     /// Get constructor kind.
     /// \return #StructFields.
-    virtual int getConstructorKind() const { return StructFields; }
+    virtual int getConstructorKind() const { return STRUCT_FIELDS; }
 };
 
-class CVariableDeclaration;
-class CUnionConstructorDefinition;
+class VariableDeclaration;
+class UnionConstructorDeclaration;
 
-/// Union value. \extends CConstructor
+/// Union value. \extends Constructor
 /// The class extends struct constructor with union constructor name.
 /// May contain not-fully defined fields (used in switch construct).
-class CUnionConstructor : public CStructConstructor {
+class UnionConstructor : public StructConstructor {
 public:
-    CUnionConstructor() {}
+    UnionConstructor() : m_pProto(NULL) {}
 
     /// Get constructor kind.
     /// \return #UnionConstructor.
-    virtual int getConstructorKind() const { return UnionConstructor; }
+    virtual int getConstructorKind() const { return UNION_CONSTRUCTOR; }
 
     /// Get list of variables declared as part of the constructor.
     /// \return List of variables.
-    CCollection<CVariableDeclaration> & getDeclarations() { return m_decls; }
-    const CCollection<CVariableDeclaration> & getDeclarations() const { return m_decls; }
+    Collection<VariableDeclaration> & getDeclarations() { return m_decls; }
+    const Collection<VariableDeclaration> & getDeclarations() const { return m_decls; }
 
     bool isComplete() const;
 
-    CUnionConstructorDefinition * getDefinition() const { return m_pDef; }
-    void setDefinition(CUnionConstructorDefinition * _pDef) { m_pDef = _pDef; }
+    UnionConstructorDeclaration * getPrototype() const { return m_pProto; }
+    void setPrototype(UnionConstructorDeclaration * _pProto) { m_pProto = _pProto; }
 
 private:
-    CCollection<CVariableDeclaration> m_decls;
-    CUnionConstructorDefinition * m_pDef;
+    Collection<VariableDeclaration> m_decls;
+    UnionConstructorDeclaration * m_pProto;
 };
 
-/// Array value. \extends CConstructor
-/// This object is a collection of CElementDefinition instances, use methods
-/// of CCollection to access element definitions.
-class CArrayConstructor : public CCollection<CElementDefinition, CConstructor> {
+/// Array value. \extends Constructor
+/// This object is a collection of ElementDefinition instances, use methods
+/// of Collection to access element definitions.
+class ArrayConstructor : public Collection<ElementDefinition, Constructor> {
 public:
     /// Default constructor.
-    CArrayConstructor() {}
+    ArrayConstructor() {}
 
     /// Get constructor kind.
     /// \return #ArrayElements.
-    virtual int getConstructorKind() const { return ArrayElements; }
+    virtual int getConstructorKind() const { return ARRAY_ELEMENTS; }
 };
 
-/// Map value. \extends CConstructor
-/// This object is a collection of CElementDefinition instances, use methods
-/// of CCollection to access element definitions.
-class CMapConstructor : public CCollection<CElementDefinition, CConstructor> {
+/// Map value. \extends Constructor
+/// This object is a collection of ElementDefinition instances, use methods
+/// of Collection to access element definitions.
+class MapConstructor : public Collection<ElementDefinition, Constructor> {
 public:
     /// Default constructor.
-    CMapConstructor() {}
+    MapConstructor() {}
 
     /// Get constructor kind.
     /// \return #MapElements.
-    virtual int getConstructorKind() const { return MapElements; }
+    virtual int getConstructorKind() const { return MAP_ELEMENTS; }
 };
 
-/// Set value. \extends CConstructor
-/// This object is a collection of CExpression instances, use methods
-/// of CCollection to access element definitions.
-class CSetConstructor : public CCollection<CExpression, CConstructor> {
+/// Set value. \extends Constructor
+/// This object is a collection of Expression instances, use methods
+/// of Collection to access element definitions.
+class SetConstructor : public Collection<Expression, Constructor> {
 public:
     /// Default constructor.
-    CSetConstructor() {}
+    SetConstructor() {}
 
     /// Get constructor kind.
     /// \return #SetElements.
-    virtual int getConstructorKind() const { return SetElements; }
+    virtual int getConstructorKind() const { return SET_ELEMENTS; }
 };
 
-/// List value. \extends CConstructor
-/// This object is a collection of CExpression instances, use methods
-/// of CCollection to access element definitions.
-class CListConstructor : public CCollection<CExpression, CConstructor> {
+/// List value. \extends Constructor
+/// This object is a collection of Expression instances, use methods
+/// of Collection to access element definitions.
+class ListConstructor : public Collection<Expression, Constructor> {
 public:
     /// Default constructor.
-    CListConstructor() {}
+    ListConstructor() {}
 
     /// Get constructor kind.
     /// \return #ListElements.
-    virtual int getConstructorKind() const { return ListElements; }
+    virtual int getConstructorKind() const { return LIST_ELEMENTS; }
 };
 
 /// Definition of array part.Consider array generator:
@@ -1522,35 +1528,37 @@ public:
 /// }
 /// \endcode
 /// In the above example "case 0..4  : 'a'" and "case 5..10  : 'b'" are array parts.
-class CArrayPartDefinition : public CNode {
+class ArrayPartDefinition : public Node {
 public:
     /// Default constructor.
-    CArrayPartDefinition() : m_pExpression(NULL) {}
+    ArrayPartDefinition() : m_pExpression(NULL) {}
 
     /// Destructor.
-    virtual ~CArrayPartDefinition() { _delete(m_pExpression); }
+    virtual ~ArrayPartDefinition() { _delete(m_pExpression); }
+
+    virtual int getNodeKind() const { return Node::ARRAY_PART_DEFINITION; }
 
     /// Get \c case conditions.
     /// \return List of expressions (can contain ranges).
-    CCollection<CExpression> & getConditions() { return m_conditions; }
+    Collection<Expression> & getConditions() { return m_conditions; }
 
     /// Get expression.
     /// \return Expression.
-    CExpression * getExpression() const { return m_pExpression; }
+    Expression * getExpression() const { return m_pExpression; }
 
     /// Set expression.
     /// \param _pExpression Expression.
     /// \param _bReparent If specified (default) also sets parent of _pExpression to this node.
-    void setExpression(CExpression * _pExpression, bool _bReparent = true) {
+    void setExpression(Expression * _pExpression, bool _bReparent = true) {
         _assign(m_pExpression, _pExpression, _bReparent);
     }
 
 private:
-    CExpression * m_pExpression;
-    CCollection<CExpression> m_conditions;
+    Expression * m_pExpression;
+    Collection<Expression> m_conditions;
 };
 
-/// Array constructor by means of iteration. \extends CConstructor
+/// Array constructor by means of iteration. \extends Constructor
 /// Example:
 /// \code
 /// for (0..15 i) {
@@ -1559,36 +1567,36 @@ private:
 ///   default     : 'c'
 /// }
 /// \endcode
-class CArrayIteration : public CCollection<CArrayPartDefinition, CConstructor> {
+class ArrayIteration : public Collection<ArrayPartDefinition, Constructor> {
 public:
     /// Default constructor.
-    CArrayIteration() : m_pDefault(NULL) {}
+    ArrayIteration() : m_pDefault(NULL) {}
 
     /// Destructor.
-    virtual ~CArrayIteration() { _delete(m_pDefault); }
+    virtual ~ArrayIteration() { _delete(m_pDefault); }
 
     /// Get constructor kind.
     /// \return #ArrayIteration.
-    virtual int getConstructorKind() const { return ArrayIteration; }
+    virtual int getConstructorKind() const { return ARRAY_ITERATION; }
 
     /// Get list of iterator variables.
     /// \return Iterator variables.
-    CNamedValues & getIterators() { return m_iterators; }
+    NamedValues & getIterators() { return m_iterators; }
 
     /// Get expression for default alternative.
     /// \return Expression.
-    CExpression * getDefault() const { return m_pDefault; }
+    Expression * getDefault() const { return m_pDefault; }
 
     /// Set expression for default alternative.
     /// \param _pExpression Expression.
     /// \param _bReparent If specified (default) also sets parent of _pExpression to this node.
-    void setDefault(CExpression * _pExpression, bool _bReparent = true) {
+    void setDefault(Expression * _pExpression, bool _bReparent = true) {
         _assign(m_pDefault, _pExpression, _bReparent);
     }
 
 private:
-    CExpression * m_pDefault;
-    CNamedValues m_iterators;
+    Expression * m_pDefault;
+    NamedValues m_iterators;
 };
 
 } // namespace ir

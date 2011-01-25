@@ -9,27 +9,27 @@
 
 namespace ir {
 
-bool isTypeVariable(const CNamedValue * _pVar, const CType * & _pType) {
+bool isTypeVariable(const NamedValue * _pVar, const Type * & _pType) {
     if (! _pVar || ! _pVar->getType())
         return false;
 
-    return _pVar->getType()->getKind() == CType::Type;
+    return _pVar->getType()->getKind() == Type::TYPE;
 }
 
-const CType * resolveBaseType(const CType * _pType) {
+const Type * resolveBaseType(const Type * _pType) {
     if (! _pType)
         return NULL;
 
     while (_pType) {
-        if (_pType->getKind() == CType::NamedReference) {
-            const CNamedReferenceType * pRef = (CNamedReferenceType *) _pType;
+        if (_pType->getKind() == Type::NAMED_REFERENCE) {
+            const NamedReferenceType * pRef = (NamedReferenceType *) _pType;
 
             if (pRef->getDeclaration() != NULL && pRef->getDeclaration()->getType() != NULL)
                 _pType = pRef->getDeclaration()->getType();
             else
                 break;
-        } else if (_pType->getKind() == CType::Parameterized) {
-            _pType = ((CParameterizedType *) _pType)->getActualType();
+        } else if (_pType->getKind() == Type::PARAMETERIZED) {
+            _pType = ((ParameterizedType *) _pType)->getActualType();
         } else
             break;
     }
@@ -37,109 +37,109 @@ const CType * resolveBaseType(const CType * _pType) {
     return _pType;
 }
 
-std::wstring CNamedReferenceType::getName() const {
-    return m_pDecl != NULL ? m_pDecl->getName() : (m_pVar != NULL ? m_pVar->getName() : L"");
+std::wstring NamedReferenceType::getName() const {
+    return m_pDecl != NULL ? m_pDecl->getName() : L"";
 }
 
-std::wstring CFormulaCall::getName() const {
+std::wstring FormulaCall::getName() const {
     return m_pTarget != NULL ? m_pTarget->getName() : L"";
 }
 
-const std::wstring &CPredicateReference::getName() const {
+const std::wstring &PredicateReference::getName() const {
     return m_pTarget != NULL ? m_pTarget->getName() : m_strName;
 }
 
-bool CUnionConstructor::isComplete() const {
-    return m_decls.empty() && m_pDef && size() == m_pDef->getStruct().getFields().size();
+bool UnionConstructor::isComplete() const {
+    return m_decls.empty() && m_pProto && size() == m_pProto->getStruct().getFields().size();
 }
 
-CAnonymousPredicate::~CAnonymousPredicate() {
+AnonymousPredicate::~AnonymousPredicate() {
     _delete(m_pPreCond);
     _delete(m_pPostCond);
     _delete(m_pBlock);
     _delete(m_pType);
 }
 
-void CAnonymousPredicate::updateType() const {
-    CPredicateType * pType = new CPredicateType();
+void AnonymousPredicate::updateType() const {
+    PredicateType * pType = new PredicateType();
 
     pType->getInParams().append(m_paramsIn, false);
     pType->getOutParams().append(m_paramsOut, false);
     pType->setPreCondition(m_pPreCond, false);
     pType->setPostCondition(m_pPostCond, false);
 
-    const_cast<CAnonymousPredicate *>(this)->_assign(m_pType, pType, true);
+    const_cast<AnonymousPredicate *>(this)->_assign(m_pType, pType, true);
 }
 
-std::wstring CVariableDeclaration::getName() const {
+std::wstring VariableDeclaration::getName() const {
     return m_pVar != NULL ? m_pVar->getName() : L"";
 }
 
-union_field_idx_t CUnionType::findField(const std::wstring & _strName) const {
+UnionFieldIdx UnionType::findField(const std::wstring & _strName) const {
     for (size_t i = 0; i < m_constructors.size(); ++ i) {
         size_t cIdx = m_constructors.get(i)->getStruct().getFields().findByNameIdx(_strName);
         if (cIdx != (size_t) -1)
-            return union_field_idx_t(i, cIdx);
+            return UnionFieldIdx(i, cIdx);
     }
 
-    return union_field_idx_t((size_t) -1, (size_t) -1);
+    return UnionFieldIdx((size_t) -1, (size_t) -1);
 }
 
-CUnionAlternativeExpr::CUnionAlternativeExpr(const CUnionType * _pType, const union_field_idx_t & _idx) :
+UnionAlternativeExpr::UnionAlternativeExpr(const UnionType * _pType, const UnionFieldIdx & _idx) :
     m_strName(_pType->getConstructors().get(_idx.first)->getStruct().getFields().get(_idx.second)->getName()), m_pType(_pType), m_idx(_idx)
 {
 }
 
-const CUnionConstructorDefinition * CUnionAlternativeExpr::getConstructor() const {
+const UnionConstructorDeclaration * UnionAlternativeExpr::getConstructor() const {
     return getUnionType()->getConstructors().get(m_idx.first);
 }
 
-const CNamedValue * CUnionAlternativeExpr::getField() const {
+const NamedValue * UnionAlternativeExpr::getField() const {
     return getConstructor()->getStruct().getFields().get(m_idx.second);
 }
 
-CType * CFunctionCall::getType() const {
-    CFunctionCall * pThis = const_cast<CFunctionCall *>(this);
+Type * FunctionCall::getType() const {
+    FunctionCall * pThis = const_cast<FunctionCall *>(this);
 
-    if (CExpression::getType())
-        return CExpression::getType();
+    if (Expression::getType())
+        return Expression::getType();
 
-    if (! m_pPredicate || ! m_pPredicate->getType() || m_pPredicate->getType()->getKind() != CType::Predicate)
+    if (! m_pPredicate || ! m_pPredicate->getType() || m_pPredicate->getType()->getKind() != Type::PREDICATE)
         return NULL;
 
-    CPredicateType * pType = (CPredicateType *) m_pPredicate->getType();
-    CBranches & branches = pType->getOutParams();
+    PredicateType * pType = (PredicateType *) m_pPredicate->getType();
+    Branches & branches = pType->getOutParams();
 
     if (branches.empty()) {
-        pThis->setType(new CType(CType::Unit));
-        return CExpression::getType ();
+        pThis->setType(new Type(Type::UNIT));
+        return Expression::getType ();
     }
 
     if (branches.size() > 1)
         return NULL;
 
-    CBranch * pBranch = branches.get(0);
+    Branch * pBranch = branches.get(0);
 
     if (pBranch->empty()) {
-        pThis->setType(new CType(CType::Unit));
+        pThis->setType(new Type(Type::UNIT));
     } else if (pBranch->size() == 1) {
         pThis->setType(pBranch->get(0)->getType());
     } else {
-        CStructType * pReturnType = new CStructType();
+        StructType * pReturnType = new StructType();
 
         pReturnType->getFields().append(* pBranch, false);
         pThis->setType(pReturnType);
     }
 
-    return CExpression::getType ();
+    return Expression::getType ();
 }
 
-bool CType::hasFresh() const {
-    return getKind() == Fresh;
+bool Type::hasFresh() const {
+    return getKind() == FRESH;
 }
 
-CType * CType::clone() const {
-    CType * pType = new CType(m_kind);
+Type * Type::clone() const {
+    Type * pType = new Type(m_kind);
 
     pType->setBits(m_nBits);
 
@@ -149,101 +149,104 @@ CType * CType::clone() const {
 static
 int cmpBits(int _bitsL, int _bitsR) {
     if (_bitsL == _bitsR)
-        return CType::OrdEquals;
-    if (_bitsL == CNumber::Generic)
-        return CType::OrdSuper;
-    if (_bitsR == CNumber::Generic)
-        return CType::OrdSub;
-    return _bitsR > _bitsL ? CType::OrdSub : CType::OrdSuper;
+        return Type::ORD_EQUALS;
+    if (_bitsL == Number::GENERIC)
+        return Type::ORD_SUPER;
+    if (_bitsR == Number::GENERIC)
+        return Type::ORD_SUB;
+    return _bitsR > _bitsL ? Type::ORD_SUB : Type::ORD_SUPER;
 }
 
 static
 int cmpIntNat(int _bitsL, int _bitsR) {
-    if (_bitsL != CNumber::Generic && (_bitsR == CNumber::Generic || _bitsL <= _bitsR))
-        return CType::OrdNone;
+    if (_bitsL != Number::GENERIC && (_bitsR == Number::GENERIC || _bitsL <= _bitsR))
+        return Type::ORD_NONE;
 
-    return CType::OrdSuper;
+    return Type::ORD_SUPER;
 }
 
 static
 int cmpNatInt(int _bitsL, int _bitsR) {
-    if (cmpIntNat(_bitsR, _bitsL) == CType::OrdSuper)
-        return CType::OrdSub;
+    if (cmpIntNat(_bitsR, _bitsL) == Type::ORD_SUPER)
+        return Type::ORD_SUB;
 
-    return CType::OrdNone;
+    return Type::ORD_NONE;
 }
 
-int CType::compare(const CType & _other) const {
+int Type::compare(const Type & _other) const {
     typedef std::pair<int, int> P;
     P kinds(getKind(), _other.getKind());
 
     if (this == & _other)
-        return OrdEquals;
+        return ORD_EQUALS;
 
-    if (getKind() == Fresh || _other.getKind() == Fresh)
-        return OrdUnknown;
+    if (getKind() == FRESH || _other.getKind() == FRESH) {
+        if (contains(&_other) || _other.contains(this))
+            return ORD_NONE;
+        return ORD_UNKNOWN;
+    }
 
     /*if (hasFresh() || _other.hasFresh())
         return OrdUnknown;*/
 
-    if (kinds == P(Nat, Nat))
+    if (kinds == P(NAT, NAT))
         return cmpBits(getBits(), _other.getBits());
-    if (kinds == P(Nat, Int))
+    if (kinds == P(NAT, INT))
         return cmpNatInt(getBits(), _other.getBits());
-    if (kinds == P(Nat, Real))
-        return OrdSub;
+    if (kinds == P(NAT, REAL))
+        return ORD_SUB;
 
-    if (kinds == P(Int, Nat))
+    if (kinds == P(INT, NAT))
         return cmpIntNat(getBits(), _other.getBits());
-    if (kinds == P(Int, Int))
+    if (kinds == P(INT, INT))
         return cmpBits(getBits(), _other.getBits());
-    if (kinds == P(Int, Real))
-        return OrdSub;
+    if (kinds == P(INT, REAL))
+        return ORD_SUB;
 
-    if (kinds == P(Real, Nat))
-        return OrdSuper;
-    if (kinds == P(Real, Int))
-        return OrdSuper;
-    if (kinds == P(Real, Real))
+    if (kinds == P(REAL, NAT))
+        return ORD_SUPER;
+    if (kinds == P(REAL, INT))
+        return ORD_SUPER;
+    if (kinds == P(REAL, REAL))
         return cmpBits(getBits(), _other.getBits());
 
-    if (kinds == P(Bool, Bool))
-        return OrdEquals;
-    if (kinds == P(Char, Char))
-        return OrdEquals;
-    if (kinds == P(String, String))
-        return OrdEquals;
+    if (kinds == P(BOOL, BOOL))
+        return ORD_EQUALS;
+    if (kinds == P(CHAR, CHAR))
+        return ORD_EQUALS;
+    if (kinds == P(STRING, STRING))
+        return ORD_EQUALS;
 
-    return OrdNone;
+    return ORD_NONE;
 }
 
-bool CType::compare(const CType & _other, int _order) const {
+bool Type::compare(const Type & _other, int _order) const {
     return (compare(_other) & _order) != 0;
 }
 
-bool CType::operator ==(const CType & _other) const {
+bool Type::operator ==(const Type & _other) const {
     return !(*this < _other || _other < *this);
 }
 
-bool CType::operator !=(const CType & _other) const {
+bool Type::operator !=(const Type & _other) const {
     return *this < _other || _other < *this;
 }
 
-bool CType::less(const CType & _other) const {
+bool Type::less(const Type & _other) const {
     assert(getKind() == _other.getKind());
 
-    if (getKind() == Fresh)
+    if (getKind() == FRESH)
         return (this < & _other);
 
-    const int nOrder = CType::compare(_other);
+    const int nOrder = Type::compare(_other);
 
     // Should be comparable.
-    assert(nOrder == OrdSub || nOrder == OrdSuper || nOrder == OrdEquals);
+    assert(nOrder == ORD_SUB || nOrder == ORD_SUPER || nOrder == ORD_EQUALS);
 
-    return nOrder == OrdSub;
+    return nOrder == ORD_SUB;
 }
 
-bool CType::operator <(const CType & _other) const {
+bool Type::operator <(const Type & _other) const {
     if (getKind() < _other.getKind())
         return true;
 
@@ -255,77 +258,91 @@ bool CType::operator <(const CType & _other) const {
 
 static
 int minBitsIntNat(int _bitsInt, int _bitsNat) {
-    if (_bitsInt == CNumber::Generic)
+    if (_bitsInt == Number::GENERIC)
         return _bitsNat;
-    if (_bitsNat == CNumber::Generic || _bitsInt <= _bitsNat)
+    if (_bitsNat == Number::GENERIC || _bitsInt <= _bitsNat)
         return _bitsInt - 1;
     return _bitsNat;
 }
 
 static
 int maxBitsIntNat(int _bitsInt, int _bitsNat) {
-    if (_bitsInt == CNumber::Generic || _bitsNat == CNumber::Generic)
-        return CNumber::Generic;
+    if (_bitsInt == Number::GENERIC || _bitsNat == Number::GENERIC)
+        return Number::GENERIC;
     if (_bitsInt <= _bitsNat)
         return _bitsNat + 1;
     return _bitsInt;
 }
 
-CType::Extremum CType::getJoin(ir::CType & _other) {
-    if (getKind() == Fresh || _other.getKind() == Fresh)
+Type::Extremum Type::getJoin(ir::Type & _other) {
+    if (getKind() == FRESH || _other.getKind() == FRESH) {
+        ir::Type &fresh = getKind() == FRESH ? *this : _other;
+        ir::Type &other = getKind() == FRESH ? _other : *this;
+
+        if (other.contains(&fresh))
+            return Extremum(NULL, true);
+
         return Extremum(NULL, false);
+    }
 
     switch (compare(_other)) {
-        case OrdSub:
+        case ORD_SUB:
             return Extremum(& _other, false);
-        case OrdSuper:
-        case OrdEquals:
+        case ORD_SUPER:
+        case ORD_EQUALS:
             return Extremum(this, false);
     }
 
     typedef std::pair<int, int> P;
     P kinds(getKind(), _other.getKind());
 
-    if (kinds == P(Nat, Int))
-        return Extremum(new CType(Int, maxBitsIntNat(_other.getBits(), getBits())), false);
+    if (kinds == P(NAT, INT))
+        return Extremum(new Type(INT, maxBitsIntNat(_other.getBits(), getBits())), false);
 
-    if (kinds == P(Int, Nat))
-        return Extremum(new CType(Int, maxBitsIntNat(getBits(), _other.getBits())), false);
+    if (kinds == P(INT, NAT))
+        return Extremum(new Type(INT, maxBitsIntNat(getBits(), _other.getBits())), false);
 
     return Extremum(NULL, true);
 }
 
-CType::Extremum CType::getMeet(ir::CType & _other) {
-    if (getKind() == Fresh || _other.getKind() == Fresh)
+Type::Extremum Type::getMeet(ir::Type & _other) {
+    if (getKind() == FRESH || _other.getKind() == FRESH) {
+        ir::Type &fresh = getKind() == FRESH ? *this : _other;
+        ir::Type &other = getKind() == FRESH ? _other : *this;
+
+        if (other.contains(&fresh))
+            return Extremum(NULL, true);
+
         return Extremum(NULL, false);
+    }
 
     switch (compare(_other)) {
-        case OrdSub:
-        case OrdEquals:
+        case ORD_SUB:
+        case ORD_EQUALS:
             return Extremum(this, false);
-        case OrdSuper:
+        case ORD_SUPER:
             return Extremum(& _other, false);
     }
 
     typedef std::pair<int, int> P;
     P kinds(getKind(), _other.getKind());
 
-    if (kinds == P(Nat, Int))
-        return Extremum(new CType(Nat, minBitsIntNat(_other.getBits(), getBits())), false);
+    if (kinds == P(NAT, INT))
+        return Extremum(new Type(NAT, minBitsIntNat(_other.getBits(), getBits())), false);
 
-    if (kinds == P(Int, Nat))
-        return Extremum(new CType(Nat, minBitsIntNat(getBits(), _other.getBits())), false);
+    if (kinds == P(INT, NAT))
+        return Extremum(new Type(NAT, minBitsIntNat(getBits(), _other.getBits())), false);
 
     return Extremum(NULL, true);
 }
 
-bool CPredicateType::hasFresh() const {
+bool PredicateType::hasFresh() const {
     for (size_t i = 0; i < m_paramsIn.size(); ++ i)
         if (m_paramsIn.get(i)->getType()->hasFresh())
             return true;
 
     for (size_t j = 0; j < m_paramsOut.size(); ++ j) {
-        CBranch & branch = * m_paramsOut.get(j);
+        Branch & branch = * m_paramsOut.get(j);
         for (size_t i = 0; i < branch.size(); ++ i)
             if (branch.get(i)->getType()->hasFresh())
                 return true;
@@ -334,11 +351,11 @@ bool CPredicateType::hasFresh() const {
     return false;
 }
 
-bool CPredicateType::rewrite(ir::CType * _pOld, ir::CType * _pNew) {
+bool PredicateType::rewrite(ir::Type * _pOld, ir::Type * _pNew) {
     bool bResult = false;
 
     for (size_t i = 0; i < m_paramsIn.size(); ++ i) {
-        CType * p = m_paramsIn.get(i)->getType();
+        Type * p = m_paramsIn.get(i)->getType();
         if (tc::rewriteType(p, _pOld, _pNew)) {
             bResult = true;
             m_paramsIn.get(i)->setType(p, false);
@@ -346,9 +363,9 @@ bool CPredicateType::rewrite(ir::CType * _pOld, ir::CType * _pNew) {
     }
 
     for (size_t j = 0; j < m_paramsOut.size(); ++ j) {
-        CBranch & branch = * m_paramsOut.get(j);
+        Branch & branch = * m_paramsOut.get(j);
         for (size_t i = 0; i < branch.size(); ++ i) {
-            CType * p = branch.get(i)->getType();
+            Type * p = branch.get(i)->getType();
             if (tc::rewriteType(p, _pOld, _pNew)) {
                 bResult = true;
                 branch.get(i)->setType(p, false);
@@ -359,20 +376,93 @@ bool CPredicateType::rewrite(ir::CType * _pOld, ir::CType * _pNew) {
     return bResult;
 }
 
+int PredicateType::compare(const Type &_other) const {
+    if (_other.getKind() == FRESH)
+        return ORD_UNKNOWN;
+
+    if (_other.getKind() != getKind())
+        return ORD_NONE;
+
+    const PredicateType &other = (const PredicateType &)_other;
+
+    if (getInParams().size() != other.getInParams().size())
+        return ORD_NONE;
+
+    if (getOutParams().size() != other.getOutParams().size())
+        return ORD_NONE;
+
+    bool bSub = false, bSuper = false;
+
+    for (size_t i = 0; i < getInParams().size(); ++i) {
+        const Param &p = *getInParams().get(i);
+        const Param &q = *other.getInParams().get(i);
+
+        switch (p.getType()->compare(*q.getType())) {
+            case ORD_UNKNOWN:
+                return ORD_UNKNOWN;
+            case ORD_NONE:
+                return ORD_NONE;
+            case ORD_SUPER:
+                if (bSuper)
+                    return ORD_NONE;
+                bSub = true;
+                break;
+            case ORD_SUB:
+                if (bSub)
+                    return ORD_NONE;
+                bSuper = true;
+                break;
+        }
+    }
+
+    for (size_t j = 0; j < getOutParams().size(); ++j) {
+        const Branch &b = *getOutParams().get(j);
+        const Branch &c = *other.getOutParams().get(j);
+
+        if (b.size() != c.size())
+            return ORD_NONE;
+
+        for (size_t i = 0; i < b.size(); ++ i) {
+            const Param &p = *b.get(i);
+            const Param &q = *c.get(i);
+
+            // Sub/Super is inverted for output parameters.
+            switch (p.getType()->compare(*q.getType())) {
+                case ORD_UNKNOWN:
+                    return ORD_UNKNOWN;
+                case ORD_NONE:
+                    return ORD_NONE;
+                case ORD_SUB:
+                    if (bSuper)
+                        return ORD_NONE;
+                    bSub = true;
+                    break;
+                case ORD_SUPER:
+                    if (bSub)
+                        return ORD_NONE;
+                    bSuper = true;
+                    break;
+            }
+        }
+    }
+
+    return bSub ? ORD_SUB : (bSuper ? ORD_SUPER : ORD_EQUALS);
+}
+
 // Unions.
 
-int CUnionType::compare(const CType & _other) const {
-    if (_other.getKind() == Fresh)
-        return OrdUnknown;
+int UnionType::compare(const Type & _other) const {
+    if (_other.getKind() == FRESH)
+        return ORD_UNKNOWN;
 
-    if (_other.getKind() != Union)
-        return OrdNone;
+    if (_other.getKind() != UNION)
+        return ORD_NONE;
 
-    const CUnionType & other = (const CUnionType &) _other;
+    const UnionType & other = (const UnionType &) _other;
     size_t cUnmatched = 0, cOtherUnmatched = other.getConstructors().size();
 
     for (size_t i = 0; i < m_constructors.size(); ++ i) {
-        const CUnionConstructorDefinition & cons = * m_constructors.get(i);
+        const UnionConstructorDeclaration & cons = * m_constructors.get(i);
         const size_t cOtherConsIdx = other.getConstructors().findByNameIdx(cons.getName());
 
         if (cOtherConsIdx != (size_t) -1)
@@ -381,15 +471,17 @@ int CUnionType::compare(const CType & _other) const {
             ++ cUnmatched;
     }
 
-    if (cUnmatched == 0)
-        return cOtherUnmatched > 0 ? OrdSub : OrdEquals;
+    // TODO: actually compare alternatives.
 
-    return cOtherUnmatched == 0 ? OrdSuper : OrdNone;
+    if (cUnmatched == 0)
+        return cOtherUnmatched > 0 ? ORD_SUB : ORD_EQUALS;
+
+    return cOtherUnmatched == 0 ? ORD_SUPER : ORD_NONE;
 }
 
 // Structs.
 
-bool CStructType::hasFresh() const {
+bool StructType::hasFresh() const {
     for (size_t i = 0; i < m_fields.size(); ++ i)
         if (m_fields.get(i)->getType()->hasFresh())
             return true;
@@ -397,11 +489,11 @@ bool CStructType::hasFresh() const {
     return false;
 }
 
-bool CStructType::rewrite(ir::CType * _pOld, ir::CType * _pNew) {
+bool StructType::rewrite(ir::Type * _pOld, ir::Type * _pNew) {
     bool bResult = false;
 
     for (size_t i = 0; i < m_fields.size(); ++ i) {
-        CType * p = m_fields.get(i)->getType();
+        Type * p = m_fields.get(i)->getType();
         if (tc::rewriteType(p, _pOld, _pNew)) {
             bResult = true;
             m_fields.get(i)->setType(p, false);
@@ -411,7 +503,7 @@ bool CStructType::rewrite(ir::CType * _pOld, ir::CType * _pNew) {
     return bResult;
 }
 
-bool CStructType::allFieldsNamed() const {
+bool StructType::allFieldsNamed() const {
     for (size_t i = 0; i < m_fields.size(); ++ i)
         if (m_fields.get(i)->getName().empty())
             return false;
@@ -419,7 +511,7 @@ bool CStructType::allFieldsNamed() const {
     return true;
 }
 
-bool CStructType::allFieldsUnnamed() const {
+bool StructType::allFieldsUnnamed() const {
     for (size_t i = 0; i < m_fields.size(); ++ i)
         if (! m_fields.get(i)->getName().empty())
             return false;
@@ -427,17 +519,17 @@ bool CStructType::allFieldsUnnamed() const {
     return true;
 }
 
-void CStructType::_fillNames() const {
+void StructType::_fillNames() const {
     for (size_t i = 0; i < getFields().size(); ++ i) {
-        const CNamedValue & field = * getFields().get(i);
+        const NamedValue & field = * getFields().get(i);
         m_mapNames[field.getName()] = i;
     }
 }
 
-bool CStructType::less(const CType & _other) const {
-    assert(_other.getKind() == Struct);
+bool StructType::less(const Type & _other) const {
+    assert(_other.getKind() == STRUCT);
 
-    const CStructType & other = (const CStructType &) _other;
+    const StructType & other = (const StructType &) _other;
 
     if (getFields().size() != other.getFields().size())
         return getFields().size() < other.getFields().size();
@@ -461,8 +553,8 @@ bool CStructType::less(const CType & _other) const {
         I j = other.m_mapNames.begin();
 
         for (; i != m_mapNames.end() && j != m_mapNames.end(); ++i, ++j) {
-            const CNamedValue & field = * getFields().get(i->second);
-            const CNamedValue & fieldOther = * other.getFields().get(j->second);
+            const NamedValue & field = * getFields().get(i->second);
+            const NamedValue & fieldOther = * other.getFields().get(j->second);
 
             if (field.getName() != fieldOther.getName())
                 return field.getName() < fieldOther.getName();
@@ -472,8 +564,8 @@ bool CStructType::less(const CType & _other) const {
         }
     } else {
         for (size_t i = 0; i < getFields().size(); ++ i) {
-            const CNamedValue & field = * getFields().get(i);
-            const CNamedValue & fieldOther = * other.getFields().get(i);
+            const NamedValue & field = * getFields().get(i);
+            const NamedValue & fieldOther = * other.getFields().get(i);
 
             if (field.getName() != fieldOther.getName())
                 return field.getName() < fieldOther.getName();
@@ -486,23 +578,23 @@ bool CStructType::less(const CType & _other) const {
     return false;
 }
 
-int CStructType::compare(const CType & _other) const {
-    if (_other.getKind() == Fresh)
-        return OrdUnknown;
+int StructType::compare(const Type & _other) const {
+    if (_other.getKind() == FRESH)
+        return ORD_UNKNOWN;
 
-    if (_other.getKind() != Struct)
-        return OrdNone;
+    if (_other.getKind() != STRUCT)
+        return ORD_NONE;
 
-    const CStructType & other = (const CStructType &) _other;
+    const StructType & other = (const StructType &) _other;
 
     if (allFieldsNamed() != other.allFieldsNamed())
-        return OrdNone;
+        return ORD_NONE;
 
     size_t cUnmatched = 0, cOtherUnmatched = other.getFields().size();
     size_t cSub = 0, cSuper = 0, cUnknown = 0;
 
     for (size_t i = 0; i < m_fields.size(); ++ i) {
-        const CNamedValue & field = * m_fields.get(i);
+        const NamedValue & field = * m_fields.get(i);
         size_t cOtherIdx;
 
         if (field.getName().empty())
@@ -511,17 +603,17 @@ int CStructType::compare(const CType & _other) const {
             cOtherIdx = other.getFields().findByNameIdx(field.getName());
 
         if (cOtherIdx != (size_t) -1) {
-            const CNamedValue & otherField = * other.getFields().get(cOtherIdx);
+            const NamedValue & otherField = * other.getFields().get(cOtherIdx);
             const int cmp = field.getType()->compare(* otherField.getType());
 
-            if (cmp == OrdSub)
+            if (cmp == ORD_SUB)
                 ++ cSub;
-            else if (cmp == OrdSuper)
+            else if (cmp == ORD_SUPER)
                 ++ cSuper;
-            else if (cmp == OrdUnknown)
+            else if (cmp == ORD_UNKNOWN)
                 ++ cUnknown;
-            else if (cmp == OrdNone)
-                return OrdNone;
+            else if (cmp == ORD_NONE)
+                return ORD_NONE;
 
             -- cOtherUnmatched;
         } else
@@ -529,48 +621,48 @@ int CStructType::compare(const CType & _other) const {
     }
 
     if (cUnmatched > 0 && cOtherUnmatched > 0)
-        return OrdNone;
+        return ORD_NONE;
 
     if (cSub > 0 && cSuper > 0)
-        return OrdNone;
+        return ORD_NONE;
 
     if (cUnknown > 0)
-        return OrdUnknown;
+        return ORD_UNKNOWN;
 
     if (cUnmatched == 0 && cOtherUnmatched == 0) {
         if (cSub > 0)
-            return OrdSub;
+            return ORD_SUB;
         if (cSuper > 0)
-            return OrdSuper;
-        return OrdEquals;
+            return ORD_SUPER;
+        return ORD_EQUALS;
     }
 
     if (cUnmatched > 0)
-        return cSuper > 0 ? OrdNone : OrdSub;
+        return cSuper > 0 ? ORD_NONE : ORD_SUB;
 
     // cOtherUnmatched > 0
-    return cSub > 0 ? OrdNone : OrdSuper;
+    return cSub > 0 ? ORD_NONE : ORD_SUPER;
 }
 
-CType::Extremum CStructType::getMeet(ir::CType & _other) {
-    Extremum meet = CType::getMeet(_other);
+Type::Extremum StructType::getMeet(ir::Type & _other) {
+    Extremum meet = Type::getMeet(_other);
 
     if (!meet.second)
         return meet;
 
-    if (_other.getKind() != Struct)
+    if (_other.getKind() != STRUCT)
         return meet;
 
-    const CStructType & other = (const CStructType &) _other;
+    const StructType & other = (const StructType &) _other;
 
     if (allFieldsNamed() != other.allFieldsNamed())
         return Extremum(NULL, false);
 
-    CStructType * pStruct = new CStructType();
+    StructType * pStruct = new StructType();
     size_t cOtherUnmatched = other.getFields().size();
 
     for (size_t i = 0; i < m_fields.size(); ++ i) {
-        const CNamedValue & field = * m_fields.get(i);
+        const NamedValue & field = * m_fields.get(i);
         size_t cOtherIdx;
 
         if (field.getName().empty())
@@ -579,50 +671,50 @@ CType::Extremum CStructType::getMeet(ir::CType & _other) {
             cOtherIdx = other.getFields().findByNameIdx(field.getName());
 
         if (cOtherIdx != (size_t) -1) {
-            const CNamedValue & otherField = * other.getFields().get(cOtherIdx);
+            const NamedValue & otherField = * other.getFields().get(cOtherIdx);
             Extremum meetField = field.getType()->getMeet(* otherField.getType());
 
             if (meetField.first == NULL)
                 return meetField;
 
-            pStruct->getFields().add(new CNamedValue(field.getName(), meetField.first));
+            pStruct->getFields().add(new NamedValue(field.getName(), meetField.first));
             -- cOtherUnmatched;
         } else
-            pStruct->getFields().add(new CNamedValue(field));
+            pStruct->getFields().add(new NamedValue(field));
     }
 
     for (size_t i = 0; cOtherUnmatched > 0 && i < other.getFields().size(); ++ i, -- cOtherUnmatched) {
-        const CNamedValue & field = * other.getFields().get(i);
+        const NamedValue & field = * other.getFields().get(i);
         const size_t cIdx = m_fields.findByNameIdx(field.getName());
 
         if (cIdx != (size_t) -1)
             continue;
 
         -- cOtherUnmatched;
-        pStruct->getFields().add(new CNamedValue(field));
+        pStruct->getFields().add(new NamedValue(field));
     }
 
     return Extremum(pStruct, false);
 }
 
-CType::Extremum CStructType::getJoin(ir::CType & _other) {
-    Extremum join = CType::getJoin(_other);
+Type::Extremum StructType::getJoin(ir::Type & _other) {
+    Extremum join = Type::getJoin(_other);
 
     if (!join.second)
         return join;
 
-    if (_other.getKind() != Struct)
+    if (_other.getKind() != STRUCT)
         return join;
 
-    const CStructType & other = (const CStructType &) _other;
+    const StructType & other = (const StructType &) _other;
 
     if (allFieldsNamed() != other.allFieldsNamed())
         return Extremum(NULL, false);
 
-    CStructType * pStruct = new CStructType();
+    StructType * pStruct = new StructType();
 
     for (size_t i = 0; i < m_fields.size(); ++ i) {
-        const CNamedValue & field = * m_fields.get(i);
+        const NamedValue & field = * m_fields.get(i);
         size_t cOtherIdx;
 
         if (field.getName().empty()) {
@@ -635,13 +727,13 @@ CType::Extremum CStructType::getJoin(ir::CType & _other) {
                 continue;
         }
 
-        const CNamedValue & otherField = * other.getFields().get(cOtherIdx);
+        const NamedValue & otherField = * other.getFields().get(cOtherIdx);
         Extremum joinField = field.getType()->getJoin(* otherField.getType());
 
         if (joinField.first == NULL)
             return joinField;
 
-        pStruct->getFields().add(new CNamedValue(field.getName(), joinField.first));
+        pStruct->getFields().add(new NamedValue(field.getName(), joinField.first));
     }
 
     if (pStruct->getFields().empty()) {
@@ -654,75 +746,217 @@ CType::Extremum CStructType::getJoin(ir::CType & _other) {
 
 // Derived types.
 
-bool CDerivedType::rewrite(CType * _pOld, CType * _pNew) {
+bool DerivedType::rewrite(Type * _pOld, Type * _pNew) {
     return tc::rewriteType(m_pBaseType, _pOld, _pNew);
 }
 
-int CDerivedType::compare(const CType & _other) const {
-    if (_other.getKind() == Fresh)
-        return OrdUnknown;
+int DerivedType::compare(const Type & _other) const {
+    if (_other.getKind() == FRESH)
+        return ORD_UNKNOWN;
 
     if (_other.getKind() != getKind())
-        return OrdNone;
+        return ORD_NONE;
 
-    return getBaseType()->compare(*((const CDerivedType &)_other).getBaseType());
+    return getBaseType()->compare(*((const DerivedType &)_other).getBaseType());
 }
 
-bool CDerivedType::less(const CType & _other) const {
-    return *getBaseType() < *((const CDerivedType &)_other).getBaseType();
+bool DerivedType::less(const Type & _other) const {
+    return *getBaseType() < *((const DerivedType &)_other).getBaseType();
 }
 
 // Sets.
 
-CType::Extremum CSetType::getMeet(CType & _other) {
-    Extremum meet = CType::getMeet(_other);
+Type::Extremum SetType::getMeet(Type & _other) {
+    Extremum meet = Type::getMeet(_other);
 
     if (!meet.second)
         return meet;
 
-    if (_other.getKind() != Struct)
+    if (_other.getKind() != SET)
         return meet;
 
-    meet = getBaseType()->getMeet(*((const CSetType &)_other).getBaseType());
+    meet = getBaseType()->getMeet(*((const SetType &)_other).getBaseType());
 
     if (meet.first != NULL)
-        meet.first = new CSetType(meet.first);
+        meet.first = new SetType(meet.first);
 
     return meet;
 }
 
-CType::Extremum CSetType::getJoin(CType & _other) {
-    Extremum join = CType::getJoin(_other);
+Type::Extremum SetType::getJoin(Type & _other) {
+    Extremum join = Type::getJoin(_other);
 
     if (!join.second)
         return join;
 
-    if (_other.getKind() != Set)
+    if (_other.getKind() != SET)
         return join;
 
-    join = getBaseType()->getJoin(*((const CSetType &)_other).getBaseType());
+    join = getBaseType()->getJoin(*((const SetType &)_other).getBaseType());
 
     if (join.first != NULL)
-        join.first = new CSetType(join.first);
+        join.first = new SetType(join.first);
+
+    return join;
+}
+
+// Lists.
+
+Type::Extremum ListType::getMeet(Type & _other) {
+    Extremum meet = Type::getMeet(_other);
+
+    if (!meet.second)
+        return meet;
+
+    if (_other.getKind() != LIST)
+        return meet;
+
+    meet = getBaseType()->getMeet(*((const ListType &)_other).getBaseType());
+
+    if (meet.first != NULL)
+        meet.first = new ListType(meet.first);
+
+    return meet;
+}
+
+Type::Extremum ListType::getJoin(Type & _other) {
+    Extremum join = Type::getJoin(_other);
+
+    if (!join.second)
+        return join;
+
+    if (_other.getKind() != LIST)
+        return join;
+
+    join = getBaseType()->getJoin(*((const ListType &)_other).getBaseType());
+
+    if (join.first != NULL)
+        join.first = new ListType(join.first);
+
+    return join;
+}
+
+// Maps.
+
+bool MapType::rewrite(Type *_pOld, Type *_pNew) {
+    const bool b = DerivedType::rewrite(_pOld, _pNew);
+    return tc::rewriteType(m_pIndexType, _pOld, _pNew) || b;
+}
+
+int MapType::compare(const Type &_other) const {
+    if (_other.getKind() == FRESH)
+        return ORD_UNKNOWN;
+
+    if (_other.getKind() != getKind())
+        return ORD_NONE;
+
+    switch (m_pIndexType->compare(*((const MapType &)_other).getIndexType())) {
+        case ORD_UNKNOWN:
+            return ORD_UNKNOWN;
+        case ORD_NONE:
+            return ORD_NONE;
+        case ORD_EQUALS:
+            return getBaseType()->compare(*((const MapType &)_other).getBaseType());
+        case ORD_SUB:
+            switch (getBaseType()->compare(*((const MapType &)_other).getBaseType())) {
+                case ORD_UNKNOWN:
+                    return ORD_UNKNOWN;
+                case ORD_NONE:
+                case ORD_SUB:
+                    return ORD_NONE;
+                case ORD_EQUALS:
+                case ORD_SUPER:
+                    return ORD_SUPER;
+            }
+        case ORD_SUPER:
+            switch (getBaseType()->compare(*((const MapType &)_other).getBaseType())) {
+                case ORD_UNKNOWN:
+                    return ORD_UNKNOWN;
+                case ORD_NONE:
+                case ORD_SUPER:
+                    return ORD_NONE;
+                case ORD_EQUALS:
+                case ORD_SUB:
+                    return ORD_SUB;
+            }
+    }
+
+    return ORD_NONE;
+}
+
+bool MapType::less(const Type & _other) const {
+    const MapType &other = (const MapType &)_other;
+
+    if (*getBaseType() < *other.getBaseType())
+        return true;
+
+    if (*other.getBaseType() < *getBaseType())
+        return false;
+
+    return *getIndexType() < *other.getIndexType();
+}
+
+Type::Extremum MapType::getMeet(Type & _other) {
+    Extremum meet = Type::getMeet(_other);
+
+    if (!meet.second)
+        return meet;
+
+    if (_other.getKind() != MAP)
+        return meet;
+
+    Extremum join = getBaseType()->getJoin(*((const MapType &)_other).getBaseType());
+
+    meet = getIndexType()->getMeet(*((const MapType &)_other).getIndexType());
+
+    if (meet.first == NULL || join.first == NULL) {
+        meet.second = meet.second || join.second;
+        return meet;
+    }
+
+    meet.first = new MapType(meet.first, join.first);
+
+    return meet;
+}
+
+Type::Extremum MapType::getJoin(Type & _other) {
+    Extremum join = Type::getJoin(_other);
+
+    if (!join.second)
+        return join;
+
+    if (_other.getKind() != MAP)
+        return join;
+
+    Extremum meet = getBaseType()->getMeet(*((const MapType &)_other).getBaseType());
+
+    join = getIndexType()->getJoin(*((const MapType &)_other).getIndexType());
+
+    if (meet.first == NULL || join.first == NULL) {
+        join.second = meet.second || join.second;
+        return join;
+    }
+
+    join.first = new MapType(join.first, meet.first);
 
     return join;
 }
 
 // 'type' type.
 
-CTypeType::CTypeType() : m_pDecl(NULL) {
-    setDeclaration(new CTypeDeclaration());
+TypeType::TypeType() : m_pDecl(NULL) {
+    setDeclaration(new TypeDeclaration());
 }
 
-CTypeType::~CTypeType() {
+TypeType::~TypeType() {
     _delete(m_pDecl);
 }
 
-bool CTypeType::rewrite(ir::CType * _pOld, ir::CType * _pNew) {
+bool TypeType::rewrite(ir::Type * _pOld, ir::Type * _pNew) {
     if (m_pDecl == NULL || m_pDecl->getType() == NULL)
         return false;
 
-    CType *p = m_pDecl->getType();
+    Type *p = m_pDecl->getType();
 
     if (tc::rewriteType(p, _pOld, _pNew)) {
         m_pDecl->setType(p, false);
@@ -732,27 +966,27 @@ bool CTypeType::rewrite(ir::CType * _pOld, ir::CType * _pNew) {
     return false;
 }
 
-int CTypeType::compare(const CType &_other) const {
-    if (_other.getKind() == Fresh)
-        return OrdUnknown;
+int TypeType::compare(const Type &_other) const {
+    if (_other.getKind() == FRESH)
+        return ORD_UNKNOWN;
 
     if (_other.getKind() != getKind())
-        return OrdNone;
+        return ORD_NONE;
 
-    const CTypeType &other = (const CTypeType &)_other;
+    const TypeType &other = (const TypeType &)_other;
 
     if (m_pDecl != NULL && m_pDecl->getType() != NULL) {
         if (other.m_pDecl != NULL && other.m_pDecl->getType() != NULL)
             return m_pDecl->getType()->compare(*other.m_pDecl->getType());
 
-        return OrdNone;
+        return ORD_NONE;
     }
 
-    return (other.m_pDecl != NULL && other.m_pDecl->getType() != NULL) ? OrdNone : OrdEquals;
+    return (other.m_pDecl != NULL && other.m_pDecl->getType() != NULL) ? ORD_NONE : ORD_EQUALS;
 }
 
-bool CTypeType::less(const CType & _other) const {
-    const CTypeType &other = (const CTypeType &)_other;
+bool TypeType::less(const Type & _other) const {
+    const TypeType &other = (const TypeType &)_other;
 
     if (m_pDecl != NULL && m_pDecl->getType() != NULL) {
         if (other.m_pDecl != NULL && other.m_pDecl->getType() != NULL)

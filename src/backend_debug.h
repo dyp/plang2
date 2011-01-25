@@ -11,7 +11,7 @@
 
 namespace backend {
 
-void generateDebug(const llir::CModule & _module, std::wostream & _os);
+void generateDebug(const llir::Module & _module, std::wostream & _os);
 
 };
 

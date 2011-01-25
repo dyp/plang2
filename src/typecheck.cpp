@@ -12,11 +12,11 @@ using namespace tc;
 
 size_t FreshType::g_cOrdMax = 0;
 
-ir::CType * FreshType::clone() const {
+ir::Type * FreshType::clone() const {
     return new FreshType(* this);
 }
 
-bool FreshType::less(const CType &_other) const {
+bool FreshType::less(const Type &_other) const {
     return m_cOrd < ((const FreshType &) _other).m_cOrd;
 }
 
@@ -29,7 +29,7 @@ bool FormulaCmp::operator()(const FormulaCmp::T & _lhs,
     if (_rhs->getKind() < _lhs->getKind())
         return false;
 
-    if (_lhs->is(Formula::Compound)) {
+    if (_lhs->is(Formula::COMPOUND)) {
         const CompoundFormula &lhs = *(const CompoundFormula *)_lhs;
         const CompoundFormula &rhs = *(const CompoundFormula *)_rhs;
 
@@ -85,8 +85,8 @@ bool FormulaCmp::operator()(const FormulaCmp::T & _lhs,
 }
 
 bool Formula::hasFresh() const {
-    return (m_pLhs != NULL && m_pLhs->getKind() == ir::CType::Fresh) ||
-            (m_pRhs != NULL && m_pRhs->getKind() == ir::CType::Fresh);
+    return (m_pLhs != NULL && m_pLhs->getKind() == ir::Type::FRESH) ||
+            (m_pRhs != NULL && m_pRhs->getKind() == ir::Type::FRESH);
 }
 
 Formula *Formula::clone() const {
@@ -119,12 +119,12 @@ Formula *CompoundFormula::clone() const {
 //}
 
 // Use clone here in future.
-bool tc::rewriteType(ir::CType * & _pType, ir::CType * _pOld, ir::CType * _pNew) {
+bool tc::rewriteType(ir::Type * & _pType, ir::Type * _pOld, ir::Type * _pNew) {
     if (* _pOld == * _pNew)
         return false;
 
     if (* _pType == * _pOld) {
-        if (_pOld->getKind() == ir::CType::Fresh)
+        if (_pOld->getKind() == ir::Type::FRESH)
             _pNew->rewriteFlags(((FreshType *) _pOld)->getFlags());
         _pType = _pNew;
         return true;
@@ -133,7 +133,7 @@ bool tc::rewriteType(ir::CType * & _pType, ir::CType * _pOld, ir::CType * _pNew)
     return _pType->rewrite(_pOld, _pNew);
 }
 
-bool Formula::rewrite(ir::CType * _pOld, ir::CType * _pNew) {
+bool Formula::rewrite(ir::Type * _pOld, ir::Type * _pNew) {
     bool bResult = false;
 
     bResult |= rewriteType(m_pLhs, _pOld, _pNew);
@@ -144,9 +144,9 @@ bool Formula::rewrite(ir::CType * _pOld, ir::CType * _pNew) {
 
 bool Formula::isSymmetric() const {
     switch (getKind()) {
-        case Equals:
-        case Comparable:
-        case Incomparable:
+        case EQUALS:
+        case COMPARABLE:
+        case INCOMPARABLE:
             return true;
         default:
             return false;
@@ -154,58 +154,58 @@ bool Formula::isSymmetric() const {
 }
 
 int Formula::eval() const {
-    assert(getKind() != Compound);
+    assert(getKind() != COMPOUND);
 
     const int nCmp = getLhs()->compare(* getRhs());
 
-    if (nCmp == ir::CType::OrdUnknown /*|| nCmp == ir::CType::OrdNone*/)
-        return Unknown;
+    if (nCmp == ir::Type::ORD_UNKNOWN /*|| nCmp == ir::Type::ORD_NONE*/)
+        return UNKNOWN;
 
     switch (getKind()) {
-        case Equals:
-            return nCmp == ir::CType::OrdEquals ? True : False;
-        case Subtype:
-            return (nCmp == ir::CType::OrdSub || nCmp == ir::CType::OrdEquals) ? True : False;
-        case SubtypeStrict:
-            return nCmp == ir::CType::OrdSub ? True : False;
-        case Comparable:
-            return nCmp == ir::CType::OrdNone ? False : True;
-        case Incomparable:
-            return nCmp == ir::CType::OrdNone ? True : False;
-        case NoJoin:
+        case EQUALS:
+            return nCmp == ir::Type::ORD_EQUALS ? TRUE : FALSE;
+        case SUBTYPE:
+            return (nCmp == ir::Type::ORD_SUB || nCmp == ir::Type::ORD_EQUALS) ? TRUE : FALSE;
+        case SUBTYPE_STRICT:
+            return nCmp == ir::Type::ORD_SUB ? TRUE : FALSE;
+        case COMPARABLE:
+            return nCmp == ir::Type::ORD_NONE ? FALSE : TRUE;
+        case INCOMPARABLE:
+            return nCmp == ir::Type::ORD_NONE ? TRUE : FALSE;
+        case NO_JOIN:
             return getLhs()->getJoin(* getRhs()).second;
-        case NoMeet:
+        case NO_MEET:
             return getLhs()->getMeet(* getRhs()).second;
     }
 
-    return Unknown;
+    return UNKNOWN;
 }
 
 bool Formula::implies(Formula & _other) {
     switch (getKind()) {
-        case SubtypeStrict:
-            return (_other.is(SubtypeStrict) || _other.is(Subtype)) &&
-                getLhs()->compare(* _other.getLhs(), ir::CType::OrdSuper | ir::CType::OrdEquals) &&
-                getRhs()->compare(* _other.getRhs(), ir::CType::OrdSub | ir::CType::OrdEquals);
+        case SUBTYPE_STRICT:
+            return (_other.is(SUBTYPE_STRICT) || _other.is(SUBTYPE)) &&
+                getLhs()->compare(* _other.getLhs(), ir::Type::ORD_SUPER | ir::Type::ORD_EQUALS) &&
+                getRhs()->compare(* _other.getRhs(), ir::Type::ORD_SUB | ir::Type::ORD_EQUALS);
 
-        case Subtype:
-            if (_other.is(Subtype)) {
-                return getLhs()->compare(* _other.getLhs(), ir::CType::OrdSuper | ir::CType::OrdEquals) &&
-                        getRhs()->compare(* _other.getRhs(), ir::CType::OrdSub | ir::CType::OrdEquals);
-            } else if (_other.is(SubtypeStrict)) {
-                return (getLhs()->compare(* _other.getLhs(), ir::CType::OrdSuper) &&
-                            getRhs()->compare(* _other.getRhs(), ir::CType::OrdSub | ir::CType::OrdEquals)) ||
-                        (getLhs()->compare(* _other.getLhs(), ir::CType::OrdSuper | ir::CType::OrdEquals) &&
-                            getRhs()->compare(* _other.getRhs(), ir::CType::OrdSub));
+        case SUBTYPE:
+            if (_other.is(SUBTYPE)) {
+                return getLhs()->compare(* _other.getLhs(), ir::Type::ORD_SUPER | ir::Type::ORD_EQUALS) &&
+                        getRhs()->compare(* _other.getRhs(), ir::Type::ORD_SUB | ir::Type::ORD_EQUALS);
+            } else if (_other.is(SUBTYPE_STRICT)) {
+                return (getLhs()->compare(* _other.getLhs(), ir::Type::ORD_SUPER) &&
+                            getRhs()->compare(* _other.getRhs(), ir::Type::ORD_SUB | ir::Type::ORD_EQUALS)) ||
+                        (getLhs()->compare(* _other.getLhs(), ir::Type::ORD_SUPER | ir::Type::ORD_EQUALS) &&
+                            getRhs()->compare(* _other.getRhs(), ir::Type::ORD_SUB));
             } else
                 return false;
 
-        case Equals:
-            if (_other.is(Equals) || _other.is(Subtype)) {
-                return (getLhs()->compare(* _other.getLhs(), ir::CType::OrdEquals) &&
-                            getRhs()->compare(* _other.getRhs(), ir::CType::OrdEquals)) ||
-                        (getLhs()->compare(* _other.getRhs(), ir::CType::OrdEquals) &&
-                            getRhs()->compare(* _other.getLhs(), ir::CType::OrdEquals));
+        case EQUALS:
+            if (_other.is(EQUALS) || _other.is(SUBTYPE)) {
+                return (getLhs()->compare(* _other.getLhs(), ir::Type::ORD_EQUALS) &&
+                            getRhs()->compare(* _other.getRhs(), ir::Type::ORD_EQUALS)) ||
+                        (getLhs()->compare(* _other.getRhs(), ir::Type::ORD_EQUALS) &&
+                            getRhs()->compare(* _other.getLhs(), ir::Type::ORD_EQUALS));
             } else
                 return false;
 
@@ -242,25 +242,25 @@ Formula * Formula::mergeOr(Formula & _other) {
     if (! cmp(a, b))
         std::swap(a, b);
 
-    if (a->is(Equals) && b->is(SubtypeStrict)) {
-        if ((a->getLhs()->compare(* b->getLhs(), ir::CType::OrdEquals) &&
-                a->getRhs()->compare(* b->getRhs(), ir::CType::OrdEquals)) ||
-            (a->getLhs()->compare(* b->getRhs(), ir::CType::OrdEquals) &&
-                a->getRhs()->compare(* b->getLhs(), ir::CType::OrdEquals)))
+    if (a->is(EQUALS) && b->is(SUBTYPE_STRICT)) {
+        if ((a->getLhs()->compare(* b->getLhs(), ir::Type::ORD_EQUALS) &&
+                a->getRhs()->compare(* b->getRhs(), ir::Type::ORD_EQUALS)) ||
+            (a->getLhs()->compare(* b->getRhs(), ir::Type::ORD_EQUALS) &&
+                a->getRhs()->compare(* b->getLhs(), ir::Type::ORD_EQUALS)))
         {
-            return new Formula(Subtype, b->getLhs(), b->getRhs());
+            return new Formula(SUBTYPE, b->getLhs(), b->getRhs());
         }
     }
 
-    if (a->is(Subtype) || b->is(Subtype | SubtypeStrict)) {
-        if (a->getLhs()->compare(* b->getRhs(), ir::CType::OrdEquals) &&
-                b->getLhs()->compare(* a->getRhs(), ir::CType::OrdEquals | ir::CType::OrdSub))
+    if (a->is(SUBTYPE) || b->is(SUBTYPE | SUBTYPE_STRICT)) {
+        if (a->getLhs()->compare(* b->getRhs(), ir::Type::ORD_EQUALS) &&
+                b->getLhs()->compare(* a->getRhs(), ir::Type::ORD_EQUALS | ir::Type::ORD_SUB))
         {
             return NULL; // Actually it's True.
         }
 
-        if (a->getRhs()->compare(* b->getLhs(), ir::CType::OrdEquals) &&
-                a->getLhs()->compare(* b->getRhs(), ir::CType::OrdEquals | ir::CType::OrdSub))
+        if (a->getRhs()->compare(* b->getLhs(), ir::Type::ORD_EQUALS) &&
+                a->getLhs()->compare(* b->getRhs(), ir::Type::ORD_EQUALS | ir::Type::ORD_SUB))
         {
             return NULL; // Actually it's True.
         }
@@ -303,7 +303,7 @@ void _check(Formulas & _fs) {
     }
 }
 
-bool Formulas::rewrite(ir::CType * _pOld, ir::CType * _pNew, bool _bKeepOrig) {
+bool Formulas::rewrite(ir::Type * _pOld, ir::Type * _pNew, bool _bKeepOrig) {
     bool bResult = false;
 //    FormulaList keep;
 
@@ -346,7 +346,7 @@ bool Formulas::rewrite(ir::CType * _pOld, ir::CType * _pNew, bool _bKeepOrig) {
 //                pFormula->getRhs()->clone());
 //        }
 
-        if (pFormula->getLhs()->compare(* _pOld, ir::CType::OrdEquals)) {
+        if (pFormula->getLhs()->compare(* _pOld, ir::Type::ORD_EQUALS)) {
 //            if (pKeep != NULL)
 //                keep.push_back(pKeep);
             pFormula->rewrite(_pOld, _pNew);
@@ -371,7 +371,7 @@ bool Formulas::rewrite(ir::CType * _pOld, ir::CType * _pNew, bool _bKeepOrig) {
         Formula * pFormula = * j;
         //iterator jNext = next(j);
         //Formula * pNext = (jNext == substs.end() ? NULL : * jNext);
-        ir::CType * pRhs = pFormula->getRhs();
+        ir::Type * pRhs = pFormula->getRhs();
 
         //std::wcout << L"pNext = " << fmtInt((int64_t) pNext, L"0x%016x") << std::endl;
 
@@ -392,7 +392,7 @@ bool Formulas::rewrite(ir::CType * _pOld, ir::CType * _pNew, bool _bKeepOrig) {
     return bResult;
 }
 
-bool CompoundFormula::rewrite(ir::CType * _pOld, ir::CType * _pNew) {
+bool CompoundFormula::rewrite(ir::Type * _pOld, ir::Type * _pNew) {
     bool bResult = false;
 
     for (size_t i = 0; i < size(); ++ i)
@@ -402,28 +402,28 @@ bool CompoundFormula::rewrite(ir::CType * _pOld, ir::CType * _pNew) {
 }
 
 int CompoundFormula::eval() const {
-    int result = False;
+    int result = FALSE;
 
     for (size_t i = 0; i < size(); ++i) {
         const Formulas & part = getPart(i);
-        int r = True;
+        int r = TRUE;
 
         for (Formulas::iterator j = part.begin(); j != part.end(); ++j) {
             switch (int cmp = (* j)->eval()) {
-                case Unknown:
-                    if (r == False)
+                case UNKNOWN:
+                    if (r == FALSE)
                         break;
                     // no break;
-                case False:
+                case FALSE:
                     r = cmp;
             }
         }
 
-        if (r == True)
-            return True;
+        if (r == TRUE)
+            return TRUE;
 
-        if (r == Unknown)
-            result = Unknown;
+        if (r == UNKNOWN)
+            result = UNKNOWN;
     }
 
     return result;
@@ -449,18 +449,18 @@ bool Formulas::implies(Formula & _f) const {
     return false;
 }
 
-Formula * Formulas::lookup(int _op, int _ordLhs, ir::CType * _pLhs,
-        int _ordRhs, ir::CType * _pRhs)
+Formula * Formulas::lookup(int _op, int _ordLhs, ir::Type * _pLhs,
+        int _ordRhs, ir::Type * _pRhs)
 {
 /*    bool bRepeat = true;
 
     do {
         Formula f(_op, NULL, NULL);
 
-        if (_ordLhs == ir::CType::OrdEquals)
+        if (_ordLhs == ir::Type::ORD_EQUALS)
             f.setLhs(_pLhs);
 
-        if (_ordRhs == ir::CType::OrdEquals)
+        if (_ordRhs == ir::Type::ORD_EQUALS)
             f.setRhs(_pRhs);
 
         for (FormulaSet::iterator i = lower_bound(& f); i != end(); ++ i) {
@@ -507,7 +507,7 @@ Formula * Formulas::lookup(int _op, int _ordLhs, ir::CType * _pLhs,
 }
 
 
-void typecheck(ir::CPredicate * _pPredicate, CContext & _ctx) {
+void typecheck(ir::Predicate * _pPredicate, Context & _ctx) {
     /*ir::constraints_t constraints;
     collectConstraints(constraints, _pPredicate, _ctx);*/
 }
@@ -516,8 +516,8 @@ void tc::apply(tc::Formulas & _constraints, tc::FreshTypes & _types) {
     for (FormulaSet::iterator i = _constraints.substs.begin(); i != _constraints.substs.end(); ++ i) {
         Formula & f = ** i;
 
-        assert(f.is(Formula::Equals));
-        assert(f.getLhs()->getKind() == ir::CType::Fresh);
+        assert(f.is(Formula::EQUALS));
+        assert(f.getLhs()->getKind() == ir::Type::FRESH);
 
         typedef tc::FreshTypes::iterator I;
         std::pair<I, I> bounds = _types.equal_range((FreshType *) f.getLhs());

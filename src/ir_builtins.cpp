@@ -6,22 +6,22 @@
 namespace ir {
 
 
-CBuiltins & CBuiltins::instance() {
-    static CBuiltins builtins;
+Builtins & Builtins::instance() {
+    static Builtins builtins;
     return builtins;
 }
 
-CPredicate * CBuiltins::find(const std::wstring & _name) const {
+Predicate * Builtins::find(const std::wstring & _name) const {
     for (size_t i = 0; i < m_predicates.size(); ++ i)
         if (m_predicates.get(i)->getName() == _name)
             return m_predicates.get(i);
     return NULL;
 }
 
-CBuiltins::CBuiltins() {
-    //CPredicate * pPred = NULL;
+Builtins::Builtins() {
+    //Predicate * pPred = NULL;
 
-    m_predicates.add(new CPredicate(L"print", true));
+    m_predicates.add(new Predicate(L"print", true));
 }
 
 }

@@ -10,17 +10,17 @@
 namespace ir {
 
 /// Builtin predicate holder.
-class CBuiltins {
+class Builtins {
 public:
-    static CBuiltins & instance();
+    static Builtins & instance();
 
-    CPredicate * find(const std::wstring & _name) const;
+    Predicate * find(const std::wstring & _name) const;
 
 private:
-    CCollection<CPredicate> m_predicates;
+    Collection<Predicate> m_predicates;
 
     /// Default constructor.
-    CBuiltins();
+    Builtins();
 };
 
 } // namespace ir

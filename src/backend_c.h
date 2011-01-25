@@ -11,7 +11,7 @@
 
 namespace backend {
 
-void generateC(const llir::CModule & _module, std::wostream & _os);
+void generateC(const llir::Module & _module, std::wostream & _os);
 
 };
 

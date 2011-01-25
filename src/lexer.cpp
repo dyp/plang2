@@ -15,12 +15,12 @@
 
 namespace lexer {
 
-void CToken::setPos(int _line, int _col) {
+void Token::setPos(int _line, int _col) {
     m_line = _line;
     m_col = _col;
 }
 
-CToken & CToken::operator =(const CToken & _other) {
+Token & Token::operator =(const Token & _other) {
     m_kind  = _other.m_kind;
     m_col   = _other.m_col;
     m_line  = _other.m_line;
@@ -29,12 +29,12 @@ CToken & CToken::operator =(const CToken & _other) {
     return * this;
 }
 
-bool CToken::operator ==(const CToken & _other) const {
+bool Token::operator ==(const Token & _other) const {
     return m_kind  == _other.m_kind && m_col == _other.m_col &&
         m_line  == _other.m_line && m_value == _other.m_value;
 }
 
-bool CToken::operator <(const CToken & _other) const {
+bool Token::operator <(const Token & _other) const {
     return m_line < _other.m_line || (m_line == _other.m_line && m_col < _other.m_col);
 }
 
@@ -52,9 +52,9 @@ struct lexeme_t {
     }
 };
 
-class CLexemeCharCmp {
+class LexemeCharCmp {
 public:
-    CLexemeCharCmp(unsigned int _nChar) : m_nChar (_nChar) {}
+    LexemeCharCmp(unsigned int _nChar) : m_nChar (_nChar) {}
 
     bool operator ()(const lexeme_t & _lhs, const lexeme_t & _rhs) const {
         if (_rhs.lexeme.length() <= m_nChar)
@@ -72,9 +72,9 @@ private:
 
 typedef std::vector<lexeme_t> lexemes_t;
 
-class CTokenMap {
+class TokenMap {
 public:
-    CTokenMap();
+    TokenMap();
 
     void resetRequest();
     int addChar(wchar_t _c);
@@ -107,116 +107,116 @@ private:
 
 };
 
-CTokenMap::CTokenMap() {
-    _add(L"+",   Plus);
-	_add(L"-",   Minus);
-	_add(L"<<",  ShiftLeft);
-	_add(L">>",  ShiftRight);
-	_add(L"*",   Asterisk);
-	_add(L"^",   Caret);
-	_add(L"/",   Slash);
-	_add(L"%",   Percent);
-	_add(L"!",   Bang);
-	_add(L"~",   Tilde);
-	_add(L"=",   Eq);
-	_add(L"<",   Lt);
-	_add(L"<=",  Lte);
-	_add(L">",   Gt);
-	_add(L">=",  Gte);
-	_add(L"!=",  Ne);
-	_add(L"&",   Ampersand);
-	_add(L"?",   Question);
-	_add(L"=>",  Implies);
-	_add(L"<=>", Iff);
-	_add(L"(",   LeftParen);
-	_add(L")",   RightParen);
-	_add(L"{",   LeftBrace);
-	_add(L"}",   RightBrace);
-	_add(L"[",   LeftBracket);
-    _add(L"]",   RightBracket);
-	_add(L"[{",  LeftMapBracket);
-	_add(L"}]",  RightMapBracket);
-	_add(L"[[",  LeftListBracket);
-	_add(L"]]",  RightListBracket);
-	_add(L"\'",  SingleQuote);
-	_add(L"\"",  DoubleQuote);
-	_add(L",",   Comma);
-	_add(L";",   Semicolon);
-	_add(L":",   Colon);
-	_add(L".",   Dot);
-	_add(L"..",  DoubleDot);
-	_add(L"...", Ellipsis);
-	_add(L"#",   Hash);
-	_add(L"|",   Pipe);
-    _add(L"||",  DoublePipe);
-    _add(L"_",   Underscore);
-	_add(L"inf",   Inf);
-	_add(L"nan",   Nan);
-	_add(L"true",  True);
-	_add(L"false", False);
-	_add(L"nil",   Nil);
-	_add(L"in",    In);
-    _add(L"and",   And);
-	_add(L"or",    Or);
-    _add(L"xor",   Xor);
-    _add(L"forall",    Forall);
-    _add(L"exists",    Exists);
-	_add(L"module",    Module);
-	_add(L"import",    Import);
-	_add(L"type",      Type);
-	_add(L"predicate", Predicate);
-	_add(L"formula",   Formula);
-	_add(L"pre",       Pre);
-	_add(L"post",      Post);
-	_add(L"process",   Process);
-	_add(L"class",     Class);
-	_add(L"extends",   Extends);
-	_add(L"pragma",    Pragma);
-	_add(L"mutable",   Mutable);
-    _add(L"int",       IntType);
-    _add(L"nat",       NatType);
-    _add(L"real",      RealType);
-    _add(L"bool",      BoolType);
-    _add(L"char",      CharType);
-	_add(L"subtype",   Subtype);
-	_add(L"enum",      Enum);
-	_add(L"struct",    Struct);
-	_add(L"union",     Union);
-	_add(L"string",    StringType);
-	_add(L"seq",       Seq);
-	_add(L"set",       Set);
-	_add(L"array",     Array);
-	_add(L"map",       Map);
-    _add(L"list",      List);
-    _add(L"var",       Var);
-	_add(L"for",       For);
-	_add(L"case",      Case);
-	_add(L"default",   Default);
-	_add(L"if",        If);
-	_add(L"else",      Else);
-	_add(L"switch",    Switch);
-	_add(L"break",     Break);
-	_add(L"while",     While);
-	_add(L"receive",   Receive);
-	_add(L"send",      Send);
-	_add(L"after",     After);
-	_add(L"message",   Message);
-	_add(L"queue",     Queue);
-	_add(L"new",       New);
-	_add(L"with",      With);
+TokenMap::TokenMap() {
+    _add(L"+",   PLUS);
+	_add(L"-",   MINUS);
+	_add(L"<<",  SHIFTLEFT);
+	_add(L">>",  SHIFTRIGHT);
+	_add(L"*",   ASTERISK);
+	_add(L"^",   CARET);
+	_add(L"/",   SLASH);
+	_add(L"%",   PERCENT);
+	_add(L"!",   BANG);
+	_add(L"~",   TILDE);
+	_add(L"=",   EQ);
+	_add(L"<",   LT);
+	_add(L"<=",  LTE);
+	_add(L">",   GT);
+	_add(L">=",  GTE);
+	_add(L"!=",  NE);
+	_add(L"&",   AMPERSAND);
+	_add(L"?",   QUESTION);
+	_add(L"=>",  IMPLIES);
+	_add(L"<=>", IFF);
+	_add(L"(",   LPAREN);
+	_add(L")",   RPAREN);
+	_add(L"{",   LBRACE);
+	_add(L"}",   RBRACE);
+	_add(L"[",   LBRACKET);
+    _add(L"]",   RBRACKET);
+	_add(L"[{",  MAP_LBRACKET);
+	_add(L"}]",  MAP_RBRACKET);
+	_add(L"[[",  LIST_LBRACKET);
+	_add(L"]]",  LIST_RBRACKET);
+	_add(L"\'",  SINGLE_QUOTE);
+	_add(L"\"",  DOUBLE_QUOTE);
+	_add(L",",   COMMA);
+	_add(L";",   SEMICOLON);
+	_add(L":",   COLON);
+	_add(L".",   DOT);
+	_add(L"..",  DOUBLE_DOT);
+	_add(L"...", ELLIPSIS);
+	_add(L"#",   HASH);
+	_add(L"|",   PIPE);
+    _add(L"||",  DOUBLE_PIPE);
+    _add(L"_",   UNDERSCORE);
+	_add(L"inf",   INF);
+	_add(L"nan",   NOT_A_NUMBER);
+	_add(L"true",  TRUE);
+	_add(L"false", FALSE);
+	_add(L"nil",   NIL);
+	_add(L"in",    IN);
+    _add(L"and",   AND);
+	_add(L"or",    OR);
+    _add(L"xor",   XOR);
+    _add(L"forall",    FORALL);
+    _add(L"exists",    EXISTS);
+	_add(L"module",    MODULE);
+	_add(L"import",    IMPORT);
+	_add(L"type",      TYPE);
+	_add(L"predicate", PREDICATE);
+	_add(L"formula",   FORMULA);
+	_add(L"pre",       PRE);
+	_add(L"post",      POST);
+	_add(L"process",   PROCESS);
+	_add(L"class",     CLASS);
+	_add(L"extends",   EXTENDS);
+	_add(L"pragma",    PRAGMA);
+	_add(L"mutable",   MUTABLE);
+    _add(L"int",       INT_TYPE);
+    _add(L"nat",       NAT_TYPE);
+    _add(L"real",      REAL_TYPE);
+    _add(L"bool",      BOOL_TYPE);
+    _add(L"char",      CHAR_TYPE);
+	_add(L"subtype",   SUBTYPE);
+	_add(L"enum",      ENUM);
+	_add(L"struct",    STRUCT);
+	_add(L"union",     UNION);
+	_add(L"string",    STRING_TYPE);
+	_add(L"seq",       SEQ);
+	_add(L"set",       SET);
+	_add(L"array",     ARRAY);
+	_add(L"map",       MAP);
+    _add(L"list",      LIST);
+    _add(L"var",       VAR);
+	_add(L"for",       FOR);
+	_add(L"case",      CASE);
+	_add(L"default",   DEFAULT);
+	_add(L"if",        IF);
+	_add(L"else",      ELSE);
+	_add(L"switch",    SWITCH);
+	_add(L"break",     BREAK);
+	_add(L"while",     WHILE);
+	_add(L"receive",   RECEIVE);
+	_add(L"send",      SEND);
+	_add(L"after",     AFTER);
+	_add(L"message",   MESSAGE);
+	_add(L"queue",     QUEUE);
+	_add(L"new",       NEW);
+	_add(L"with",      WITH);
 
 	std::sort(m_knownTokens.begin(), m_knownTokens.end());
 	resetRequest();
 }
 
-void CTokenMap::resetRequest() {
+void TokenMap::resetRequest() {
     m_bounds.first = m_knownTokens.begin();
     m_bounds.second = m_knownTokens.end();
     m_strCurrent = L"";
     m_matched = m_knownTokens.end();
 }
 
-int CTokenMap::addChar(wchar_t _c) {
+int TokenMap::addChar(wchar_t _c) {
     m_strCurrent += _c;
 
     if (getCount() == 1 && m_bounds.first->lexeme[m_strCurrent.size() - 1] != _c) {
@@ -225,7 +225,7 @@ int CTokenMap::addChar(wchar_t _c) {
     }
 
     m_bounds = std::equal_range(m_bounds.first, m_bounds.second,
-            lexeme_t(m_strCurrent, -1), CLexemeCharCmp(m_strCurrent.length() - 1));
+            lexeme_t(m_strCurrent, -1), LexemeCharCmp(m_strCurrent.length() - 1));
 
     const int count = m_bounds.second - m_bounds.first;
 
@@ -238,9 +238,9 @@ int CTokenMap::addChar(wchar_t _c) {
     return count;
 }
 
-class CTokenizer {
+class Tokenizer {
 public:
-    CTokenizer(tokens_t & _tokens, std::istream & _is);
+    Tokenizer(Tokens & _tokens, std::istream & _is);
 
     void run();
 
@@ -248,9 +248,9 @@ private:
     typedef std::codecvt<wchar_t, char, std::mbstate_t> wc2mbcs_t;
     typedef std::ctype<wchar_t> wctype_t;
 
-    tokens_t & m_tokens;
+    Tokens & m_tokens;
     std::istream & m_is;
-    CTokenMap m_tm;
+    TokenMap m_tm;
 
     std::locale m_loc;
     std::mbstate_t m_state;
@@ -269,17 +269,17 @@ private:
     std::istream & _putback(wchar_t _c);
     void _putbackStr(const std::wstring & _s);
 
-    bool _matchToken(CToken & _tok);
+    bool _matchToken(Token & _tok);
     void _skipWhitespaceAndComments();
     void _skipWhitespace();
     bool _skipComments();
 
-    bool _matchIdentifier(CToken & _tok);
-    bool _matchLabel(CToken & _tok);
-    bool _matchIntegerLiteral(CToken & _tok);
-    bool _matchRealLiteral(CToken & _tok);
-    bool _matchCharLiteral(CToken & _tok);
-    bool _matchStringLiteral(CToken & _tok);
+    bool _matchIdentifier(Token & _tok);
+    bool _matchLabel(Token & _tok);
+    bool _matchIntegerLiteral(Token & _tok);
+    bool _matchRealLiteral(Token & _tok);
+    bool _matchCharLiteral(Token & _tok);
+    bool _matchStringLiteral(Token & _tok);
     wchar_t _parseSingleChar(std::wstring & _charsRead);
 
     wchar_t _mbc2wc(const char * _mbcs, int _len);
@@ -287,7 +287,7 @@ private:
     bool _isIdentChar(wchar_t _c);
 };
 
-CTokenizer::CTokenizer(tokens_t & _tokens, std::istream & _is) :
+Tokenizer::Tokenizer(Tokens & _tokens, std::istream & _is) :
     m_tokens(_tokens), m_is(_is),
     m_loc(""), m_facet(std::use_facet<wc2mbcs_t>(m_loc)),
     m_mbcLen(m_facet.max_length()), m_ctype(std::use_facet<wctype_t>(m_loc)),
@@ -295,7 +295,7 @@ CTokenizer::CTokenizer(tokens_t & _tokens, std::istream & _is) :
 {
 }
 
-wchar_t CTokenizer::_mbc2wc(const char * _mbcs, int _len) {
+wchar_t Tokenizer::_mbc2wc(const char * _mbcs, int _len) {
     const char * pNextIn = _mbcs;
     wchar_t * pNextOut;
     wchar_t wc;
@@ -311,7 +311,7 @@ wchar_t CTokenizer::_mbc2wc(const char * _mbcs, int _len) {
     return wc;
 }
 
-int CTokenizer::_wc2mbc(char * _mbcs, int _len, wchar_t _wc) {
+int Tokenizer::_wc2mbc(char * _mbcs, int _len, wchar_t _wc) {
     char * pNextOut = _mbcs;
     const wchar_t * pNextIn = & _wc;
 
@@ -323,7 +323,7 @@ int CTokenizer::_wc2mbc(char * _mbcs, int _len, wchar_t _wc) {
     return pNextOut - _mbcs;
 }
 
-wchar_t CTokenizer::_get() {
+wchar_t Tokenizer::_get() {
     char * pBuf = m_mbcBuf;
     wchar_t wc = EOF;
 
@@ -356,7 +356,7 @@ wchar_t CTokenizer::_get() {
     return wc;
 }
 
-wchar_t CTokenizer::_peek() {
+wchar_t Tokenizer::_peek() {
     const int c = m_is.peek();
 
     if (c == EOF || m_is.eof())
@@ -373,7 +373,7 @@ wchar_t CTokenizer::_peek() {
     return wc;
 }
 
-std::istream & CTokenizer::_putback(wchar_t _c) {
+std::istream & Tokenizer::_putback(wchar_t _c) {
     m_is.clear();
 
     const int count = _wc2mbc(m_mbcBuf, m_mbcLen, _c);
@@ -400,11 +400,11 @@ std::istream & CTokenizer::_putback(wchar_t _c) {
     return m_is;
 }
 
-bool CTokenizer::_isIdentChar(wchar_t _c) {
+bool Tokenizer::_isIdentChar(wchar_t _c) {
     return _c == L'_' || m_ctype.is(wctype_t::alnum, _c);
 }
 
-void CTokenizer::_putbackStr(const std::wstring & _s) {
+void Tokenizer::_putbackStr(const std::wstring & _s) {
     if (_s.empty())
         return;
 
@@ -412,12 +412,12 @@ void CTokenizer::_putbackStr(const std::wstring & _s) {
         _putback(_s[i]);
 }
 
-void CTokenizer::_skipWhitespace() {
+void Tokenizer::_skipWhitespace() {
     while (! m_is.eof() && m_ctype.is(wctype_t::space, _peek()))
         _get();
 }
 
-bool CTokenizer::_skipComments() {
+bool Tokenizer::_skipComments() {
     if (m_is.eof())
         return false;
 
@@ -454,7 +454,7 @@ bool CTokenizer::_skipComments() {
     throw ELexerException("Unterminated comment", nLine, nCol);
 }
 
-void CTokenizer::_skipWhitespaceAndComments() {
+void Tokenizer::_skipWhitespaceAndComments() {
     while (! m_is.eof()) {
         const wchar_t c = _peek();
 
@@ -468,7 +468,7 @@ void CTokenizer::_skipWhitespaceAndComments() {
     }
 }
 
-bool CTokenizer::_matchIdentifier(CToken & _tok) {
+bool Tokenizer::_matchIdentifier(Token & _tok) {
     const wchar_t c = _peek();
 
     if (! m_ctype.is(wctype_t::alpha, c) && c != L'_')
@@ -480,13 +480,13 @@ bool CTokenizer::_matchIdentifier(CToken & _tok) {
         s += _get();
     } while (! m_is.eof() && _isIdentChar(_peek()));
 
-    _tok = CToken(Identifier);
+    _tok = Token(IDENTIFIER);
     _tok.setValue(s);
 
     return true;
 }
 
-bool CTokenizer::_matchLabel(CToken & _tok) {
+bool Tokenizer::_matchLabel(Token & _tok) {
     if (! m_ctype.is(wctype_t::digit, _peek()))
         return false;
 
@@ -506,13 +506,13 @@ bool CTokenizer::_matchLabel(CToken & _tok) {
         return false;
     }
 
-    _tok = CToken(Label);
+    _tok = Token(LABEL);
     _tok.setValue(s);
 
     return true;
 }
 
-bool CTokenizer::_matchIntegerLiteral(CToken & _tok) {
+bool Tokenizer::_matchIntegerLiteral(Token & _tok) {
     if (! m_ctype.is(wctype_t::digit, _peek()))
         return false;
 
@@ -534,13 +534,13 @@ bool CTokenizer::_matchIntegerLiteral(CToken & _tok) {
             s += _get();
     }
 
-    _tok = CToken(Integer);
+    _tok = Token(INTEGER);
     _tok.setValue(s);
 
     return true;
 }
 
-bool CTokenizer::_matchRealLiteral(CToken & _tok) {
+bool Tokenizer::_matchRealLiteral(Token & _tok) {
     if (! m_ctype.is(wctype_t::digit, _peek()) && _peek() != L'.')
         return false;
 
@@ -598,13 +598,13 @@ bool CTokenizer::_matchRealLiteral(CToken & _tok) {
         return false;
     }
 
-    _tok = CToken(Real);
+    _tok = Token(REAL);
     _tok.setValue(s);
 
     return true;
 }
 
-wchar_t CTokenizer::_parseSingleChar(std::wstring & _charsRead) {
+wchar_t Tokenizer::_parseSingleChar(std::wstring & _charsRead) {
     _charsRead += _peek();
 
     if (_peek() != L'\\')
@@ -648,7 +648,7 @@ wchar_t CTokenizer::_parseSingleChar(std::wstring & _charsRead) {
     return -1;
 }
 
-bool CTokenizer::_matchCharLiteral(CToken & _tok) {
+bool Tokenizer::_matchCharLiteral(Token & _tok) {
     if (_peek() != L'\'')
         return false;
 
@@ -665,13 +665,13 @@ bool CTokenizer::_matchCharLiteral(CToken & _tok) {
 
     _get(); // Quote.
 
-    _tok = CToken(Char);
+    _tok = Token(CHAR);
     _tok.setValue(std::wstring(& c, 1));
 
     return true;
 }
 
-bool CTokenizer::_matchStringLiteral(CToken & _tok) {
+bool Tokenizer::_matchStringLiteral(Token & _tok) {
     if (_peek() != L'\"')
         return false;
 
@@ -697,14 +697,14 @@ bool CTokenizer::_matchStringLiteral(CToken & _tok) {
 
     _get(); // Quote.
 
-    _tok = CToken(String);
+    _tok = Token(STRING);
     _tok.setValue(s);
 
     return true;
 }
 
-void CTokenizer::run() {
-    CToken tok;
+void Tokenizer::run() {
+    Token tok;
 
     while (! m_is.eof()) {
         _skipWhitespaceAndComments();
@@ -754,10 +754,10 @@ void CTokenizer::run() {
         m_tokens.push_back(tok);
     }
 
-    m_tokens.push_back(CToken(Eof, m_nLine, m_nCol));
+    m_tokens.push_back(Token(END_OF_FILE, m_nLine, m_nCol));
 }
 
-bool CTokenizer::_matchToken(CToken & _tok) {
+bool Tokenizer::_matchToken(Token & _tok) {
     m_tm.resetRequest();
 
     while (! m_is.eof() && m_tm.getCount() > 0)
@@ -767,15 +767,15 @@ bool CTokenizer::_matchToken(CToken & _tok) {
 
     if (m_tm.matched()) {
         const lexeme_t & lex = m_tm.getLexeme();
-        _tok = CToken(lex.tokenKind);
+        _tok = Token(lex.tokenKind);
         _tok.setValue(lex.lexeme);
     }
 
     return m_tm.matched();
 }
 
-void tokenize(tokens_t & _tokens, std::istream & _is) throw(ELexerException) {
-    CTokenizer tok(_tokens, _is);
+void tokenize(Tokens & _tokens, std::istream & _is) throw(ELexerException) {
+    Tokenizer tok(_tokens, _is);
     tok.run();
 }
 

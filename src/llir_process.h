@@ -15,138 +15,138 @@
 namespace llir {
 
 // Function-level processing.
-class CProcessLL {
+class ProcessLL {
 public:
-    CProcessLL(CFunction & _func) : m_func(_func) {}
-    virtual ~CProcessLL() {}
+    ProcessLL(Function & _func) : m_func(_func) {}
+    virtual ~ProcessLL() {}
 
     virtual void process();
-    virtual void processInstructions(instructions_t & _instrs);
+    virtual void processInstructions(Instructions &_instrs);
 
-    virtual void processInstruction(CInstruction & _instr);
-    virtual void processUnary(CUnary & _instr);
-    virtual void processBinary(CBinary & _instr);
-    virtual void processCall(CCall & _instr);
-    virtual void processIf(CIf & _instr);
-    virtual void processSwitch(CSwitch & _instr);
-    virtual void processSelect(CSelect & _instr);
-    virtual void processField(CField & _instr);
-    virtual void processCast(CCast & _instr);
-    virtual void processCopy(CCopy & _instr);
+    virtual void processInstruction(Instruction & _instr);
+    virtual void processUnary(Unary & _instr);
+    virtual void processBinary(Binary & _instr);
+    virtual void processCall(Call & _instr);
+    virtual void processIf(If & _instr);
+    virtual void processSwitch(Switch & _instr);
+    virtual void processSelect(Select & _instr);
+    virtual void processField(Field & _instr);
+    virtual void processCast(Cast & _instr);
+    virtual void processCopy(Copy & _instr);
 
 
-    virtual void processOperands(operands_t & _ops);
-    virtual void processOperand(COperand & _op);
+    virtual void processOperands(Operands &_ops);
+    virtual void processOperand(Operand & _op);
 
-    CFunction & getFunction() { return m_func; }
-    Auto<CInstruction> getInstruction() const { return m_pInstr; }
-    void setInstruction(Auto<CInstruction> _instr) { * m_iInstr = _instr; }
-    instructions_t * getInstructions() const { return m_pInstructions; }
-    const CInstruction * getNext() const { return m_pNext; }
-    instructions_t::iterator getNextIter() const { return m_iNext; }
-    instructions_t::iterator getIter() { return m_iInstr; }
-    const CInstruction * getPrev() const { return m_pPrev; }
+    Function & getFunction() { return m_func; }
+    Auto<Instruction> getInstruction() const { return m_pInstr; }
+    void setInstruction(Auto<Instruction> _instr) { * m_iInstr = _instr; }
+    Instructions * getInstructions() const { return m_pInstructions; }
+    const Instruction * getNext() const { return m_pNext; }
+    Instructions::iterator getNextIter() const { return m_iNext; }
+    Instructions::iterator getIter() { return m_iInstr; }
+    const Instruction * getPrev() const { return m_pPrev; }
 
 protected:
-    void processInstructionIter(instructions_t::iterator _iInstr);
+    void processInstructionIter(Instructions::iterator _iInstr);
 
 private:
-    CFunction & m_func;
-    Auto<CInstruction> m_pInstr;
-    const CInstruction * m_pNext, * m_pPrev;
-    instructions_t::iterator m_iInstr, m_iNext;
-    instructions_t * m_pInstructions;
+    Function & m_func;
+    Auto<Instruction> m_pInstr;
+    const Instruction * m_pNext, * m_pPrev;
+    Instructions::iterator m_iInstr, m_iNext;
+    Instructions * m_pInstructions;
 };
 
-class CMarkEOLs : public CProcessLL {
+class MarkEOLs : public ProcessLL {
 public:
-    CMarkEOLs(CFunction & _func) : CProcessLL(_func) {}
+    MarkEOLs(Function & _func) : ProcessLL(_func) {}
 
-    virtual void processOperand(COperand & _op);
+    virtual void processOperand(Operand & _op);
 };
 
-class CRecycleVars : public CProcessLL {
+class RecycleVars : public ProcessLL {
 public:
-    CRecycleVars(CFunction & _func) : CProcessLL(_func) {}
+    RecycleVars(Function & _func) : ProcessLL(_func) {}
 
     virtual void process();
-    virtual void processInstruction(CInstruction & _instr);
-    virtual void processOperand(COperand & _op);
+    virtual void processInstruction(Instruction & _instr);
+    virtual void processOperand(Operand & _op);
 
 private:
-    typedef std::multimap<Auto<CType>, Auto<CVariable> > recycle_pool_t;
-    typedef std::map<Auto<CVariable>, Auto<CVariable> > rewrite_map_t;
+    typedef std::multimap<Auto<Type>, Auto<Variable> > RecyclePool;
+    typedef std::map<Auto<Variable>, Auto<Variable> > RewriteMap;
 
-    recycle_pool_t m_varPool;
-    rewrite_map_t m_rewriteVars;
+    RecyclePool m_varPool;
+    RewriteMap m_rewriteVars;
 };
 
-class CCountLabels : public CProcessLL {
+class CountLabels : public ProcessLL {
 public:
-    CCountLabels(CFunction & _func) : CProcessLL(_func) {}
+    CountLabels(Function & _func) : ProcessLL(_func) {}
 
-    virtual void processInstruction(CInstruction & _instr);
-    virtual void processUnary(CUnary & _instr);
-    virtual void processBinary(CBinary & _instr);
+    virtual void processInstruction(Instruction & _instr);
+    virtual void processUnary(Unary & _instr);
+    virtual void processBinary(Binary & _instr);
 
 private:
-    COperand m_target;
+    Operand m_target;
 };
 
-class CPruneJumps : public CProcessLL {
+class PruneJumps : public ProcessLL {
 public:
-    CPruneJumps(CFunction & _func) : CProcessLL(_func) {}
+    PruneJumps(Function & _func) : ProcessLL(_func) {}
 
     virtual void process();
-    virtual void processInstruction(CInstruction & _instr);
-    virtual void processUnary(CUnary & _instr);
-    virtual void processBinary(CBinary & _instr);
-    virtual void processInstructions(instructions_t & _instrs);
+    virtual void processInstruction(Instruction & _instr);
+    virtual void processUnary(Unary & _instr);
+    virtual void processBinary(Binary & _instr);
+    virtual void processInstructions(Instructions & _instrs);
 
 private:
     bool m_bFirstPass;
-    COperand m_target;
-    instructions_t::iterator m_iStart;
-    typedef std::set<CLabel *> labels_t;
-    labels_t m_labels, m_labelsFwd;
-    typedef std::map<Auto<CLabel>, Auto<CLabel> > rewrite_map_t;
-    rewrite_map_t m_rewriteLabels;
+    Operand m_target;
+    Instructions::iterator m_iStart;
+    typedef std::set<Label *> Labels;
+    Labels m_labels, m_labelsFwd;
+    typedef std::map<Auto<Label>, Auto<Label> > RewriteMap;
+    RewriteMap m_rewriteLabels;
 
-    void collapse(instructions_t::iterator _iInstr, instructions_t & _instrs);
+    void collapse(Instructions::iterator _iInstr, Instructions & _instrs);
 };
 
-class CCollapseReturns : public CProcessLL {
+class CollapseReturns : public ProcessLL {
 public:
-    CCollapseReturns(CFunction & _func) : CProcessLL(_func) {}
+    CollapseReturns(Function & _func) : ProcessLL(_func) {}
 
-    virtual void processBinary(CBinary & _instr);
+    virtual void processBinary(Binary & _instr);
 };
 
-/*class CAddRefCounting : public CProcessLL {
+/*class AddRefCounting : public ProcessLL {
 public:
-    CAddRefCounting(CFunction & _func) : CProcessLL(_func) {}
+    AddRefCounting(Function & _func) : ProcessLL(_func) {}
 
     virtual void process();
-    virtual void processInstruction(CInstruction & _instr);
-    virtual void processUnary(CUnary & _instr);
-    virtual void processBinary(CBinary & _instr);
-    virtual void processField(CField & _instr);
-    virtual void processCast(CCast & _instr);
+    virtual void processInstruction(Instruction & _instr);
+    virtual void processUnary(Unary & _instr);
+    virtual void processBinary(Binary & _instr);
+    virtual void processField(Field & _instr);
+    virtual void processCast(Cast & _instr);
 
 private:
     args_t m_ptrs;
-    COperand m_op;
+    Operand m_op;
 };*/
 
-class CCollapseLabels : public CProcessLL {
+class CollapseLabels : public ProcessLL {
 public:
-    CCollapseLabels(CFunction & _func) : CProcessLL(_func) {}
+    CollapseLabels(Function & _func) : ProcessLL(_func) {}
 
-    virtual void processBinary(CBinary & _instr);
+    virtual void processBinary(Binary & _instr);
 };
 
 template<class Processor>
-void processLL(CFunction & _func) {
+void processLL(Function & _func) {
     Processor(_func).process();
 }
 

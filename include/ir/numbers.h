@@ -20,56 +20,56 @@
 /// automatically.
 ///
 /// TODO: Support for arithmetic operations will be added later.
-class CNumber {
+class Number {
 public:
     /// Kind of a number.
     enum {
         /// Generic number that does not fit in other kinds. Stored as rational
         /// number.
-        Generic = -1,
+        GENERIC = -1,
         /// Abstract native bitness (not used directly).
-        Native = 0,
+        NATIVE = 0,
         /// Integer value that fits in 64 bits.
-        Integer,
+        INTEGER,
         /// Single precision floating point value.
-        Single,
+        SINGLE,
         /// Double precision floating point value.
-        Double,
+        DOUBLE,
         /// Quad precision floating point value.
-        Quad,
+        QUAD,
     };
 
     /// Default constructor initializes number as integer zero.
-    CNumber();
+    Number();
 
     /// Initialize with string. Appropriate kind will be automatically determined.
-    CNumber(const CNumber & _other);
+    Number(const Number & _other);
 
     /// Initialize with floating point value.
-    CNumber(long double _f);
+    Number(long double _f);
 
     /// Initialize with integer.
-    CNumber(int64_t _n);
+    Number(int64_t _n);
 
     /// Initialize with string.
-    CNumber(const std::wstring & _s);
+    Number(const std::wstring & _s);
 
     /// Destructor.
-    ~CNumber();
+    ~Number();
 
     /// Assignment operator.
     /// \param _other Right hand side of the assignment.
     /// \return Modified number.
-    CNumber & operator =(const CNumber & _other);
+    Number & operator =(const Number & _other);
 
     /// Get "not a number" special value.
     /// \return \c NaN.
-    static const CNumber & nan() { return m_nan; }
+    static const Number & nan() { return m_nan; }
 
     /// Get "infinity" special value.
     /// \param _bNegative Return \c -Inf  if set.
     /// \return Positive or negative \c Inf.
-    static const CNumber & inf(bool _bNegative = false) {
+    static const Number & inf(bool _bNegative = false) {
         return _bNegative ? m_infNeg : m_inf;
     }
 
@@ -103,9 +103,9 @@ private:
     int64_t m_nValue;
     mpq_class m_qValue;
 
-    static const CNumber m_nan;
-    static const CNumber m_inf;
-    static const CNumber m_infNeg;
+    static const Number m_nan;
+    static const Number m_inf;
+    static const Number m_infNeg;
 
     void _update();
 };

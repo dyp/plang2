@@ -7,12 +7,12 @@
 
 namespace llir {
 
-void _assertContains(instructions_t & _lst, instructions_t::iterator _iter) {
+void _assertContains(Instructions & _lst, Instructions::iterator _iter) {
     if (_iter == _lst.end())
         return;
 
     bool bFound = false;
-    for (instructions_t::iterator iInstr = _lst.begin(); iInstr != _lst.end(); ++ iInstr)
+    for (Instructions::iterator iInstr = _lst.begin(); iInstr != _lst.end(); ++ iInstr)
         if (iInstr == _iter) {
             bFound = true;
             break;
@@ -25,7 +25,7 @@ void _assertContains(instructions_t & _lst, instructions_t::iterator _iter) {
     assert(bFound);
 }
 
-void CProcessLL::process() {
+void ProcessLL::process() {
     m_pInstr = NULL;
     m_pNext = NULL;
     m_pPrev = NULL;
@@ -35,22 +35,22 @@ void CProcessLL::process() {
     processInstructions(m_func.instructions());
 }
 
-void CProcessLL::processInstructions(instructions_t & _instrs) {
-    instructions_t * pSaved = m_pInstructions;
+void ProcessLL::processInstructions(Instructions & _instrs) {
+    Instructions * pSaved = m_pInstructions;
 
     if (_instrs.empty())
         return;
 
     m_pInstructions = & _instrs;
 
-    for (instructions_t::iterator iInstr = _instrs.begin(); iInstr != _instrs.end(); ++ iInstr)
+    for (Instructions::iterator iInstr = _instrs.begin(); iInstr != _instrs.end(); ++ iInstr)
         if (! iInstr->empty())
             processInstructionIter(iInstr);
 
     m_pInstructions = pSaved;
 }
 
-void CProcessLL::processInstructionIter(instructions_t::iterator _iInstr) {
+void ProcessLL::processInstructionIter(Instructions::iterator _iInstr) {
     m_iInstr = _iInstr;
     m_iNext = next(_iInstr);
     m_pNext = m_iNext == m_pInstructions->end() ? NULL : m_iNext->ptr();
@@ -59,129 +59,129 @@ void CProcessLL::processInstructionIter(instructions_t::iterator _iInstr) {
     m_pPrev = _iInstr->ptr();
 }
 
-void CProcessLL::processInstruction(CInstruction & _instr) {
+void ProcessLL::processInstruction(Instruction & _instr) {
     switch (_instr.getKind()) {
-        case CInstruction::Unary:
-            processUnary((CUnary & ) _instr);
+        case Instruction::UNARY:
+            processUnary((Unary & ) _instr);
             break;
-        case CInstruction::Binary:
-            processBinary((CBinary & ) _instr);
+        case Instruction::BINARY:
+            processBinary((Binary & ) _instr);
             break;
-        case CInstruction::Call:
-            processCall((CCall &) _instr);
+        case Instruction::CALL:
+            processCall((Call &) _instr);
             break;
-        case CInstruction::If:
-            processIf((CIf &) _instr);
+        case Instruction::IF:
+            processIf((If &) _instr);
             break;
-        case CInstruction::Switch:
-            processSwitch((CSwitch &) _instr);
+        case Instruction::SWITCH:
+            processSwitch((Switch &) _instr);
             break;
-        case CInstruction::Select:
-            processSelect((CSelect & ) _instr);
+        case Instruction::SELECT:
+            processSelect((Select & ) _instr);
             break;
-        case CInstruction::Field:
-            processField((CField &) _instr);
+        case Instruction::FIELD:
+            processField((Field &) _instr);
             break;
-        case CInstruction::Cast:
-            processCast((CCast &) _instr);
+        case Instruction::CAST:
+            processCast((Cast &) _instr);
             break;
-        case CInstruction::Copy:
-            processCopy((CCopy &) _instr);
+        case Instruction::COPY:
+            processCopy((Copy &) _instr);
             break;
     }
 }
 
-void CProcessLL::processUnary(CUnary & _instr) {
+void ProcessLL::processUnary(Unary & _instr) {
     processOperand(_instr.getOp());
 }
 
-void CProcessLL::processBinary(CBinary & _instr) {
+void ProcessLL::processBinary(Binary & _instr) {
     processOperand(_instr.getOp1());
     processOperand(_instr.getOp2());
 }
 
-void CProcessLL::processCall(CCall & _instr) {
+void ProcessLL::processCall(Call & _instr) {
     processOperands(_instr.args());
 }
 
-void CProcessLL::processIf(CIf & _instr) {
+void ProcessLL::processIf(If & _instr) {
     processOperand(_instr.getCondition());
     processInstructions(_instr.brTrue());
     processInstructions(_instr.brFalse());
 }
 
-void CProcessLL::processSwitch(CSwitch & _instr) {
+void ProcessLL::processSwitch(Switch & _instr) {
     processOperand(_instr.getArg());
 
-    for (switch_cases_t::iterator iCase = _instr.cases().begin(); iCase != _instr.cases().end(); ++ iCase)
+    for (SwitchCases::iterator iCase = _instr.cases().begin(); iCase != _instr.cases().end(); ++ iCase)
         processInstructions(iCase->body);
 
     processInstructions(_instr.deflt());
 }
 
-void CProcessLL::processSelect(CSelect & _instr) {
+void ProcessLL::processSelect(Select & _instr) {
     processOperand(_instr.getCondition());
     processOperand(_instr.getTrue());
     processOperand(_instr.getFalse());
 }
 
-void CProcessLL::processField(CField & _instr) {
+void ProcessLL::processField(Field & _instr) {
     processOperand(_instr.getOp());
 }
 
-void CProcessLL::processCast(CCast & _instr) {
+void ProcessLL::processCast(Cast & _instr) {
     processOperand(_instr.getOp());
 }
 
-void CProcessLL::processCopy(CCopy & _instr) {
+void ProcessLL::processCopy(Copy & _instr) {
     processOperand(_instr.getDest());
     processOperand(_instr.getSrc());
     processOperand(_instr.getSize());
 }
 
-void CProcessLL::processOperands(operands_t & _ops) {
-    for (operands_t::iterator iOp = _ops.begin(); iOp != _ops.end(); ++ iOp)
+void ProcessLL::processOperands(Operands & _ops) {
+    for (Operands::iterator iOp = _ops.begin(); iOp != _ops.end(); ++ iOp)
         processOperand(* iOp);
 }
 
-void CProcessLL::processOperand(COperand & _op) {
+void ProcessLL::processOperand(Operand & _op) {
 }
 
 //
-// CMarkEOLs
+// MarkEOLs
 //
 
-void CMarkEOLs::processOperand(COperand & _op) {
-    CProcessLL::processOperand(_op);
+void MarkEOLs::processOperand(Operand & _op) {
+    ProcessLL::processOperand(_op);
 
-    if (_op.getKind() == COperand::Variable)
+    if (_op.getKind() == Operand::VARIABLE)
         _op.getVariable()->setLastUse(getInstruction());
 }
 
 //
-// CRecycleVars
+// RecycleVars
 //
 
-void CRecycleVars::process()
+void RecycleVars::process()
 {
     m_varPool.clear();
     m_rewriteVars.clear();
-    CProcessLL::process();
+    ProcessLL::process();
 }
 
-void CRecycleVars::processInstruction(CInstruction & _instr)
+void RecycleVars::processInstruction(Instruction & _instr)
 {
-    CProcessLL::processInstruction(_instr);
+    ProcessLL::processInstruction(_instr);
 
-    Auto<CVariable> oldVar = _instr.getResult();
+    Auto<Variable> oldVar = _instr.getResult();
 
     if (! oldVar.empty()) {
-        typedef recycle_pool_t::iterator I;
-        const Auto<CType> & type = oldVar->getType();
+        typedef RecyclePool::iterator I;
+        const Auto<Type> & type = oldVar->getType();
         std::pair<I, I> bounds = m_varPool.equal_range(type);
 
         if (bounds.first != bounds.second) {
-            Auto<CVariable> newVar = bounds.first->second;
+            Auto<Variable> newVar = bounds.first->second;
 
             newVar->setLastUse(oldVar->getLastUse());
             newVar->setAlive(true);
@@ -201,13 +201,13 @@ void CRecycleVars::processInstruction(CInstruction & _instr)
     }
 }
 
-void CRecycleVars::processOperand(COperand & _op) {
-    CProcessLL::processOperand(_op);
+void RecycleVars::processOperand(Operand & _op) {
+    ProcessLL::processOperand(_op);
 
-    if (_op.getKind() != COperand::Variable || ! _op.getVariable()->isAlive())
+    if (_op.getKind() != Operand::VARIABLE || ! _op.getVariable()->isAlive())
         return;
 
-    rewrite_map_t::iterator iVar = m_rewriteVars.find(_op.getVariable());
+    RewriteMap::iterator iVar = m_rewriteVars.find(_op.getVariable());
 
     if (iVar != m_rewriteVars.end())
         _op.setVariable(iVar->second);
@@ -224,45 +224,45 @@ void CRecycleVars::processOperand(COperand & _op) {
 }
 
 //
-// CCountLabels
+// CountLabels
 //
 
-void CCountLabels::processInstruction(CInstruction & _instr) {
-    m_target = COperand();
+void CountLabels::processInstruction(Instruction & _instr) {
+    m_target = Operand();
 
-    CProcessLL::processInstruction(_instr);
+    ProcessLL::processInstruction(_instr);
 
     if (! m_target.empty())
         m_target.getLabel()->incUsageCount();
 }
 
-void CCountLabels::processUnary(CUnary & _instr) {
-    CProcessLL::processUnary(_instr);
+void CountLabels::processUnary(Unary & _instr) {
+    ProcessLL::processUnary(_instr);
 
-    if (_instr.getUnaryKind() == CUnary::Jmp)
+    if (_instr.getUnaryKind() == Unary::JMP)
         m_target = _instr.getOp();
 }
 
-void CCountLabels::processBinary(CBinary & _instr) {
-    CProcessLL::processBinary(_instr);
+void CountLabels::processBinary(Binary & _instr) {
+    ProcessLL::processBinary(_instr);
 
-    if (_instr.getBinaryKind() == CBinary::Jmz || _instr.getBinaryKind() == CBinary::Jnz)
+    if (_instr.getBinaryKind() == Binary::JMZ || _instr.getBinaryKind() == Binary::JNZ)
         m_target = _instr.getOp2();
 }
 
 
 //
-// CPruneJumps
+// PruneJumps
 //
 
-void CPruneJumps::process() {
+void PruneJumps::process() {
     m_bFirstPass = true;
     m_rewriteLabels.clear();
-    CProcessLL::process();
+    ProcessLL::process();
 
     // 2nd pass, rewrite labels only.
     m_bFirstPass = false;
-    CProcessLL::process();
+    ProcessLL::process();
 }
 
 /*
@@ -278,18 +278,18 @@ void CPruneJumps::process() {
  * L0:
  */
 
-void CPruneJumps::collapse(instructions_t::iterator _iInstr, instructions_t & _instrs) {
+void PruneJumps::collapse(Instructions::iterator _iInstr, Instructions & _instrs) {
     if (m_iStart == _instrs.end())
         return;
 
     m_bFirstPass = false;
-    m_target = COperand();
+    m_target = Operand();
 
     if (_iInstr != m_iStart) {
-        Auto<CLabel> pLabel;
+        Auto<Label> pLabel;
 
-        for (instructions_t::iterator iInstr = m_iStart; iInstr != _iInstr; ++ iInstr) {
-            CProcessLL::processInstructionIter(iInstr);
+        for (Instructions::iterator iInstr = m_iStart; iInstr != _iInstr; ++ iInstr) {
+            ProcessLL::processInstructionIter(iInstr);
             if (! m_target.empty())
                 m_target.getLabel()->decUsageCount();
             if (! (* iInstr)->getLabel().empty() && (* iInstr)->getLabel()->getUsageCount() > 0) {
@@ -306,7 +306,7 @@ void CPruneJumps::collapse(instructions_t::iterator _iInstr, instructions_t & _i
                     m_rewriteLabels[(* _iInstr)->getLabel()] = pLabel;
                 (* _iInstr)->setLabel(pLabel);
             } else {
-                _instrs.push_back(new CInstruction()); // nop
+                _instrs.push_back(new Instruction()); // nop
                 _instrs.back()->setLabel(pLabel);
                 _iInstr = prev(_instrs.end());
             }
@@ -319,14 +319,14 @@ void CPruneJumps::collapse(instructions_t::iterator _iInstr, instructions_t & _i
         m_iStart = next(_iInstr);
 }
 
-void CPruneJumps::processInstructions(instructions_t & _instrs) {
+void PruneJumps::processInstructions(Instructions & _instrs) {
     if (! m_bFirstPass) {
-        CProcessLL::processInstructions(_instrs);
+        ProcessLL::processInstructions(_instrs);
         return;
     }
 
     m_iStart = _instrs.end();
-    CProcessLL::processInstructions(_instrs);
+    ProcessLL::processInstructions(_instrs);
 
     _assertContains(_instrs, m_iStart);
 
@@ -338,23 +338,23 @@ void CPruneJumps::processInstructions(instructions_t & _instrs) {
         m_iStart = getInstructions()->end();
 }
 
-void CPruneJumps::processInstruction(CInstruction & _instr) {
-    m_target = COperand();
+void PruneJumps::processInstruction(Instruction & _instr) {
+    m_target = Operand();
 
-    CProcessLL::processInstruction(_instr);
+    ProcessLL::processInstruction(_instr);
 
     if (! m_bFirstPass)
         return;
 
     // Detect start and end of collapsable instruction sequence.
 
-    Auto<CLabel> pLabel = _instr.getLabel();
+    Auto<Label> pLabel = _instr.getLabel();
     bool bBreak = true;
 
     if (! pLabel.empty()) {
         m_labels.insert(pLabel.ptr());
         m_labelsFwd.erase(pLabel.ptr());
-        if (_instr.getKind() == CInstruction::Nop)
+        if (_instr.getKind() == Instruction::NOP)
             bBreak = false;
     }
 
@@ -372,10 +372,10 @@ void CPruneJumps::processInstruction(CInstruction & _instr) {
     if (bBreak && m_iStart != getInstructions()->end()) {
         _assertContains(* getInstructions(), m_iStart);
 
-        instructions_t::iterator iEnd = getIter();
+        Instructions::iterator iEnd = getIter();
 
-        for (instructions_t::iterator iInstr = m_iStart; iInstr != iEnd; ++ iInstr) {
-            CProcessLL::processInstructionIter(iInstr);
+        for (Instructions::iterator iInstr = m_iStart; iInstr != iEnd; ++ iInstr) {
+            ProcessLL::processInstructionIter(iInstr);
             if (! m_target.empty()) {
                 if (m_labelsFwd.find(m_target.getLabel().ptr()) != m_labelsFwd.end())
                     collapse(iInstr, * getInstructions());
@@ -393,7 +393,7 @@ void CPruneJumps::processInstruction(CInstruction & _instr) {
 
     m_bFirstPass = true;
 
-    /*if (m_target.getKind() == COperand::Label) {
+    /*if (m_target.getKind() == Operand::Label) {
         return;
     }*/
 
@@ -405,39 +405,39 @@ void CPruneJumps::processInstruction(CInstruction & _instr) {
 
 
 
-    /*if (m_target.getKind() == COperand::Empty)
+    /*if (m_target.getKind() == Operand::Empty)
         return;
 
-    assert(m_target.getKind() == COperand::Label);
+    assert(m_target.getKind() == Operand::Label);
 
-    //Auto<CLabel> pLabel = m_target.getLabel();
+    //Auto<Label> pLabel = m_target.getLabel();
 
     if (getNext() && ! getNext()->getLabel().empty() &&
             getNext()->getLabel().ptr() == pLabel.ptr())
     {
-        setInstruction(new CInstruction());
+        setInstruction(new Instruction());
         return;
     }
 
     pLabel->incUsageCount();*/
 }
 
-void CPruneJumps::processUnary(CUnary & _instr) {
-    CProcessLL::processUnary(_instr);
+void PruneJumps::processUnary(Unary & _instr) {
+    ProcessLL::processUnary(_instr);
 
-    if (_instr.getUnaryKind() == CUnary::Jmp) {
-        rewrite_map_t::iterator iLabel = m_rewriteLabels.find(_instr.getOp().getLabel());
+    if (_instr.getUnaryKind() == Unary::JMP) {
+        RewriteMap::iterator iLabel = m_rewriteLabels.find(_instr.getOp().getLabel());
         if (iLabel != m_rewriteLabels.end())
             _instr.getOp().setLabel(iLabel->second);
         m_target = _instr.getOp();
     }
 }
 
-void CPruneJumps::processBinary(CBinary & _instr) {
-    CProcessLL::processBinary(_instr);
+void PruneJumps::processBinary(Binary & _instr) {
+    ProcessLL::processBinary(_instr);
 
-    if (_instr.getBinaryKind() == CBinary::Jmz || _instr.getBinaryKind() == CBinary::Jnz) {
-        rewrite_map_t::iterator iLabel = m_rewriteLabels.find(_instr.getOp2().getLabel());
+    if (_instr.getBinaryKind() == Binary::JMZ || _instr.getBinaryKind() == Binary::JNZ) {
+        RewriteMap::iterator iLabel = m_rewriteLabels.find(_instr.getOp2().getLabel());
         if (iLabel != m_rewriteLabels.end())
             _instr.getOp2().setLabel(iLabel->second);
         m_target = _instr.getOp2();
@@ -445,21 +445,21 @@ void CPruneJumps::processBinary(CBinary & _instr) {
 }
 
 //
-// CCollapseReturns
+// CollapseReturns
 //
 
-void CCollapseReturns::processBinary(CBinary & _instr) {
-    CProcessLL::processBinary(_instr);
+void CollapseReturns::processBinary(Binary & _instr) {
+    ProcessLL::processBinary(_instr);
 
-    if (_instr.getBinaryKind() != CBinary::Set)
+    if (_instr.getBinaryKind() != Binary::SET)
         return;
 
-    if (getNext() == NULL || getNext()->getKind() != CInstruction::Unary)
+    if (getNext() == NULL || getNext()->getKind() != Instruction::UNARY)
         return;
 
-    CUnary & nextInstr = (CUnary &) * getNext();
+    Unary & nextInstr = (Unary &) * getNext();
 
-    if (nextInstr.getUnaryKind() != CUnary::Return || nextInstr.getOp().getKind() != COperand::Variable)
+    if (nextInstr.getUnaryKind() != Unary::RETURN || nextInstr.getOp().getKind() != Operand::VARIABLE)
         return;
 
     if (! nextInstr.getLabel().empty())
@@ -469,60 +469,60 @@ void CCollapseReturns::processBinary(CBinary & _instr) {
         return;
 
     nextInstr.getOp() = _instr.getOp2();
-    setInstruction(new CInstruction()); // nop
+    setInstruction(new Instruction()); // nop
 }
 
 //
-// CAddRefCounting
+// AddRefCounting
 //
 /*
-void CAddRefCounting::process() {
+void AddRefCounting::process() {
     m_ptrs.clear();
 
-    CProcessLL::process();
+    ProcessLL::process();
 
     for (args_t::iterator iVar = getFunction().locals().begin(); iVar != getFunction().locals().end(); ++ iVar) {
-        Auto<CVariable> pVar = * iVar;
-        const CType & type = * pVar->getType();
+        Auto<Variable> pVar = * iVar;
+        const Type & type = * pVar->getType();
 
         switch (type.getKind()) {
-            case CType::Pointer:
+            case Type::Pointer:
                 getFunction().instructions().push_back(
-                        new CUnary(CUnary::Unref, COperand(pVar)));
+                        new Unary(Unary::Unref, Operand(pVar)));
                 break;
         }
     }
 
     for (args_t::iterator iVar = m_ptrs.begin(); iVar != m_ptrs.end(); ++ iVar)
-        getFunction().instructions().push_back(new CUnary(CUnary::Unref, COperand(* iVar)));
+        getFunction().instructions().push_back(new Unary(Unary::Unref, Operand(* iVar)));
 }
 
-void CAddRefCounting::processInstruction(CInstruction & _instr) {
-    m_op = COperand();
+void AddRefCounting::processInstruction(Instruction & _instr) {
+    m_op = Operand();
 
-    CProcessLL::processInstruction(_instr);
+    ProcessLL::processInstruction(_instr);
 
     if (! _instr.getResult().empty() && ! _instr.getResult()->getType().empty()
-            && _instr.getResult()->getType()->getKind() == CType::Pointer)
+            && _instr.getResult()->getType()->getKind() == Type::Pointer)
     {
         m_ptrs.push_back(_instr.getResult());
-        getInstructions()->insert(getNextIter(), new CUnary(CUnary::Ref, COperand(_instr.getResult())));
+        getInstructions()->insert(getNextIter(), new Unary(Unary::Ref, Operand(_instr.getResult())));
     }
 
-    if (m_op.getKind() != COperand::Empty)
-        getInstructions()->insert(getNextIter(), new CUnary(CUnary::Ref, m_op));
+    if (m_op.getKind() != Operand::Empty)
+        getInstructions()->insert(getNextIter(), new Unary(Unary::Ref, m_op));
 }
 
-void CAddRefCounting::processUnary(CUnary & _instr) {
+void AddRefCounting::processUnary(Unary & _instr) {
 }
 
-void CAddRefCounting::processBinary(CBinary & _instr) {
+void AddRefCounting::processBinary(Binary & _instr) {
 }
 
-void CAddRefCounting::processField(CField & _instr) {
+void AddRefCounting::processField(Field & _instr) {
 }
 
-void CAddRefCounting::processCast(CCast & _instr) {
+void AddRefCounting::processCast(Cast & _instr) {
 }
 */
 

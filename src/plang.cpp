@@ -29,7 +29,7 @@ int main(int _argc, const char ** _argv) {
 
     const std::string strFile(_argv[1]);
     std::ifstream ifs(strFile.c_str());
-    tokens_t tokens;
+    Tokens tokens;
 
     try {
         tokenize(tokens, ifs);
@@ -39,14 +39,14 @@ int main(int _argc, const char ** _argv) {
     }
 
 # if 1
-    for (tokens_t::const_iterator i = tokens.begin(); i != tokens.end(); ++ i) {
-        const CToken & tok = * i;
+    for (Tokens::const_iterator i = tokens.begin(); i != tokens.end(); ++ i) {
+        const Token & tok = * i;
         std::wcout << strFile.c_str() << ":" << tok.getLine() << ":" << tok.getCol()
             << ": token \"" << tok.getValue() << "\" (" << tok.getKind() << ")" << std::endl;
     }
 # endif
 
-    ir::CModule * pModule;
+    ir::Module * pModule;
 
     if (parse(tokens, pModule)) {
         std::wcout << L"module:\n";
@@ -56,7 +56,7 @@ int main(int _argc, const char ** _argv) {
     }
 
     if (pModule) {
-        llir::CModule module;
+        llir::Module module;
 
         llir::translate(module, * pModule);
 

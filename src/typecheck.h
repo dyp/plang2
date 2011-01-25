@@ -19,15 +19,15 @@ namespace tc {
 class TypeSetterBase {
 public:
     virtual ~TypeSetterBase() {}
-    virtual void setType(ir::CType * _pType) = 0;
+    virtual void setType(ir::Type * _pType) = 0;
 };
 
-template <typename Node, void (Node::*Method)(ir::CType *, bool)>
+template <typename Node, void (Node::*Method)(ir::Type *, bool)>
 class TypeSetter : public TypeSetterBase {
 public:
     TypeSetter(Node * _pNode) : m_pNode(_pNode) {}
 
-    virtual void setType(ir::CType * _pType) { ((*m_pNode).*(Method))(_pType, true); }
+    virtual void setType(ir::Type * _pType) { ((*m_pNode).*(Method))(_pType, true); }
 
 protected:
     Node * m_pNode;
@@ -43,7 +43,12 @@ inline TypeSetterBase *createBaseTypeSetter(Node *_pNode) {
     return new TypeSetter<Node, &Node::setBaseType>(_pNode);
 }
 
-class FreshType : public ir::CType {
+template <typename Node>
+inline TypeSetterBase *createIndexTypeSetter(Node *_pNode) {
+    return new TypeSetter<Node, &Node::setIndexType>(_pNode);
+}
+
+class FreshType : public ir::Type {
 public:
     //template <typename Node>
     FreshType(/*Node * _pNode*/) : m_flags(0) {
@@ -54,9 +59,9 @@ public:
     virtual ~FreshType() { /*delete m_pTypeSetter;*/ }
 
     enum {
-        None     = 0x00,
-        ParamIn  = 0x01,
-        ParamOut = 0x02,
+        NONE      = 0x00,
+        PARAM_IN  = 0x01,
+        PARAM_OUT = 0x02,
     };
 
     int getFlags() const { return m_flags; }
@@ -65,15 +70,15 @@ public:
 
     virtual bool rewriteFlags(int _flags) { addFlags(_flags); return true; }
 
-    //void replaceType(ir::CType * _pType) { m_pTypeSetter->setType(_pType); }
+    //void replaceType(ir::Type * _pType) { m_pTypeSetter->setType(_pType); }
 
     /// Get type kind.
     /// \returns #Fresh.
-    virtual int getKind() const { return Fresh; }
+    virtual int getKind() const { return FRESH; }
 
-    virtual bool less(const ir::CType & _other) const;
+    virtual bool less(const ir::Type & _other) const;
 
-    virtual ir::CType * clone() const;
+    virtual ir::Type * clone() const;
 
     size_t getOrdinal() const { return m_cOrd; }
 
@@ -92,34 +97,34 @@ typedef std::multimap<FreshType *, TypeSetterBase *> FreshTypes;
 class Formula {
 public:
     enum {
-        Equals        = 0x01,
-        Subtype       = 0x02,
-        SubtypeStrict = 0x04,
-        Comparable    = 0x08,
-        Incomparable  = 0x10,
-        NoJoin        = 0x20,
-        NoMeet        = 0x40,
-        Compound      = 0x80,
+        EQUALS          = 0x01,
+        SUBTYPE         = 0x02,
+        SUBTYPE_STRICT  = 0x04,
+        COMPARABLE      = 0x08,
+        INCOMPARABLE    = 0x10,
+        NO_JOIN         = 0x20,
+        NO_MEET         = 0x40,
+        COMPOUND        = 0x80,
     };
 
     enum {
-        Unknown,
-        False,
-        True,
+        UNKNOWN,
+        FALSE,
+        TRUE,
     };
 
-    Formula(int _kind, ir::CType * _pLhs = NULL, ir::CType * _pRhs = NULL) : m_kind(_kind), m_pLhs(_pLhs), m_pRhs(_pRhs) {}
+    Formula(int _kind, ir::Type * _pLhs = NULL, ir::Type * _pRhs = NULL) : m_kind(_kind), m_pLhs(_pLhs), m_pRhs(_pRhs) {}
 
     bool is(int _kind) const { return (m_kind & _kind) != 0; }
     int getKind() const { return m_kind; }
-    ir::CType * getLhs() const { return m_pLhs; }
-    void setLhs(ir::CType * _pType) { m_pLhs = _pType; }
-    ir::CType * getRhs() const { return m_pRhs; }
-    void setRhs(ir::CType * _pType) { m_pRhs = _pType; }
+    ir::Type * getLhs() const { return m_pLhs; }
+    void setLhs(ir::Type * _pType) { m_pLhs = _pType; }
+    ir::Type * getRhs() const { return m_pRhs; }
+    void setRhs(ir::Type * _pType) { m_pRhs = _pType; }
 
     bool hasFresh() const;
 
-    virtual bool rewrite(ir::CType * _pOld, ir::CType * _pNew);
+    virtual bool rewrite(ir::Type * _pOld, ir::Type * _pNew);
 
     virtual int eval() const;
 
@@ -139,7 +144,7 @@ public:
 
 private:
     int m_kind;
-    ir::CType * m_pLhs, * m_pRhs;
+    ir::Type * m_pLhs, * m_pRhs;
 };
 
 struct FormulaCmp {
@@ -153,15 +158,15 @@ typedef std::list<Formula *> FormulaList;
 struct Formulas : public FormulaSet {
     FormulaSet substs;
 
-    bool rewrite(ir::CType * _pOld, ir::CType * _pNew, bool _bKeepOrig = false);
-    Formula * lookup(int _op, int _ordLhs, ir::CType * _pLhs, int _ordRhs, ir::CType * _pRhs);
+    bool rewrite(ir::Type * _pOld, ir::Type * _pNew, bool _bKeepOrig = false);
+    Formula * lookup(int _op, int _ordLhs, ir::Type * _pLhs, int _ordRhs, ir::Type * _pRhs);
     bool implies(Formula & _f) const;
     virtual Formulas *clone() const;
 };
 
 class CompoundFormula : public Formula {
 public:
-    CompoundFormula() : Formula(Compound) {}
+    CompoundFormula() : Formula(COMPOUND) {}
 
     size_t size() const { return m_parts.size(); }
     Formulas & getPart(size_t _i) { return * m_parts[_i]; }
@@ -170,7 +175,7 @@ public:
     void addPart(Formulas *_pFormulas);
     void removePart(size_t _i) { m_parts.erase(m_parts.begin() + _i); }
 
-    virtual bool rewrite(ir::CType * _pOld, ir::CType * _pNew);
+    virtual bool rewrite(ir::Type * _pOld, ir::Type * _pNew);
     void merge(Formulas & _dest);
     virtual int eval() const;
     size_t count() const;
@@ -180,115 +185,14 @@ private:
     std::vector<Formulas *> m_parts;
 };
 
-bool rewriteType(ir::CType * & _pType, ir::CType * _pOld, ir::CType * _pNew);
+bool rewriteType(ir::Type * & _pType, ir::Type * _pOld, ir::Type * _pNew);
 
 bool solve(Formulas & _formulas);
 
-void collect(Formulas & _constraints, ir::CPredicate & _pred, CContext & _ctx, FreshTypes & _types);
+void collect(Formulas & _constraints, ir::Predicate & _pred, Context & _ctx, FreshTypes & _types);
 
 void apply(Formulas & _constraints, tc::FreshTypes & _types);
 
 }; // namespace tc
-
-#if 0
-namespace ir {
-
-
-
-
-//class CC
-
-
-
-
-
-
-
-
-class CConstraint : public CNode {
-public:
-    enum {
-        Equals,
-        Subtype,
-        SubtypeStrict,
-    };
-
-    CConstraint() : m_pLhs(NULL), m_pRhs(NULL) {}
-    CConstraint(CType * _pLhs, CType * _pRhs) : m_pLhs(NULL), m_pRhs(NULL) {
-        _assign(m_pLhs, _pLhs, true);
-        _assign(m_pRhs, _pRhs, true);
-    }
-
-    /*CConstraint(const CConstraint & _other) : m_pLhs(NULL), m_pRhs(NULL) {
-        (* this) = _other;
-    }*/
-
-    virtual ~CConstraint() {
-        /*_delete(m_pLhs);
-        _delete(m_pRhs);*/
-    }
-
-    CType & lhs() const { assert(m_pLhs); return * m_pLhs; }
-    CType & rhs() const { assert(m_pRhs); return * m_pRhs; }
-
-    void setLhs(CType * _pLhs) { m_pLhs = _pLhs; /*_assign(m_pLhs, _pLhs, true);*/ }
-    void setRhs(CType * _pRhs) { m_pRhs = _pRhs; /*_assign(m_pRhs, _pRhs, true);*/ }
-
-    /*CConstraint & operator =(const CConstraint & _other) {
-        if (_other.m_pLhs)
-            _other.lhs().setParent(NULL);
-        if (_other.m_pRhs)
-            _other.rhs().setParent(NULL);
-        _assign(m_pLhs, _other.m_pLhs, true);
-        _assign(m_pRhs, _other.m_pRhs, true);
-        return * this;
-    }*/
-
-private:
-    CType * m_pLhs, * m_pRhs;
-};
-
-class CTypeSetterBase {
-public:
-    virtual ~CTypeSetterBase() {}
-    virtual void setType(ir::CType * _pType) = 0;
-};
-
-template <typename Node>
-class CTypeSetter : public CTypeSetterBase {
-public:
-    CTypeSetter(Node * _pNode) : m_pNode(_pNode) {}
-
-    virtual void setType(ir::CType * _pType) { m_pNode->setType(_pType); }
-
-private:
-    Node * m_pNode;
-};
-
-class CFreshType : public CType {
-public:
-    template <typename Node>
-    CFreshType(Node * _pNode) {
-        m_pTypeSetter = new CTypeSetter<Node>(_pNode);
-    }
-
-    virtual ~CFreshType() { delete m_pTypeSetter; }
-
-    void replaceType(ir::CType * _pType) { m_pTypeSetter->setType(_pType); }
-
-    /// Get type kind.
-    /// \returns #Fresh.
-    virtual int getKind() const { return Fresh; }
-
-private:
-    CTypeSetterBase * m_pTypeSetter;
-};
-
-typedef std::list<CConstraint> constraints_t;
-
-} // namespace ir
-
-void typecheck(ir::CPredicate * _pPredicate, CContext & _ctx);
-#endif
 
 #endif /* TYPECHECK_H_ */
