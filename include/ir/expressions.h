@@ -1026,8 +1026,8 @@ public:
 
     /// Get list of actual parameters.
     /// \return List of expressions.
-    Collection<Expression> & getParams() { return m_params; }
-    const Collection<Expression> & getParams() const { return m_params; }
+    Collection<Expression> & getArgs() { return m_args; }
+    const Collection<Expression> & getArgs() const { return m_args; }
 
     /// Get type of the expression.
     /// \returns Type associated with expression.
@@ -1035,7 +1035,7 @@ public:
 
 private:
     Expression * m_pPredicate;
-    Collection<Expression> m_params;
+    Collection<Expression> m_args;
 };
 /*
 class ParamBinding : public Node {
@@ -1102,11 +1102,11 @@ public:
 
     /// Get list of bound parameters. Can contain NULL values.
     /// \return List of expressions.
-    Collection<Expression> & getParams() { return m_params; }
+    Collection<Expression> & getArgs() { return m_args; }
 
 private:
     Expression * m_pPredicate;
-    Collection<Expression> m_params;
+    Collection<Expression> m_args;
 };
 
 class FormulaDeclaration;
@@ -1129,13 +1129,13 @@ public:
 
     /// Get list of actual parameters.
     /// \return List of expressions.
-    Collection<Expression> & getParams() { return m_params; }
+    Collection<Expression> & getArgs() { return m_args; }
 
     std::wstring getName() const;
 
 private:
     const FormulaDeclaration * m_pTarget;
-    Collection<Expression> m_params;
+    Collection<Expression> m_args;
 };
 
 /// Output branch of a predicate.

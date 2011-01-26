@@ -398,13 +398,13 @@ bool Visitor::traverseReplacement(Replacement &_expr) {
 bool Visitor::traverseFunctionCall(FunctionCall &_expr) {
     ENTER(FunctionCall, _expr);
     TRAVERSE(Expression, FunctionCallee, _expr.getPredicate(), &_expr, FunctionCall, setPredicate);
-    TRAVERSE_COL(Expression, FunctionCallParams, &_expr.getParams());
+    TRAVERSE_COL(Expression, FunctionCallArgs, &_expr.getArgs());
     return true;
 }
 
 bool Visitor::traverseFormulaCall(FormulaCall &_expr) {
     ENTER(FormulaCall, _expr);
-    TRAVERSE_COL(Expression, FormulaCallParams, &_expr.getParams());
+    TRAVERSE_COL(Expression, FormulaCallArgs, &_expr.getArgs());
     return true;
 }
 
@@ -418,7 +418,7 @@ bool Visitor::traverseLambda(Lambda &_expr) {
 bool Visitor::traverseBinder(Binder &_expr) {
     ENTER(Binder, _expr);
     TRAVERSE(Expression, BinderCallee, _expr.getPredicate(), &_expr, Binder, setPredicate);
-    TRAVERSE_COL(Expression, BinderParams, &_expr.getParams());
+    TRAVERSE_COL(Expression, BinderArgs, &_expr.getArgs());
     return true;
 }
 
@@ -590,7 +590,7 @@ bool Visitor::traverseCall(Call &_stmt) {
     TRAVERSE(Label, StmtLabel, _stmt.getLabel(), &_stmt, Statement, setLabel);
     TRAVERSE(Expression, PredicateCallee, _stmt.getPredicate(), &_stmt, Call, setPredicate);
     TRAVERSE_COL(VariableDeclaration, PredicateVarDecl, &_stmt.getDeclarations());
-    TRAVERSE_COL(Expression, PredicateCallParams, &_stmt.getParams());
+    TRAVERSE_COL(Expression, PredicateCallArgs, &_stmt.getArgs());
 
     for (size_t i = 0; i < _stmt.getBranches().size(); ++i) {
         CallBranch &br = *_stmt.getBranches().get(i);
@@ -605,7 +605,7 @@ bool Visitor::traverseSwitch(Switch &_stmt) {
     ENTER(Switch, _stmt);
     TRAVERSE(Label, StmtLabel, _stmt.getLabel(), &_stmt, Statement, setLabel);
     TRAVERSE(VariableDeclaration, SwitchParamDecl, _stmt.getParamDecl(), &_stmt, Switch, setParamDecl);
-    TRAVERSE(Expression, SwitchParam, _stmt.getParam(), &_stmt, Switch, setParam);
+    TRAVERSE(Expression, SwitchArg, _stmt.getArg(), &_stmt, Switch, setArg);
     TRAVERSE(Statement, SwitchDefault, _stmt.getDefault(), &_stmt, Switch, setDefault);
     TRAVERSE_COL(SwitchCase, SwitchCase, &_stmt);
     return true;
@@ -614,7 +614,7 @@ bool Visitor::traverseSwitch(Switch &_stmt) {
 bool Visitor::traverseIf(If &_stmt) {
     ENTER(If, _stmt);
     TRAVERSE(Label, StmtLabel, _stmt.getLabel(), &_stmt, Statement, setLabel);
-    TRAVERSE(Expression, IfParam, _stmt.getParam(), &_stmt, If, setParam);
+    TRAVERSE(Expression, IfArg, _stmt.getArg(), &_stmt, If, setArg);
     TRAVERSE(Statement, IfBody, _stmt.getBody(), &_stmt, If, setBody);
     TRAVERSE(Statement, IfElse, _stmt.getElse(), &_stmt, If, setElse);
     return true;
@@ -647,7 +647,7 @@ bool Visitor::traverseBreak(Break &_stmt) {
 bool Visitor::traverseWith(With &_stmt) {
     ENTER(With, _stmt);
     TRAVERSE(Label, StmtLabel, _stmt.getLabel(), &_stmt, Statement, setLabel);
-    TRAVERSE_COL(Expression, WithParam, &_stmt.getParams());
+    TRAVERSE_COL(Expression, WithArg, &_stmt.getArgs());
     TRAVERSE(Statement, WithBody, _stmt.getBody(), &_stmt, With, setBody);
     return true;
 }
@@ -664,7 +664,7 @@ bool Visitor::traverseReceive(Receive &_stmt) {
 bool Visitor::traverseSend(Send &_stmt) {
     ENTER(Send, _stmt);
     TRAVERSE(Label, StmtLabel, _stmt.getLabel(), &_stmt, Statement, setLabel);
-    TRAVERSE_COL(Expression, SendParams, &_stmt.getParams());
+    TRAVERSE_COL(Expression, SendArgs, &_stmt.getArgs());
     return true;
 }
 

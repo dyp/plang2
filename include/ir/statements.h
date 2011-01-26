@@ -144,8 +144,8 @@ public:
 
     /// Get list of actual parameters.
     /// \return List of expressions used as parameters.
-    Collection<Expression> & getParams() { return m_params; }
-    const Collection<Expression> & getParams() const { return m_params; }
+    Collection<Expression> & getArgs() { return m_args; }
+    const Collection<Expression> & getArgs() const { return m_args; }
 
     /// Get list of output branches. Each branch contain both list of
     /// assignable expressions used as parameters and a branch handler statement.
@@ -164,7 +164,7 @@ public:
 
 private:
     Expression * m_pPredicate;
-    Collection<Expression> m_params;
+    Collection<Expression> m_args;
     Collection<CallBranch> m_branches;
     Collection<VariableDeclaration> m_decls;
 };
@@ -236,12 +236,12 @@ private:
 class Switch : public Collection<SwitchCase, Statement> {
 public:
     /// Default constructor.
-    Switch() : m_pParam(NULL), m_pDefault(NULL), m_pDecl(NULL) {}
+    Switch() : m_pArg(NULL), m_pDefault(NULL), m_pDecl(NULL) {}
 
     /// Destructor.
     virtual ~Switch() {
         _delete(m_pDecl);
-        _delete(m_pParam);
+        _delete(m_pArg);
         _delete(m_pDefault);
     }
 
@@ -260,15 +260,15 @@ public:
         _assign(m_pDecl, _pDecl, _bReparent);
     }
 
-    /// Get parameter expression.
-    /// \return Parameter expression.
-    Expression * getParam() const { return m_pParam; }
+    /// Get argument expression.
+    /// \return Argument expression.
+    Expression * getArg() const { return m_pArg; }
 
-    /// Set parameter expression.
-    /// \param _pExpression Parameter expression.
+    /// Set argument expression.
+    /// \param _pExpression Argument expression.
     /// \param _bReparent If specified (default) also sets parent of _pExpression to this node.
-    void setParam(Expression * _pExpression, bool _bReparent = true) {
-        _assign(m_pParam, _pExpression, _bReparent);
+    void setArg(Expression * _pExpression, bool _bReparent = true) {
+        _assign(m_pArg, _pExpression, _bReparent);
     }
 
     /// Get default alternative statement.
@@ -287,7 +287,7 @@ public:
     virtual bool isBlockLike() const { return true; }
 
 private:
-    Expression * m_pParam;
+    Expression * m_pArg;
     Statement * m_pDefault;
     VariableDeclaration * m_pDecl;
 };
@@ -296,11 +296,11 @@ private:
 class If : public Statement {
 public:
     /// Default constructor.
-    If() : m_pParam(NULL), m_pBody(NULL), m_pElse(NULL) {}
+    If() : m_pArg(NULL), m_pBody(NULL), m_pElse(NULL) {}
 
     /// Destructor.
     virtual ~If() {
-        _delete(m_pParam);
+        _delete(m_pArg);
         _delete(m_pBody);
         _delete(m_pElse);
     }
@@ -309,15 +309,15 @@ public:
     /// \returns #If.
     virtual int getKind() const { return IF; }
 
-    /// Get logical parameter expression.
-    /// \return Parameter expression.
-    Expression * getParam() const { return m_pParam; }
+    /// Get logical argument expression.
+    /// \return Argument expression.
+    Expression * getArg() const { return m_pArg; }
 
-    /// Set logical parameter expression.
-    /// \param _pExpression Parameter expression.
+    /// Set logical argument expression.
+    /// \param _pExpression Argument expression.
     /// \param _bReparent If specified (default) also sets parent of _pExpression to this node.
-    void setParam(Expression * _pExpression, bool _bReparent = true) {
-        _assign(m_pParam, _pExpression, _bReparent);
+    void setArg(Expression * _pExpression, bool _bReparent = true) {
+        _assign(m_pArg, _pExpression, _bReparent);
     }
 
     /// Get statement that is executed if condition is true.
@@ -354,7 +354,7 @@ public:
     }
 
 private:
-    Expression * m_pParam;
+    Expression * m_pArg;
     Statement * m_pBody, * m_pElse;
 };
 
@@ -532,12 +532,12 @@ public:
 
     /// Get list of actual parameters.
     /// \return List of expressions.
-    Collection<Expression> & getParams() { return m_params; }
+    Collection<Expression> & getArgs() { return m_args; }
 
 private:
     const Process * m_pReceiver;
     const Message * m_pMessage;
-    Collection<Expression> m_params;
+    Collection<Expression> m_args;
 };
 
 /// Handler of incoming message. Part of receive statement.
@@ -645,7 +645,7 @@ public:
 
     /// Get list of variables to lock.
     /// \return List of assignable expressions.
-    Collection<Expression> & getParams() { return m_params; }
+    Collection<Expression> & getArgs() { return m_args; }
 
     /// Get body statement.
     /// \return Body statement.
@@ -668,7 +668,7 @@ public:
     }
 
 private:
-    Collection<Expression> m_params;
+    Collection<Expression> m_args;
     Statement * m_pBody;
 };
 

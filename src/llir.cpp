@@ -664,8 +664,8 @@ Operand Translator::translate(const ir::FunctionCall & _expr, Instructions & _in
     Auto<FunctionType> type = translate(* (ir::PredicateType *) _expr.getPredicate()->getType());
     Call * pCall = new Call(function, type);
 
-    for (size_t i = 0; i < _expr.getParams().size(); ++ i)
-        pCall->args().push_back(translate(* _expr.getParams().get(i), _instrs));
+    for (size_t i = 0; i < _expr.getArgs().size(); ++ i)
+        pCall->args().push_back(translate(* _expr.getArgs().get(i), _instrs));
 
     _instrs.push_back(pCall);
 
@@ -901,7 +901,7 @@ Operand Translator::translate(const ir::Expression & _expr, Instructions & _inst
 }
 
 void Translator::translate(const ir::If & _stmt, Instructions & _instrs) {
-    Operand cond = translate(* _stmt.getParam(), _instrs);
+    Operand cond = translate(* _stmt.getArg(), _instrs);
     If * pIf = new If(cond);
 
     _instrs.push_back(pIf);
@@ -1059,8 +1059,8 @@ void Translator::translatePrintExpr(const ir::Expression & _expr, Instructions &
 }
 
 void Translator::translatePrint(const ir::Call & _stmt, Instructions & _instrs) {
-    for (size_t i = 0; i < _stmt.getParams().size(); ++ i) {
-        const ir::Expression * pParam = _stmt.getParams().get(i);
+    for (size_t i = 0; i < _stmt.getArgs().size(); ++ i) {
+        const ir::Expression * pParam = _stmt.getArgs().get(i);
         translatePrintExpr(* pParam, _instrs);
     }
 }
@@ -1084,7 +1084,7 @@ void Translator::translate(const ir::Call & _stmt, Instructions & _instrs) {
 
     for (size_t i = 0; i < type->argTypes().size(); ++ i, ++ iType) {
         if (i < predType.getInParams().size()) {
-            pCall->args().push_back(translate(* _stmt.getParams().get(i), _instrs));
+            pCall->args().push_back(translate(* _stmt.getArgs().get(i), _instrs));
         } else {
             while (cBranch < 0 || cParam >= _stmt.getBranches().get(cBranch)->size()) {
                 ++ cBranch;
@@ -1253,7 +1253,7 @@ void Translator::translateSwitchInt(const ir::Switch & _stmt,
 void Translator::translateSwitchUnion(const ir::Switch & _stmt,
         const Operand & _arg, Instructions & _instrs)
 {
-    const ir::Type * pParamType = resolveBaseType(_stmt.getParam()->getType());
+    const ir::Type * pParamType = resolveBaseType(_stmt.getArg()->getType());
 
     assert(pParamType->getKind() == ir::Type::UNION);
 
@@ -1495,8 +1495,8 @@ void Translator::translate(const ir::Switch & _stmt, Instructions & _instrs) {
     if (_stmt.getParamDecl())
         translate(* _stmt.getParamDecl(), _instrs);
 
-    const ir::Type * pParamType = resolveBaseType(_stmt.getParam()->getType());
-    Operand arg = translate(* _stmt.getParam(), _instrs);
+    const ir::Type * pParamType = resolveBaseType(_stmt.getArg()->getType());
+    Operand arg = translate(* _stmt.getArg(), _instrs);
 
     if (arg.getType()->getKind() & Type::INTMASK) {
         translateSwitchInt(_stmt, arg, _instrs);

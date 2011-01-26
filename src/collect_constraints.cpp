@@ -180,8 +180,8 @@ bool Collector::visitFunctionCall(FunctionCall &_call) {
     pType->getOutParams().add(new Branch(), true);
     pType->getOutParams().get(0)->add(new Param(L"", _call.getType(), false), true);
 
-    for (size_t i = 0; i < _call.getParams().size(); ++ i)
-        pType->getInParams().add(new Param(L"", _call.getParams().get(i)->getType(), false), true);
+    for (size_t i = 0; i < _call.getArgs().size(); ++ i)
+        pType->getInParams().add(new Param(L"", _call.getArgs().get(i)->getType(), false), true);
 
     m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
             _call.getPredicate()->getType(), pType));
@@ -194,8 +194,8 @@ bool Collector::visitFunctionCall(FunctionCall &_call) {
 bool Collector::visitCall(Call &_call) {
     PredicateType *pType = new PredicateType();
 
-    for (size_t i = 0; i < _call.getParams().size(); ++i)
-        pType->getInParams().add(new Param(L"", _call.getParams().get(i)->getType(), false), true);
+    for (size_t i = 0; i < _call.getArgs().size(); ++i)
+        pType->getInParams().add(new Param(L"", _call.getArgs().get(i)->getType(), false), true);
 
     for (size_t i = 0; i < _call.getBranches().size(); ++i) {
         CallBranch &br = *_call.getBranches().get(i);
@@ -682,7 +682,7 @@ bool Collector::visitVariableDeclaration(VariableDeclaration &_var) {
 
 bool Collector::visitIf(If &_if) {
     m_constraints.insert(new tc::Formula(tc::Formula::EQUALS,
-            _if.getParam()->getType(), new Type(Type::BOOL)));
+            _if.getArg()->getType(), new Type(Type::BOOL)));
     return true;
 }
 

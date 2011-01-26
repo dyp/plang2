@@ -290,7 +290,7 @@ FunctionCall * Parser::parseFunctionCall(Context & _ctx, Expression & _base) {
     Context & ctx = * _ctx.createChild(false);
     FunctionCall * pCall = ctx.attach(new FunctionCall());
 
-    if (! parseActualParameterList(ctx, pCall->getParams()))
+    if (! parseActualParameterList(ctx, pCall->getArgs()))
         return NULL;
 
     pCall->setPredicate(& _base);
@@ -314,7 +314,7 @@ Binder * Parser::parseBinder(Context & _ctx, Expression & _base) {
         else if (! (pParam = parseExpression(ctx)))
             ERROR(ctx, NULL, L"Error parsing expression");
 
-        pBinder->getParams().add(pParam);
+        pBinder->getArgs().add(pParam);
 
         while (ctx.consume(COMMA)) {
             if (ctx.consume(ELLIPSIS))
@@ -324,7 +324,7 @@ Binder * Parser::parseBinder(Context & _ctx, Expression & _base) {
             else if (! (pParam = parseExpression(ctx)))
                 ERROR(ctx, NULL, L"Error parsing expression");
 
-            pBinder->getParams().add(pParam);
+            pBinder->getArgs().add(pParam);
         }
     }
 
@@ -784,7 +784,7 @@ Expression * Parser::parseAtom(Context & _ctx, int _nFlags) {
 
             if (ctx.is(LPAREN, RPAREN))
                 ctx.skip(2);
-            else if (! parseActualParameterList(ctx, pCall->getParams()))
+            else if (! parseActualParameterList(ctx, pCall->getArgs()))
                 return NULL;
 
             pCall->setTarget(pFormula);
@@ -2031,9 +2031,9 @@ Switch * Parser::parseSwitch(Context & _ctx) {
         pExpr = new VariableReference(pDecl->getVariable());
         pExpr->setType(pExpr->getType());
 //        pExpr->setType((Type *) resolveBaseType(pExpr->getType()));
-        pSwitch->setParam(pExpr, true);
+        pSwitch->setArg(pExpr, true);
     } else
-        pSwitch->setParam(pExpr);
+        pSwitch->setArg(pExpr);
 
     if (! ctx.consume(LBRACE))
         UNEXPECTED(ctx, "{");
@@ -2146,7 +2146,7 @@ If * Parser::parseConditional(Context & _ctx) {
 
     If * pIf = ctx.attach(new If());
 
-    pIf->setParam(pExpr);
+    pIf->setArg(pExpr);
     pIf->setBody(pStmt);
 
     if (ctx.consume(ELSE)) {
@@ -2203,7 +2203,7 @@ With * Parser::parseWith(Context & _ctx) {
 
     With * pWith = ctx.attach(new With());
 
-    if (! parseList(ctx, pWith->getParams(),
+    if (! parseList(ctx, pWith->getArgs(),
             & Parser::parseExpression, LPAREN, RPAREN, COMMA))
         ERROR(ctx, NULL, L"Error parsing list of expressions");
 
@@ -2440,7 +2440,7 @@ Call * Parser::parseCall(Context & _ctx) {
     if (! ctx.consume(LPAREN))
         UNEXPECTED(ctx, "(");
 
-    if (! parseList(ctx, pCall->getParams(), & Parser::parseExpression, -1, -1, COMMA))
+    if (! parseList(ctx, pCall->getArgs(), & Parser::parseExpression, -1, -1, COMMA))
         ERROR(ctx, false, L"Failed to parse input parameters");
 
     typedef std::multimap<std::wstring, CallBranch *> call_branch_map_t;
