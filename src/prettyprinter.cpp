@@ -132,39 +132,30 @@ static std::wstring fmtFreshType(tc::FreshType &_type) {
     return strName;
 }
 
-class PrettyPrinterBase: public Visitor {
-public:
-    PrettyPrinterBase(std::wostream &_os) : m_os(_os) {}
+std::wstring PrettyPrinterBase::fmtIndent(const std::wstring & _s) {
+    std::wstring res;
 
-protected:
-    std::wostream &m_os;
+    for (size_t i = 0; i < getDepth(); ++ i)
+        res += L"  ";
 
-    std::wstring fmtIndent(const std::wstring & _s) {
-        std::wstring res;
+    return res + _s;
+}
 
-        for (size_t i = 0; i < getDepth(); ++ i)
-            res += L"  ";
-
-        return res + _s;
+std::wstring PrettyPrinterBase::fmtType(int _kind) {
+    switch (_kind) {
+        case Type::FRESH:   return fmtFreshType(*(tc::FreshType *)getLoc().pNode);
+        case Type::UNIT:    return L"unit";
+        case Type::INT:     return L"int";
+        case Type::NAT:     return L"nat";
+        case Type::REAL:    return L"real";
+        case Type::BOOL:    return L"bool";
+        case Type::CHAR:    return L"char";
+        case Type::STRING:  return L"string";
+        case Type::TYPE:    return L"type";
+        case Type::GENERIC: return L"generic";
+        default:             return L"";
     }
-
-
-    std::wstring fmtType(int _kind) {
-        switch (_kind) {
-            case Type::FRESH:   return fmtFreshType(*(tc::FreshType *)getLoc().pNode);
-            case Type::UNIT:    return L"unit";
-            case Type::INT:     return L"int";
-            case Type::NAT:     return L"nat";
-            case Type::REAL:    return L"real";
-            case Type::BOOL:    return L"bool";
-            case Type::CHAR:    return L"char";
-            case Type::STRING:  return L"string";
-            case Type::TYPE:    return L"type";
-            case Type::GENERIC: return L"generic";
-            default:             return L"";
-        }
-    }
-};
+}
 
 #define VISITOR(_NODE, ...)                             \
         virtual bool visit##_NODE(_NODE &_node) {    \
@@ -322,6 +313,11 @@ protected:
 void prettyPrint(Module & _module, std::wostream & _os) {
     PrettyPrinter pp(_os);
     pp.traverseModule(_module);
+}
+
+void print(ir::Node &_node, std::wostream &_os) {
+    PrettyPrinter pp(_os);
+    pp.traverseNode(_node);
 }
 
 class PrettyPrinterCompact: public PrettyPrinterBase {
