@@ -154,6 +154,8 @@ protected:
 
     void stop() { m_bStopped = true; }
 
+    void setOrder(int _order) { m_order = _order; }
+
 private:
     bool m_bStopped;
     int m_order;

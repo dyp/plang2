@@ -322,7 +322,7 @@ void print(ir::Node &_node, std::wostream &_os) {
 
 class PrettyPrinterCompact: public PrettyPrinterBase {
 public:
-    PrettyPrinterCompact(std::wostream &_os) : PrettyPrinterBase(_os) {}
+    PrettyPrinterCompact(std::wostream &_os, const Node *_pRoot = NULL) : PrettyPrinterBase(_os), m_pRoot(_pRoot) {}
 
     void print(Node &_node) {
         if (&_node == NULL)
@@ -332,10 +332,12 @@ public:
     }
 
     virtual bool visitNamedValue(NamedValue &_val) {
-        if (getLoc().bPartOfCollection && !getLoc().bFirstInCollection)
-            m_os << L", ";
-        else if (getLoc().role == R_PredicateTypeOutParam && getLoc().bFirstInCollection)
-            m_os << L" : ";
+        if (&_val != m_pRoot) {
+            if (getLoc().bPartOfCollection && !getLoc().bFirstInCollection)
+                m_os << L", ";
+            else if (getLoc().role == R_PredicateTypeOutParam && getLoc().bFirstInCollection)
+                m_os << L" : ";
+        }
 
         traverseType(*_val.getType());
         if (!_val.getName().empty() && getLoc().type != N_Param)
@@ -445,6 +447,13 @@ public:
         m_os << L")";
         return true;
     }
+
+    virtual bool visitStatement(Statement &_node) {
+        return false;
+    }
+
+private:
+    const Node *m_pRoot;
 };
 
 void prettyPrint(tc::Formulas & _constraints, std::wostream & _os) {
@@ -517,4 +526,9 @@ void prettyPrint(tc::Formulas & _constraints, std::wostream & _os) {
         pp.print(* f.getRhs());
         _os << L"\n";
     }
+}
+
+void prettyPrintCompact(Node & _node, std::wostream & _os) {
+    PrettyPrinterCompact pp(_os, &_node);
+    pp.traverseNode(_node);
 }

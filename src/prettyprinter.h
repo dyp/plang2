@@ -25,6 +25,7 @@ protected:
 
 void prettyPrint(ir::Module & _module, std::wostream & _os);
 void prettyPrint(tc::Formulas & _constraints, std::wostream & _os);
+void prettyPrintCompact(ir::Node & _node, std::wostream & _os);
 
 void print(ir::Node &_node, std::wostream &_os = std::wcout);
 
