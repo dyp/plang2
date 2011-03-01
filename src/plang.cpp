@@ -20,14 +20,16 @@
 #include "backend_c.h"
 #include "typecheck.h"
 #include "parser_context.h"
+#include "pp_flat_tree.h"
+#include "options.h"
 
 using namespace lexer;
 
 int main(int _argc, const char ** _argv) {
-    if (_argc < 2)
+    if (!Options::init(_argc - 1, _argv + 1))
         return EXIT_FAILURE;
 
-    const std::string strFile(_argv[1]);
+    const std::string &strFile = Options::instance().strInputFilename;
     std::ifstream ifs(strFile.c_str());
     Tokens tokens;
 
@@ -36,38 +38,50 @@ int main(int _argc, const char ** _argv) {
     } catch (ELexerException & e) {
         std::cerr << strFile << ":" << e.getLine() << ":" << e.getCol()
             << ": error: " << e.what() << std::endl;
+        return EXIT_FAILURE;
     }
 
-# if 1
-    for (Tokens::const_iterator i = tokens.begin(); i != tokens.end(); ++ i) {
-        const Token & tok = * i;
-        std::wcout << strFile.c_str() << ":" << tok.getLine() << ":" << tok.getCol()
-            << ": token \"" << tok.getValue() << "\" (" << tok.getKind() << ")" << std::endl;
+    if (Options::instance().prettyPrint & PP_LEX) {
+        for (Tokens::const_iterator i = tokens.begin(); i != tokens.end(); ++ i) {
+            const Token & tok = * i;
+            std::wcout << fmtInt(tok.getLine(), L"%5d")
+                    << ":" << fmtInt(tok.getCol(), L"%3d")
+                    << " (" << fmtInt(tok.getKind(), L"%3d") << ")"
+                    << " \"" << tok.getValue() << "\"" << std::endl;
+        }
     }
-# endif
 
     ir::Module * pModule;
 
-    if (parse(tokens, pModule)) {
-        std::wcout << L"module:\n";
-        prettyPrint(* pModule, std::wcout);
-        std::wcout << std::endl;
-        return 0;
-    }
+    if (!parse(tokens, pModule))
+        return EXIT_FAILURE;
 
-    if (pModule) {
-        llir::Module module;
+    if (!pModule)
+        return EXIT_SUCCESS;
 
-        llir::translate(module, * pModule);
+    if (Options::instance().prettyPrint & PP_FLAT)
+        prettyPrintFlatTree(*pModule);
 
+    if (Options::instance().prettyPrint & PP_AST)
+        prettyPrint(*pModule, std::wcout);
+
+    if (Options::instance().backEnd == BE_NONE)
+        return EXIT_SUCCESS;
+
+    llir::Module module;
+
+    llir::translate(module, * pModule);
+
+    if (Options::instance().backEnd & BE_PP)
         backend::generateDebug(module, std::wcout);
 
-        std::wofstream ofs((strFile + ".c").c_str());
-
+    if (Options::instance().backEnd & BE_C) {
+        std::string strOut = Options::instance().strOutputFilename;
+        std::wofstream ofs(strOut.empty() ? (strFile + ".c").c_str() : strOut.c_str());
         backend::generateC(module, ofs);
-
-        delete pModule;
     }
 
-	return 0;
+    delete pModule;
+
+    return EXIT_SUCCESS;
 }

@@ -16,6 +16,7 @@
 #include "prettyprinter.h"
 #include "collect_constraints.h"
 #include "unify.h"
+#include "options.h"
 
 #include <iostream>
 #include <algorithm>
@@ -65,8 +66,10 @@ using namespace lexer;
 
 #define DEBUG(_FMT,...) \
     do { \
-        fwprintf(stderr, (_FMT), ## __VA_ARGS__); \
-        fwprintf(stderr, L"\n"); \
+        if (Options::instance().bVerbose) { \
+            fwprintf(stderr, (_FMT), ## __VA_ARGS__); \
+            fwprintf(stderr, L"\n"); \
+        } \
     } while (0)
 
 #define TOK_S(_CTX) (fmtQuote((_CTX).getValue()).c_str())
@@ -522,27 +525,27 @@ void Parser::initOps() {
     m_ops[IFF]        = operator_t(nPrec, Binary::IFF);
     m_ops[QUESTION]   = operator_t(++ nPrec);
 //    m_oPS[COLON]      = operator_t(nPrec);
-	m_ops[OR]         = operator_t(++ nPrec, Binary::BOOL_OR);
-	m_ops[XOR]        = operator_t(++ nPrec, Binary::BOOL_XOR);
+    m_ops[OR]         = operator_t(++ nPrec, Binary::BOOL_OR);
+    m_ops[XOR]        = operator_t(++ nPrec, Binary::BOOL_XOR);
     m_ops[AMPERSAND]  = operator_t(++ nPrec, Binary::BOOL_AND);
     m_ops[AND]        = operator_t(nPrec, Binary::BOOL_AND);
-	m_ops[EQ]         = operator_t(++ nPrec, Binary::EQUALS);
-	m_ops[NE]         = operator_t(nPrec, Binary::NOT_EQUALS);
-	m_ops[LT]         = operator_t(++ nPrec, Binary::LESS);
-	m_ops[LTE]        = operator_t(nPrec, Binary::LESS_OR_EQUALS);
-	m_ops[GT]         = operator_t(nPrec, Binary::GREATER);
-	m_ops[GTE]        = operator_t(nPrec, Binary::GREATER_OR_EQUALS);
-	m_ops[IN]         = operator_t(++ nPrec, Binary::IN);
-	m_ops[SHIFTLEFT]  = operator_t(++ nPrec, Binary::SHIFT_LEFT);
-	m_ops[SHIFTRIGHT] = operator_t(nPrec, Binary::SHIFT_RIGHT);
-	m_ops[PLUS]       = operator_t(++ nPrec, Binary::ADD, Unary::PLUS);
+    m_ops[EQ]         = operator_t(++ nPrec, Binary::EQUALS);
+    m_ops[NE]         = operator_t(nPrec, Binary::NOT_EQUALS);
+    m_ops[LT]         = operator_t(++ nPrec, Binary::LESS);
+    m_ops[LTE]        = operator_t(nPrec, Binary::LESS_OR_EQUALS);
+    m_ops[GT]         = operator_t(nPrec, Binary::GREATER);
+    m_ops[GTE]        = operator_t(nPrec, Binary::GREATER_OR_EQUALS);
+    m_ops[IN]         = operator_t(++ nPrec, Binary::IN);
+    m_ops[SHIFTLEFT]  = operator_t(++ nPrec, Binary::SHIFT_LEFT);
+    m_ops[SHIFTRIGHT] = operator_t(nPrec, Binary::SHIFT_RIGHT);
+    m_ops[PLUS]       = operator_t(++ nPrec, Binary::ADD, Unary::PLUS);
     m_ops[MINUS]      = operator_t(nPrec, Binary::SUBTRACT, Unary::MINUS);
     m_ops[BANG]       = operator_t(++ nPrec, -1, Unary::BOOL_NEGATE);
     m_ops[TILDE]      = operator_t(nPrec, -1, Unary::BITWISE_NEGATE);
-	m_ops[ASTERISK]   = operator_t(++ nPrec, Binary::MULTIPLY);
-	m_ops[SLASH]      = operator_t(nPrec, Binary::DIVIDE);
-	m_ops[PERCENT]    = operator_t(nPrec, Binary::REMAINDER);
-	m_ops[CARET]      = operator_t(++ nPrec, Binary::POWER);
+    m_ops[ASTERISK]   = operator_t(++ nPrec, Binary::MULTIPLY);
+    m_ops[SLASH]      = operator_t(nPrec, Binary::DIVIDE);
+    m_ops[PERCENT]    = operator_t(nPrec, Binary::REMAINDER);
+    m_ops[CARET]      = operator_t(++ nPrec, Binary::POWER);
 }
 
 Expression * Parser::parseCastOrTypeReference(Context & _ctx, Type * _pType) {
@@ -1136,12 +1139,16 @@ Predicate * Parser::parsePredicate(Context & _ctx) {
 
     //return pPred;
 
-    tc::Formulas constraints;
-    tc::FreshTypes freshTypes;
-    tc::collect(constraints, * pPred, _ctx, freshTypes);
-    prettyPrint(constraints, std::wcout);
-    if (tc::solve(constraints))
-        tc::apply(constraints, freshTypes);
+    if (Options::instance().typeCheck != TC_NONE) {
+        tc::Formulas constraints;
+        tc::FreshTypes freshTypes;
+
+        tc::collect(constraints, * pPred, _ctx, freshTypes);
+        prettyPrint(constraints, std::wcout);
+
+        if (tc::solve(constraints))
+            tc::apply(constraints, freshTypes);
+    }
     //prettyPrint(constraints, std::wcout);
     /*std::wcout << L" ***\n";*/
     //unify(constraints);
@@ -2566,12 +2573,12 @@ Statement * Parser::parseStatement(Context & _ctx) {
         return pStmt;
     }
 
-    std::wcout << L"Stmt start: " << _ctx.getValue() << "\n";
+    DEBUG(L"Stmt start: %ls", _ctx.getValue().c_str());
 
     if (_ctx.getType(_ctx.getValue()))
         return parseVariableDeclaration(_ctx, LOCAL_VARIABLE | ALLOW_INITIALIZATION);
 
-    std::wcout << L"Not a type: " << _ctx.getValue() << "\n";
+    DEBUG(L"Not a type: %ls", _ctx.getValue().c_str());
 
     Context & ctx = * _ctx.createChild(false);
 

@@ -2,6 +2,7 @@
 ///
 
 #include <locale>
+#include <iostream>
 
 #include <string.h>
 #include <wchar.h>
@@ -107,37 +108,144 @@ std::wstring fmtAddDetail(const std::wstring & _s) {
     return std::wstring(L":\n") + _s;
 }
 
-/*
-class Foo {
-public:
-    Foo() {
-        printf("ctor\n");
+static
+bool _parseOption(const std::string &_strValue, Option &_opt, void *_pParam) {
+    if (_opt.argParser != NULL) {
+        const char *s = _strValue.c_str();
+
+        for (const char *p = s; s < _strValue.c_str() + _strValue.size(); ++p) {
+            if (*p != ',' && *p != 0)
+                continue;
+
+            std::string strArg(s, p);
+            s = p + 1;
+
+            if ((*_opt.argParser)(strArg, _pParam))
+                continue;
+
+            if (*_opt.strName != 0)
+                std::cerr << "Invalid argument of option '--" << _opt.strName << "': " << strArg << std::endl;
+            else
+                std::cerr << "Invalid argument of option '-" << _opt.chNameShort << "': " << strArg << std::endl;
+
+            return false;
+        }
     }
 
-    ~Foo() {
-        printf("dtor\n");
-    }
+    if (_opt.pstrValue != NULL)
+        *_opt.pstrValue = _strValue;
 
-    void * operator new (size_t _size, int _i) {
-        printf("_size = %d, i = %d\n", _size, _i);
-        return malloc(_size);
-    }
-
-    void * operator new (size_t _size) {
-        printf("_size = %d\n", _size);
-        return malloc(_size);
-    }
-};
-
-void bar() {
-    Auto<Foo> foo;
-    Auto<Foo> foo2 = foo;
-    foo = foo2;
-    foo = new Foo;
+    return true;
 }
 
-int main(int argc, char ** argv) {
-    bar();
-}
+bool parseOptions(size_t _cArgs, const char **_pArgs, Option *_pOptions, void *_pParam,
+        ArgHandler _notAnOptionHandler)
+{
+    const char **pArg = _pArgs;
+    const char **pEnd = _pArgs + _cArgs;
 
-*/
+    while (pArg != pEnd) {
+        if ((*pArg)[0] != '-' || (*pArg)[1] == 0) {
+            // Not an option.
+            if (_notAnOptionHandler)
+                (*_notAnOptionHandler)(*pArg, _pParam);
+            ++pArg;
+            continue;
+        }
+
+        int nOpt;
+
+        if ((*pArg)[1] != '-') {
+            // Beginning of short options list.
+            const char *pchOpt = *pArg + 1;
+
+            while (*pchOpt != 0) {
+                for (nOpt = 0; _pOptions[nOpt].strName != NULL; ++nOpt)
+                    if (_pOptions[nOpt].chNameShort == *pchOpt)
+                        break;
+
+                if (_pOptions[nOpt].strName == NULL) {
+                    std::cerr << "Unknown option '-" << *pchOpt << "'" << std::endl;
+                    return false;
+                }
+
+                Option &opt = _pOptions[nOpt];
+
+                ++pchOpt;
+
+                if (opt.pbFlag != NULL)
+                    *opt.pbFlag = true;
+
+                if (opt.argParser == NULL && opt.pstrValue == NULL)
+                    continue; // No argument required.
+
+                const char *strValue = NULL;
+
+                if (*pchOpt == 0) {
+                    // Next arg is this option's value.
+                    ++pArg;
+                    if (pArg == pEnd) {
+                        std::cerr << "Option '-" << opt.chNameShort << "' requires an argument" << std::endl;
+                        return false;
+                    }
+
+                    strValue = *pArg;
+                } else
+                    strValue = pchOpt;
+
+                if (!_parseOption(strValue, opt, _pParam))
+                    return false;
+
+                break;
+            }
+
+            ++pArg;
+            continue;
+        }
+
+        const char *strValue;
+
+        for (nOpt = 0; _pOptions[nOpt].strName != NULL; ++nOpt) {
+            const std::string &strOpt = _pOptions[nOpt].strName;
+
+            if (strlen(*pArg + 2) < strOpt.size() || memcmp(*pArg + 2, strOpt.c_str(), strOpt.size()) != 0)
+                continue;
+
+            strValue = *pArg + 2 + strOpt.size();
+
+            if (*strValue == 0 || *strValue == '=')
+                break;
+        }
+
+        Option &opt = _pOptions[nOpt];
+
+        if (opt.strName == NULL) {
+            std::cerr << "Unknown option '" << *pArg << "'" << std::endl;
+            return false;
+        }
+
+        const bool bHasOption = opt.argParser != NULL || opt.pstrValue != NULL;
+
+        if (*strValue == '=' && !bHasOption) {
+            std::cerr << "Unexpected argument of option '" << *pArg << "'" << std::endl;
+            return false;
+        }
+
+        if (opt.pbFlag != NULL)
+            *opt.pbFlag = true;
+
+        if (bHasOption) {
+            if (*strValue == 0) {
+                std::cerr << "Option '" << *pArg << "' requires an argument" << std::endl;
+                return false;
+            }
+
+            if (!_parseOption(strValue + 1, opt, _pParam))
+                return false;
+        }
+
+        ++pArg;
+    }
+
+    return true;
+}

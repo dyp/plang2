@@ -97,6 +97,9 @@ Iterator next(Iterator i) { return ++ i; }
 template<typename Iterator>
 Iterator prev(Iterator i) { return -- i; }
 
+
+// String operations.
+
 std::string intToStr(int64_t _n);
 
 std::string strNarrow(const std::wstring & _s);
@@ -107,5 +110,22 @@ std::wstring fmtAddParens(const std::wstring & _s, bool _bAddLeadingSpace = true
 std::wstring fmtAddDetail(const std::wstring & _s);
 
 std::wstring fmtInt(int64_t _n, const wchar_t * _fmt = L"%lld");
+
+
+// Command-line args.
+
+typedef bool (*ArgHandler)(const std::string &_val, void *_p);
+
+struct Option {
+	const char *strName;
+	char chNameShort;
+	ArgHandler argParser;
+	bool *pbFlag;
+	std::string *pstrValue;
+	bool bMultiple;
+};
+
+bool parseOptions(size_t _cArgs, const char **_pArgs, Option *_pOptions, void *_pParam,
+		ArgHandler _notAnOptionHandler);
 
 #endif /* UTILS_H_ */
