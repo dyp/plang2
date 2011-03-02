@@ -36,13 +36,9 @@ public:
         virtual int handle##_ROLE(Node &_node) {   \
             print(); \
             m_pPrevNode = &_node; \
-            if ((int)getDepth() > m_nPrevDepth) { \
-                m_path.push_back(L"" #_ROLE); \
-            } else { \
-                if ((int)getDepth() < m_nPrevDepth) \
-                    m_path.pop_back(); \
-                m_path.back() = L"" #_ROLE; \
-            } \
+            while (m_path.size() > getDepth()) \
+                m_path.pop_back(); \
+            m_path.push_back(L"" #_ROLE); \
             m_nPrevDepth = getDepth();\
             return 0;                               \
         }
