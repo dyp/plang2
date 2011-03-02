@@ -1,0 +1,18 @@
+/*
+
+<test>
+    /Module = Array
+    ! Type = generic
+    b/ParamType = int[]
+    //foo/PredicateBody//Assignment
+    Assignment/RValue = Constructor
+</test>
+
+*/
+
+module Array;
+
+foo(int a : var b) {
+    b = [ a ];
+}
+
