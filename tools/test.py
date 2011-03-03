@@ -58,6 +58,7 @@ if len(sys.argv) < 2:
 print "[ Test   ]", os.path.basename(sys.argv[1])
 
 lns = sys.stdin.readlines()
+failed = 0
 
 for test in extractTest(sys.argv[1]).split('\n'):
     test = test.strip()
@@ -67,6 +68,7 @@ for test in extractTest(sys.argv[1]).split('\n'):
     msgPassed = "[ \033[0;32mPassed\033[0m ]"
     msgFailed = "[ \033[0;31mFailed\033[0m ]"
     printGots = True
+    neededResult = True
 
     idx = test.find('=')
     val = None
@@ -76,9 +78,9 @@ for test in extractTest(sys.argv[1]).split('\n'):
         cond = test[:idx].strip()
 
     if cond.startswith("!"):
-        msgPassed, msgFailed = msgFailed, msgPassed     # Swap.
         cond = cond[1:].strip()
         printGots = False
+        neededResult = False
 
     cond = makeRegEx(cond)
     match = None
@@ -107,13 +109,17 @@ for test in extractTest(sys.argv[1]).split('\n'):
         else:
             break
 
+    success = (not match) == (not neededResult)
+    msg = msgPassed if success else msgFailed
+
+    if not success:
+        failed += 1
+
     if not match:
-        if gots and printGots:
-            gots = "(got '" + "', '".join(gots) + "')"
-        else:
-            gots = ""
-        print msgFailed, test, gots
+        gots = "(got '" + "', '".join(gots) + "')" if gots and printGots else ""
+        print msg, test, gots
         continue
 
-    print msgPassed, test
+    print msg, test
 
+sys.exit(0 if not failed else -1)
