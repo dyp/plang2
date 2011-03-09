@@ -632,10 +632,20 @@ Expression * Parser::parseAtom(Context & _ctx, int _nFlags) {
     Context & ctx = * _ctx.createChild(false);
     ir::Expression * pExpr = NULL;
     const bool bAllowTypes = ! (_nFlags & RESTRICT_TYPES);
+    int token = ctx.getToken();
 
     _nFlags &= ~RESTRICT_TYPES;
 
-    switch (ctx.getToken()) {
+    if (ctx.is(LPAREN, RPAREN) || ctx.is(LBRACKET, RBRACKET) || ctx.is(LBRACE, RBRACE) ||
+            ctx.is(LIST_LBRACKET, LIST_RBRACKET) || ctx.is(MAP_LBRACKET, MAP_RBRACKET))
+    {
+        ctx.skip(2);
+        pExpr = ctx.attach(new Literal());
+        pExpr->setType(new Type(Type::UNIT));
+        token = -1;
+    }
+
+    switch (token) {
         case INTEGER: {
             Number num(ctx.scan());
             pExpr = ctx.attach(new Literal(num));
@@ -687,6 +697,7 @@ Expression * Parser::parseAtom(Context & _ctx, int _nFlags) {
         case LPAREN: {
             Context * pCtx = ctx.createChild(false);
             ++ (* pCtx);
+
             pExpr = parseExpression(* pCtx, _nFlags);
             if (! pExpr || ! pCtx->consume(RPAREN)) {
                 // Try to parse as a struct literal.
