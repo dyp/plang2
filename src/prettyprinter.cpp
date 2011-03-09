@@ -87,7 +87,7 @@ static std::wstring fmtChar(wchar_t _c) {
 
 static std::wstring fmtLiteral(const Literal &_lit) {
     switch (_lit.getKind()) {
-        case Literal::UNIT:   return L"()";
+        case Literal::UNIT:   return L"nil";
         case Literal::NUMBER: return fmtNumber(_lit.getNumber());
         case Literal::BOOL:   return fmtBool(_lit.getBool());
         case Literal::CHAR:   return fmtChar(_lit.getChar());
@@ -144,7 +144,7 @@ std::wstring PrettyPrinterBase::fmtIndent(const std::wstring & _s) {
 std::wstring PrettyPrinterBase::fmtType(int _kind) {
     switch (_kind) {
         case Type::FRESH:   return fmtFreshType(*(tc::FreshType *)getLoc().pNode);
-        case Type::UNIT:    return L"unit";
+        case Type::UNIT:    return L"nil";
         case Type::INT:     return L"int";
         case Type::NAT:     return L"nat";
         case Type::REAL:    return L"real";

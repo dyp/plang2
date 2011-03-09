@@ -21,7 +21,7 @@
 	f6/Type = real
 	f7/Type = real
 
-	u/Type = unit
+	u/Type = nil
 </test>
 
 */
