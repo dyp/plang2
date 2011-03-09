@@ -682,6 +682,7 @@ Expression * Parser::parseAtom(Context & _ctx, int _nFlags) {
         case NIL:
             ++ ctx;
             pExpr = ctx.attach(new Literal());
+            pExpr->setType(new Type(Type::UNIT));
             break;
         case LPAREN: {
             Context * pCtx = ctx.createChild(false);
