@@ -1,0 +1,55 @@
+/*
+
+<test>
+	s1/Type = (nat(1), nat(2))
+	s2/Type = (nat(1) a, nat(2) b)
+	s3/Type = nil
+	s4/Type = nat(1)
+	s5/Type = (nat(1) a)
+
+	a1/Type = nat(2)[]
+	a2/Type = nat(2)[][]
+	a3/Type =
+	a4/Type = nil
+
+	l1/Type = [[nat(2)]]
+	l2/Type =
+	l3/Type = [[(char, char)]]
+
+	set1/Type = {string}
+	set2/Type =
+	set3/Type = nil
+
+	map1/Type = {string:nat(7)}
+	map2/Type =
+	map3/Type =
+	map4/Type = nil
+
+</test>
+
+*/
+
+var s1 = (1, 2);
+var s2 = (a: 1, b: 2);
+var s3 = ();
+var s4 = (1);
+var s5 = (a: 1);
+
+var a1 = [ 1, 2, 3 ];
+var a2 = [ [ 1, 2 ], [ 3, 4 ] ];
+var a3 = [ [ 1, 2 ], 3 ];
+var a4 = [ ];
+
+var l1 = [[ 1, 2, 3 ]];
+var l2 = [[ 1, '2' ]];
+var l3 = [[ ('a', 'b') ]];
+var l4 = [[ ]];
+
+var set1 = { "foo", "bar" };
+var set2 = { "baz", 1 };
+var set3 = { };
+
+var map1 = [{ "foo" : 100 }];
+var map2 = [{ "foo" : 100, 1 : 200 }];
+var map3 = [{ "foo" : 100, "bar" : "baz" }];
+var map4 = [{ }];
