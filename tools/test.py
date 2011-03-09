@@ -95,14 +95,15 @@ for test in extractTest(sys.argv[1]).split('\n'):
         if not match:
             continue
 
-        if not val:
+        # Empty string is a valid value.
+        if val == None:
             break
 
         # Compare right-hand sides.
         got = match.string[match.end():].strip()
         if got != val:
             # Compare parts of last member, i.e.: /foo/bar/...|BAZ|...
-            if re.match(r".*/([^/=]*\||)" + val + r"(\|[^/=]*|\s*)(=|\Z)", ln):
+            if re.match(r".*/([^/=]*\||)" + re.escape(val) + r"(\|[^/=]*|\s*)(=|\Z)", ln):
                 break
             gots.add(got)
             match = None

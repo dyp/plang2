@@ -2,7 +2,7 @@
 
 <test>
     /Module = Array
-    ! Type = generic
+    ! Type =
     b/ParamType = int[]
     //foo/PredicateBody//Assignment
     Assignment/RValue = Constructor
@@ -15,4 +15,3 @@ module Array;
 foo(int a : var b) {
     b = [ a ];
 }
-
