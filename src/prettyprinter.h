@@ -25,7 +25,16 @@ protected:
 
 void prettyPrint(ir::Module & _module, std::wostream & _os);
 void prettyPrint(tc::Formulas & _constraints, std::wostream & _os);
-void prettyPrintCompact(ir::Node & _node, std::wostream & _os);
+
+// Compact pretty-printer flags.
+enum {
+    PPC_NONE = 0x00,
+    PPC_NO_INT_BITS = 0x01,
+    PPC_NO_REAL_BITS = 0x02,
+    PPC_NO_INCOMPLETE_TYPES = 0x04,
+};
+
+void prettyPrintCompact(ir::Node & _node, std::wostream & _os, int _nFlags = 0);
 
 void print(ir::Node &_node, std::wostream &_os = std::wcout);
 

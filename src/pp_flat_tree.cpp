@@ -21,7 +21,7 @@ public:
             std::wcout << L"/" << *i;
         if (m_pPrevNode != NULL) {
             std::wcout << L" = ";
-            prettyPrintCompact(*m_pPrevNode, std::wcout);
+            prettyPrintCompact(*m_pPrevNode, std::wcout, PPC_NO_REAL_BITS | PPC_NO_INCOMPLETE_TYPES);
         }
         std::wcout << L"\n";
     }
@@ -36,7 +36,7 @@ public:
         virtual int handle##_ROLE(Node &_node) {   \
             print(); \
             m_pPrevNode = &_node; \
-            while (m_path.size() > getDepth()) \
+            while (m_path.size() >=  getDepth()) \
                 m_path.pop_back(); \
             m_path.push_back(L"" #_ROLE); \
             m_nPrevDepth = getDepth();\

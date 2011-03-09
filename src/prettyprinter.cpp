@@ -322,7 +322,7 @@ void print(ir::Node &_node, std::wostream &_os) {
 
 class PrettyPrinterCompact: public PrettyPrinterBase {
 public:
-    PrettyPrinterCompact(std::wostream &_os, const Node *_pRoot = NULL) : PrettyPrinterBase(_os), m_pRoot(_pRoot) {}
+    PrettyPrinterCompact(std::wostream &_os, const Node *_pRoot, int _nFlags) : PrettyPrinterBase(_os), m_pRoot(_pRoot), m_nFlags(_nFlags) {}
 
     void print(Node &_node) {
         if (&_node == NULL)
@@ -346,13 +346,19 @@ public:
     }
 
     virtual bool visitType(Type &_type) {
+        if ((m_nFlags & PPC_NO_INCOMPLETE_TYPES) && (_type.getKind() == Type::FRESH || _type.getKind() == Type::GENERIC))
+            return true;
+
         if (_type.getKind() == Type::FRESH) {
             m_os << fmtFreshType((tc::FreshType &)_type);;
         } else if (_type.getKind() <= Type::GENERIC) {
             m_os << fmtType(_type.getKind());
 
-            if (_type.getKind() >= Type::NAT && _type.getKind() <= Type::REAL && _type.getBits() != Number::GENERIC)
-                m_os << L"(" << fmtBits(_type.getBits()) << L")";
+            if (_type.getKind() >= Type::NAT && _type.getKind() <= Type::REAL && _type.getBits() != Number::GENERIC) {
+                if ((_type.getKind() <= Type::INT && !(m_nFlags & PPC_NO_INT_BITS)) ||
+                        ((_type.getKind() == Type::REAL && !(m_nFlags & PPC_NO_REAL_BITS))))
+                    m_os << L"(" << fmtBits(_type.getBits()) << L")";
+            }
         }
 
         return true;
@@ -454,10 +460,11 @@ public:
 
 private:
     const Node *m_pRoot;
+    int m_nFlags;
 };
 
 void prettyPrint(tc::Formulas & _constraints, std::wostream & _os) {
-    static PrettyPrinterCompact pp(_os/*, true*/);
+    static PrettyPrinterCompact pp(_os, NULL, 0);
 
     _os << L"\n";
 
@@ -528,7 +535,7 @@ void prettyPrint(tc::Formulas & _constraints, std::wostream & _os) {
     }
 }
 
-void prettyPrintCompact(Node & _node, std::wostream & _os) {
-    PrettyPrinterCompact pp(_os, &_node);
+void prettyPrintCompact(Node & _node, std::wostream & _os, int _nFlags) {
+    PrettyPrinterCompact pp(_os, &_node, _nFlags);
     pp.traverseNode(_node);
 }
