@@ -224,6 +224,8 @@ private:
         const Type * pType = NULL;
         return ir::isTypeVariable(_pVar, pType);
     }
+
+    void typecheck(Context &_ctx, Node &_node);
 };
 
 template<class _Node, class _Base>
@@ -1136,22 +1138,6 @@ Predicate * Parser::parsePredicate(Context & _ctx) {
         ERROR(* pCtx, NULL, L"Expected block or a semicolon");
 
     _ctx.mergeChildren();
-
-    //return pPred;
-
-    if (Options::instance().typeCheck != TC_NONE) {
-        tc::Formulas constraints;
-        tc::FreshTypes freshTypes;
-
-        tc::collect(constraints, * pPred, _ctx, freshTypes);
-        prettyPrint(constraints, std::wcout);
-
-        if (tc::solve(constraints))
-            tc::apply(constraints, freshTypes);
-    }
-    //prettyPrint(constraints, std::wcout);
-    /*std::wcout << L" ***\n";*/
-    //unify(constraints);
 
     return pPred;
 }
@@ -2769,6 +2755,20 @@ Context * Parser::parsePragma(Context & _ctx) {
     return & ctx;
 }
 
+void Parser::typecheck(Context &_ctx, Node &_node) {
+    if (Options::instance().typeCheck == TC_NONE)
+        return;
+
+    tc::Formulas constraints;
+    tc::FreshTypes freshTypes;
+
+    tc::collect(constraints, _node, _ctx, freshTypes);
+    prettyPrint(constraints, std::wcout);
+
+    if (tc::solve(constraints))
+        tc::apply(constraints, freshTypes);
+}
+
 bool Parser::parseDeclarations(Context & _ctx, Module & _module) {
     Context * pCtx = _ctx.createChild(false);
 
@@ -2780,6 +2780,7 @@ bool Parser::parseDeclarations(Context & _ctx, Module & _module) {
                     if (! pPred)
                         ERROR(* pCtx, false, L"Failed parsing predicate");
                     _module.getPredicates().add(pPred);
+                    typecheck(_ctx, *pPred);
                      break;
                 }
                 // no break;
@@ -2792,6 +2793,7 @@ bool Parser::parseDeclarations(Context & _ctx, Module & _module) {
                 if (! pCtx->consume(SEMICOLON))
                     ERROR(* pCtx, false, L"Semicolon expected");
                 _module.getVariables().add(pDecl);
+                typecheck(_ctx, *pDecl);
                 break;
             }
             case TYPE: {

@@ -189,7 +189,7 @@ bool rewriteType(ir::Type * & _pType, ir::Type * _pOld, ir::Type * _pNew);
 
 bool solve(Formulas & _formulas);
 
-void collect(Formulas & _constraints, ir::Predicate & _pred, Context & _ctx, FreshTypes & _types);
+void collect(Formulas & _constraints, ir::Node &_node, Context & _ctx, FreshTypes & _types);
 
 void apply(Formulas & _constraints, tc::FreshTypes & _types);
 

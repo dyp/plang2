@@ -15,9 +15,8 @@ using namespace ir;
 
 class Collector : public Visitor {
 public:
-    Collector(tc::Formulas & _constraints, Predicate * _pPredicate,
-            Context & _ctx, tc::FreshTypes & _types);
-    ~Collector() {}
+    Collector(tc::Formulas & _constraints, Context & _ctx, tc::FreshTypes & _types);
+    virtual ~Collector() {}
 
     virtual bool visitVariableReference(VariableReference &_var);
     virtual bool visitPredicateReference(PredicateReference &_ref);
@@ -66,14 +65,12 @@ protected:
 
 private:
     tc::Formulas & m_constraints;
-    Predicate * m_pPredicate;
     Context & m_ctx;
     tc::FreshTypes & m_types;
 };
 
-Collector::Collector(tc::Formulas & _constraints,
-        Predicate * _pPredicate, Context & _ctx, tc::FreshTypes & _types)
-    : Visitor(CHILDREN_FIRST), m_constraints(_constraints), m_pPredicate(_pPredicate), m_ctx(_ctx), m_types(_types)
+Collector::Collector(tc::Formulas & _constraints, Context & _ctx, tc::FreshTypes & _types)
+    : Visitor(CHILDREN_FIRST), m_constraints(_constraints), m_ctx(_ctx), m_types(_types)
 {
 }
 
@@ -737,7 +734,7 @@ bool Collector::visitTypeExpr(TypeExpr &_expr) {
     return true;
 }
 
-void tc::collect(Formulas & _constraints, Predicate & _pred, Context & _ctx, FreshTypes & _types) {
-    Collector Collector(_constraints, & _pred, _ctx, _types);
-    Collector.traversePredicate(_pred);
+void tc::collect(Formulas & _constraints, Node &_node, Context & _ctx, FreshTypes & _types) {
+    Collector Collector(_constraints, _ctx, _types);
+    Collector.traverseNode(_node);
 }
