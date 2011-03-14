@@ -462,7 +462,7 @@ Operand Translator::translateEqUnion(const ir::UnionType * _pType, const Operand
 
             if (dataType.getFields().size() == 0) {
                 body.push_back(new Binary(Binary::SET, varResult,
-                        Operand(Literal(new Type(Type::BOOL), Number((int64_t) 1)))));
+                        Operand(Literal(new Type(Type::BOOL), Number::makeInt(1)))));
                 continue;
             }
 
@@ -533,7 +533,7 @@ Operand Translator::translateEqUnion(const ir::UnionType * _pType, const Operand
 
 Operand Translator::translateEqStruct(const ir::StructType * _pType, const Operand & _lhs, const Operand & _rhs, Instructions & _instrs) {
     if (_pType->getFields().empty())
-        return Operand(Literal(new Type(Type::BOOL), Number((int64_t) 1)));
+        return Operand(Literal(new Type(Type::BOOL), Number::makeInt(1)));
 
     Auto<Label> labelEnd = new Label();
     Auto<Variable> varResult = new Variable(new Type(Type::BOOL));
@@ -814,7 +814,7 @@ Operand Translator::translate(const ir::UnionConstructor & _expr, Instructions &
     _instrs.push_back(new Field(Operand(ptr->getResult()), 0));
     _instrs.push_back(new Binary(Binary::STORE,
             Operand(_instrs.back()->getResult()),
-            Operand(Literal(new Type(Type::UINT32), (int64_t) pProto->getOrdinal()))));
+            Operand(Literal(new Type(Type::UINT32), Number::makeInt(pProto->getOrdinal())))));
 
     const ir::StructType & dataType = pProto->getStruct();
 
@@ -822,7 +822,7 @@ Operand Translator::translate(const ir::UnionConstructor & _expr, Instructions &
         Auto<StructType> st = translate(dataType);
 
         _instrs.push_back(new Unary(Unary::MALLOC,
-                Operand(Literal(new Type(Type::UINT64), Number((int64_t) st->sizeOf())))));
+                Operand(Literal(new Type(Type::UINT64), Number::makeInt(st->sizeOf())))));
         _instrs.push_back(new Cast(_instrs.back()->getResult(), new PointerType(st)));
 
         Operand opBuf(_instrs.back()->getResult());
@@ -846,7 +846,7 @@ Operand Translator::translate(const ir::UnionConstructor & _expr, Instructions &
 
         if (ft->sizeOf() > Type::sizeOf(Type::POINTER)) {
             _instrs.push_back(new Unary(Unary::MALLOC,
-                    Operand(Literal(new Type(Type::UINT64), Number((int64_t) ft->sizeOf())))));
+                    Operand(Literal(new Type(Type::UINT64), Number::makeInt(ft->sizeOf())))));
             _instrs.push_back(new Cast(Operand(ptr->getResult()), new PointerType(ft)));
 
             Operand opBuf(_instrs.back()->getResult());
@@ -927,7 +927,7 @@ void Translator::translateAsssignment(const ir::NamedValue * _pLHS,
                 new PointerType(new Type(Type::UINT32))));
         _instrs.push_back(new Binary(Binary::OFFSET,
                 Operand(_instrs.back()->getResult()),
-                Operand(Literal(new Type(Type::INT32), Number((int64_t) -1)))));
+                Operand(Literal(new Type(Type::INT32), Number::makeInt(-1)))));
 
         Operand opSrc (_instrs.back()->getResult());
 
@@ -936,12 +936,11 @@ void Translator::translateAsssignment(const ir::NamedValue * _pLHS,
         _instrs.push_back(new Binary(Binary::MUL,
                 Operand(_instrs.back()->getResult()),
                 Literal(new Type(Type::UINT32), Number(
-                        (int64_t) Type::sizeOf(Type::WCHAR)))));
+                        Number::makeInt(Type::sizeOf(Type::WCHAR))))));
         _instrs.push_back(new Binary(Binary::ADD,
                 Operand(_instrs.back()->getResult()),
-                Literal(new Type(Type::UINT32), Number(
-                        (int64_t) (Type::sizeOf(Type::WCHAR) +
-                        Type::sizeOf(Type::UINT32))))));
+                Literal(new Type(Type::UINT32), Number::makeInt(
+                        Type::sizeOf(Type::WCHAR) + Type::sizeOf(Type::UINT32)))));
 
         Operand opSz (_instrs.back()->getResult());
 
@@ -954,7 +953,7 @@ void Translator::translateAsssignment(const ir::NamedValue * _pLHS,
                 new PointerType(new Type(Type::UINT32))));
         _instrs.push_back(new Binary(Binary::OFFSET,
                 Operand(_instrs.back()->getResult()),
-                Literal(new Type(Type::INT32), Number((int64_t) 1))));
+                Literal(new Type(Type::INT32), Number::makeInt(1))));
         _instrs.push_back(new Cast(Operand(_instrs.back()->getResult()),
                 new PointerType(new Type(Type::WCHAR))));
 
@@ -978,7 +977,7 @@ void Translator::translate(const ir::Assignment & _stmt, Instructions & _instrs)
 void Translator::translate(const ir::Jump & _stmt, Instructions & _instrs) {
     Literal num(Literal::NUMBER, new Type(Type::INT32));
     const int nLabel = resolveLabel(_stmt.getDestination());
-    num.setNumber(Number((int64_t) nLabel));
+    num.setNumber(Number::makeInt(nLabel));
     _instrs.push_back(new Unary(Unary::RETURN, Operand(num)));
 }
 

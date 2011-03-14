@@ -17,6 +17,12 @@ std::string intToStr(int64_t _n) {
     return buf;
 }
 
+std::string natToStr(uint64_t _n) {
+    char buf[64];
+    snprintf(buf, 64, "%llu", (long long int) _n);
+    return buf;
+}
+
 std::wstring fmtInt(int64_t _n, const wchar_t * _fmt) {
     wchar_t buf[128];
     swprintf(buf, 128, _fmt, _n);

@@ -22,6 +22,7 @@ public:
     virtual bool visitPredicateReference(PredicateReference &_ref);
     virtual bool visitFunctionCall(FunctionCall &_call);
     virtual bool visitCall(Call &_call);
+    virtual bool visitLiteral(Literal &_lit);
     virtual bool visitUnary(Unary &_unary);
     virtual bool visitBinary(Binary &_binary);
     virtual bool visitStructConstructor(StructConstructor &_cons);
@@ -205,6 +206,37 @@ bool Collector::visitCall(Call &_call) {
 
     m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
             _call.getPredicate()->getType(), pType));
+
+    return true;
+}
+
+bool Collector::visitLiteral(Literal &_lit) {
+    switch (_lit.getLiteralKind()) {
+        case Literal::UNIT:
+            _lit.setType(new Type(Type::UNIT));
+            break;
+        case Literal::NUMBER: {
+            const Number &n = _lit.getNumber();
+
+            if (n.isNat())
+                _lit.setType(new Type(Type::NAT, n.countBits(false)));
+            else if (n.isInt())
+                _lit.setType(new Type(Type::INT, n.countBits(true)));
+            else
+                _lit.setType(new Type(Type::REAL, n.countBits(false)));
+
+            break;
+        }
+        case Literal::BOOL:
+            _lit.setType(new Type(Type::BOOL));
+            break;
+        case Literal::CHAR:
+            _lit.setType(new Type(Type::CHAR));
+            break;
+        case Literal::STRING:
+            _lit.setType(new Type(Type::STRING));
+            break;
+    }
 
     return true;
 }

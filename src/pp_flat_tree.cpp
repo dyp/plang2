@@ -21,7 +21,7 @@ public:
             std::wcout << L"/" << *i;
         if (m_pPrevNode != NULL) {
             std::wcout << L" = ";
-            prettyPrintCompact(*m_pPrevNode, std::wcout, PPC_NO_REAL_BITS | PPC_NO_INCOMPLETE_TYPES);
+            prettyPrintCompact(*m_pPrevNode, std::wcout, PPC_NO_INCOMPLETE_TYPES);
         }
         std::wcout << L"\n";
     }

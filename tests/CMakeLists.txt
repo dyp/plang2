@@ -4,6 +4,7 @@ set(TESTS
     sample.psrc
     inference/literals.psrc
     inference/literals_structured.psrc
+    inference/literals_negative.psrc
 )
 
 foreach(TEST ${TESTS})

@@ -279,7 +279,7 @@ private:
 
     void _setNumber(int _kind, int64_t _value) {
         m_type = new Type(_kind);
-        m_number = Number(_value);
+        m_number = Number::makeInt(_value);
     }
 };
 

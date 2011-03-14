@@ -22,21 +22,19 @@
 /// TODO: Support for arithmetic operations will be added later.
 class Number {
 public:
-    /// Kind of a number.
+    /// Known bitnesses.
     enum {
         /// Generic number that does not fit in other kinds. Stored as rational
         /// number.
         GENERIC = -1,
         /// Abstract native bitness (not used directly).
         NATIVE = 0,
-        /// Integer value that fits in 64 bits.
-        INTEGER,
         /// Single precision floating point value.
-        SINGLE,
+        SINGLE = 32,
         /// Double precision floating point value.
-        DOUBLE,
+        DOUBLE = 64,
         /// Quad precision floating point value.
-        QUAD,
+        QUAD = 128,
     };
 
     /// Default constructor initializes number as integer zero.
@@ -45,14 +43,17 @@ public:
     /// Initialize with string. Appropriate kind will be automatically determined.
     Number(const Number & _other);
 
-    /// Initialize with floating point value.
-    Number(long double _f);
-
-    /// Initialize with integer.
-    Number(int64_t _n);
+    /// Format for string to number conversion.
+    enum Format {
+        INTEGER,
+        REAL,
+    };
 
     /// Initialize with string.
-    Number(const std::wstring & _s);
+    Number(const std::wstring &_s, Format _fmt);
+
+    /// Initialize with string.
+    Number(const std::string &_s, Format _fmt);
 
     /// Destructor.
     ~Number();
@@ -64,50 +65,54 @@ public:
 
     /// Get "not a number" special value.
     /// \return \c NaN.
-    static const Number & nan() { return m_nan; }
+    static const Number & makeNaN() { return m_nan; }
 
     /// Get "infinity" special value.
     /// \param _bNegative Return \c -Inf  if set.
     /// \return Positive or negative \c Inf.
-    static const Number & inf(bool _bNegative = false) {
+    static const Number & makeInf(bool _bNegative = false) {
         return _bNegative ? m_infNeg : m_inf;
     }
 
-    /// Get kind of a number (one of #Generic, #Integer, #Single, #Double or #Quad).
-    int getKind() const { return m_kind; }
+    static Number makeInt(int64_t _n);
+    static Number makeNat(uint64_t _n);
+    static Number makeReal(long double _f);
 
-    /// Get minimal number of bits necessary to encode the number.
-    /// \param _bUnsigned Set if unsigned encoding is needed.
-    int getBits(bool _bUnsigned = false) const;
+    bool isInt() const;
+    bool isNat() const;
+    bool isNeg() const;
+    bool isReal() const;
 
     /// Check if value is "not a number".
     /// \return True if value is \c NaN, false otherwise.
-    bool isNaN() const { return isnanl(m_fValue) != 0; }
+    bool isNaN() const { return isnanl(m_fSpecial) != 0; }
 
     /// Check if value is infinite.
     /// \return True if value is \c Inf (positive or negative), false otherwise.
-    bool isInfinite() const { return isinfl(m_fValue) != 0; }
+    bool isInfinite() const { return isinfl(m_fSpecial) != 0; }
 
     /// Convert to string.
     /// \return String representation of the value.
     std::wstring toString() const;
 
-    long double getFloat() const { return m_fValue; }
-    int64_t getInt() const { return m_nValue; }
-    mpq_class getRational() const { return m_qValue; }
+    long double getFloat() const;
+    int64_t getInt() const;
+    uint64_t getUInt() const;
+    mpq_class getRational() const;
+
+    int countBits(bool _bSigned = false) const;
+
+    void negate();
 
 private:
-    int m_kind;
-    int m_nBits;
-    long double m_fValue;
-    int64_t m_nValue;
     mpq_class m_qValue;
+    long double m_fSpecial;
 
     static const Number m_nan;
     static const Number m_inf;
     static const Number m_infNeg;
 
-    void _update();
+    void _init(const std::string &_s, Format _fmt);
 };
 
 #endif /* NUMBERS_H_ */

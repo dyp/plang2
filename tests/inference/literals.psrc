@@ -3,23 +3,28 @@
 <test>
 	n/Type = nat(1)
 	i/Type = int(9)
-	x/Type = nat(12)
+	x/Type = nat(14)
 	n64/Type = nat(64)
 	N/Type = nat
 	i64/Type = int(64)
+	j64/Type = nat(64)
+	k63/Type = nat(63)
 	I/Type = int
 
 	b/Type = bool
 	c/Type = char
 	s/Type = string
 
-	f1/Type = real
-	f2/Type = real
-	f3/Type = real
-	f4/Type = real
-	f5/Type = real
-	f6/Type = real
-	f7/Type = real
+	f1/Type ~ real
+	f2/Type ~ real
+	f3/Type ~ real
+	f4/Type ~ real
+	f5/Type ~ real
+	f6/Type ~ real
+	f7/Type ~ real
+	f8/Type ~ real
+	f9/Type ~ real
+	f10/Type ~ real
 
 	u/Type = nil
 </test>
@@ -31,8 +36,10 @@ var i = -130;
 var x = 0x2100;
 var n64 = 18446744073709551615;
 var N = 18446744073709551616;
-var i64 = -18446744073709551616;
-var I = -18446744073709551617;
+var i64 = -9223372036854775808;
+var j64 = 9223372036854775808;
+var k63 = 9223372036854775807;
+var I = -9223372036854775809;
 
 var b = true;
 var c = 'x';
@@ -45,5 +52,8 @@ var f4 = 1.0;
 var f5 = inf;
 var f6 = -inf;
 var f7 = nan;
+var f8 = -9999.1e-40;
+var f9 = .3;
+var f10 = 5.;
 
 var u = nil;

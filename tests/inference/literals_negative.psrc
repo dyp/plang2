@@ -1,0 +1,17 @@
+/*
+
+Typechecking of negative integer-typed literals, when represented as unary
+minus expression, requires support of dependent types because of implied
+bitness. Here we expose this characteristic by explicitly specifying unary
+minus expression, thus preventing possible optimization into single
+integer-typed literal.
+
+<test>
+	! i/Type ~ nat
+	j/Type ~ int
+</test>
+
+*/
+
+var i = -(130);
+var j = -130;

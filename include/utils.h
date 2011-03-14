@@ -101,6 +101,7 @@ Iterator prev(Iterator i) { return -- i; }
 // String operations.
 
 std::string intToStr(int64_t _n);
+std::string natToStr(uint64_t _n);
 
 std::string strNarrow(const std::wstring & _s);
 std::wstring strWiden(const std::string & _s);

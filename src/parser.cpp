@@ -641,58 +641,36 @@ Expression * Parser::parseAtom(Context & _ctx, int _nFlags) {
     {
         ctx.skip(2);
         pExpr = ctx.attach(new Literal());
-        pExpr->setType(new Type(Type::UNIT));
         token = -1;
     }
 
     switch (token) {
         case INTEGER: {
-            Number num(ctx.scan());
+            Number num(ctx.scan(), Number::INTEGER);
             pExpr = ctx.attach(new Literal(num));
-            if (num.getKind() == Number::INTEGER) {
-                if (num.getInt() >= 0) {
-                    pExpr->setType(new Type(Type::NAT));
-                    pExpr->getType()->setBits(num.getBits(true));
-                } else {
-                    pExpr->setType(new Type(Type::INT));
-                    pExpr->getType()->setBits(num.getBits(false));
-                }
-            } else {
-                pExpr->setType(new Type(Type::INT));
-                pExpr->getType()->setBits(Number::GENERIC);
-            }
             break;
         }
         case REAL:
         case NOT_A_NUMBER:
         case INF: {
-            Number num(ctx.scan());
+            Number num(ctx.scan(), Number::REAL);
             pExpr = ctx.attach(new Literal(num));
-            pExpr->setType(new Type(Type::REAL));
-            if (num.getKind() == Number::GENERIC)
-                pExpr->getType()->setBits(Number::GENERIC);
-            else
-                pExpr->getType()->setBits(num.getBits());
             break;
         }
         case TRUE:
         case FALSE:
             pExpr = ctx.attach(new Literal(ctx.getToken() == TRUE));
-            pExpr->setType(new Type(Type::BOOL));
             ++ ctx;
             break;
         case CHAR:
             pExpr = ctx.attach(new Literal(ctx.scan()[0]));
-            pExpr->setType(new Type(Type::CHAR));
             break;
         case STRING:
             pExpr = ctx.attach(new Literal(ctx.scan()));
-            pExpr->setType(new Type(Type::STRING));
             break;
         case NIL:
             ++ ctx;
             pExpr = ctx.attach(new Literal());
-            pExpr->setType(new Type(Type::UNIT));
             break;
         case LPAREN: {
             Context * pCtx = ctx.createChild(false);
@@ -874,7 +852,7 @@ Expression * Parser::parseSubexpression(Context & _ctx, Expression * _lhs, int _
         Expression * rhs = NULL;
         int nPrec = std::max(_minPrec, getPrecedence(op, bParseElse));
 
-        if (_nFlags & ALLOW_FORMULAS && ! _lhs && ctx.in(BANG, QUESTION)) {
+        if ((_nFlags & ALLOW_FORMULAS) && ! _lhs && ctx.in(BANG, QUESTION)) {
             // Try to parse as a quantified formula first.
             _lhs = parseFormula(ctx);
             if (_lhs)
@@ -882,6 +860,8 @@ Expression * Parser::parseSubexpression(Context & _ctx, Expression * _lhs, int _
         }
 
         ++ ctx;
+
+        const int tokRHS = ctx.getToken();
 
         if (getUnaryOp(ctx.getToken()) >= 0) {
             rhs = parseSubexpression(ctx, NULL, nPrec + 1, _nFlags);
@@ -908,8 +888,26 @@ Expression * Parser::parseSubexpression(Context & _ctx, Expression * _lhs, int _
             _lhs = ctx.attach(new Ternary(_lhs, rhs));
         } else if (! _lhs) {
             const int unaryOp = getUnaryOp(op);
+
             if (unaryOp < 0)
                 ERROR(ctx, NULL, L"Unary operator expected");
+
+            if (tokRHS != LPAREN && // Disable optimization of "-(NUMBER)" expressions for now.
+                    rhs->getKind() == Expression::LITERAL &&
+                    ((Literal *) rhs)->getLiteralKind() == Literal::NUMBER)
+            {
+                // Ok, handle unary plus/minus here.
+                if (unaryOp == Unary::MINUS) {
+                    Number num = ((Literal *)rhs)->getNumber();
+                    num.negate();
+                    ((Literal *)rhs)->setNumber(num);
+                }
+                if (unaryOp == Unary::MINUS || unaryOp == Unary::PLUS) {
+                    _lhs = rhs;
+                    continue;
+                }
+            }
+
             _lhs = ctx.attach(new Unary(unaryOp, rhs));
             ((Unary *) _lhs)->getOverflow().set(_ctx.getOverflow());
         } else {
