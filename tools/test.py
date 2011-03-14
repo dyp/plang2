@@ -70,10 +70,16 @@ for test in extractTest(sys.argv[1]).split('\n'):
     printGots = True
     neededResult = True
 
-    idx = test.find('=')
+    idx = -1
+    op = ""
+    match = re.search("[=~]", test)
+    #idx = test.find('=')
     val = None
     cond = test
-    if idx >= 0:
+
+    if match:
+        op = test[match.start()]
+        idx = match.start()
         val = test[idx + 1:].strip()
         cond = test[:idx].strip()
 
@@ -85,6 +91,11 @@ for test in extractTest(sys.argv[1]).split('\n'):
     cond = makeRegEx(cond)
     match = None
     gots = set()
+
+    if val:
+        val = re.escape(val)
+        if op == "~":
+            val = r".*\b" + val + r"\b.*"
 
     for ln in lns:
         ln = ln.strip()
@@ -101,9 +112,9 @@ for test in extractTest(sys.argv[1]).split('\n'):
 
         # Compare right-hand sides.
         got = match.string[match.end():].strip()
-        if got != val:
+        if not re.match(r"\A" + val + r"\Z", got):
             # Compare parts of last member, i.e.: /foo/bar/...|BAZ|...
-            if re.match(r".*/([^/=]*\||)" + re.escape(val) + r"(\|[^/=]*|\s*)(=|\Z)", ln):
+            if re.match(r".*/([^/=]*\||)" + val + r"(\|[^/=]*|\s*)(=|\Z)", ln):
                 break
             gots.add(got)
             match = None
