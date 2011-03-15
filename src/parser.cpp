@@ -2782,7 +2782,7 @@ void Parser::typecheck(Context &_ctx, Node &_node) {
 bool Parser::parseDeclarations(Context & _ctx, Module & _module) {
     Context * pCtx = _ctx.createChild(false);
 
-    while (! pCtx->is(END_OF_FILE)) {
+    while (!pCtx->in(END_OF_FILE, RBRACE)) {
         switch (pCtx->getToken()) {
             case IDENTIFIER: {
                 if (! pCtx->getType(pCtx->getValue())) {
@@ -2873,7 +2873,13 @@ bool Parser::parseModule(Context & _ctx, ir::Module * & _pModule) {
     if (_ctx.is(END_OF_FILE) || _ctx.loc() == m_tokens.end())
         return true;
 
-    return parseDeclarations(_ctx, * _pModule);
+    if (!parseDeclarations(_ctx, * _pModule))
+        return false;
+
+    if (!_ctx.is(END_OF_FILE) && _ctx.loc() != m_tokens.end())
+        UNEXPECTED(_ctx, "End of file");
+
+    return true;
 }
 
 bool parse(Tokens & _tokens, ir::Module * & _pModule) {
