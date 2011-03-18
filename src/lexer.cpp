@@ -12,6 +12,7 @@
 #include <stdio.h>
 
 #include "lexer.h"
+#include "utils.h"
 
 namespace lexer {
 
@@ -219,7 +220,7 @@ void TokenMap::resetRequest() {
 int TokenMap::addChar(wchar_t _c) {
     m_strCurrent += _c;
 
-    if (getCount() == 1 && m_bounds.first->lexeme[m_strCurrent.size() - 1] != _c) {
+    if (getCount() == 1 && m_bounds.first->lexeme.c_str()[m_strCurrent.size() - 1] != _c) {
         m_bounds.first = m_bounds.second;
         return 0;
     }

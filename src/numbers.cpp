@@ -9,6 +9,21 @@
 #include <stdlib.h>
 #include <float.h>
 
+#ifdef _MSC_VER
+#include <limits>
+
+#define INFINITY std::numeric_limits<float>::infinity()
+#define NAN std::numeric_limits<float>::quiet_NaN()
+#define isfinite(_X) (_finite(_X))
+
+#define snprintf _snprintf
+
+wchar_t *wcschrnul(wchar_t *_s, wchar_t _wc) {
+	wchar_t *s = wcschr(_s, _wc);
+	return s ? s : _s + wcslen(_s);
+}
+#endif
+
 /// Default constructor initializes number as integer zero.
 Number::Number()
     : m_fSpecial(0)

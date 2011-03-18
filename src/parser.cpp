@@ -15,7 +15,6 @@
 #include "typecheck.h"
 #include "prettyprinter.h"
 #include "collect_constraints.h"
-#include "unify.h"
 #include "options.h"
 
 #include <iostream>

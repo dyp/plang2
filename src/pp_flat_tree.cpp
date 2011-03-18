@@ -2,6 +2,7 @@
 ///
 
 #include "prettyprinter.h"
+#include "utils.h"
 
 using namespace ir;
 
@@ -28,7 +29,7 @@ public:
 
 #define VISITOR(_NODE, ...)                             \
         virtual bool visit##_NODE(_NODE &_node) {    \
-            m_path.back() += L"|" #_NODE;\
+            m_path.back() += L"|" WIDEN(#_NODE);\
             return true;                                \
         }
 
@@ -38,7 +39,7 @@ public:
             m_pPrevNode = &_node; \
             while (m_path.size() >=  getDepth()) \
                 m_path.pop_back(); \
-            m_path.push_back(L"" #_ROLE); \
+            m_path.push_back(WIDEN(#_ROLE)); \
             m_nPrevDepth = getDepth();\
             return 0;                               \
         }

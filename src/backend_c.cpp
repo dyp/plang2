@@ -439,7 +439,7 @@ std::wostream & CGenerator::generate(std::wostream & _os, const If & _instr) {
     generate(_os, _instr.getCondition()) << L") {\n";
 
     if (! _instr.brTrue().empty()) {
-        Instructions::const_iterator iLast = prev(_instr.brTrue().end());
+        Instructions::const_iterator iLast = ::prev(_instr.brTrue().end());
         ++ m_nLevel;
         for (Instructions::const_iterator iInstr = _instr.brTrue().begin(); iInstr != _instr.brTrue().end(); ++ iInstr)
             generate(_os, ** iInstr, false, iInstr == iLast);
@@ -448,7 +448,7 @@ std::wostream & CGenerator::generate(std::wostream & _os, const If & _instr) {
 
     if (! _instr.brFalse().empty()) {
         _os << fmtIndent(L"} else {\n");
-        Instructions::const_iterator iLast = prev(_instr.brFalse().end());
+        Instructions::const_iterator iLast = ::prev(_instr.brFalse().end());
         ++ m_nLevel;
         for (Instructions::const_iterator iInstr = _instr.brFalse().begin(); iInstr != _instr.brFalse().end(); ++ iInstr)
             generate(_os, ** iInstr, false, iInstr == iLast);
@@ -546,7 +546,7 @@ std::wostream & CGenerator::generate(std::wostream & _os, const Switch & _instr)
 
     if (! _instr.deflt().empty()) {
         _os << fmtIndent(L"default:\n");
-        Instructions::const_iterator iLast = prev(_instr.deflt().end());
+        Instructions::const_iterator iLast = ::prev(_instr.deflt().end());
         ++ m_nLevel;
         for (Instructions::const_iterator iInstr = _instr.deflt().begin(); iInstr != _instr.deflt().end(); ++ iInstr)
             generate(_os, ** iInstr, false, iInstr == iLast);
@@ -690,7 +690,7 @@ std::wostream & CGenerator::generate(std::wostream & _os, const Function & _func
     std::wstringstream ss;
 
     if (! _function.instructions().empty()) {
-        Instructions::const_iterator iLast = prev(_function.instructions().end());
+        Instructions::const_iterator iLast = ::prev(_function.instructions().end());
         for (Instructions::const_iterator iInstr = _function.instructions().begin(); iInstr != _function.instructions().end(); ++ iInstr)
             getChild()->generate(ss, ** iInstr, false, iInstr == iLast);
     }

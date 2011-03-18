@@ -1,0 +1,169 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="src">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="src\ir">
+      <UniqueIdentifier>{43f8f666-3290-4953-afb4-273beeaabbbf}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="include\ir">
+      <UniqueIdentifier>{8433e1b5-b839-4fe7-8640-501bf38e45bb}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\ir\base.cpp">
+      <Filter>src\ir</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ir\builtins.cpp">
+      <Filter>src\ir</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ir\expressions.cpp">
+      <Filter>src\ir</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ir\type_derived.cpp">
+      <Filter>src\ir</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ir\type_predicate.cpp">
+      <Filter>src\ir</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ir\type_union.cpp">
+      <Filter>src\ir</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ir\visitor.cpp">
+      <Filter>src\ir</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ir\types.cpp">
+      <Filter>src\ir</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ir\type_struct.cpp">
+      <Filter>src\ir</Filter>
+    </ClCompile>
+    <ClCompile Include="src\backend_debug.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\collect_constraints.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\llir.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\options.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\parser_context.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\plang.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\solve_constraints.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\numbers.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\typecheck.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\prettyprinter.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\pp_flat_tree.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\parser.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\utils.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\lexer.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\llir_process.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\backend_c.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\backend_c.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\backend_debug.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\collect_constraints.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\llir_process.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\options.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\parser.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\pp_flat_tree.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\prettyprinter.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ir\builtins.h">
+      <Filter>include\ir</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ir\declarations.h">
+      <Filter>include\ir</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ir\expressions.h">
+      <Filter>include\ir</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ir\statements.h">
+      <Filter>include\ir</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ir\types.h">
+      <Filter>include\ir</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ir\visitor.h">
+      <Filter>include\ir</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ir\numbers.h">
+      <Filter>include\ir</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ir\base.h">
+      <Filter>include\ir</Filter>
+    </ClInclude>
+    <ClInclude Include="include\lexer.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\llir.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\parser_context.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\typecheck.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\utils.h">
+      <Filter>include</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="include\ir\nodes.inl">
+      <Filter>include\ir</Filter>
+    </None>
+    <None Include="include\ir\roles.inl">
+      <Filter>include\ir</Filter>
+    </None>
+  </ItemGroup>
+</Project>

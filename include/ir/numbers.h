@@ -12,6 +12,11 @@
 
 #include <string>
 
+#ifdef _MSC_VER
+#define isnanl _isnan
+#define isinfl(X) (!_finite(X))
+#endif
+
 /// Representation of numeric literals.
 ///
 /// This class internally uses standard finite-precision types (\c int, \c float, etc.)

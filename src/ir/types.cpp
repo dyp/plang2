@@ -154,9 +154,9 @@ Type::Extremum Type::getJoin(ir::Type & _other) {
         ir::Type &other = getKind() == FRESH ? _other : *this;
 
         if (other.contains(&fresh))
-            return Extremum(NULL, true);
+            return Extremum((Type *)NULL, true);
 
-        return Extremum(NULL, false);
+        return Extremum((Type *)NULL, false);
     }
 
     switch (compare(_other)) {
@@ -176,7 +176,7 @@ Type::Extremum Type::getJoin(ir::Type & _other) {
     if (kinds == P(INT, NAT))
         return Extremum(new Type(INT, maxBitsIntNat(getBits(), _other.getBits())), false);
 
-    return Extremum(NULL, true);
+    return Extremum((Type *)NULL, true);
 }
 
 Type::Extremum Type::getMeet(ir::Type & _other) {
@@ -185,9 +185,9 @@ Type::Extremum Type::getMeet(ir::Type & _other) {
         ir::Type &other = getKind() == FRESH ? _other : *this;
 
         if (other.contains(&fresh))
-            return Extremum(NULL, true);
+            return Extremum((Type *)NULL, true);
 
-        return Extremum(NULL, false);
+        return Extremum((Type *)NULL, false);
     }
 
     switch (compare(_other)) {
@@ -207,7 +207,7 @@ Type::Extremum Type::getMeet(ir::Type & _other) {
     if (kinds == P(INT, NAT))
         return Extremum(new Type(NAT, minBitsIntNat(getBits(), _other.getBits())), false);
 
-    return Extremum(NULL, true);
+    return Extremum((Type *)NULL, true);
 }
 
 // 'type' type.

@@ -185,7 +185,7 @@ Type::Extremum StructType::getMeet(ir::Type & _other) {
     const StructType & other = (const StructType &) _other;
 
     if (allFieldsNamed() != other.allFieldsNamed())
-        return Extremum(NULL, false);
+        return Extremum((Type *)NULL, false);
 
     StructType * pStruct = new StructType();
     size_t cOtherUnmatched = other.getFields().size();
@@ -238,7 +238,7 @@ Type::Extremum StructType::getJoin(ir::Type & _other) {
     const StructType & other = (const StructType &) _other;
 
     if (allFieldsNamed() != other.allFieldsNamed())
-        return Extremum(NULL, false);
+        return Extremum((Type *)NULL, false);
 
     StructType * pStruct = new StructType();
 

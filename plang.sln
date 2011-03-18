@@ -1,0 +1,32 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual C++ Express 2010
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "lib_mpir_gc", "mpir-2.3.0\build.vc10\lib_mpir_gc\lib_mpir_gc.vcxproj", "{4AF4FD03-C169-456A-966A-081DE6BB71C7}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "lib_mpir_cxx", "mpir-2.3.0\build.vc10\lib_mpir_cxx\lib_mpir_cxx.vcxproj", "{C82A62DB-DDB4-4072-832F-6DD841C6D80E}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "plang", "plang.vcxproj", "{A2D2869E-E10D-4AE5-8C87-32FFCA83F491}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4AF4FD03-C169-456A-966A-081DE6BB71C7}.Debug|Win32.ActiveCfg = Debug|Win32
+		{4AF4FD03-C169-456A-966A-081DE6BB71C7}.Debug|Win32.Build.0 = Debug|Win32
+		{4AF4FD03-C169-456A-966A-081DE6BB71C7}.Release|Win32.ActiveCfg = Release|Win32
+		{4AF4FD03-C169-456A-966A-081DE6BB71C7}.Release|Win32.Build.0 = Release|Win32
+		{C82A62DB-DDB4-4072-832F-6DD841C6D80E}.Debug|Win32.ActiveCfg = Debug|Win32
+		{C82A62DB-DDB4-4072-832F-6DD841C6D80E}.Debug|Win32.Build.0 = Debug|Win32
+		{C82A62DB-DDB4-4072-832F-6DD841C6D80E}.Release|Win32.ActiveCfg = Release|Win32
+		{C82A62DB-DDB4-4072-832F-6DD841C6D80E}.Release|Win32.Build.0 = Release|Win32
+		{A2D2869E-E10D-4AE5-8C87-32FFCA83F491}.Debug|Win32.ActiveCfg = Debug|Win32
+		{A2D2869E-E10D-4AE5-8C87-32FFCA83F491}.Debug|Win32.Build.0 = Debug|Win32
+		{A2D2869E-E10D-4AE5-8C87-32FFCA83F491}.Release|Win32.ActiveCfg = Release|Win32
+		{A2D2869E-E10D-4AE5-8C87-32FFCA83F491}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

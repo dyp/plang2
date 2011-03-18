@@ -285,7 +285,7 @@ void _check(Formulas & _fs) {
         FormulaCmp cmp;
         size_t c = 0;
 
-        for (Formulas::iterator j = next(i); j != _fs.end(); ++ i, ++ j, ++c) {
+        for (Formulas::iterator j = ::next(i); j != _fs.end(); ++ i, ++ j, ++c) {
             Formula * p1 = * i;
             Formula * p2 = * j;
 

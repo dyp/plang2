@@ -9,6 +9,13 @@
 #include <stdint.h>
 #include <assert.h>
 
+#ifdef _MSC_VER
+#define snprintf _snprintf
+#endif
+
+#define _WIDEN(_STR)  L ## _STR
+#define WIDEN(_STR)   _WIDEN(_STR)
+
 template<typename T>
 class Auto {
 public:

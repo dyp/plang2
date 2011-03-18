@@ -43,7 +43,7 @@ std::string strNarrow(const std::wstring & _s) {
     wc2mbcs_t::result result;
     int mbcLen = facet.max_length();
     const int bufLen = (_s.length() + 1)*mbcLen;
-    char mbcBuf[bufLen];
+    char *mbcBuf = (char *)alloca(bufLen);
 
     char * pNextOut = mbcBuf;
     const wchar_t * pNextIn = _s.c_str();
@@ -66,7 +66,7 @@ std::wstring strWiden(const std::string & _s) {
     wc2mbcs_t::result result;
 //    int wcLen = facet.max_length();
     const int bufLen = _s.length() + 1;
-    wchar_t wcBuf[bufLen];
+    wchar_t *wcBuf = (wchar_t *)alloca(bufLen*sizeof(wchar_t));
 
     const char * pNextOut = _s.c_str();
     wchar_t * pNextIn = wcBuf;

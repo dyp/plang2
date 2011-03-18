@@ -52,7 +52,7 @@ void ProcessLL::processInstructions(Instructions & _instrs) {
 
 void ProcessLL::processInstructionIter(Instructions::iterator _iInstr) {
     m_iInstr = _iInstr;
-    m_iNext = next(_iInstr);
+    m_iNext = ::next(_iInstr);
     m_pNext = m_iNext == m_pInstructions->end() ? NULL : m_iNext->ptr();
     m_pInstr = * _iInstr;
     processInstruction(** _iInstr);
@@ -308,7 +308,7 @@ void PruneJumps::collapse(Instructions::iterator _iInstr, Instructions & _instrs
             } else {
                 _instrs.push_back(new Instruction()); // nop
                 _instrs.back()->setLabel(pLabel);
-                _iInstr = prev(_instrs.end());
+                _iInstr = ::prev(_instrs.end());
             }
         }
 
@@ -316,7 +316,7 @@ void PruneJumps::collapse(Instructions::iterator _iInstr, Instructions & _instrs
     }
 
     if (_iInstr != _instrs.end())
-        m_iStart = next(_iInstr);
+        m_iStart = ::next(_iInstr);
 }
 
 void PruneJumps::processInstructions(Instructions & _instrs) {
