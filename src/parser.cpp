@@ -2811,7 +2811,7 @@ bool Parser::parseDeclarations(Context & _ctx, Module & _module) {
                     if (! pPred)
                         ERROR(* pCtx, false, L"Failed parsing predicate");
                     _module.getPredicates().add(pPred);
-                    typecheck(_ctx, *pPred);
+                    typecheck(*pCtx, *pPred);
                      break;
                 }
                 // no break;
@@ -2824,7 +2824,7 @@ bool Parser::parseDeclarations(Context & _ctx, Module & _module) {
                 if (! pCtx->consume(SEMICOLON))
                     ERROR(* pCtx, false, L"Semicolon expected");
                 _module.getVariables().add(pDecl);
-                typecheck(_ctx, *pDecl);
+                typecheck(*pCtx, *pDecl);
                 break;
             }
             case TYPE: {
