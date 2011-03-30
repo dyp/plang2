@@ -2881,7 +2881,7 @@ bool Parser::parseDeclarations(Context & _ctx, Module & _module) {
                     ERROR(* pCtx, false, L"Semicolon or opening brace expected");
             }
             default:
-                return false;
+                ERROR(*pCtx, false, L"Declaration expected");
         }
 
         while (pCtx->consume(SEMICOLON))
