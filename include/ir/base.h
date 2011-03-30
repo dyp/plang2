@@ -544,6 +544,8 @@ public:
         VARIABLE_DECLARATION,
         /// Declaration of a formula. Can be cast to FormulaDeclaration.
         FORMULA_DECLARATION,
+        /// Declaration of a lemma. Can be cast to LemmaDeclaration.
+        LEMMA_DECLARATION,
         /// Declaration of a (nested) predicate. Can be cast to Predicate.
         PREDICATE_DECLARATION,
     };

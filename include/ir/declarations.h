@@ -313,6 +313,36 @@ private:
     Expression * m_pFormula;
 };
 
+/// Lemma declaration.
+class LemmaDeclaration : public Statement {
+public:
+    /// Default constructor.
+    LemmaDeclaration() : m_pProposition(NULL) {}
+
+    /// Destructor.
+    virtual ~LemmaDeclaration() {
+        _delete(m_pProposition);
+    }
+
+    /// Get statement kind.
+    /// \returns #LemmaDeclaration.
+    virtual int getKind() const { return LEMMA_DECLARATION; }
+
+    /// Get proposition (boolean-typed expression).
+    /// \return Proposition.
+    Expression * getProposition() const { return m_pProposition; }
+
+    /// Set proposition.
+    /// \param _pProposition Proposition.
+    /// \param _bReparent If specified (default) also sets parent of _pProposition to this node.
+    void setProposition(Expression * _pProposition, bool _bReparent = true) {
+        _assign(m_pProposition, _pProposition, _bReparent);
+    }
+
+private:
+    Expression * m_pProposition;
+};
+
 /// Base class for objects containing common declarations.
 class DeclarationGroup : public Node {
 public:
@@ -344,11 +374,16 @@ public:
     /// \return List of formulas.
     Collection<FormulaDeclaration> & getFormulas() { return m_formulas; }
 
+    /// Get list of lemmas.
+    /// \return List of lemmas.
+    Collection<LemmaDeclaration> & getLemmas() { return m_lemmas; }
+
 private:
     Collection<Predicate> m_predicates;
     Collection<TypeDeclaration> m_types;
     Collection<VariableDeclaration> m_variables;
     Collection<FormulaDeclaration> m_formulas;
+    Collection<LemmaDeclaration> m_lemmas;
     Collection<Message> m_messages;
     Collection<Process> m_processes;
 };

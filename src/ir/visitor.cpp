@@ -547,6 +547,8 @@ bool Visitor::traverseStatement(Statement &_stmt) {
             return traverseVariableDeclaration((VariableDeclaration &)_stmt);
         case Statement::FORMULA_DECLARATION:
             return traverseFormulaDeclaration((FormulaDeclaration &)_stmt);
+        case Statement::LEMMA_DECLARATION:
+            return traverseLemmaDeclaration((LemmaDeclaration &)_stmt);
         case Statement::PREDICATE_DECLARATION:
             return traversePredicate((Predicate &)_stmt);
     }
@@ -698,6 +700,13 @@ bool Visitor::traverseFormulaDeclaration(FormulaDeclaration &_stmt) {
     EXIT();
 }
 
+bool Visitor::traverseLemmaDeclaration(LemmaDeclaration &_stmt) {
+    ENTER(LemmaDeclaration, _stmt);
+    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), &_stmt, Statement, setLabel);
+    TRAVERSE(Expression, LemmaDeclBody, _stmt.getProposition(), &_stmt, LemmaDeclaration, setProposition);
+    EXIT();
+}
+
 bool Visitor::traversePredicate(Predicate &_stmt) {
     ENTER(Predicate, _stmt);
     TRAVERSE(Label, StmtLabel, _stmt.getLabel(), &_stmt, Statement, setLabel);
@@ -762,6 +771,7 @@ bool Visitor::_traverseAnonymousPredicate(AnonymousPredicate &_decl) {
 
     TRAVERSE(Formula, PredicatePreCondition, _decl.getPreCondition(), &_decl, AnonymousPredicate, setPreCondition);
     TRAVERSE(Formula, PredicatePostCondition, _decl.getPostCondition(), &_decl, AnonymousPredicate, setPostCondition);
+    TRAVERSE(Expression, PredicateMeasure, _decl.getMeasure(), &_decl, AnonymousPredicate, setMeasure);
     TRAVERSE(Block, PredicateBody, _decl.getBlock(), &_decl, AnonymousPredicate, setBlock);
 
     return true;
@@ -772,6 +782,7 @@ bool Visitor::_traverseDeclarationGroup(DeclarationGroup &_decl) {
     TRAVERSE_COL(TypeDeclaration, TypeDecl, &_decl.getTypes());
     TRAVERSE_COL(VariableDeclaration, VarDecl, &_decl.getVariables());
     TRAVERSE_COL(FormulaDeclaration, FormulaDecl, &_decl.getFormulas());
+    TRAVERSE_COL(LemmaDeclaration, LemmaDecl, &_decl.getLemmas());
     TRAVERSE_COL(Message, MessageDecl, &_decl.getMessages());
     TRAVERSE_COL(Process, ProcessDecl, &_decl.getProcesses());
     return true;

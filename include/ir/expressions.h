@@ -1202,7 +1202,7 @@ class PredicateType;
 class AnonymousPredicate : public Statement {
 public:
     /// Default constructor.
-    AnonymousPredicate() : m_pPreCond(NULL), m_pPostCond(NULL), m_pBlock(NULL), m_pType(NULL) {}
+    AnonymousPredicate() : m_pPreCond(NULL), m_pPostCond(NULL), m_pBlock(NULL), m_pType(NULL), m_pMeasure(NULL) {}
 
     /// Destructor.
     virtual ~AnonymousPredicate();
@@ -1251,6 +1251,17 @@ public:
         _assign(m_pPostCond, _pCondition, _bReparent);
     }
 
+    /// Get measure function as nat-typed expression dependent on parameters.
+    /// \return Measure function.
+    Expression *getMeasure() const { return m_pMeasure; }
+
+    /// Set measure function.
+    /// \param _pMeasure Measure function.
+    /// \param _bReparent If specified (default) also sets parent of _pMeasure to this node.
+    void setMeasure(Expression *_pMeasure, bool _bReparent = true) {
+        _assign(m_pMeasure, _pMeasure, _bReparent);
+    }
+
     /// Check if the predicate is a hyperfunction.
     /// \return True if the predicate has more than one branch or it's branch has
     ///   a handler assigned.
@@ -1276,6 +1287,7 @@ private:
     Formula * m_pPreCond, * m_pPostCond;
     Block * m_pBlock;
     mutable PredicateType * m_pType;
+    Expression *m_pMeasure;
 };
 
 /// Anonymous predicate.

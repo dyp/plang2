@@ -167,8 +167,10 @@ TokenMap::TokenMap() {
 	_add(L"type",      TYPE);
 	_add(L"predicate", PREDICATE);
 	_add(L"formula",   FORMULA);
+	_add(L"lemma",     LEMMA);
 	_add(L"pre",       PRE);
 	_add(L"post",      POST);
+	_add(L"measure",   MEASURE);
 	_add(L"process",   PROCESS);
 	_add(L"class",     CLASS);
 	_add(L"extends",   EXTENDS);

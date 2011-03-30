@@ -207,6 +207,9 @@ public:
     template<class _Pred>
     bool parsePostconditions(Context & _ctx, _Pred & _pred, branch_map_t & _branches);
 
+    template<class _Pred>
+    bool parseMeasure(Context & _ctx, _Pred & _pred);
+
 private:
     Tokens & m_tokens;
     std::vector<operator_t> m_ops;
@@ -1023,6 +1026,21 @@ bool Parser::parsePostconditions(Context & _ctx, _Pred & _pred, branch_map_t & _
     return true;
 }
 
+template<class _Pred>
+bool Parser::parseMeasure(Context &_ctx, _Pred &_pred) {
+    if (!_ctx.consume(MEASURE))
+        return false;
+
+    Expression *pMeasure = parseExpression(_ctx);
+
+    if (!pMeasure)
+        ERROR(_ctx, false, L"Expression expected");
+
+    _pred.setMeasure(pMeasure);
+
+    return true;
+}
+
 bool Parser::fixupAsteriskedParameters(Context & _ctx, Params & _in, Params & _out) {
     bool bResult = false;
 
@@ -1125,6 +1143,10 @@ bool Parser::parsePredicateParamsAndBody(Context & _ctx, AnonymousPredicate & _p
     if (_ctx.is(POST))
         if (! parsePostconditions(_ctx, _pred, branches))
             ERROR(_ctx, false, L"Failed parsing postconditions");
+
+    if (_ctx.is(MEASURE))
+        if (!parseMeasure(_ctx, _pred))
+            ERROR(_ctx, false, L"Failed parsing measure");
 
     return true;
 }
@@ -2826,6 +2848,18 @@ bool Parser::parseDeclarations(Context & _ctx, Module & _module) {
                 if (! pFormula)
                     ERROR(* pCtx, false, L"Failed parsing formula declaration");
                 _module.getFormulas().add(pFormula);
+                 break;
+            }
+            case LEMMA: {
+                ++*pCtx;
+                LemmaDeclaration *pLemma = pCtx->attach(new LemmaDeclaration());
+                Expression *pProposition = parseExpression(*pCtx, ALLOW_FORMULAS);
+
+                if (pProposition == NULL)
+                    ERROR(*pCtx, false, L"Failed parsing lemma declaration");
+
+                pLemma->setProposition(pProposition);
+                _module.getLemmas().add(pLemma);
                  break;
             }
             case PRAGMA: {

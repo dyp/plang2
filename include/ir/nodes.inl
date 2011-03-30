@@ -75,6 +75,7 @@ NODE(Send, Statement)
 NODE(TypeDeclaration, Statement)
 NODE(VariableDeclaration, Statement)
 NODE(FormulaDeclaration, Statement)
+NODE(LemmaDeclaration, Statement)
 NODE(Predicate, Statement)
 
 // Misc.

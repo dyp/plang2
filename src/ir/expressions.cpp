@@ -30,6 +30,7 @@ AnonymousPredicate::~AnonymousPredicate() {
     _delete(m_pPostCond);
     _delete(m_pBlock);
     _delete(m_pType);
+    _delete(m_pMeasure);
 }
 
 void AnonymousPredicate::updateType() const {
