@@ -5,6 +5,8 @@ set(TESTS
     inference/literals.psrc
     inference/literals_structured.psrc
     inference/literals_negative.psrc
+    parsing/logic_mul.psrc
+    parsing/logic_gcd.psrc
 )
 
 foreach(TEST ${TESTS})

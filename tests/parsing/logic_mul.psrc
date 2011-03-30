@@ -1,0 +1,36 @@
+/*
+
+<test>
+	//PredicateDecl = Умн
+	//Умн/PredicatePreCondition = Formula
+	//Умн/PredicatePostCondition = Formula
+	//Умн/PredicateMeasure = a
+	//FormulaDecl = P
+	//FormulaDecl = Q
+	//PredicateDecl = m
+	//LemmaDecl
+</test>
+
+*/
+
+// Input:
+Умн(nat a, b : nat c)
+pre a >= 0 & b >= 0
+{
+	if (a = 0) c = 0 else c = b + Умн(a - 1, b);
+}
+post c = a*b
+measure a;
+
+// Semantics:
+formula P(nat a, b) = a >= 0 & b >= 0;
+lemma forall nat a, b . P(a, b) & a != 0 => a - 1 >= 0;
+
+// Verification:
+formula Q(nat a, b, c) = c = a*b;
+m(nat a: nat m) { m = a; }
+lemma forall nat a, b . P(a, b) & a != 0 => a - 1 >= 0;
+lemma forall nat a, b . P(a, b) => exists nat c . Q(a, b, c);
+lemma forall nat a, b, c . P(a, b) & Q(a, b, c) & a != 0 => m(a - 1) < m(a) & P(a - 1, b);
+lemma forall nat a, b, c, x . P(a, b) & Q(a, b, c) & a != 0 & Q(a - 1, b, x) => c = a * x;
+

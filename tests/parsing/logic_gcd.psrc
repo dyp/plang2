@@ -1,0 +1,39 @@
+/*
+
+<test>
+	//LemmaDecl//Ternary//Ternary
+</test>
+
+*/
+
+// Input:
+formula divisor(nat x, a) = exists nat z. x*z = a;
+formula divisor2(nat с, a, b) = divisor(с, a) & divisor(с, b);
+formula НОД(nat c, a, b) = divisor2(c, a, b) & forall nat x . (divisor2(x, a, b) => x <= c);
+
+D(nat a, b : nat c)
+pre a >= 1 & b >= 1
+{
+	if (a = b)
+		c = a
+	else if (a < b)
+		D(a, b - a : c)
+	else
+		D(a - b, b : c)
+}
+post НОД(c, a, b)
+measure a + b;
+
+// Semantics:
+formula P(nat a, b) = a >= 1 & b >= 1;
+lemma forall nat a, b . P(a, b) & a != b & a < b => b - a >= 1;
+lemma forall nat a, b . P(a, b) & a != b & a >= b => a - b >= 1;
+
+// Verification:
+lemma forall nat a, b . P(a, b) => exists nat c . НОД(c, a, b);
+m(nat a, b: nat m) { m = a + b; }
+lemma forall nat a, b, c . P(a, b) & НОД(c, a, b) =>
+	a = b ? c = a :
+		(a < b ? m(a, b - a) < m(a, b) & P(a, b - a) & НОД(c, a, b - a) :
+			m(a - b, b) < m(a, b) & P(a - b, b) & НОД(c, a - b, b));
+
