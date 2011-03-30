@@ -37,19 +37,23 @@ def extractTest(_fileName):
             s += "\n"
     return s
 
+def makeRegExPart(_part):
+    return re.sub(r"/([^|/]*)(?=(/|\Z))", r"/([^/=]*\||)\1(\|[^/=]*|)", _part)
+
 def makeRegEx(_test):
     s = ""
-    if _test[0] != '/':
-        s = r"[^=]*(?=/)"
-        _test = "/" + _test
+    if not _test.startswith(r"/"):
+        _test = r"//" + _test
 
-    for p in re.split(r"/(?=/)", _test):
-        if p:
-            s += re.sub(r"/([^|/]*)(?=(/|\Z))", r"/([^/=]*\||)\1(\|[^/=]*|)", p)
-        else:
-            s += r"/[^=]*"
+    ps = re.split(r"/(?=/)", _test)
 
-    return s + r"[^/=]*(=|\Z)"
+    if ps[0]:
+        s += makeRegExPart(ps[0])
+
+    for p in ps[1:]:
+        s += r"(/[^=/]*)*" + makeRegExPart(p)
+
+    return s + r"(\|[^/=|]*|\s+)*(=|\Z)"
 
 if len(sys.argv) < 2:
     print "No filename given"
