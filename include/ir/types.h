@@ -643,6 +643,7 @@ public:
     }
 
     virtual int compare(const Type &_other) const;
+    virtual bool less(const Type & _other) const;
 
     // TODO implement join/meet/less/etc.
 

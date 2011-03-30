@@ -25,6 +25,49 @@ bool PredicateType::hasFresh() const {
     return false;
 }
 
+bool PredicateType::less(const Type & _other) const {
+    assert(_other.getKind() == PREDICATE);
+
+    const PredicateType &other = (const PredicateType &)_other;
+
+    if (m_paramsIn.size() != other.m_paramsIn.size())
+        return m_paramsIn.size() < other.m_paramsIn.size();
+
+    if (m_paramsOut.size() != other.m_paramsOut.size())
+        return m_paramsOut.size() < other.m_paramsOut.size();
+
+    for (size_t i = 0; i < getOutParams().size(); ++i) {
+        Branch &branch = *getOutParams().get(i);
+        Branch &branchOther = *other.getOutParams().get(i);
+
+        if (branch.size() != branchOther.size())
+            return branch.size() < branchOther.size();
+    }
+
+    for (size_t i = 0; i < getInParams().size(); ++i) {
+        const Param &p = *getInParams().get(i);
+        const Param &q = *other.getInParams().get(i);
+
+        if (p.getType() != q.getType())
+            return *p.getType() < *q.getType();
+    }
+
+    for (size_t i = 0; i < getOutParams().size(); ++i) {
+        Branch &branch = *getOutParams().get(i);
+        Branch &branchOther = *other.getOutParams().get(i);
+
+        for (size_t j = 0; j < branch.size(); ++j) {
+            const Param &p = *branch.get(j);
+            const Param &q = *branchOther.get(j);
+
+            if (p.getType() != q.getType())
+                return *p.getType() < *q.getType();
+        }
+    }
+
+    return false;
+}
+
 bool PredicateType::rewrite(ir::Type * _pOld, ir::Type * _pNew) {
     bool bResult = false;
 
