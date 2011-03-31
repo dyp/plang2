@@ -354,7 +354,7 @@ bool Visitor::traverseComponent(Component &_expr) {
         case Component::ARRAY_PART:
             return traverseArrayPartExpr((ArrayPartExpr &)_expr);
         case Component::STRUCT_FIELD:
-            return traverseStructFieldExpr((StructFieldExpr &)_expr);
+            return traverseFieldExpr((FieldExpr &)_expr);
         case Component::UNION_ALTERNATIVE:
             return traverseUnionAlternativeExpr((UnionAlternativeExpr &)_expr);
         case Component::MAP_ELEMENT:
@@ -370,34 +370,40 @@ bool Visitor::traverseComponent(Component &_expr) {
 
 bool Visitor::traverseArrayPartExpr(ArrayPartExpr &_expr) {
     ENTER(ArrayPartExpr, _expr);
+    TRAVERSE(Expression, ArrayPartObject, _expr.getObject(), &_expr, Component, setObject);
     TRAVERSE_COL(Expression, ArrayPartIndex, &_expr.getIndices());
     EXIT();
 }
 
-bool Visitor::traverseStructFieldExpr(StructFieldExpr &_expr) {
-    ENTER(StructFieldExpr, _expr);
+bool Visitor::traverseFieldExpr(FieldExpr &_expr) {
+    ENTER(FieldExpr, _expr);
+    TRAVERSE(Expression, FieldObject, _expr.getObject(), &_expr, Component, setObject);
     EXIT();
 }
 
 bool Visitor::traverseUnionAlternativeExpr(UnionAlternativeExpr &_expr) {
     ENTER(UnionAlternativeExpr, _expr);
+    TRAVERSE(Expression, UnionAlternativeObject, _expr.getObject(), &_expr, Component, setObject);
     EXIT();
 }
 
 bool Visitor::traverseMapElementExpr(MapElementExpr &_expr) {
     ENTER(MapElementExpr, _expr);
+    TRAVERSE(Expression, MapElementObject, _expr.getObject(), &_expr, Component, setObject);
     TRAVERSE(Expression, MapElementIndex, _expr.getIndex(), &_expr, MapElementExpr, setIndex);
     EXIT();
 }
 
 bool Visitor::traverseListElementExpr(ListElementExpr &_expr) {
     ENTER(ListElementExpr, _expr);
+    TRAVERSE(Expression, ListElementObject, _expr.getObject(), &_expr, Component, setObject);
     TRAVERSE(Expression, ListElementIndex, _expr.getIndex(), &_expr, ListElementExpr, setIndex);
     EXIT();
 }
 
 bool Visitor::traverseReplacement(Replacement &_expr) {
     ENTER(Replacement, _expr);
+    TRAVERSE(Expression, ReplacementObject, _expr.getObject(), &_expr, Component, setObject);
     TRAVERSE(Constructor, ReplacementValue, _expr.getNewValues(), &_expr, Replacement, setNewValues);
     EXIT();
 }

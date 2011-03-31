@@ -369,33 +369,8 @@ Expression * Parser::parseComponent(Context & _ctx, Expression & _base) {
 
     if (ctx.is(DOT)) {
         const std::wstring & fieldName = ctx.scan(2, 1);
-        Component * pExpr = new StructFieldExpr(fieldName);
-        /*const Type * pBaseType = resolveBaseType(_base.getType());
+        Component * pExpr = new FieldExpr(fieldName);
 
-        if (! pBaseType || (pBaseType->getKind() != Type::Struct && pBaseType->getKind() != Type::Union))
-            ERROR(ctx, NULL, L"Struct or union typed expression expected");
-
-        const std::wstring & fieldName = ctx.scan(2, 1);
-        Component * pExpr = NULL;
-
-        if (pBaseType->getKind() == Type::Struct) {
-            StructType * pStruct = (StructType *) pBaseType;
-            const size_t cFieldIdx = findByNameIdx(pStruct->getFields(), fieldName);
-
-            if (cFieldIdx != (size_t) -1)
-                pExpr = new StructFieldExpr(pStruct, cFieldIdx, false);
-        } else {
-            UnionType * pUnion = (UnionType *) pBaseType;
-            union_field_idx_t idx = pUnion->findField(fieldName);
-
-            if (idx.first != (size_t) -1) {
-                pExpr = new UnionAlternativeExpr(pUnion, idx);
-            }
-        }
-
-        if (! pExpr)
-            ERROR(ctx, NULL, L"Could not find component %ls", fieldName.c_str());
-*/
         _ctx.mergeChildren();
         _ctx.attach(pExpr);
         pExpr->setObject(& _base);

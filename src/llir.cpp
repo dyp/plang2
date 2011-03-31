@@ -67,7 +67,7 @@ public:
     Operand translateStringLiteral(const std::wstring & _str, Instructions & _instrs);
     Operand translate(const ir::Ternary & _expr, Instructions & _instrs);
     Operand translate(const ir::Component & _expr, Instructions & _instrs);
-    Operand translate(const ir::StructFieldExpr & _expr, Instructions & _instrs);
+    Operand translate(const ir::FieldExpr & _expr, Instructions & _instrs);
     Operand translate(const ir::UnionAlternativeExpr & _expr, Instructions & _instrs);
     Operand translate(const ir::Constructor & _expr, Instructions & _instrs);
     Operand translateEq(const ir::Type * _pType, const Operand & _lhs, const Operand & _rhs, Instructions & _instrs);
@@ -606,7 +606,7 @@ Operand Translator::translate(const ir::Binary & _expr, Instructions & _instrs) 
 Operand Translator::translate(const ir::Component & _expr, Instructions & _instrs) {
     switch (_expr.getComponentKind()) {
         case ir::Component::STRUCT_FIELD:
-            return translate((ir::StructFieldExpr &) _expr, _instrs);
+            return translate((ir::FieldExpr &) _expr, _instrs);
         case ir::Component::UNION_ALTERNATIVE:
             return translate((ir::UnionAlternativeExpr &) _expr, _instrs);
     }
@@ -614,7 +614,7 @@ Operand Translator::translate(const ir::Component & _expr, Instructions & _instr
     assert(false);
 }
 
-Operand Translator::translate(const ir::StructFieldExpr & _expr, Instructions & _instrs) {
+Operand Translator::translate(const ir::FieldExpr & _expr, Instructions & _instrs) {
 /*    const ir::StructType * pStruct = _expr.getStructType();
     Auto<StructType> st = translate(* pStruct);
     Operand object = translate(* _expr.getObject(), _instrs);

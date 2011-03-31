@@ -30,7 +30,7 @@ public:
     virtual bool visitSetConstructor(SetConstructor &_cons);
     virtual bool visitArrayConstructor(ArrayConstructor &_cons);
     virtual bool visitMapConstructor(MapConstructor &_cons);
-    virtual bool visitField(StructFieldExpr &_field);
+    virtual bool visitField(FieldExpr &_field);
     virtual bool visitCastExpr(CastExpr &_cast);
     virtual bool visitAssignment(Assignment &_assignment);
     virtual bool visitVariableDeclaration(VariableDeclaration &_var);
@@ -624,7 +624,7 @@ bool Collector::visitMapConstructor(MapConstructor &_cons) {
     return true;
 }
 
-bool Collector::visitField(StructFieldExpr &_field) {
+bool Collector::visitField(FieldExpr &_field) {
     tc::FreshType *pFresh = createFresh(&_field);
     ir::StructType * pStruct = m_ctx.attach(new StructType());
     ir::NamedValue * pField = new NamedValue(_field.getFieldName(), pFresh, false);

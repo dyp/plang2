@@ -801,9 +801,9 @@ private:
 class StructType;
 
 /// Structure field.
-class StructFieldExpr : public Component {
+class FieldExpr : public Component {
 public:
-    StructFieldExpr(const std::wstring & _strField = L"") : m_strField(_strField) {}
+    FieldExpr(const std::wstring & _strField = L"") : m_strField(_strField) {}
 
     /// Get component kind.
     /// \return #StructField.
@@ -814,59 +814,6 @@ public:
 private:
     std::wstring m_strField;
 };
-
-/*
-
-/// Structure field.
-class StructFieldExpr : public Component {
-public:
-    /// Default constructor.
-    StructFieldExpr() : m_pStructType(NULL), m_cFieldIdx(-1) {}
-
-    /// Initialize with type and field.
-    /// \param _pStructType Structure type.
-    /// \param _cFieldIdx Structure field index.
-    /// \param _bReparent If specified (default) also sets parent of _pStructType to this node.
-    StructFieldExpr(Type * _pStructType, size_t _cFieldIdx, bool _bReparent = true) : m_pStructType(NULL), m_cFieldIdx(_cFieldIdx) {
-        _assign(m_pStructType, (Type *) _pStructType, _bReparent);
-    }
-
-    /// Destructor.
-    virtual ~StructFieldExpr() { _delete(m_pStructType); }
-
-    /// Get component kind.
-    /// \return #StructField.
-    virtual int getComponentKind() const { return StructField; }
-
-    /// Get corresponding structure type.
-    /// \return Structure type.
-    StructType * getStructType() const { return (StructType *) m_pStructType; }
-
-    /// Set corresponding structure type.
-    /// \param _pStructType Structure type.
-    /// \param _bReparent If specified (default) also sets parent of _pStructType to this node.
-    void setStructType(StructType * _pStructType, bool _bReparent = true) {
-        _assign(m_pStructType, (Type *) _pStructType, _bReparent);
-    }
-
-    /// Get corresponding structure field.
-    /// \return Structure field.
-    const NamedValue * getField() const;
-
-    /// Get corresponding structure field index.
-    /// \return Structure field index.
-    size_t getFieldIdx() const { return m_cFieldIdx; }
-
-    /// Set corresponding structure field index.
-    /// \param _pField Structure field.
-    void setField(size_t _cFieldIdx) { m_cFieldIdx = _cFieldIdx; }
-
-private:
-    Type * m_pStructType;
-    size_t m_cFieldIdx;
-};
-
- */
 
 class UnionType;
 class UnionConstructorDeclaration;

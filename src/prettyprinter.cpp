@@ -235,7 +235,7 @@ protected:
             PROP(Overflow, Overflow);
     );
 
-    VISITOR(StructFieldExpr,
+    VISITOR(FieldExpr,
             PROP(Quote, FieldName);
     );
 
