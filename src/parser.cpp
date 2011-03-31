@@ -2650,6 +2650,9 @@ FormulaDeclaration * Parser::parseFormulaDeclaration(Context & _ctx) {
     Context * pCtx = _ctx.createChild(false);
     FormulaDeclaration * pDecl = pCtx->attach(new FormulaDeclaration(pCtx->scan(2, 1)));
 
+    pCtx->addFormula(pDecl);
+    pCtx = pCtx->createChild(true);
+
     if (!pCtx->consume(LPAREN))
         UNEXPECTED(*pCtx, "(");
 
