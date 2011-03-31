@@ -31,7 +31,7 @@ lemma forall nat a, b . P(a, b) & a != b & a >= b => a - b >= 1;
 
 // Verification:
 lemma forall nat a, b . P(a, b) => exists nat c . НОД(c, a, b);
-m(nat a, b: nat m) { m = a + b; }
+formula m(nat a, b : nat) = a + b;
 lemma forall nat a, b, c . P(a, b) & НОД(c, a, b) =>
 	a = b ? c = a :
 		(a < b ? m(a, b - a) < m(a, b) & P(a, b - a) & НОД(c, a, b - a) :

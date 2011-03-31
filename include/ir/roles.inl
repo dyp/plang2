@@ -96,6 +96,7 @@ ROLE(TypeDeclBody)
 ROLE(VarDeclVar)
 ROLE(VarDeclInit)
 ROLE(FormulaDeclParams)
+ROLE(FormulaDeclResultType)
 ROLE(FormulaDeclBody)
 ROLE(LemmaDeclBody)
 

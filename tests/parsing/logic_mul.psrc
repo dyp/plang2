@@ -7,7 +7,7 @@
 	//Умн/PredicateMeasure = a
 	//FormulaDecl = P
 	//FormulaDecl = Q
-	//PredicateDecl = m
+	//FormulaDecl = m
 	//LemmaDecl
 </test>
 
@@ -28,7 +28,7 @@ lemma forall nat a, b . P(a, b) & a != 0 => a - 1 >= 0;
 
 // Verification:
 formula Q(nat a, b, c) = c = a*b;
-m(nat a: nat m) { m = a; }
+formula m(nat a: nat) = a;
 lemma forall nat a, b . P(a, b) & a != 0 => a - 1 >= 0;
 lemma forall nat a, b . P(a, b) => exists nat c . Q(a, b, c);
 lemma forall nat a, b, c . P(a, b) & Q(a, b, c) & a != 0 => m(a - 1) < m(a) & P(a - 1, b);

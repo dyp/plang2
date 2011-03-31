@@ -274,7 +274,14 @@ public:
 
     /// Initialize with formula name.
     /// \param _strName Declared type name.
-    FormulaDeclaration(const std::wstring & _strName) : m_strName(_strName), m_pFormula(NULL) {}
+    /// \param _pType Result type.
+    /// \param _bReparent If specified (default) also sets parent of _pType to this node.
+    FormulaDeclaration(const std::wstring &_strName, Type *_pType = NULL, bool _bReparent = true) : m_strName(_strName), m_pFormula(NULL), m_pType(NULL) {
+        if (!_pType)
+            _assign(m_pType, new Type(Type::BOOL), true);
+        else
+            _assign(m_pType, _pType, _bReparent);
+    }
 
     /// Destructor.
     virtual ~FormulaDeclaration() {
@@ -296,8 +303,19 @@ public:
     /// \param _strName Identifier.
     void setName(const std::wstring & _strName) { m_strName = _strName; }
 
+    /// Get result type.
+    /// \return Type reference.
+    Type *getResultType() { return m_pType; }
+
+    /// Set result type.
+    /// \param _pType Result type.
+    /// \param _bReparent If specified (default) also sets parent of _pType to this node.
+    void setResultType(Type *_pType, bool _bReparent = true) {
+        _assign(m_pType, _pType, _bReparent);
+    }
+
     /// Get declared formula.
-    /// \return Postcondition.
+    /// \return Formula.
     Expression * getFormula() const { return m_pFormula; }
 
     /// Set declared formula postcondition.
@@ -311,6 +329,7 @@ private:
     std::wstring m_strName;
     NamedValues m_params;
     Expression * m_pFormula;
+    Type *m_pType;
 };
 
 /// Lemma declaration.

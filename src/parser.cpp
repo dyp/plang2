@@ -2675,10 +2675,24 @@ FormulaDeclaration * Parser::parseFormulaDeclaration(Context & _ctx) {
     Context * pCtx = _ctx.createChild(false);
     FormulaDeclaration * pDecl = pCtx->attach(new FormulaDeclaration(pCtx->scan(2, 1)));
 
-    if (pCtx->consume(LPAREN) && ! pCtx->consume(RPAREN)) {
+    if (!pCtx->consume(LPAREN))
+        UNEXPECTED(*pCtx, "(");
+
+    if (!pCtx->consume(RPAREN)) {
         pCtx = pCtx->createChild(true);
+
         if (! parseParamList(* pCtx, pDecl->getParams(), & Parser::parseVariableName))
             return NULL;
+
+        if (pCtx->consume(COLON)) {
+            Type *pType = parseType(*pCtx);
+
+            if (!pType)
+                ERROR(*pCtx, NULL, L"Failed parsing formula result type");
+
+            pDecl->setResultType(pType);
+        }
+
         if (! pCtx->consume(RPAREN))
             UNEXPECTED(* pCtx, ")");
     }

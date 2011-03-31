@@ -1,0 +1,11 @@
+/*
+
+<test>
+	//m1/FormulaDeclResultType = nat
+	//m2/FormulaDeclResultType = bool
+</test>
+
+*/
+
+formula m1(nat a, b : nat) = a*b;
+formula m2(nat a, b) = a*b > 0;
