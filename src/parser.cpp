@@ -2804,7 +2804,7 @@ bool Parser::parseDeclarations(Context & _ctx, Module & _module) {
                         ERROR(* pCtx, false, L"Failed parsing predicate");
                     _module.getPredicates().add(pPred);
                     typecheck(*pCtx, *pPred);
-                     break;
+                    break;
                 }
                 // no break;
             }
@@ -2826,7 +2826,7 @@ bool Parser::parseDeclarations(Context & _ctx, Module & _module) {
                 if (! pCtx->consume(SEMICOLON))
                     ERROR(* pCtx, false, L"Semicolon expected");
                 _module.getTypes().add(pDecl);
-                 break;
+                break;
             }
             case PROCESS: {
                 Process * pProcess = parseProcess(* pCtx);
@@ -2840,7 +2840,7 @@ bool Parser::parseDeclarations(Context & _ctx, Module & _module) {
                 if (! pFormula)
                     ERROR(* pCtx, false, L"Failed parsing formula declaration");
                 _module.getFormulas().add(pFormula);
-                 break;
+                break;
             }
             case LEMMA: {
                 ++*pCtx;
@@ -2852,7 +2852,7 @@ bool Parser::parseDeclarations(Context & _ctx, Module & _module) {
 
                 pLemma->setProposition(pProposition);
                 _module.getLemmas().add(pLemma);
-                 break;
+                break;
             }
             case PRAGMA: {
                 Context * pCtxNew = parsePragma(* pCtx);
