@@ -15,6 +15,7 @@ set(TESTS_PARSING
     parsing/logic_mul.psrc
     parsing/logic_gcd.psrc
     parsing/formula_result.psrc
+    parsing/field_expr.psrc
 )
 
 set(TESTS_INFERENCE

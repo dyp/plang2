@@ -1,0 +1,11 @@
+/*
+
+<test>
+	//FieldExpr = baz
+	//FieldObject = foo
+</test>
+
+*/
+
+var foo;
+var bar = foo.baz;
