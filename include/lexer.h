@@ -52,6 +52,9 @@ public:
     int getLine() const { return m_line; }
     int getCol() const  { return m_col; }
 
+    bool hasLeadingSpace() const { return m_bHasLeadingSpace; }
+    void setLeadingSpace(bool _bValue) { m_bHasLeadingSpace = _bValue; }
+
     void setValue(const std::wstring & _str) { m_value = _str; }
     const std::wstring & getValue() const    { return m_value; }
 
@@ -63,6 +66,7 @@ public:
 private:
     int m_kind, m_line, m_col;
     std::wstring m_value;
+    bool m_bHasLeadingSpace;
 };
 
 typedef std::list<Token> Tokens;

@@ -273,7 +273,7 @@ private:
     void _putbackStr(const std::wstring & _s);
 
     bool _matchToken(Token & _tok);
-    void _skipWhitespaceAndComments();
+    bool _skipWhitespaceAndComments();
     void _skipWhitespace();
     bool _skipComments();
 
@@ -457,7 +457,9 @@ bool Tokenizer::_skipComments() {
     throw ELexerException("Unterminated comment", nLine, nCol);
 }
 
-void Tokenizer::_skipWhitespaceAndComments() {
+bool Tokenizer::_skipWhitespaceAndComments() {
+    bool bGotWhitespaceOrComments = false;
+
     while (! m_is.eof()) {
         const wchar_t c = _peek();
 
@@ -468,7 +470,11 @@ void Tokenizer::_skipWhitespaceAndComments() {
                 break;
         } else
             break;
+
+        bGotWhitespaceOrComments = true; // Otherwise we'd have already exited the loop.
     }
+
+    return bGotWhitespaceOrComments;
 }
 
 bool Tokenizer::_matchIdentifier(Token & _tok) {
@@ -710,8 +716,7 @@ void Tokenizer::run() {
     Token tok;
 
     while (! m_is.eof()) {
-        _skipWhitespaceAndComments();
-
+        const bool bLeadingSpace = _skipWhitespaceAndComments();
         const int nLine = m_nLine, nCol = m_nCol;
         const wchar_t c = _peek();
         bool bMatched = false;
@@ -754,6 +759,7 @@ void Tokenizer::run() {
         }
 
         tok.setPos(nLine, nCol);
+        tok.setLeadingSpace(bLeadingSpace);
         m_tokens.push_back(tok);
     }
 
