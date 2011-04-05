@@ -11,9 +11,10 @@ using namespace ir;
         if (m_path.empty())                                         \
             m_path.push_back(Loc(&_PARAM, N_##_TYPE, R_TopLevel));  \
         if (m_order == PARENTS_FIRST) {                             \
-            callRoleHandler();                                      \
+            callRoleHandler(true);                                  \
             if (!walkUpFrom##_TYPE(_PARAM))                         \
                 return !isStopped();                                \
+            callRoleHandler(false);                                 \
         } else                                                      \
             getLoc().walkUp = &Visitor::walkUpFrom##_TYPE;          \
     } while (0);
@@ -21,9 +22,10 @@ using namespace ir;
 #define EXIT()                              \
     do {                                    \
         if (m_order == CHILDREN_FIRST) {    \
-            callRoleHandler();              \
+            callRoleHandler(true);          \
             if (!callWalkUp())              \
                 return !isStopped();        \
+            callRoleHandler(false);         \
         }                                   \
         return true;                        \
     } while (0)
@@ -34,7 +36,8 @@ using namespace ir;
             return false;                                                                   \
         if ((_PARAM) != NULL) {                                                             \
             NodeSetterImpl< _PTYPE, _TYPE, &_PTYPE::_SETTER > setter(_PARENT);              \
-            Ctx ctx(this, _PARAM, N_##_TYPE, R_##_ROLE, &Visitor::handle##_ROLE, &setter);  \
+            Ctx ctx(this, _PARAM, N_##_TYPE, R_##_ROLE, &Visitor::handle##_ROLE,            \
+                &Visitor::handle##_ROLE##Post, &setter);                                    \
             if (!traverse##_TYPE(*(_PARAM)))                                                \
                 return false;                                                               \
         }                                                                                   \
@@ -45,7 +48,8 @@ using namespace ir;
         if (isStopped())                                                                \
             return false;                                                               \
         if ((_PARAM) != NULL) {                                                         \
-            Ctx ctx(this, _PARAM, N_##_TYPE, R_##_ROLE, &Visitor::handle##_ROLE, NULL); \
+            Ctx ctx(this, _PARAM, N_##_TYPE, R_##_ROLE, &Visitor::handle##_ROLE,        \
+                &Visitor::handle##_ROLE##Post, NULL);                                   \
             if (!traverseCollection(*(_PARAM)))                                         \
                 return false;                                                           \
         }                                                                               \
