@@ -442,8 +442,12 @@ public:
     }
 
     virtual bool visitUnionConstructorDeclaration(UnionConstructorDeclaration &_cons) {
+        if (&_cons != m_pRoot && getLoc().bPartOfCollection && !getLoc().bFirstInCollection)
+            m_os << L", ";
+
         m_os << _cons.getName();
-        traverseStructType(_cons.getStruct());
+        if (!_cons.getStruct().getFields().empty())
+            traverseStructType(_cons.getStruct());
         return false;
     }
 
