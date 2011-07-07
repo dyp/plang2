@@ -13,6 +13,12 @@ int UnionType::compare(const Type & _other) const {
     if (_other.getKind() == FRESH)
         return ORD_UNKNOWN;
 
+    if (_other.getKind() == TOP)
+        return ORD_SUB;
+
+    if (_other.getKind() == BOTTOM)
+        return ORD_SUPER;
+
     if (_other.getKind() != UNION)
         return ORD_NONE;
 

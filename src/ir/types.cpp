@@ -54,6 +54,11 @@ int Type::compare(const Type & _other) const {
     if (this == & _other)
         return ORD_EQUALS;
 
+    if (getKind() == BOTTOM || _other.getKind() == TOP)
+        return getKind() == _other.getKind() ? ORD_EQUALS : ORD_SUB;
+    if (getKind() == TOP || _other.getKind() == BOTTOM)
+        return getKind() == _other.getKind() ? ORD_EQUALS : ORD_SUPER;
+
     if (getKind() == FRESH || _other.getKind() == FRESH) {
         if (contains(&_other) || _other.contains(this))
             return ORD_NONE;
@@ -237,6 +242,12 @@ bool TypeType::rewrite(ir::Type * _pOld, ir::Type * _pNew) {
 int TypeType::compare(const Type &_other) const {
     if (_other.getKind() == FRESH)
         return ORD_UNKNOWN;
+
+    if (_other.getKind() == TOP)
+        return ORD_SUB;
+
+    if (_other.getKind() == BOTTOM)
+        return ORD_SUPER;
 
     if (_other.getKind() != getKind())
         return ORD_NONE;

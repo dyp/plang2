@@ -233,6 +233,10 @@ public:
     enum {
         /// Fresh type (for typechecking purposes).
         FRESH,
+        /// Bottom type (subtype of any type).
+        BOTTOM,
+        /// Top type (supertype of any type).
+        TOP,
         /// Unit type (\c nil, (), [], etc.)
         UNIT,
         /// \c nat type. Use getBits() and setBits() to access bitness.

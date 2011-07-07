@@ -97,6 +97,12 @@ int PredicateType::compare(const Type &_other) const {
     if (_other.getKind() == FRESH)
         return ORD_UNKNOWN;
 
+    if (_other.getKind() == TOP)
+        return ORD_SUB;
+
+    if (_other.getKind() == BOTTOM)
+        return ORD_SUPER;
+
     if (_other.getKind() != getKind())
         return ORD_NONE;
 

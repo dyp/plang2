@@ -144,6 +144,8 @@ std::wstring PrettyPrinterBase::fmtIndent(const std::wstring & _s) {
 std::wstring PrettyPrinterBase::fmtType(int _kind) {
     switch (_kind) {
         case Type::FRESH:   return fmtFreshType(*(tc::FreshType *)getLoc().pNode);
+        case Type::BOTTOM:  return L"\x22a5";
+        case Type::TOP:     return L"\x22a4";
         case Type::UNIT:    return L"nil";
         case Type::INT:     return L"int";
         case Type::NAT:     return L"nat";
