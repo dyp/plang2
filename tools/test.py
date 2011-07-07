@@ -99,7 +99,7 @@ for test in extractTest(sys.argv[1]).split('\n'):
     if val:
         val = re.escape(val)
         if op == "~":
-            val = r".*\b" + val + r"\b.*"
+            val = r"(.*\b|.*\B|^)" + val + r"(\b.*|\B.*|$)"
 
     for ln in lns:
         ln = ln.strip()
