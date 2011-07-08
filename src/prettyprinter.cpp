@@ -101,7 +101,7 @@ static std::wstring fmtChar(wchar_t _c) {
 }
 
 static std::wstring fmtLiteral(const Literal &_lit) {
-    switch (_lit.getKind()) {
+    switch (_lit.getLiteralKind()) {
         case Literal::UNIT:   return L"nil";
         case Literal::NUMBER: return fmtNumber(_lit.getNumber());
         case Literal::BOOL:   return fmtBool(_lit.getBool());
@@ -216,6 +216,11 @@ protected:
             m_os << fmtIndent(L" `- " WIDEN(#_NAME) L" = ") + fmt##_FMT(_node.get##_NAME()) + L"\n";    \
         } while (0)
 
+#define PROP_VAL(_FMT)                                                      \
+        do {                                                                \
+            m_os << fmtIndent(L" `- Value = ") + fmt##_FMT(_node) + L"\n";  \
+        } while (0)
+
 #define PROP_IS(_NAME)                                                                              \
         do {                                                                                        \
             m_os << fmtIndent(L" `- " WIDEN(#_NAME) L" = ") + fmtBool(_node.is##_NAME()) + L"\n";   \
@@ -293,10 +298,7 @@ protected:
 
     VISITOR(Literal,
             PROP(LiteralKind, LiteralKind);
-            PROP(Number, Number);
-            PROP(Bool, Bool);
-            PROP(Char, Char);
-            PROP(Quote, String);
+            PROP_VAL(Literal);
     );
 
     VISITOR(Predicate,
