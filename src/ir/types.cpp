@@ -87,6 +87,8 @@ int Type::compare(const Type &_other) const {
         return ORD_EQUALS;
     if (kinds == P(STRING, STRING))
         return ORD_EQUALS;
+    if (kinds == P(UNIT, UNIT))
+        return ORD_EQUALS;
 
     return ORD_NONE;
 }
