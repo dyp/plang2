@@ -776,7 +776,7 @@ bool Collector::visitNamedReferenceType(NamedReferenceType &_type) {
             assert(pType->getKind() == Type::PARAMETERIZED);
             assert(false && "Not implemented");
 
-            ParameterizedTypePtr pOrigType = pType->clone().as<ParameterizedType>();
+            ParameterizedTypePtr pOrigType = clone(*pType).as<ParameterizedType>();
 
             for (size_t i = 0; i < pOrigType->getParams().size(); ++i) {
                 TypePtr pParamType = pOrigType->getParams().get(i)->getType();

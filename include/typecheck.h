@@ -87,7 +87,7 @@ public:
 
     virtual bool less(const ir::Type & _other) const;
 
-    virtual ir::TypePtr clone() const;
+    virtual ir::NodePtr clone(Cloner &_cloner) const;
 
     size_t getOrdinal() const { return m_cOrd; }
 
@@ -170,7 +170,7 @@ public:
 
     bool isSymmetric() const;
 
-    virtual FormulaPtr clone() const;
+    virtual FormulaPtr clone(Cloner &_cloner) const;
 
 private:
     int m_kind;
@@ -190,7 +190,7 @@ struct Formulas : public FormulaSet {
 
     bool rewrite(const ir::TypePtr &_pOld, const ir::TypePtr &_pNew);
     bool implies(Formula &_f) const;
-    virtual Auto<Formulas> clone() const;
+    virtual Auto<Formulas> clone(Cloner &_cloner) const;
 };
 
 class CompoundFormula : public Formula {
@@ -207,7 +207,7 @@ public:
     virtual bool rewrite(const ir::TypePtr &_pOld, const ir::TypePtr &_pNew);
     virtual int eval() const;
     size_t count() const;
-    virtual FormulaPtr clone() const;
+    virtual FormulaPtr clone(Cloner &_cloner) const;
 
 private:
     std::vector<Auto<Formulas> > m_parts;

@@ -16,12 +16,11 @@ namespace ir {
 /// Jump statement. Used to pass control out of the function or inside of a process.
 class Jump : public Statement {
 public:
-    /// Default constructor.
-    Jump() : m_pDestination(NULL) {}
-
     /// Initialize with destination label.
     /// \param _pDestination Destination label.
-    Jump(const LabelPtr &_pDestination) : m_pDestination(_pDestination) {}
+    /// \param _pLabel Statement label.
+    Jump(const LabelPtr &_pDestination = NULL, const LabelPtr &_pLabel = NULL) :
+        Statement(_pLabel), m_pDestination(_pDestination) {}
 
     /// Get statement kind.
     /// \returns #Jump.
@@ -35,6 +34,10 @@ public:
     /// \param _pDestination Destination label.
     void setDestination(const LabelPtr &_pDestination) { m_pDestination = _pDestination; }
 
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, Jump(_cloner.get(getDestination()), _cloner.get(getLabel())));
+    }
+
 private:
     LabelPtr m_pDestination;
 };
@@ -42,14 +45,12 @@ private:
 /// Assignment statement.
 class Assignment : public Statement {
 public:
-    /// Default constructor.
-    Assignment() : m_pLValue(NULL), m_pExpression(NULL) {}
-
     /// Initialize with lvalue and rvalue.
     /// \param _pLValue LValue.
     /// \param _pExpression RValue.
-    Assignment(const ExpressionPtr &_pLValue = NULL, const ExpressionPtr &_pExpression = NULL)
-        : m_pLValue(_pLValue), m_pExpression(_pExpression) {}
+    /// \param _pLabel Statement label.
+    Assignment(const ExpressionPtr &_pLValue = NULL, const ExpressionPtr &_pExpression = NULL, const LabelPtr &_pLabel = NULL)
+        : Statement(_pLabel), m_pLValue(_pLValue), m_pExpression(_pExpression) {}
 
     /// Get statement kind.
     /// \returns #Assignment.
@@ -71,6 +72,10 @@ public:
     /// \param _pExpression Expression.
     void setExpression(const ExpressionPtr &_pExpression) { m_pExpression = _pExpression; }
 
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, Assignment(_cloner.get(getLValue()), _cloner.get(getExpression()), _cloner.get(getLabel())));
+    }
+
 private:
     ExpressionPtr m_pLValue, m_pExpression;
 };
@@ -81,7 +86,8 @@ private:
 class CallBranch : public Collection<Expression> {
 public:
     /// Default constructor.
-    CallBranch() : m_pHandler(NULL) {}
+    /// \param _pHandler Branch handler statement.
+    CallBranch(const StatementPtr &_pHandler = NULL) : m_pHandler(_pHandler) {}
 
     /// Get branch handler.
     /// \return Branch handler statement.
@@ -91,6 +97,12 @@ public:
     /// \param _pStmt Branch handler statement.
     void setHandler(const StatementPtr &_pStmt) { m_pHandler = _pStmt; }
 
+    virtual NodePtr clone(Cloner &_cloner) const {
+        CallBranchPtr pCopy = NEW_CLONE(this, _cloner, CallBranch(_cloner.get(getHandler())));
+        pCopy->appendClones(*this, _cloner);
+        return pCopy;
+    }
+
 private:
     StatementPtr m_pHandler;
 };
@@ -99,7 +111,10 @@ private:
 class Call : public Statement {
 public:
     /// Default constructor.
-    Call() : m_pPredicate(NULL) {}
+    /// \param _pPredicate Expression of predicate type.
+    /// \param _pLabel Statement label.
+    Call(const ExpressionPtr &_pPredicate = NULL, const LabelPtr &_pLabel = NULL) :
+        Statement(_pLabel), m_pPredicate(NULL) {}
 
     /// Get statement kind.
     /// \returns #Call.
@@ -133,6 +148,14 @@ public:
     Collection<VariableDeclaration> &getDeclarations() { return m_decls; }
     const Collection<VariableDeclaration> &getDeclarations() const { return m_decls; }
 
+    virtual NodePtr clone(Cloner &_cloner) const {
+        CallPtr pCopy = NEW_CLONE(this, _cloner, Call(_cloner.get(getPredicate()), _cloner.get(getLabel())));
+        pCopy->getArgs().appendClones(getArgs(), _cloner);
+        pCopy->getBranches().appendClones(getBranches(), _cloner);
+        pCopy->getDeclarations().appendClones(getDeclarations(), _cloner);
+        return pCopy;
+    }
+
 private:
     ExpressionPtr m_pPredicate;
     Collection<Expression> m_args;
@@ -151,7 +174,8 @@ private:
 class Multiassignment : public Statement {
 public:
     /// Default constructor.
-    Multiassignment() {}
+    /// \param _pLabel Statement label.
+    Multiassignment(const LabelPtr &_pLabel = NULL) : Statement(_pLabel) {}
 
     /// Get statement kind.
     /// \returns #Multiassignment.
@@ -160,10 +184,19 @@ public:
     /// Get list of left hand side expressions (expressions must be assignable).
     /// \return List of expressions.
     Collection<Expression> &getLValues() { return m_LValues; }
+    const Collection<Expression> &getLValues() const { return m_LValues; }
 
     /// Get list of right hand side expressions.
     /// \return List of expressions.
     Collection<Expression> &getExpressions() { return m_expressions; }
+    const Collection<Expression> &getExpressions() const { return m_expressions; }
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        MultiassignmentPtr pCopy = NEW_CLONE(this, _cloner, Multiassignment(_cloner.get(getLabel())));
+        pCopy->getLValues().appendClones(getLValues(), _cloner);
+        pCopy->getExpressions().appendClones(getExpressions(), _cloner);
+        return pCopy;
+    }
 
 private:
     Collection<Expression> m_LValues;
@@ -174,7 +207,8 @@ private:
 class SwitchCase : public Node {
 public:
     /// Default constructor.
-    SwitchCase() : m_pBody(NULL) {}
+    /// \param _pStmt Body statement.
+    SwitchCase(const StatementPtr &_pBody = NULL) : m_pBody(_pBody) {}
 
     virtual int getNodeKind() const { return Node::SWITCH_CASE; }
 
@@ -191,6 +225,12 @@ public:
     /// \param _pStmt Body statement.
     void setBody(const StatementPtr &_pStmt) { m_pBody = _pStmt; }
 
+    virtual NodePtr clone(Cloner &_cloner) const {
+        SwitchCasePtr pCopy = NEW_CLONE(this, _cloner, SwitchCase(_cloner.get(getBody())));
+        pCopy->getExpressions().appendClones(getExpressions(), _cloner);
+        return pCopy;
+    }
+
 private:
     StatementPtr m_pBody;
     Collection<Expression> m_expressions;
@@ -201,7 +241,15 @@ private:
 class Switch : public Collection<SwitchCase, Statement> {
 public:
     /// Default constructor.
-    Switch() : m_pArg(NULL), m_pDefault(NULL), m_pDecl(NULL) {}
+    /// \param _pArg Argument expression.
+    /// \param _pDefault Statement for default alternative.
+    /// \param _pDecl Parameter declaration.
+    /// \param _pLabel Statement label.
+    Switch(const ExpressionPtr &_pArg = NULL, const StatementPtr &_pDefault = NULL, const VariableDeclarationPtr &_pDecl = NULL, const LabelPtr &_pLabel = NULL) :
+        m_pArg(_pArg), m_pDefault(_pDefault), m_pDecl(_pDecl)
+    {
+        setLabel(_pLabel);
+    }
 
     /// Get statement kind.
     /// \returns #Switch.
@@ -235,6 +283,13 @@ public:
     // \return True if the statement ends like a block, false otherwise.
     virtual bool isBlockLike() const { return true; }
 
+    virtual NodePtr clone(Cloner &_cloner) const {
+        SwitchPtr pCopy = NEW_CLONE(this, _cloner, Switch(_cloner.get(getArg()), _cloner.get(getDefault()),
+                _cloner.get(getParamDecl()), _cloner.get(getLabel())));
+        pCopy->appendClones(*this, _cloner);
+        return pCopy;
+    }
+
 private:
     ExpressionPtr m_pArg;
     StatementPtr m_pDefault;
@@ -245,7 +300,12 @@ private:
 class If : public Statement {
 public:
     /// Default constructor.
-    If() : m_pArg(NULL), m_pBody(NULL), m_pElse(NULL) {}
+    /// \param _pArg Argument expression.
+    /// \param _pBody Body statement.
+    /// \param _pElse Else statement.
+    /// \param _pLabel Statement label.
+    If(const ExpressionPtr &_pArg = NULL, const StatementPtr &_pBody = NULL, const StatementPtr &_pElse = NULL, const LabelPtr &_pLabel = NULL) :
+        Statement(_pLabel), m_pArg(_pArg), m_pBody(_pBody), m_pElse(_pElse) {}
 
     /// Get statement kind.
     /// \returns #If.
@@ -286,6 +346,11 @@ public:
             return false;
     }
 
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, If(_cloner.get(getArg()), _cloner.get(getBody()),
+                _cloner.get(getElse()), _cloner.get(getLabel())));
+    }
+
 private:
     ExpressionPtr m_pArg;
     StatementPtr m_pBody, m_pElse;
@@ -295,7 +360,14 @@ private:
 class For : public Statement {
 public:
     /// Default constructor.
-    For() : m_pIterator(NULL), m_pInvariant(NULL), m_pIncrement(NULL), m_pBody(NULL) {}
+    /// \param _pIterator Iterator variable.
+    /// \param _pInvariant Invariant expression.
+    /// \param _pIncrement Increment statement.
+    /// \param _pBody Body statement.
+    /// \param _pLabel Statement label.
+    For(const VariableDeclarationPtr &_pIterator = NULL, const ExpressionPtr &_pInvariant = NULL,
+            const StatementPtr &_pIncrement = NULL, const StatementPtr &_pBody = NULL, const LabelPtr &_pLabel = NULL) :
+        Statement(_pLabel), m_pIterator(_pIterator), m_pInvariant(_pInvariant), m_pIncrement(_pIncrement), m_pBody(_pBody) {}
 
     /// Get statement kind.
     /// \returns #For.
@@ -342,6 +414,11 @@ public:
             return false;
     }
 
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, For(_cloner.get(getIterator()), _cloner.get(getInvariant()), _cloner.get(getIncrement()),
+                _cloner.get(getBody()), _cloner.get(getLabel())));
+    }
+
 private:
     VariableDeclarationPtr m_pIterator;
     ExpressionPtr m_pInvariant;
@@ -352,7 +429,11 @@ private:
 class While : public Statement {
 public:
     /// Default constructor.
-    While() : m_pInvariant(NULL), m_pBody(NULL) {}
+    /// \param _pInvariant Invariant expression.
+    /// \param _pBody Body statement.
+    /// \param _pLabel Statement label.
+    While(const ExpressionPtr &_pInvariant = NULL, const StatementPtr &_pBody = NULL, const LabelPtr &_pLabel = NULL) :
+        Statement(_pLabel), m_pInvariant(_pInvariant), m_pBody(_pBody) {}
 
     /// Get statement kind.
     /// \returns #While.
@@ -383,6 +464,10 @@ public:
             return false;
     }
 
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, While(_cloner.get(getInvariant()), _cloner.get(getBody()), _cloner.get(getLabel())));
+    }
+
 private:
     ExpressionPtr m_pInvariant;
     StatementPtr m_pBody;
@@ -392,24 +477,27 @@ private:
 class Break : public Statement {
 public:
     /// Default constructor.
-    Break() {}
+    /// \param _pLabel Statement label.
+    Break(const LabelPtr &_pLabel = NULL) : Statement(_pLabel) {}
 
     /// Get statement kind.
     /// \returns #Break.
     virtual int getKind() const { return BREAK; }
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, Break(_cloner.get(getLabel())));
+    }
 };
 
 /// Send message statement.
 class Send : public Statement {
 public:
-    /// Default constructor.
-    Send() : m_pReceiver(NULL), m_pMessage(NULL) {}
-
     /// Initialize with message and receiver pointers.
-    /// \param _pProcess Message receiver process.
+    /// \param _pReceiver Message receiver process.
     /// \param _pMessage Message declaration.
-    Send(const ProcessPtr &_pProcess, const MessagePtr &_pMessage)
-        : m_pReceiver(_pProcess), m_pMessage(_pMessage) {}
+    /// \param _pLabel Statement label.
+    Send(const ProcessPtr &_pReceiver = NULL, const MessagePtr &_pMessage = NULL, const LabelPtr &_pLabel = NULL) :
+        Statement(_pLabel), m_pReceiver(_pReceiver), m_pMessage(_pMessage) {}
 
     /// Get statement kind.
     /// \returns #Send.
@@ -434,6 +522,13 @@ public:
     /// Get list of actual parameters.
     /// \return List of expressions.
     Collection<Expression> &getArgs() { return m_args; }
+    const Collection<Expression> &getArgs() const { return m_args; }
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        SendPtr pCopy = NEW_CLONE(this, _cloner, Send(_cloner.get(getReceiver()), _cloner.get(getMessage()), _cloner.get(getLabel())));
+        pCopy->getArgs().appendClones(getArgs(), _cloner);
+        return pCopy;
+    }
 
 private:
     ProcessPtr m_pReceiver;
@@ -444,12 +539,11 @@ private:
 /// Handler of incoming message. Part of receive statement.
 class MessageHandler : public Node {
 public:
-    /// Default constructor.
-    MessageHandler() : m_pMessage(NULL), m_pBody(NULL) {}
-
     /// Initialize with message pointer.
     /// \param _pMessage Message declaration.
-    MessageHandler(const MessagePtr &_pMessage) : m_pMessage(_pMessage), m_pBody(NULL) {}
+    /// \param _pBody Body statement.
+    MessageHandler(const MessagePtr &_pMessage = NULL, const StatementPtr &_pBody = NULL) :
+        m_pMessage(_pMessage), m_pBody(_pBody) {}
 
     virtual int getNodeKind() const { return Node::MESSAGE_HANDLER; }
 
@@ -469,6 +563,10 @@ public:
     /// \param _pStmt Body statement.
     void setBody(const StatementPtr &_pStmt) { m_pBody = _pStmt; }
 
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, MessageHandler(_cloner.get(getMessage()), _cloner.get(getBody())));
+    }
+
 private:
     MessagePtr m_pMessage;
     StatementPtr m_pBody;
@@ -480,7 +578,14 @@ private:
 class Receive : public Collection<MessageHandler, Statement> {
 public:
     /// Default constructor.
-    Receive() : m_pTimeout(NULL), m_pTimeoutStatement(NULL) {}
+    /// \param _pTimeout Timeout expression.
+    /// \param _pTimeoutStatement Timeout handler.
+    /// \param _pLabel Statement label.
+    Receive(const ExpressionPtr &_pTimeout = NULL, const StatementPtr &_pTimeoutStatement = NULL, const LabelPtr &_pLabel = NULL) :
+        m_pTimeout(_pTimeout), m_pTimeoutStatement(_pTimeoutStatement)
+    {
+        setLabel(_pLabel);
+    }
 
     /// Get statement kind.
     /// \returns #Receive.
@@ -508,6 +613,12 @@ public:
     // \return True if the statement ends like a block, false otherwise.
     virtual bool isBlockLike() const { return true; }
 
+    virtual NodePtr clone(Cloner &_cloner) const {
+        ReceivePtr pCopy = NEW_CLONE(this, _cloner, Receive(_cloner.get(getTimeout()), _cloner.get(getTimeoutHandler()), _cloner.get(getLabel())));
+        pCopy->appendClones(*this, _cloner);
+        return pCopy;
+    }
+
 private:
     ExpressionPtr m_pTimeout;
     StatementPtr m_pTimeoutStatement;
@@ -517,7 +628,9 @@ private:
 class With : public Statement {
 public:
     /// Default constructor.
-    With() : m_pBody(NULL) {}
+    /// \param _pBody Body statement.
+    /// \param _pLabel Statement label.
+    With(const StatementPtr &_pBody = NULL, const LabelPtr &_pLabel = NULL) : Statement(_pLabel), m_pBody(_pBody) {}
 
     /// Get statement kind.
     /// \returns #Receive.
@@ -526,6 +639,7 @@ public:
     /// Get list of variables to lock.
     /// \return List of assignable expressions.
     Collection<Expression> &getArgs() { return m_args; }
+    const Collection<Expression> &getArgs() const { return m_args; }
 
     /// Get body statement.
     /// \return Body statement.
@@ -542,6 +656,12 @@ public:
             return getBody()->isBlockLike();
         else
             return false;
+    }
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        WithPtr pCopy = NEW_CLONE(this, _cloner, With(_cloner.get(getBody()), _cloner.get(getLabel())));
+        pCopy->getArgs().appendClones(getArgs(), _cloner);
+        return pCopy;
     }
 
 private:

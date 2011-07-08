@@ -87,6 +87,9 @@ public:
     virtual ~Node() {}
 
     virtual int getNodeKind() const { return NONE; }
+
+    // \returns Deep copy of the node.
+    virtual NodePtr clone(Cloner &_cloner) const { return NULL; }
 };
 
 /// Collection of homogeneous nodes.
@@ -133,10 +136,20 @@ public:
 
     /// Append elements from another collection.
     /// \param _other Other collection.
-    template<typename _OtherNode>
-    void append(const Collection<_OtherNode> &_other) {
+    template<typename _OtherNode, typename _OtherBase>
+    void append(const Collection<_OtherNode, _OtherBase> &_other) {
+        m_nodes.reserve(m_nodes.size() + _other.size());
         for (size_t i = 0; i < _other.size(); ++i)
             add(_other.get(i));
+    }
+
+    /// Append elements from another collection.
+    /// \param _other Other collection.
+    template<typename _OtherNode, typename _OtherBase>
+    void appendClones(const Collection<_OtherNode, _OtherBase> &_other, Cloner &_cloner) {
+        m_nodes.reserve(m_nodes.size() + _other.size());
+        for (size_t i = 0; i < _other.size(); ++i)
+            add(_cloner.get(_other.get(i)));
     }
 
     /// Replace element by index.
@@ -165,6 +178,12 @@ public:
                 return i;
 
         return (size_t)-1;
+    }
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        Auto<Collection<_Node, _Base> > pCopy = NEW_CLONE(this, _cloner, Collection());
+        pCopy->appendClones(*this, _cloner);
+        return pCopy;
     }
 
 private:
@@ -278,7 +297,9 @@ public:
     virtual bool less(const Type &_other) const;
 
     // Perform deep copy.
-    virtual TypePtr clone() const;
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, Type(m_kind, m_nBits));
+    }
 
     virtual bool hasFresh() const;
     virtual bool rewrite(const TypePtr &_pOld, const TypePtr &_pNew) { return false; }
@@ -352,6 +373,10 @@ public:
     /// \param _pType Type associated with value.
     void setType(const TypePtr &_pType) { m_pType = _pType; }
 
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, NamedValue(m_strName, _cloner.get(m_pType.ptr())));
+    }
+
 private:
     TypePtr m_pType;
     std::wstring m_strName;
@@ -370,8 +395,8 @@ public:
     /// Constructor for initializing using name.
     /// \param _strName Identifier.
     /// \param _pType Type associated with value.
-    Param(const std::wstring &_strName, const TypePtr &_pType = NULL)
-        : NamedValue(_strName, _pType), m_pLinkedParam(NULL), m_bOutput(false) {}
+    Param(const std::wstring &_strName, const TypePtr &_pType = NULL, bool _bOutput = false)
+        : NamedValue(_strName, _pType), m_pLinkedParam(NULL), m_bOutput(_bOutput) {}
 
     /// Get value kind.
     /// \returns #PredicateParameter.
@@ -393,20 +418,32 @@ public:
     /// \param _bValue True if a linked parameter is needed, false otherwise.
     void setOutput(bool _bValue) { m_bOutput = _bValue; }
 
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, Param(getName(), _cloner.get(getType().ptr()), m_bOutput));
+    }
+
 private:
     ParamPtr m_pLinkedParam;
     bool m_bOutput;
 };
 
-/// Collection of predicate parameters.
-/// \extends Node
-class Params : public Collection<Param> {
-};
+// We need to define some collections as classes (vs. typedef'ed templates) because some uses
+// require that e.g. NamedValues needs to be a class name, not a typedef name.
+#define COLLECTION_CLASS(_Name, _Item)                                              \
+    class _Name : public Collection<_Item> {                                        \
+    public:                                                                         \
+        _Name() {}                                                                  \
+        _Name(Collection<_Item> &_collection) : Collection<_Item>(_collection) {}   \
+        virtual NodePtr clone(Cloner &_cloner) const {                              \
+            Auto<_Name> pCopy = NEW_CLONE(this, _cloner, _Name());                  \
+            pCopy->appendClones(*this, _cloner);                                    \
+            return pCopy;                                                           \
+        }                                                                           \
+    }
 
-/// Collection of generic named values (e.g. type parameters).
-/// \extends Node
-class NamedValues : public Collection<NamedValue> {
-};
+COLLECTION_CLASS(Params, Param);
+
+COLLECTION_CLASS(NamedValues, NamedValue);
 
 /// Named label used to specify return branch.
 /// \code foo (int x : #ok : #error) \endcode
@@ -429,6 +466,8 @@ public:
     /// Set name of the value.
     /// \param _strName Label name.
     void setName(const std::wstring &_strName) { m_strName = _strName; }
+
+    virtual NodePtr clone(Cloner &_cloner) const { return NEW_CLONE(this, _cloner, Label(m_strName)); }
 
 private:
     std::wstring m_strName;
@@ -482,7 +521,7 @@ public:
     };
 
     /// Default constructor.
-    Statement() : m_pLabel(NULL) {}
+    Statement(const LabelPtr &_pLabel = NULL) : m_pLabel(_pLabel) {}
 
     virtual int getNodeKind() const { return Node::STATEMENT; }
 
@@ -501,6 +540,10 @@ public:
     // Check if the statement ends like a block (i.e. separating semicolon is not needed).
     // \return True if the statement ends like a block, false otherwise.
     virtual bool isBlockLike() const { return false; }
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, Statement(_cloner.get(getLabel())));
+    }
 
 private:
     LabelPtr m_pLabel;
@@ -521,6 +564,8 @@ public:
     // Check if the statement ends like a block (i.e. separating semicolon is not needed).
     // \return True.
     virtual bool isBlockLike() const { return true; }
+
+    virtual NodePtr clone(Cloner &_cloner) const { return NEW_CLONE(this, _cloner, Block()); }
 };
 
 /// Collection of statements that can be executed simultaneously.
@@ -536,6 +581,8 @@ public:
     // Check if the statement ends like a block (i.e. separating semicolon is not needed).
     // \return False.
     virtual bool isBlockLike() const { return false; }
+
+    virtual NodePtr clone(Cloner &_cloner) const { return NEW_CLONE(this, _cloner, ParallelBlock()); }
 };
 
 bool isTypeVariable(const NamedValuePtr &_pVar);

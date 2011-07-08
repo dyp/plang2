@@ -12,8 +12,8 @@ using namespace tc;
 
 size_t FreshType::g_cOrdMax = 0;
 
-ir::TypePtr FreshType::clone() const {
-    return new FreshType(*this);
+ir::NodePtr FreshType::clone(Cloner &_cloner) const {
+    return NEW_CLONE(this, _cloner, FreshType(*this));
 }
 
 bool FreshType::less(const Type &_other) const {
@@ -87,24 +87,24 @@ bool Formula::hasFresh() const {
             (m_pRhs && m_pRhs->getKind() == ir::Type::FRESH);
 }
 
-FormulaPtr Formula::clone() const {
-    return new Formula(m_kind, m_pLhs->clone(), m_pRhs->clone());
+FormulaPtr Formula::clone(Cloner &_cloner) const {
+    return NEW_CLONE(this, _cloner, Formula(m_kind, _cloner.get(m_pLhs.ptr()), _cloner.get(m_pRhs.ptr())));
 }
 
-Auto<Formulas> Formulas::clone() const {
-    Auto<Formulas> pNew = ptr(new Formulas());
+Auto<Formulas> Formulas::clone(Cloner &_cloner) const {
+    Auto<Formulas> pNew = ptr(NEW_CLONE(this, _cloner, Formulas()));
 
     for (FormulaSet::const_iterator i = begin(); i != end(); ++i)
-        pNew->insert((*i)->clone());
+        pNew->insert(_cloner.get(i->ptr()));
 
     return pNew;
 }
 
-FormulaPtr CompoundFormula::clone() const {
-    CompoundFormulaPtr pCF = new CompoundFormula();
+FormulaPtr CompoundFormula::clone(Cloner &_cloner) const {
+    CompoundFormulaPtr pCF = NEW_CLONE(this, _cloner, CompoundFormula());
 
     for (size_t i = 0; i < size(); ++i)
-        pCF->addPart(getPart(i).clone());
+        pCF->addPart(getPart(i).clone(_cloner));
 
     return pCF;
 }

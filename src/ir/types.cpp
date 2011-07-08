@@ -12,14 +12,6 @@ bool Type::hasFresh() const {
     return getKind() == FRESH;
 }
 
-TypePtr Type::clone() const {
-    TypePtr pType = new Type(m_kind);
-
-    pType->setBits(m_nBits);
-
-    return pType;
-}
-
 static
 int cmpBits(int _bitsL, int _bitsR) {
     if (_bitsL == _bitsR)
@@ -235,8 +227,7 @@ TypePtr Type::getMeet(ir::Type &_other) {
 
 // 'type' type.
 
-TypeType::TypeType() : m_pDecl(NULL) {
-    setDeclaration(new TypeDeclaration());
+TypeType::TypeType(const TypeDeclarationPtr &_pDeclaration) : m_pDecl(_pDeclaration) {
 }
 
 bool TypeType::rewrite(const TypePtr &_pOld, const TypePtr &_pNew) {
@@ -289,8 +280,4 @@ bool TypeType::less(const Type &_other) const {
     }
 
     return other.m_pDecl && other.m_pDecl->getType();
-}
-
-TypePtr TypeType::clone() const {
-    return new TypeType(*this);
 }

@@ -3,7 +3,7 @@
 
 #include "autoptr.h"
 
-void *Counted::m_pLastAlloc = NULL;
+std::stack<void *> Counted::m_allocs;
 
 void Counted::ref(const Counted *_pObj) {
     if (_pObj != NULL && _pObj->m_nCountedRefs >= 0)
@@ -19,10 +19,24 @@ bool Counted::unref() const {
     return m_nCountedRefs > 0;
 }
 
+bool Counted::_isManaged(const void *_pObj, bool _bPop) {
+    const bool bResult = !m_allocs.empty() && m_allocs.top() == _pObj;
+
+    if (bResult && _bPop)
+        m_allocs.pop();
+
+    return bResult;
+}
+
 void *Counted::operator new(size_t _c, bool _bAcquire) {
     void *pMem = ::operator new(_c);
+
+    ((Counted *)pMem)->m_pCountedPtr = pMem;
+    ((Counted *)pMem)->m_nCountedRefs = 0;
+
     if (_bAcquire)
-        m_pLastAlloc = pMem;
+        m_allocs.push(pMem);
+
     return pMem;
 }
 
@@ -36,12 +50,36 @@ const Counted *Counted::createCountedWrapper(const Counted *_pObj, bool /* _bAcq
 
 Counted::Counted(const void *_ptr) :
         m_pCountedPtr(_ptr),
-        m_nCountedRefs(m_pLastAlloc == this ? 0 : -1)
+        m_nCountedRefs(_isManaged(this) ? m_nCountedRefs : -1)
 {
 }
 
 Counted::Counted() :
         m_pCountedPtr(this),
-        m_nCountedRefs(m_pLastAlloc == this ? 0 : -1)
+        m_nCountedRefs(_isManaged(this) ? m_nCountedRefs : -1)
 {
+}
+
+void *Cloner::allocate(size_t _cSize, const void *_pOriginal) {
+    Counted *pCounted = new(true) Counted(::operator new(_cSize));
+
+    Counted::ref(pCounted);
+    m_cache[_pOriginal] = pCounted;
+
+    return (void *)pCounted->m_pCountedPtr;
+}
+
+void *Cloner::allocate(size_t _cSize, const Counted *_pOriginal) {
+    Counted *pCounted = (Counted *)Counted::operator new(_cSize, true);
+
+    Counted::ref(pCounted);
+    m_cache[_pOriginal] = pCounted;
+
+    return (void *)pCounted->m_pCountedPtr;
+}
+
+void *operator new(size_t _cSize, Cloner &_cloner, const void *_pOriginal) {
+    Cloner::Cache::iterator iObj = _cloner.m_cache.find(_pOriginal);
+    assert(iObj != _cloner.m_cache.end());
+    return (void *)iObj->second;
 }

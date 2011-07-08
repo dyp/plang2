@@ -34,7 +34,7 @@ public:
     void set(int _overflow, const LabelPtr &_pLabel = NULL) { m_overflow = _overflow; m_pLabel = _pLabel; }
 
     /// Set overflow handling strategy.
-    /// \param _overflow Overflow handling strategy and (optionally) return label.
+    /// \param _other Overflow handling strategy and (optionally) return label.
     void set(const Overflow &_other) { set(_other.get(), _other.getLabel()); }
 
     /// \return Pointer to Label object (assuming type is IntOverflow or
@@ -139,6 +139,12 @@ public:
     /// Default constructor.
     Literal() : m_literalKind(UNIT) {}
 
+    /// Copy constructor.
+    Literal(const Literal &_other) :
+        m_literalKind(_other.m_literalKind), m_string(_other.m_string), m_char(_other.m_char),
+        m_number(_other.m_number), m_bool(_other.m_bool)
+    {}
+
     /// Initialize the literal with numeric value (sets kind to #Number).
     /// \param _number Value.
     Literal(const Number &_number) : m_literalKind(NUMBER), m_number(_number) {}
@@ -210,6 +216,8 @@ public:
         m_string = _str;
     }
 
+    virtual NodePtr clone(Cloner &_cloner) const { return NEW_CLONE(this, _cloner, Literal(*this)); }
+
 private:
     int m_literalKind;
     std::wstring m_string;
@@ -226,7 +234,13 @@ public:
 
     /// Initialize using name.
     /// \param _strName Identifier.
-    VariableReference(const std::wstring &_strName) : m_pTarget(NULL), m_strName(_strName) {}
+    /// \param _pTarget Referenced variable.
+    VariableReference(const std::wstring &_strName, const NamedValuePtr &_pTarget = NULL) :
+        m_pTarget(_pTarget), m_strName(_strName)
+    {
+        if (_pTarget)
+            setType(_pTarget->getType());
+    }
 
     /// Initialize using referenced variable. Name is set accordingly.
     /// \param _pTarget Referenced variable.
@@ -260,6 +274,10 @@ public:
         }
     }
 
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, VariableReference(m_strName, _cloner.get(m_pTarget)));
+    }
+
 private:
     NamedValuePtr m_pTarget;
     std::wstring m_strName;
@@ -275,7 +293,9 @@ public:
 
     /// Initialize using name.
     /// \param _strName Identifier.
-    PredicateReference(const std::wstring &_strName) : m_pTarget(NULL), m_strName(_strName) {}
+    /// \param _pTarget Referenced variable.
+    PredicateReference(const std::wstring &_strName, const PredicatePtr &_pTarget = NULL) :
+        m_pTarget(_pTarget), m_strName(_strName) {}
 
     /// Initialize using referenced predicate.
     /// \param _pTarget Referenced variable.
@@ -300,6 +320,10 @@ public:
     /// Set referenced predicate.
     /// \param _pTarget Referenced predicate.
     void setTarget(const PredicatePtr &_pTarget) { m_pTarget = _pTarget; }
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, PredicateReference(m_strName, _cloner.get(m_pTarget)));
+    }
 
 private:
     PredicatePtr m_pTarget;
@@ -327,8 +351,9 @@ public:
     /// Initialize with operator.
     /// \param _operator Operator (one of #Minus, #BoolNegate and #BitwiseNegate).
     /// \param _pExpression Subexpression.
-    Unary(int _operator, const ExpressionPtr &_pExpression = NULL)
-        : m_operator(_operator), m_pExpression(_pExpression) {}
+    /// \param _overflow Overflow handling strategy.
+    Unary(int _operator, const ExpressionPtr &_pExpression = NULL, const Overflow &_overflow = Overflow()) :
+        m_operator(_operator), m_pExpression(_pExpression), m_overflow(_overflow) {}
 
     /// Get expression kind.
     /// \return #Unary.
@@ -353,6 +378,10 @@ public:
     /// Get or set overflow strategy.
     /// \return Reference to overflow handling descriptor.
     Overflow &getOverflow() { return m_overflow; }
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, Unary(m_operator, _cloner.get(m_pExpression), m_overflow));
+    }
 
 private:
     int m_operator;
@@ -444,8 +473,10 @@ public:
     /// \param _operator Operator (#Add, #Subtract, etc.)
     /// \param _pLeft Left subexpression.
     /// \param _pRight Right subexpression.
-    Binary(int _operator, const ExpressionPtr &_pLeft = NULL, const ExpressionPtr &_pRight = NULL)
-        : m_operator(_operator), m_pLeft(_pLeft), m_pRight(_pRight) { }
+    /// \param _overflow Overflow handling strategy.
+    Binary(int _operator, const ExpressionPtr &_pLeft = NULL, const ExpressionPtr &_pRight = NULL,
+            const Overflow &_overflow = Overflow()) :
+        m_operator(_operator), m_pLeft(_pLeft), m_pRight(_pRight), m_overflow(_overflow) { }
 
     /// Get expression kind.
     /// \return #Binary.
@@ -478,6 +509,10 @@ public:
     /// Get or set overflow strategy.
     /// \return Reference to overflow handling descriptor.
     Overflow &getOverflow() { return m_overflow; }
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, Binary(m_operator, _cloner.get(m_pLeft), _cloner.get(m_pRight), m_overflow));
+    }
 
 private:
     int m_operator;
@@ -526,6 +561,10 @@ public:
     /// \param _pExpression Expression that should be evaluated if condition is false.
     void setElse(const ExpressionPtr &_pExpression) { m_pElse = _pExpression; }
 
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, Ternary(_cloner.get(m_pIf), _cloner.get(m_pThen), _cloner.get(m_pElse)));
+    }
+
 private:
     ExpressionPtr m_pIf, m_pThen, m_pElse;
 };
@@ -551,6 +590,10 @@ public:
     /// Set contained type.
     /// \param _pContents Contained type.
     void setContents(const TypePtr &_pContents) { m_pContents = _pContents; }
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, TypeExpr(_cloner.get(m_pContents)));
+    }
 
 private:
     TypePtr m_pContents;
@@ -586,6 +629,10 @@ public:
     /// Set destination type.
     /// \param _pType Destination type.
     void setToType(const TypeExprPtr &_pType) { m_pToType = _pType; }
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, CastExpr(_cloner.get(m_pExpression), _cloner.get(m_pToType)));
+    }
 
 private:
     ExpressionPtr m_pExpression;
@@ -628,6 +675,7 @@ public:
     /// Get list of bound variables.
     /// \return Refernce to bound variables list.
     NamedValues &getBoundVariables() { return m_boundVariables; }
+    const NamedValues &getBoundVariables() const { return m_boundVariables; }
 
     /// Get subformula.
     /// \return Formula. E.g. given quantified formula "! X . Y" this
@@ -637,6 +685,12 @@ public:
     /// Set subformula.
     /// \param _pExpression Formula.
     void setSubformula(const ExpressionPtr &_pExpression) { m_pSubformula = _pExpression; }
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        FormulaPtr pFormula = NEW_CLONE(this, _cloner, Formula(m_quantifier, _cloner.get(m_pSubformula)));
+        pFormula->getBoundVariables().appendClones(getBoundVariables(), _cloner);
+        return pFormula;
+    }
 
 private:
     int m_quantifier;
@@ -665,7 +719,8 @@ public:
     };
 
     /// Default constructor.
-    Component() : m_pObject(NULL) {}
+    /// \param _pObject Expression of compound type.
+    Component(const ExpressionPtr &_pObject = NULL) : m_pObject(_pObject) {}
 
     /// Get expression kind.
     /// \return #Formula.
@@ -691,7 +746,8 @@ private:
 class ArrayPartExpr : public Component {
 public:
     /// Default constructor.
-    ArrayPartExpr() {}
+    /// \param _pObject Expression of compound type.
+    ArrayPartExpr(const ExpressionPtr &_pObject = NULL) : Component(_pObject) {}
 
     /// Get component kind.
     /// \return #ArrayPart.
@@ -700,6 +756,13 @@ public:
     /// Get list of subscripts.
     /// \return List of indices.
     Collection<Expression> &getIndices() { return m_indices; }
+    const Collection<Expression> &getIndices() const { return m_indices; }
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        ArrayPartExprPtr pExpr = NEW_CLONE(this, _cloner, ArrayPartExpr(_cloner.get(getObject())));
+        pExpr->getIndices().appendClones(getIndices(), _cloner);
+        return pExpr;
+    }
 
 private:
     Collection<Expression> m_indices;
@@ -711,13 +774,21 @@ class StructType;
 /// Structure field.
 class FieldExpr : public Component {
 public:
-    FieldExpr(const std::wstring &_strField = L"") : m_strField(_strField) {}
+    /// Default constructor.
+    /// \param _strField Field name.
+    /// \param _pObject Expression of compound type.
+    FieldExpr(const std::wstring &_strField = L"", const ExpressionPtr &_pObject = NULL) :
+        Component(_pObject), m_strField(_strField) {}
 
     /// Get component kind.
     /// \return #StructField.
     virtual int getComponentKind() const { return STRUCT_FIELD; }
 
     const std::wstring &getFieldName() const { return m_strField; }
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, FieldExpr(m_strField, _cloner.get(getObject())));
+    }
 
 private:
     std::wstring m_strField;
@@ -730,8 +801,9 @@ typedef std::pair<size_t, size_t> UnionFieldIdx;
 /// Union alternative name. Only used inside switch/case construct.
 class UnionAlternativeExpr : public Component {
 public:
-    UnionAlternativeExpr(const std::wstring & _strName) :
-        m_strName(_strName), m_pType(NULL), m_idx(-1, -1)
+    UnionAlternativeExpr(const std::wstring & _strName, const ExpressionPtr &_pObject = NULL,
+            const UnionTypePtr &_pType = NULL, const UnionFieldIdx &_idx = UnionFieldIdx(-1, -1)) :
+        Component(_pObject), m_strName(_strName), m_pType(_pType), m_idx(_idx)
     {}
 
     UnionAlternativeExpr(const UnionTypePtr &_pType, const UnionFieldIdx &_idx);
@@ -763,6 +835,11 @@ public:
     NamedValuePtr getField() const;
     UnionConstructorDeclarationPtr getConstructor() const;
 
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, UnionAlternativeExpr(getName(), _cloner.get(getObject()),
+                _cloner.get(getUnionType()), m_idx));
+    }
+
 private:
     std::wstring m_strName;
     TypePtr m_pType;
@@ -773,7 +850,10 @@ private:
 class MapElementExpr : public Component {
 public:
     /// Default constructor.
-    MapElementExpr() : m_pIndex(NULL) {}
+    /// \param _pIndex Element index.
+    /// \param _pObject Expression of compound type.
+    MapElementExpr(const ExpressionPtr &_pIndex = NULL, const ExpressionPtr &_pObject = NULL) :
+        Component(_pObject), m_pIndex(_pIndex) {}
 
     /// Get component kind.
     /// \return #MapElement.
@@ -787,6 +867,10 @@ public:
     /// \param _pExpression Element index.
     void setIndex(const ExpressionPtr &_pExpression) { m_pIndex = _pExpression; }
 
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, MapElementExpr(_cloner.get(getIndex()), _cloner.get(getObject())));
+    }
+
 private:
     ExpressionPtr m_pIndex;
 };
@@ -795,7 +879,10 @@ private:
 class ListElementExpr : public Component {
 public:
     /// Default constructor.
-    ListElementExpr() : m_pIndex(NULL) {}
+    /// \param _pIndex Element index.
+    /// \param _pObject Expression of compound type.
+    ListElementExpr(const ExpressionPtr &_pIndex = NULL, const ExpressionPtr &_pObject = NULL) :
+        Component(_pObject), m_pIndex(_pIndex) {}
 
     /// Get component kind.
     /// \return #ListElement.
@@ -809,6 +896,10 @@ public:
     /// \param _pExpression Element index.
     void setIndex(const ExpressionPtr &_pExpression) { m_pIndex = _pExpression; }
 
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, ListElementExpr(_cloner.get(getIndex()), _cloner.get(getObject())));
+    }
+
 private:
     ExpressionPtr m_pIndex;
 };
@@ -821,7 +912,10 @@ class Constructor;
 class Replacement : public Component {
 public:
     /// Default constructor.
-    Replacement() : m_pConstructor(NULL) {}
+    /// \param _pNewValues Expression containing new values.
+    /// \param _pObject Expression of compound type.
+    Replacement(const ConstructorPtr &_pNewValues = NULL, const ExpressionPtr &_pObject = NULL) :
+        Component(_pObject), m_pConstructor(_pNewValues) {}
 
     /// Get component kind.
     /// \return #Replacement.
@@ -835,6 +929,10 @@ public:
     /// \param _pConstructor Expression containing new values.
     void setNewValues(const ConstructorPtr &_pConstructor) { m_pConstructor = _pConstructor; }
 
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, Replacement(_cloner.get(getNewValues()), _cloner.get(getObject())));
+    }
+
 private:
     ExpressionPtr m_pConstructor;
 };
@@ -843,7 +941,8 @@ private:
 class FunctionCall : public Expression {
 public:
     /// Default constructor.
-    FunctionCall() : m_pPredicate(NULL) {}
+    /// \param _pPredicate Expression of predicate type.
+    FunctionCall(const ExpressionPtr &_pPredicate = NULL) : m_pPredicate(_pPredicate) {}
 
     virtual int getKind() const { return FUNCTION_CALL; }
 
@@ -860,6 +959,12 @@ public:
     Collection<Expression> &getArgs() { return m_args; }
     const Collection<Expression> &getArgs() const { return m_args; }
 
+    virtual NodePtr clone(Cloner &_cloner) const {
+        FunctionCallPtr pExpr = NEW_CLONE(this, _cloner, FunctionCall(_cloner.get(getPredicate())));
+        pExpr->getArgs().appendClones(getArgs(), _cloner);
+        return pExpr;
+    }
+
 private:
     ExpressionPtr m_pPredicate;
     Collection<Expression> m_args;
@@ -869,7 +974,8 @@ private:
 class Binder : public Expression {
 public:
     /// Default constructor.
-    Binder() : m_pPredicate(NULL) {}
+    /// \param _pPredicate Expression of predicate type.
+    Binder(const ExpressionPtr &_pPredicate = NULL) : m_pPredicate(_pPredicate) {}
 
     virtual int getKind() const { return BINDER; }
 
@@ -884,6 +990,13 @@ public:
     /// Get list of bound parameters. Can contain NULL values.
     /// \return List of expressions.
     Collection<Expression> &getArgs() { return m_args; }
+    const Collection<Expression> &getArgs() const { return m_args; }
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        BinderPtr pExpr = NEW_CLONE(this, _cloner, Binder(_cloner.get(getPredicate())));
+        pExpr->getArgs().appendClones(getArgs(), _cloner);
+        return pExpr;
+    }
 
 private:
     ExpressionPtr m_pPredicate;
@@ -896,7 +1009,8 @@ class FormulaDeclaration;
 class FormulaCall : public Expression {
 public:
     /// Default constructor.
-    FormulaCall() : m_pTarget(NULL) {}
+    /// \param _pTarget Target formula.
+    FormulaCall(const FormulaDeclarationPtr &_pTarget = NULL) : m_pTarget(_pTarget) {}
 
     virtual int getKind() const { return FORMULA_CALL; }
 
@@ -911,8 +1025,15 @@ public:
     /// Get list of actual parameters.
     /// \return List of expressions.
     Collection<Expression> &getArgs() { return m_args; }
+    const Collection<Expression> &getArgs() const { return m_args; }
 
     std::wstring getName() const;
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        FormulaCallPtr pExpr = NEW_CLONE(this, _cloner, FormulaCall(_cloner.get(getTarget())));
+        pExpr->getArgs().appendClones(getArgs(), _cloner);
+        return pExpr;
+    }
 
 private:
     FormulaDeclarationPtr m_pTarget;
@@ -923,7 +1044,11 @@ private:
 class Branch : public Params {
 public:
     /// Default constructor.
-    Branch() : m_pLabel(NULL), m_pPreCondition(NULL), m_pPostCondition(NULL) {}
+    /// \param _pLabel Label of the output branch.
+    /// \param _pPreCondition Precondition.
+    /// \param _pPostCondition Postcondition.
+    Branch(const LabelPtr &_pLabel = NULL, const FormulaPtr &_pPreCondition = NULL, const FormulaPtr &_pPostCondition = NULL) :
+        m_pLabel(_pLabel), m_pPreCondition(_pPreCondition), m_pPostCondition(_pPostCondition) {}
 
     /// Get label associated with the branch.
     /// Possibly NULL if it is the only branch.
@@ -949,6 +1074,12 @@ public:
     /// Set branch postcondition.
     /// \param _pCondition Postcondition.
     void setPostCondition(const FormulaPtr &_pCondition) { m_pPostCondition = _pCondition; }
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        BranchPtr pExpr = NEW_CLONE(this, _cloner, Branch(_cloner.get(getLabel()), _cloner.get(getPreCondition()), _cloner.get(getPostCondition())));
+        pExpr->appendClones(*this, _cloner);
+        return pExpr;
+    }
 
 private:
     LabelPtr m_pLabel;
@@ -1031,6 +1162,16 @@ public:
 
     void updateType() const;
 
+    void cloneTo(AnonymousPredicate &_pred, Cloner &_cloner) const {
+        _pred.setLabel(getLabel());
+        _pred.getInParams().appendClones(getInParams(), _cloner);
+        _pred.getOutParams().appendClones(getOutParams(), _cloner);
+        _pred.setPreCondition(_cloner.get(getPreCondition()));
+        _pred.setPostCondition(_cloner.get(getPreCondition()));
+        _pred.setBlock(_cloner.get(getBlock()));
+        _pred.setMeasure(_cloner.get(getMeasure()));
+    }
+
 private:
     Params m_paramsIn;
     Branches m_paramsOut;
@@ -1052,6 +1193,12 @@ public:
 
     AnonymousPredicate &getPredicate() { return m_pred; }
 
+    virtual NodePtr clone(Cloner &_cloner) const {
+        LambdaPtr pExpr = NEW_CLONE(this, _cloner, Lambda());
+        m_pred.cloneTo(pExpr->m_pred, _cloner);
+        return pExpr;
+    }
+
 private:
     AnonymousPredicate m_pred;
 };
@@ -1060,7 +1207,10 @@ private:
 class ElementDefinition : public Node {
 public:
     /// Default constructor.
-    ElementDefinition() : m_pIndex(NULL), m_pValue(NULL) {}
+    /// \param _pIndex Element index.
+    /// \param _pValue Element value.
+    ElementDefinition(const ExpressionPtr &_pIndex = NULL, const ExpressionPtr &_pValue = NULL) :
+        m_pIndex(_pIndex), m_pValue(_pValue) {}
 
     virtual int getNodeKind() const { return Node::ELEMENT_DEFINITION; }
 
@@ -1080,6 +1230,10 @@ public:
     /// \param _pExpression Element value.
     void setValue(const ExpressionPtr &_pExpression) { m_pValue = _pExpression; }
 
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, ElementDefinition(_cloner.get(getIndex()), _cloner.get(getValue())));
+    }
+
 private:
     ExpressionPtr m_pIndex, m_pValue;
 };
@@ -1088,7 +1242,11 @@ private:
 class StructFieldDefinition : public Node {
 public:
     /// Default constructor.
-    StructFieldDefinition() : m_pValue(NULL) {}
+    /// \param _pValue Field value.
+    /// \param _pField Field reference.
+    /// \param _strName Identifier.
+    StructFieldDefinition(const ExpressionPtr &_pValue = NULL, const NamedValuePtr &_pField = NULL, const std::wstring &_strName = L"") :
+        m_pValue(_pValue), m_pField(_pField), m_strName(_strName) {}
 
     virtual int getNodeKind() const { return Node::STRUCT_FIELD_DEFINITION; }
 
@@ -1116,6 +1274,10 @@ public:
     /// \param _strName Identifier.
     void setName(const std::wstring &_strName) { m_strName = _strName; }
 
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, StructFieldDefinition(_cloner.get(getValue()), _cloner.get(getField()), getName()));
+    }
+
 private:
     ExpressionPtr m_pValue;
     NamedValuePtr m_pField;
@@ -1127,6 +1289,8 @@ class Constructor : public Expression {
 public:
     /// Kind of constructor.
     enum {
+        /// Undefined.
+        NONE_CONSTRUCTOR,
         /// Struct initializer.
         STRUCT_FIELDS,
         /// Array initializer.
@@ -1152,7 +1316,7 @@ public:
 
     /// Get constructor kind (implemented in descendants).
     /// \return Constructor kind.
-    virtual int getConstructorKind() const = 0;
+    virtual int getConstructorKind() const { return NONE_CONSTRUCTOR; }
 };
 
 /// Structure value. \extends Constructor
@@ -1166,6 +1330,12 @@ public:
     /// Get constructor kind.
     /// \return #StructFields.
     virtual int getConstructorKind() const { return STRUCT_FIELDS; }
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        StructConstructorPtr pCopy = NEW_CLONE(this, _cloner, StructConstructor());
+        pCopy->appendClones(*this, _cloner);
+        return pCopy;
+    }
 };
 
 class VariableDeclaration;
@@ -1176,7 +1346,8 @@ class UnionConstructorDeclaration;
 /// May contain not-fully defined fields (used in switch construct).
 class UnionConstructor : public StructConstructor {
 public:
-    UnionConstructor(const std::wstring &_strName) : m_strName(_strName), m_pProto(NULL) {}
+    UnionConstructor(const std::wstring &_strName, const UnionConstructorDeclarationPtr &_pProto = NULL) :
+        m_strName(_strName), m_pProto(_pProto) {}
 
     /// Get constructor kind.
     /// \return #UnionConstructor.
@@ -1196,6 +1367,12 @@ public:
     const std::wstring &getName() const { return m_strName; }
     void setName(const std::wstring &_strName) { m_strName = _strName; }
 
+    virtual NodePtr clone(Cloner &_cloner) const {
+        UnionConstructorPtr pCopy = NEW_CLONE(this, _cloner, UnionConstructor(getName(), _cloner.get(getPrototype())));
+        pCopy->getDeclarations().appendClones(getDeclarations(), _cloner);
+        return pCopy;
+    }
+
 private:
     std::wstring m_strName;
     Collection<VariableDeclaration> m_decls;
@@ -1213,6 +1390,12 @@ public:
     /// Get constructor kind.
     /// \return #ArrayElements.
     virtual int getConstructorKind() const { return ARRAY_ELEMENTS; }
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        ArrayConstructorPtr pCopy = NEW_CLONE(this, _cloner, ArrayConstructor());
+        pCopy->appendClones(*this, _cloner);
+        return pCopy;
+    }
 };
 
 /// Map value. \extends Constructor
@@ -1226,6 +1409,12 @@ public:
     /// Get constructor kind.
     /// \return #MapElements.
     virtual int getConstructorKind() const { return MAP_ELEMENTS; }
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        MapConstructorPtr pCopy = NEW_CLONE(this, _cloner, MapConstructor());
+        pCopy->appendClones(*this, _cloner);
+        return pCopy;
+    }
 };
 
 /// Set value. \extends Constructor
@@ -1239,6 +1428,12 @@ public:
     /// Get constructor kind.
     /// \return #SetElements.
     virtual int getConstructorKind() const { return SET_ELEMENTS; }
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        SetConstructorPtr pCopy = NEW_CLONE(this, _cloner, SetConstructor());
+        pCopy->appendClones(*this, _cloner);
+        return pCopy;
+    }
 };
 
 /// List value. \extends Constructor
@@ -1252,6 +1447,12 @@ public:
     /// Get constructor kind.
     /// \return #ListElements.
     virtual int getConstructorKind() const { return LIST_ELEMENTS; }
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        ListConstructorPtr pCopy = NEW_CLONE(this, _cloner, ListConstructor());
+        pCopy->appendClones(*this, _cloner);
+        return pCopy;
+    }
 };
 
 /// Definition of array part.Consider array generator:
@@ -1265,13 +1466,15 @@ public:
 class ArrayPartDefinition : public Node {
 public:
     /// Default constructor.
-    ArrayPartDefinition() : m_pExpression(NULL) {}
+    /// \param _pExpression Expression.
+    ArrayPartDefinition(const ExpressionPtr &_pExpression = NULL) : m_pExpression(_pExpression) {}
 
     virtual int getNodeKind() const { return Node::ARRAY_PART_DEFINITION; }
 
     /// Get \c case conditions.
     /// \return List of expressions (can contain ranges).
     Collection<Expression> &getConditions() { return m_conditions; }
+    const Collection<Expression> &getConditions() const { return m_conditions; }
 
     /// Get expression.
     /// \return Expression.
@@ -1281,6 +1484,12 @@ public:
     /// \param _pExpression Expression.
     /// \param _bReparent If specified (default) also sets parent of _pExpression to this node.
     void setExpression(const ExpressionPtr &_pExpression) { m_pExpression = _pExpression; }
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        ArrayPartDefinitionPtr pCopy = NEW_CLONE(this, _cloner, ArrayPartDefinition(_cloner.get(getExpression())));
+        pCopy->getConditions().appendClones(getConditions(), _cloner);
+        return pCopy;
+    }
 
 private:
     ExpressionPtr m_pExpression;
@@ -1299,7 +1508,8 @@ private:
 class ArrayIteration : public Collection<ArrayPartDefinition, Constructor> {
 public:
     /// Default constructor.
-    ArrayIteration() : m_pDefault(NULL) {}
+    /// \param _pDefault Expression.
+    ArrayIteration(const ExpressionPtr &_pDefault = NULL) : m_pDefault(_pDefault) {}
 
     /// Get constructor kind.
     /// \return #ArrayIteration.
@@ -1308,6 +1518,7 @@ public:
     /// Get list of iterator variables.
     /// \return Iterator variables.
     NamedValues &getIterators() { return m_iterators; }
+    const NamedValues &getIterators() const { return m_iterators; }
 
     /// Get expression for default alternative.
     /// \return Expression.
@@ -1316,6 +1527,13 @@ public:
     /// Set expression for default alternative.
     /// \param _pExpression Expression.
     void setDefault(const ExpressionPtr &_pExpression) { m_pDefault = _pExpression; }
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        ArrayIterationPtr pCopy = NEW_CLONE(this, _cloner, ArrayIteration(_cloner.get(getDefault())));
+        pCopy->appendClones(*this, _cloner);
+        pCopy->getIterators().appendClones(getIterators(), _cloner);
+        return pCopy;
+    }
 
 private:
     ExpressionPtr m_pDefault;

@@ -18,7 +18,8 @@ namespace ir {
 class ParameterizedType : public Type {
 public:
     /// Default constructor.
-    ParameterizedType() : m_pActualType(NULL) {}
+    /// \param _pActualType Referenced type.
+    ParameterizedType(const TypePtr &_pActualType = NULL) : m_pActualType(_pActualType) {}
 
     /// Get type kind.
     /// \returns #Parameterized.
@@ -27,6 +28,7 @@ public:
     /// Get list of formal type parameters.
     /// \return List of variables.
     NamedValues &getParams() { return m_params; }
+    const NamedValues &getParams() const { return m_params; }
 
     /// Get actual type.
     /// \return Referenced type.
@@ -40,6 +42,12 @@ public:
 
     virtual bool hasParameters() const { return true; }
 
+    virtual NodePtr clone(Cloner &_cloner) const {
+        ParameterizedTypePtr pCopy = NEW_CLONE(this, _cloner, ParameterizedType(_cloner.get(getActualType())));
+        pCopy->getParams().appendClones(getParams(), _cloner);
+        return pCopy;
+    }
+
 private:
     NamedValues m_params;
     TypePtr m_pActualType;
@@ -51,11 +59,8 @@ class TypeDeclaration;
 class NamedReferenceType : public Type {
 public:
     /// Default constructor.
-    NamedReferenceType() : m_pDecl(NULL) {}
-
-    /// Initialize with type declaration.
-    /// \param _pDecl Target type declaration.
-    NamedReferenceType(const TypeDeclarationPtr &_pDecl) : m_pDecl(_pDecl) {}
+    /// \param _pDeclaration Target type declaration.
+    NamedReferenceType(const TypeDeclarationPtr &_pDeclaration = NULL) : m_pDecl(_pDeclaration) {}
 
     /// Get type kind.
     /// \returns #NamedReference.
@@ -74,6 +79,13 @@ public:
     /// Get list of actual parameters.
     /// \return List of expressions.
     Collection<Expression> &getArgs() { return m_args; }
+    const Collection<Expression> &getArgs() const { return m_args; }
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        NamedReferenceTypePtr pCopy = NEW_CLONE(this, _cloner, NamedReferenceType(_cloner.get(getDeclaration())));
+        pCopy->getArgs().appendClones(getArgs(), _cloner);
+        return pCopy;
+    }
 
 private:
     Collection<Expression> m_args;
@@ -84,7 +96,8 @@ private:
 class TypeType : public Type {
 public:
     /// Default constructor.
-    TypeType();
+    /// \param _pDeclaration Target type declaration.
+    TypeType(const TypeDeclarationPtr &_pDeclaration = NULL);
 
     /// Get type kind.
     /// \returns #Type.
@@ -98,7 +111,9 @@ public:
     virtual int compare(const Type &_other) const;
     virtual bool less(const Type &_other) const;
 
-    TypePtr clone() const;
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, TypeType(_cloner.get(getDeclaration())));
+    }
 
 private:
     TypeDeclarationPtr m_pDecl;
@@ -143,6 +158,14 @@ public:
 
     bool empty() const;
 
+    virtual NodePtr clone(Cloner &_cloner) const {
+        StructTypePtr pCopy = NEW_CLONE(this, _cloner, StructType());
+        pCopy->getNamesOrd().appendClones(getNamesOrd(), _cloner);
+        pCopy->getTypesOrd().appendClones(getTypesOrd(), _cloner);
+        pCopy->getNamesSet().appendClones(getNamesSet(), _cloner);
+        return pCopy;
+    }
+
 private:
     NamedValues m_fields[3];
     NamedValues &m_namesOrd, &m_typesOrd, &m_namesSet;
@@ -176,6 +199,10 @@ public:
     /// \param _nOrdinal Ordinal corresponding to the value.
     void setOrdinal(int _nOrdinal) { m_nOrdinal = _nOrdinal; }
 
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, EnumValue(getName(), getOrdinal(), _cloner.get(getType())));
+    }
+
 private:
     int m_nOrdinal;
 };
@@ -194,6 +221,13 @@ public:
     /// Get list of values.
     /// \return List of values.
     Collection<EnumValue> &getValues() { return m_values; }
+    const Collection<EnumValue> &getValues() const { return m_values; }
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        EnumTypePtr pCopy = NEW_CLONE(this, _cloner, EnumType());
+        pCopy->getValues().appendClones(getValues(), _cloner);
+        return pCopy;
+    }
 
 private:
     Collection<EnumValue> m_values;
@@ -203,7 +237,8 @@ class UnionType;
 
 class UnionConstructorDeclaration : public Node {
 public:
-    UnionConstructorDeclaration(const std::wstring &_strName, size_t _ord = 0) : m_strName(_strName), m_pUnion(NULL), m_ord(_ord) {}
+    UnionConstructorDeclaration(const std::wstring &_strName, size_t _ord = 0, const UnionTypePtr &_pUnion = NULL) :
+        m_strName(_strName), m_pUnion(_pUnion), m_ord(_ord) {}
 
     virtual int getNodeKind() const { return Node::UNION_CONSTRUCTOR_DECLARATION; }
 
@@ -220,6 +255,13 @@ public:
 
     size_t getOrdinal() const { return m_ord; }
     void setOrdinal(size_t _ord) { m_ord = _ord; }
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        UnionConstructorDeclarationPtr pCopy = NEW_CLONE(this, _cloner, UnionConstructorDeclaration(getName(), getOrdinal(),
+                _cloner.get(getUnion())));
+        pCopy->getFields().appendClones(getFields(), _cloner);
+        return pCopy;
+    }
 
 private:
     std::wstring m_strName;
@@ -258,6 +300,12 @@ public:
 
     virtual bool contains(const TypePtr &_pType) const;
 
+    virtual NodePtr clone(Cloner &_cloner) const {
+        UnionTypePtr pCopy = NEW_CLONE(this, _cloner, UnionType());
+        pCopy->getConstructors().appendClones(getConstructors(), _cloner);
+        return pCopy;
+    }
+
 private:
     UnionConstructorDeclarations m_constructors;
 };
@@ -265,12 +313,9 @@ private:
 /// Common base type for arrays, sets, etc.
 class DerivedType : public Type {
 public:
-    /// Default constructor.
-    DerivedType() : m_pBaseType(NULL) {}
-
     /// Initialize with base type.
     /// \param _pType Base type.
-    DerivedType(const TypePtr &_pType) : m_pBaseType(_pType) {}
+    DerivedType(const TypePtr &_pType = NULL) : m_pBaseType(_pType) {}
 
     /// Get base type.
     /// \return Base type.
@@ -300,43 +345,42 @@ private:
 /// Values of optional type are either of it's base nype or \c nil.
 class OptionalType : public DerivedType {
 public:
-    /// Default constructor.
-    OptionalType() {}
-
     /// Initialize with base type.
     /// \param _pType Base type.
-    OptionalType(const TypePtr &_pType) : DerivedType(_pType) {}
+    OptionalType(const TypePtr &_pType = NULL) : DerivedType(_pType) {}
 
     /// Get type kind.
     /// \returns #Optional.
     virtual int getKind() const { return OPTIONAL; }
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, OptionalType(_cloner.get(getBaseType())));
+    }
 };
 
 /// Sequence type.
 class SeqType : public DerivedType {
 public:
-    /// Default constructor.
-    SeqType() {}
-
     /// Initialize with base type.
     /// \param _pType Base type.
-    SeqType(const TypePtr &_pType) : DerivedType(_pType) {}
+    SeqType(const TypePtr &_pType = NULL) : DerivedType(_pType) {}
 
     /// Get type kind.
     /// \returns #Seq.
     virtual int getKind() const { return SEQ; }
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, SeqType(_cloner.get(getBaseType())));
+    }
 };
 
 /// Subtype.
 class Subtype : public Type {
 public:
-    /// Default constructor.
-    Subtype() : m_pParam(NULL), m_pExpression(NULL) {}
-
     /// Initialize with parameter and expression.
     /// \param _pParam Parameter.
     /// \param _pExpression Boolean expression.
-    Subtype(const NamedValuePtr &_pParam, const ExpressionPtr &_pExpression)
+    Subtype(const NamedValuePtr &_pParam = NULL, const ExpressionPtr &_pExpression = NULL)
         : m_pParam(_pParam), m_pExpression(_pExpression) {}
 
     /// Get type kind.
@@ -359,6 +403,10 @@ public:
     /// \param _pExpression Boolean expression.
     void setExpression(const ExpressionPtr &_pExpression) { m_pExpression = _pExpression; }
 
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, Subtype(_cloner.get(getParam()), _cloner.get(getExpression())));
+    }
+
 private:
     NamedValuePtr m_pParam;
     ExpressionPtr m_pExpression;
@@ -370,9 +418,6 @@ private:
 /// \code subtype (T t : t >= tMin & t <= tMax) \endcode
 class Range : public Type {
 public:
-    /// Default constructor.
-    Range() : m_pMin(NULL), m_pMax(NULL) {}
-
     /// Initialize with bounds.
     /// \param _pMin Expression corresponding to the lower bound of the type.
     /// \param _pMax Expression corresponding to the upper bound of the type.
@@ -399,6 +444,10 @@ public:
     /// \param _pExpression Expression corresponding to the upper bound of the type.
     void setMax(const ExpressionPtr &_pExpression) { m_pMax = _pExpression; }
 
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, Range(_cloner.get(getMin()), _cloner.get(getMax())));
+    }
+
 private:
     ExpressionPtr m_pMin, m_pMax;
 };
@@ -406,12 +455,9 @@ private:
 /// Array type.
 class ArrayType : public DerivedType {
 public:
-    /// Default constructor.
-    ArrayType() {}
-
     /// Initialize with base type.
     /// \param _pType Base type.
-    ArrayType(const TypePtr &_pType) : DerivedType(_pType) {}
+    ArrayType(const TypePtr &_pType = NULL) : DerivedType(_pType) {}
 
     /// Get type kind.
     /// \returns #Array.
@@ -420,6 +466,13 @@ public:
     /// Get array dimensions as list of ranges.
     /// \return List of ranges.
     Collection<Range> &getDimensions() { return m_dimensions; }
+    const Collection<Range> &getDimensions() const { return m_dimensions; }
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        ArrayTypePtr pCopy = NEW_CLONE(this, _cloner, ArrayType(_cloner.get(getBaseType())));
+        pCopy->getDimensions().appendClones(getDimensions(), _cloner);
+        return pCopy;
+    }
 
 private:
     Collection<Range> m_dimensions;
@@ -428,12 +481,9 @@ private:
 /// Set type.
 class SetType : public DerivedType {
 public:
-    /// Default constructor.
-    SetType() {}
-
     /// Initialize with base type.
     /// \param _pType Base type.
-    SetType(const TypePtr &_pType) : DerivedType(_pType) {}
+    SetType(const TypePtr &_pType = NULL) : DerivedType(_pType) {}
 
     /// Get type kind.
     /// \returns #Set.
@@ -441,19 +491,20 @@ public:
 
     virtual TypePtr getMeet(Type &_other);
     virtual TypePtr getJoin(Type &_other);
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, SetType(_cloner.get(getBaseType())));
+    }
 };
 
 /// Map type.
 /// Base type (defined in DerivedType) is the type of values contained in a map.
 class MapType : public DerivedType {
 public:
-    /// Default constructor.
-    MapType() : m_pIndexType(NULL) {}
-
     /// Initialize with base type.
     /// \param _pIndexType Index type.
     /// \param _pBaseType Base type.
-    MapType(const TypePtr &_pIndexType, const TypePtr &_pBaseType)
+    MapType(const TypePtr &_pIndexType = NULL, const TypePtr &_pBaseType = NULL)
         : DerivedType(_pBaseType), m_pIndexType(_pIndexType) {}
 
     /// Get type kind.
@@ -484,6 +535,10 @@ public:
     virtual TypePtr getJoin(Type &_other);
     virtual TypePtr getMeet(Type &_other);
 
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, MapType(_cloner.get(getIndexType()), _cloner.get(getBaseType())));
+    }
+
 private:
     TypePtr m_pIndexType;
 };
@@ -504,13 +559,20 @@ public:
 
     virtual TypePtr getJoin(Type &_other);
     virtual TypePtr getMeet(Type &_other);
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, ListType(_cloner.get(getBaseType())));
+    }
 };
 
 /// Predicate type.
 class PredicateType : public Type {
 public:
     /// Default constructor.
-    PredicateType() : m_pPreCond(NULL), m_pPostCond(NULL) {}
+    /// \param _pPreCond Precondition.
+    /// \param _pPostCond Postcondition.
+    PredicateType(const FormulaPtr &_pPreCond = NULL, const FormulaPtr &_pPostCond = NULL) :
+        m_pPreCond(_pPreCond), m_pPostCond(_pPostCond) {}
 
     /// Get type kind.
     /// \returns #Predicate.
@@ -565,6 +627,13 @@ public:
     virtual bool less(const Type &_other) const;
 
     // TODO implement join/meet/less/etc.
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        PredicateTypePtr pCopy = NEW_CLONE(this, _cloner, PredicateType(_cloner.get(getPreCondition()), _cloner.get(getPostCondition())));
+        pCopy->getInParams().appendClones(getInParams(), _cloner);
+        pCopy->getOutParams().appendClones(getOutParams(), _cloner);
+        return pCopy;
+    }
 
 private:
     Params m_paramsIn;

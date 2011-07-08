@@ -32,6 +32,12 @@ public:
 
     bool isBuiltin() const { return m_bBuiltin; }
 
+    virtual NodePtr clone(Cloner &_cloner) const {
+        PredicatePtr pCopy = NEW_CLONE(this, _cloner, Predicate(getName(), isBuiltin()));
+        cloneTo(*pCopy, _cloner);
+        return pCopy;
+    }
+
 private:
     std::wstring m_strName;
     bool m_bBuiltin;
@@ -52,12 +58,11 @@ public:
         QUEUE
     };
 
-    /// Default constructor.
-    Message() : m_processingType(MESSAGE) {}
-
     /// Initialize with message processing type.
     /// \param _processingType Processing type (one of #Message and #Queue).
-    Message(int _processingType) : m_processingType(_processingType) {}
+    /// \param _strName Identifier.
+    Message(int _processingType = MESSAGE, const std::wstring &_strName = L"") :
+        m_processingType(_processingType), m_strName(_strName) {}
 
     virtual int getNodeKind() const { return Node::MESSAGE; }
 
@@ -80,6 +85,13 @@ public:
     /// Get list of message parameters.
     /// \return List of parameters.
     Params &getParams() { return m_params; }
+    const Params &getParams() const { return m_params; }
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        MessagePtr pCopy = NEW_CLONE(this, _cloner, Message(getProcessingType(), getName()));
+        pCopy->getParams().appendClones(getParams(), _cloner);
+        return pCopy;
+    }
 
 private:
     int m_processingType;
@@ -90,12 +102,10 @@ private:
 /// Process declaration.
 class Process : public Node {
 public:
-    /// Default constructor.
-    Process() : m_pBlock(NULL) {}
-
     /// Initialize with process name.
     /// \param _strName Process name.
-    Process(const std::wstring &_strName) : m_strName(_strName), m_pBlock(NULL) {}
+    /// \param _pBlock Predicate body.
+    Process(const std::wstring &_strName = L"", const BlockPtr &_pBlock = NULL) : m_strName(_strName), m_pBlock(_pBlock) {}
 
     virtual int getNodeKind() const { return Node::PROCESS; }
 
@@ -110,11 +120,13 @@ public:
     /// Get list of formal input parameters.
     /// \return List of parameters.
     Params &getInParams() { return m_paramsIn; }
+    const Params &getInParams() const { return m_paramsIn; }
 
     /// Get list of output branches. Each branch can contain a list of parameters,
     /// a precondition and a postcondition.
     /// \return List of branches.
     Branches &getOutParams() { return m_paramsOut; }
+    const Branches &getOutParams() const { return m_paramsOut; }
 
     /// Set predicate body.
     /// \param _pBlock Predicate body.
@@ -123,6 +135,13 @@ public:
     /// Get predicate body.
     /// \return Predicate body.
     const BlockPtr &getBlock() const { return m_pBlock; }
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        ProcessPtr pCopy = NEW_CLONE(this, _cloner, Process(getName(), _cloner.get(getBlock())));
+        pCopy->getInParams().appendClones(getInParams(), _cloner);
+        pCopy->getOutParams().appendClones(getOutParams(), _cloner);
+        return pCopy;
+    }
 
 private:
     Branches m_paramsOut;
@@ -139,8 +158,12 @@ public:
     /// Initialize with variable name.
     /// \param _bLocal Specifies if it is a local variable.
     /// \param _strName Variable name.
-    Variable(bool _bLocal, const std::wstring &_strName = L"")
-        : NamedValue(_strName), m_bMutable(false), m_kind(_bLocal ? LOCAL : GLOBAL), m_pDeclaration(NULL) {}
+    /// \param _pType Type associated with variable.
+    /// \param _bMutable If specified the variable is considered mutable.
+    /// \param _pTarget Referenced variable.
+    Variable(bool _bLocal, const std::wstring &_strName = L"", const TypePtr &_pType = NULL,
+            bool _bMutable = false, const VariableDeclarationPtr &_pDeclaration = NULL) :
+        NamedValue(_strName, _pType), m_bMutable(_bMutable), m_kind(_bLocal ? LOCAL : GLOBAL), m_pDeclaration(_pDeclaration) {}
 
     /// Get value kind.
     /// \returns #PredicateParameter.
@@ -162,6 +185,10 @@ public:
     /// \param _pTarget Referenced variable.
     void setDeclaration(const VariableDeclarationPtr &_pDeclaration) { m_pDeclaration = _pDeclaration; }
 
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, Variable(m_kind == LOCAL, getName(), _cloner.get(getType()), isMutable(), _cloner.get(getDeclaration())));
+    }
+
 private:
     bool m_bMutable;
     const int m_kind;
@@ -171,8 +198,12 @@ private:
 /// Statement that wraps variable declaration.
 class VariableDeclaration : public Statement {
 public:
-    /// Default constructor.
-    VariableDeclaration() : m_pVar(NULL), m_pValue(NULL) { }
+    /// Initialize with variable reference.
+    /// \param _pVar Variable.
+    /// \param _pValue Value.
+    /// \param _pLabel Statement label.
+    VariableDeclaration(const VariablePtr &_pVar = NULL, const ExpressionPtr &_pValue = NULL, const LabelPtr &_pLabel = NULL) :
+        Statement(_pLabel), m_pVar(_pVar), m_pValue(_pValue) {}
 
     /// Initialize with variable name.
     /// \param _bLocal Specifies if it is a local variable.
@@ -206,6 +237,10 @@ public:
 
     std::wstring getName() const;
 
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, VariableDeclaration(_cloner.get(getVariable()), _cloner.get(getValue()), _cloner.get(getLabel())));
+    }
+
 private:
     VariablePtr m_pVar;
     ExpressionPtr m_pValue;
@@ -214,12 +249,12 @@ private:
 /// Statement that wraps type declaration.
 class TypeDeclaration : public Statement {
 public:
-    /// Default constructor.
-    TypeDeclaration() : m_pType(NULL) {}
-
     /// Initialize with type name.
     /// \param _strName Declared type name.
-    TypeDeclaration(const std::wstring &_strName) : m_strName(_strName), m_pType(NULL) {}
+    /// \param _pType Underlying type.
+    /// \param _pLabel Statement label.
+    TypeDeclaration(const std::wstring &_strName = L"", const TypePtr &_pType = NULL, const LabelPtr &_pLabel = NULL) :
+        Statement(_pLabel), m_strName(_strName), m_pType(_pType) {}
 
     /// Get statement kind.
     /// \returns #TypeDeclaration.
@@ -241,6 +276,10 @@ public:
     /// \param _strName Identifier.
     void setName(const std::wstring &_strName) { m_strName = _strName; }
 
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, TypeDeclaration(getName(), _cloner.get(getType()), _cloner.get(getLabel())));
+    }
+
 private:
     std::wstring m_strName;
     TypePtr m_pType;
@@ -249,13 +288,14 @@ private:
 /// Named formula declaration.
 class FormulaDeclaration : public Statement {
 public:
-    /// Default constructor.
-    FormulaDeclaration() : m_pFormula(NULL) {}
-
     /// Initialize with formula name.
     /// \param _strName Declared type name.
     /// \param _pType Result type.
-    FormulaDeclaration(const std::wstring &_strName, const TypePtr &_pType = NULL) : m_strName(_strName), m_pFormula(NULL), m_pType(_pType) {
+    /// \param _pFormula Formula.
+    /// \param _pLabel Statement label.
+    FormulaDeclaration(const std::wstring &_strName = L"", const TypePtr &_pType = NULL, const ExpressionPtr &_pFormula = NULL, const LabelPtr &_pLabel = NULL) :
+        m_strName(_strName), m_pFormula(_pFormula), m_pType(_pType)
+    {
         if (!_pType)
             m_pType = new Type(Type::BOOL);
     }
@@ -267,6 +307,7 @@ public:
     /// Get list of formal parameters.
     /// \return List of parameters.
     NamedValues &getParams() { return m_params; }
+    const NamedValues &getParams() const { return m_params; }
 
     /// Get formula name.
     /// \return Identifier.
@@ -278,7 +319,7 @@ public:
 
     /// Get result type.
     /// \return Type reference.
-    const TypePtr &getResultType() { return m_pType; }
+    const TypePtr &getResultType() const { return m_pType; }
 
     /// Set result type.
     /// \param _pType Result type.
@@ -292,6 +333,12 @@ public:
     /// \param _pFormula Formula.
     void setFormula(const ExpressionPtr &_pFormula) { m_pFormula = _pFormula; }
 
+    virtual NodePtr clone(Cloner &_cloner) const {
+        FormulaDeclarationPtr pCopy = NEW_CLONE(this, _cloner, FormulaDeclaration(getName(), _cloner.get(getResultType()), _cloner.get(getFormula()), _cloner.get(getLabel())));
+        pCopy->getParams().appendClones(getParams(), _cloner);
+        return pCopy;
+    }
+
 private:
     std::wstring m_strName;
     NamedValues m_params;
@@ -303,7 +350,10 @@ private:
 class LemmaDeclaration : public Statement {
 public:
     /// Default constructor.
-    LemmaDeclaration() : m_pProposition(NULL) {}
+    /// \param _pProposition Proposition.
+    /// \param _pLabel Statement label.
+    LemmaDeclaration(const ExpressionPtr &_pProposition = NULL, const LabelPtr &_pLabel = NULL) :
+        Statement(_pLabel), m_pProposition(_pProposition) {}
 
     /// Get statement kind.
     /// \returns #LemmaDeclaration.
@@ -316,6 +366,10 @@ public:
     /// Set proposition.
     /// \param _pProposition Proposition.
     void setProposition(const ExpressionPtr &_pProposition) { m_pProposition = _pProposition; }
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, LemmaDeclaration(_cloner.get(getProposition()), _cloner.get(getLabel())));
+    }
 
 private:
     ExpressionPtr m_pProposition;
@@ -335,26 +389,42 @@ public:
     /// Get list of declared types.
     /// \return List of declared types.
     Collection<TypeDeclaration> &getTypes() { return m_types; }
+    const Collection<TypeDeclaration> &getTypes() const { return m_types; }
 
     /// Get list of declared variables.
     /// \return List of declared variables.
     Collection<VariableDeclaration> &getVariables() { return m_variables; }
+    const Collection<VariableDeclaration> &getVariables() const { return m_variables; }
 
     /// Get list of declared messages.
     /// \return List of declared messages.
     Collection<Message> &getMessages() { return m_messages; }
+    const Collection<Message> &getMessages() const { return m_messages; }
 
     /// Get list of processes.
     /// \return List of processes.
     Collection<Process> &getProcesses() { return m_processes; }
+    const Collection<Process> &getProcesses() const { return m_processes; }
 
     /// Get list of formulas.
     /// \return List of formulas.
     Collection<FormulaDeclaration> &getFormulas() { return m_formulas; }
+    const Collection<FormulaDeclaration> &getFormulas() const { return m_formulas; }
 
     /// Get list of lemmas.
     /// \return List of lemmas.
     Collection<LemmaDeclaration> &getLemmas() { return m_lemmas; }
+    const Collection<LemmaDeclaration> &getLemmas() const { return m_lemmas; }
+
+    void cloneTo(DeclarationGroup &_dg, Cloner &_cloner) const {
+        _dg.getPredicates().appendClones(getPredicates(), _cloner);
+        _dg.getTypes().appendClones(getTypes(), _cloner);
+        _dg.getVariables().appendClones(getVariables(), _cloner);
+        _dg.getMessages().appendClones(getMessages(), _cloner);
+        _dg.getProcesses().appendClones(getProcesses(), _cloner);
+        _dg.getFormulas().appendClones(getFormulas(), _cloner);
+        _dg.getLemmas().appendClones(getLemmas(), _cloner);
+    }
 
 private:
     Collection<Predicate> m_predicates;
@@ -369,12 +439,10 @@ private:
 /// Class declaration.
 class Class : public DeclarationGroup {
 public:
-    /// Default constructor.
-    Class() : m_pAncestor(NULL) {}
-
     /// Initialize with class name.
     /// \param _strName Class name.
-    Class(const std::wstring &_strName) : m_pAncestor(NULL), m_strName(_strName) {}
+    /// \param _pClass Pointer to ancestor class declaration.
+    Class(const std::wstring &_strName = L"", const ClassPtr &_pAncestor = NULL) : m_pAncestor(_pAncestor), m_strName(_strName) {}
 
     virtual int getNodeKind() const { return Node::CLASS; }
 
@@ -394,6 +462,12 @@ public:
     /// \param _pClass Pointer to ancestor class declaration.
     void setAncestor(const ClassPtr &_pClass) { m_pAncestor = _pClass; }
 
+    virtual NodePtr clone(Cloner &_cloner) const {
+        ClassPtr pCopy = NEW_CLONE(this, _cloner, Class(getName(), _cloner.get(getAncestor())));
+        cloneTo(*pCopy, _cloner);
+        return pCopy;
+    }
+
 private:
     ClassPtr m_pAncestor;
     std::wstring m_strName;
@@ -404,7 +478,8 @@ private:
 class Module : public DeclarationGroup {
 public:
     /// Default constructor.
-    Module() {}
+    /// \param _strName Identifier.
+    Module(const std::wstring &_strName = L"") : m_strName(_strName) {}
 
     virtual int getNodeKind() const { return Node::MODULE; }
 
@@ -419,10 +494,20 @@ public:
     /// Get list of imported module names.
     /// \return List of imported module names.
     std::vector<std::wstring> &getImports() { return m_imports; }
+    const std::vector<std::wstring> &getImports() const { return m_imports; }
 
     /// Get list of declared classes.
     /// \return List of declared classes.
     Collection<Class> &getClasses() { return m_classes; }
+    const Collection<Class> &getClasses() const { return m_classes; }
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        ModulePtr pCopy = NEW_CLONE(this, _cloner, Module(getName()));
+        cloneTo(*pCopy, _cloner);
+        pCopy->getImports() = getImports();
+        pCopy->getClasses().appendClones(getClasses(), _cloner);
+        return pCopy;
+    }
 
 private:
     std::vector<std::wstring> m_imports;

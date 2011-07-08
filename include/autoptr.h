@@ -5,6 +5,8 @@
 #define AUTOPTR_H_
 
 #include <string>
+#include <map>
+#include <stack>
 #include <stdint.h>
 #include <assert.h>
 
@@ -33,7 +35,7 @@ struct Counted {
     template<class>
     friend class Auto;
 
-    friend class Parser; // Debug.
+    friend class Cloner;
 
 protected:
     Counted();
@@ -41,7 +43,9 @@ protected:
 private:
     mutable const void *m_pCountedPtr;
     mutable int m_nCountedRefs;
-    static void *m_pLastAlloc;
+    static std::stack<void *> m_allocs;
+
+    static bool _isManaged(const void *_pObj, bool _bPop = true);
 
     Counted(const void *_ptr);
 };
@@ -122,6 +126,8 @@ public:
     template<class>
     friend class Auto;
 
+    friend class Cloner;
+
 private:
     const Counted *m_pObj;
 
@@ -133,8 +139,6 @@ private:
                 delete m_pObj;
             } else
                 delete (_Obj *)m_pObj;
-
-            m_pObj = NULL;
         }
     }
 };
@@ -148,5 +152,55 @@ template<typename _Obj>
 inline Auto<_Obj> ref(const _Obj *_pObj) {
     return Auto<_Obj>(Counted::createCountedWrapper(_pObj, false));
 }
+
+// Cloner.
+
+class Cloner {
+public:
+    template<class _Obj>
+    Auto<_Obj> get(const _Obj *_pObj) {
+        if (_pObj == NULL)
+            return NULL;
+
+        Cache::iterator iObj = m_cache.find(_pObj);
+
+        if (iObj != m_cache.end())
+            return iObj->second;
+
+        Auto<_Obj> pClone = _pObj->clone(*this).template as<_Obj>();
+
+        pClone.m_pObj->unref();
+
+        return pClone;
+    }
+
+    template<class _Obj>
+    Auto<_Obj> get(const Auto<_Obj> &_pObj) {
+        return get(_pObj.ptr());
+    }
+
+    void *allocate(size_t _cSize, const void *_pOriginal);
+    void *allocate(size_t _cSize, const Counted *_pOriginal);
+
+    friend void *::operator new(size_t, Cloner &, const void *);
+
+private:
+    typedef std::map<const void *, const Counted *> Cache;
+
+    Cache m_cache;
+};
+
+void *operator new(size_t _cSize, Cloner &_cloner, const void *_pOriginal);
+
+template<typename _Obj>
+inline Auto<_Obj> clone(const _Obj &_obj) {
+    Cloner cloner;
+    return cloner.get(&_obj);
+}
+
+// We need a sequence point between allocation and evaluation of constructor arguments
+// in order to cache uninitialized object and prevent infinite recursion on cyclic references.
+#define NEW_CLONE(_ORIGINAL, _CLONER, _CTOR) \
+    ((_CLONER).allocate(sizeof(*_ORIGINAL), _ORIGINAL), ::new((_CLONER), _ORIGINAL) _CTOR)
 
 #endif /* AUTOPTR_H_ */
