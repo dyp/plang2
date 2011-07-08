@@ -171,7 +171,7 @@ private:
 
 template<class _Node, class _Base>
 bool Visitor::traverseCollection(Collection<_Node, _Base> &_nodes) {
-    m_path.back().bFirstInCollection = true;
+    bool bFirst = true;
 
     for (size_t i = 0; i < _nodes.size(); ++i) {
         if (_nodes.get(i)) {
@@ -180,11 +180,13 @@ bool Visitor::traverseCollection(Collection<_Node, _Base> &_nodes) {
 
             loc = Loc(*_nodes.get(i), loc.type, loc.role, loc.roleHandler, loc.roleHandlerPost,
                     &setter, loc.walkUp);
-            loc.bFirstInCollection = !loc.bPartOfCollection;
+            loc.bFirstInCollection = bFirst;
             loc.bPartOfCollection = true;
+            bFirst = false;
 
             if (!traverseNode(*_nodes.get(i)))
                 return false;
+
             if (m_order == CHILDREN_FIRST) {
                 callRoleHandler(true);
                 if (!callWalkUp())
