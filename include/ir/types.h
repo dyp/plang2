@@ -407,6 +407,10 @@ public:
         return NEW_CLONE(this, _cloner, Subtype(_cloner.get(getParam()), _cloner.get(getExpression())));
     }
 
+    virtual bool contains(const TypePtr &_pType) const {
+        return m_pParam && ((*m_pParam->getType() == *_pType) || m_pParam->getType()->contains(_pType));
+    }
+
 private:
     NamedValuePtr m_pParam;
     ExpressionPtr m_pExpression;

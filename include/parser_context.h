@@ -85,6 +85,8 @@ private:
     ir::Overflow m_overflow;
 };
 
+namespace ir {
+
 class Context {
 public:
     typedef std::multimap<std::wstring, ir::PredicatePtr> PredicateMap;
@@ -208,5 +210,7 @@ private:
 
     void mergeTo(Context *_pCtx, bool _bMergeFailed);
 };
+
+}
 
 #endif /* PARSER_CONTEXT_H_ */

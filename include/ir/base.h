@@ -305,7 +305,7 @@ public:
     virtual bool rewrite(const TypePtr &_pOld, const TypePtr &_pNew) { return false; }
     virtual bool rewriteFlags(int _flags) { return false; }
 
-    // Check if _pType is structurally contained.
+    // Check if _pType is structurally contained (strict relation).
     virtual bool contains(const TypePtr &_pType) const { return false; }
 
     virtual bool hasParameters() const { return m_kind == INT || m_kind == NAT || m_kind == REAL; }

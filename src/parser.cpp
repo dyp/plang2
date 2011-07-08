@@ -2733,14 +2733,13 @@ void Parser::typecheck(Context &_ctx, Node &_node) {
     if (Options::instance().typeCheck == TC_NONE)
         return;
 
-    tc::Formulas constraints;
+    tc::Formulas constraints, substs;
     tc::FreshTypes freshTypes;
 
     tc::collect(constraints, _node, _ctx, freshTypes);
-    prettyPrint(constraints, std::wcout);
 
-    if (tc::solve(constraints))
-        tc::apply(constraints, freshTypes);
+    if (tc::solve(constraints, substs))
+        tc::apply(substs, freshTypes);
 }
 
 bool Parser::parseDeclarations(Context &_ctx, Module &_module) {

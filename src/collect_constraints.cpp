@@ -16,7 +16,7 @@ using namespace ir;
 
 class Collector : public Visitor {
 public:
-    Collector(tc::Formulas & _constraints, Context & _ctx, tc::FreshTypes & _types);
+    Collector(tc::Formulas & _constraints, ir::Context & _ctx, tc::FreshTypes & _types);
     virtual ~Collector() {}
 
     virtual bool visitVariableReference(VariableReference &_var);
@@ -71,12 +71,12 @@ protected:
 
 private:
     tc::Formulas & m_constraints;
-    Context & m_ctx;
+    ir::Context & m_ctx;
     tc::FreshTypes & m_types;
     std::stack<SwitchPtr> m_switches;
 };
 
-Collector::Collector(tc::Formulas & _constraints, Context & _ctx, tc::FreshTypes & _types)
+Collector::Collector(tc::Formulas & _constraints, ir::Context & _ctx, tc::FreshTypes & _types)
     : Visitor(CHILDREN_FIRST), m_constraints(_constraints), m_ctx(_ctx), m_types(_types)
 {
 }
@@ -134,7 +134,7 @@ void Collector::collectParam(const NamedValuePtr &_pParam, int _nFlags) {
 
     assert(pType);
 
-    if (pType && pType->getKind() != Type::GENERIC && getKnownType(pType))
+    if (pType && pType->getKind() != Type::GENERIC && !getKnownType(pType))
         m_constraints.insert(new tc::Formula(tc::Formula::EQUALS, pFresh, pType));
 
     _pParam->setType(pFresh);
@@ -598,6 +598,7 @@ bool Collector::visitSetConstructor(SetConstructor &_cons) {
     SetTypePtr pSet = new SetType(NULL);
 
     pSet->setBaseType(createFresh(pSet.as<DerivedType>()));
+    pSet->getBaseType().as<tc::FreshType>()->setFlags(tc::FreshType::PARAM_OUT);
     _cons.setType(pSet);
 
     for (size_t i = 0; i < _cons.size(); ++i)
@@ -611,6 +612,7 @@ bool Collector::visitListConstructor(ListConstructor &_cons) {
     ListTypePtr pList = new ListType(NULL);
 
     pList->setBaseType(createFresh(pList.as<DerivedType>()));
+    pList->getBaseType().as<tc::FreshType>()->setFlags(tc::FreshType::PARAM_OUT);
     _cons.setType(pList);
 
     for (size_t i = 0; i < _cons.size(); ++i)
@@ -624,6 +626,7 @@ bool Collector::visitArrayConstructor(ArrayConstructor &_cons) {
     ArrayTypePtr pArray = new ArrayType(NULL);
 
     pArray->setBaseType(createFresh(pArray.as<DerivedType>()));
+    pArray->getBaseType().as<tc::FreshType>()->setFlags(tc::FreshType::PARAM_OUT);
     _cons.setType(pArray);
 
     for (size_t i = 0; i < _cons.size(); ++i)
@@ -638,6 +641,8 @@ bool Collector::visitMapConstructor(MapConstructor &_cons) {
 
     pMap->setBaseType(createFresh(pMap.as<DerivedType>()));
     pMap->setIndexType(createFreshIndex(pMap));
+    pMap->getBaseType().as<tc::FreshType>()->setFlags(tc::FreshType::PARAM_OUT);
+    pMap->getIndexType().as<tc::FreshType>()->setFlags(tc::FreshType::PARAM_OUT);
     _cons.setType(pMap);
 
     for (size_t i = 0; i < _cons.size(); ++i) {
@@ -822,7 +827,7 @@ int Collector::handleSwitchCaseValuePost(Node &_node) {
     return 0;
 }
 
-void tc::collect(Formulas & _constraints, Node &_node, Context & _ctx, FreshTypes & _types) {
-    Collector Collector(_constraints, _ctx, _types);
-    Collector.traverseNode(_node);
+void tc::collect(tc::Formulas &_constraints, Node &_node, ir::Context &_ctx, FreshTypes &_types) {
+    Collector collector(_constraints, _ctx, _types);
+    collector.traverseNode(_node);
 }

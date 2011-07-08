@@ -172,25 +172,118 @@ public:
 
     virtual FormulaPtr clone(Cloner &_cloner) const;
 
+    bool operator ==(const Formula &_other) const {
+        return m_kind == _other.m_kind && *m_pLhs == *_other.m_pLhs && *m_pRhs == *_other.m_pRhs;
+    }
+
+    bool operator !=(const Formula &_other) const {
+        return !(*this == _other);
+    }
+
+    virtual bool contains(const ir::TypePtr &_pType) const;
+
 private:
     int m_kind;
     ir::TypePtr m_pLhs, m_pRhs;
 };
 
 struct FormulaCmp {
-    typedef FormulaPtr T;
-    bool operator()(const T &_lhs, const T &_rhs) const;
+    bool operator()(const FormulaPtr &_lhs, const FormulaPtr &_rhs) const;
 };
 
-typedef std::set<FormulaPtr, FormulaCmp> FormulaSet;
+struct FormulaEquals {
+    bool operator()(const FormulaPtr &_lhs, const FormulaPtr &_rhs) const { return *_lhs == *_rhs; }
+};
+
 typedef std::list<FormulaPtr> FormulaList;
 
-struct Formulas : public FormulaSet {
-    FormulaSet substs;
-
+struct Formulas : public std::set<FormulaPtr, FormulaCmp> {
     bool rewrite(const ir::TypePtr &_pOld, const ir::TypePtr &_pNew);
     bool implies(Formula &_f) const;
-    virtual Auto<Formulas> clone(Cloner &_cloner) const;
+    iterator beginCompound();
+    iterator findSubst(const ir::TypePtr &_pType);
+};
+
+class Extrema;
+
+struct Context : public Counted {
+    Auto<Formulas> fs;
+    Auto<Formulas> substs;
+    Auto<Context> pParent;
+    Auto<Extrema> pExtrema;
+
+    Context();
+    Context(const Auto<Formulas> &_fs, const Auto<Formulas> &_substs);
+    Context(const Auto<Formulas> &_fs, const Auto<Context> &_pParent = NULL);
+
+    ir::TypePtr lookup(const tc::Formula &_f, const tc::Formula &_cond);
+    bool rewrite(const ir::TypePtr &_pOld, const ir::TypePtr &_pNew);
+    bool implies(Formula &_f);
+    virtual Auto<Context> clone(Cloner &_cloner) const;
+    bool add(const FormulaPtr &_pFormula);
+    bool add(int _kind, const ir::TypePtr &_pLhs, const ir::TypePtr &_pRhs);
+
+    Formulas &operator *() const { return *fs; }
+    Formulas *operator ->() const { return fs.ptr(); }
+};
+
+typedef Auto<Context> ContextPtr;
+
+struct TypePtrCmp {
+    bool operator()(const ir::TypePtr &_lhs, const ir::TypePtr &_rhs) const { return *_lhs < *_rhs; }
+};
+
+typedef std::set<ir::TypePtr, TypePtrCmp> TypeSet;
+typedef std::map<ir::TypePtr, TypeSet> TypeSets;
+
+class Extrema : public Counted {
+public:
+    Extrema(Context *_pCtx) : m_pCtx(_pCtx), m_bValid(false) {}
+
+    void invalidate() { m_bValid = false; }
+    const TypeSet &inf(const ir::TypePtr &_pType);
+    const TypeSets &infs();
+    const TypeSet &sup(const ir::TypePtr &_pType);
+    const TypeSets &sups();
+
+private:
+    Context *m_pCtx;
+    bool m_bValid;
+    TypeSets m_lowers, m_uppers;
+
+    void update();
+};
+
+class ContextIterator {
+public:
+    ContextIterator(const ContextIterator &_other);
+    ContextIterator(Context *_pCtx, bool _bSkipCompound = true, bool _bSkipTopSubsts = false);
+
+    bool start();
+    FormulaPtr get() const { return *m_iter; }
+    Formulas::iterator getIter() { return m_iter; }
+    Formulas &getFormulas() { return *m_pFormulas; }
+    bool next();
+    bool eof();
+    ContextIterator find(const FormulaPtr &_f);
+
+private:
+    Context *m_pCtx;
+    Context *m_pCurrent;
+    Auto<Formulas> m_pFormulas;
+    bool m_bSkipCompound;
+    bool m_bSkipTopSubsts;
+    Formulas::iterator m_iter;
+};
+
+// Global stack of constraint lists.
+struct ContextStack {
+    static ContextPtr top();
+    static ContextPtr root();
+    static void push(const ContextPtr &_ctx);
+    static void push(const Auto<Formulas> &_fs);
+    static void pop();
+    static bool empty();
 };
 
 class CompoundFormula : public Formula {
@@ -200,6 +293,7 @@ public:
     size_t size() const { return m_parts.size(); }
     Formulas &getPart(size_t _i) { return *m_parts[_i]; }
     const Formulas &getPart(size_t _i) const { return *m_parts[_i]; }
+    const Auto<Formulas> &getPartPtr(size_t _i) const { return m_parts[_i]; }
     Formulas &addPart();
     void addPart(const Auto<Formulas> &_pFormulas);
     void removePart(size_t _i) { m_parts.erase(m_parts.begin() + _i); }
@@ -209,15 +303,17 @@ public:
     size_t count() const;
     virtual FormulaPtr clone(Cloner &_cloner) const;
 
+    virtual bool contains(const ir::TypePtr &_pType) const;
+
 private:
     std::vector<Auto<Formulas> > m_parts;
 };
 
 bool rewriteType(ir::TypePtr &_pType, const ir::TypePtr &_pOld, const ir::TypePtr &_pNew);
 
-bool solve(Formulas &_formulas);
+bool solve(Formulas &_formulas, Formulas &_substs);
 
-void collect(Formulas &_constraints, ir::Node &_node, Context &_ctx, FreshTypes &_types);
+void collect(Formulas &_constraints, ir::Node &_node, ir::Context &_ctx, FreshTypes &_types);
 
 void apply(Formulas &_constraints, tc::FreshTypes &_types);
 

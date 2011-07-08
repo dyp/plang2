@@ -141,6 +141,9 @@ static std::wstring fmtFreshType(tc::FreshType &_type) {
         if (nNum > 0)
             strName += fmtInt(nNum);
 
+        if (_type.getFlags())
+            strName += std::wstring(L":") + fmtInt(_type.getFlags());
+
         g_freshTypes[_type.getOrdinal()] = strName;
     }
 
@@ -516,73 +519,25 @@ private:
     int m_nFlags;
 };
 
-void prettyPrint(tc::Formulas &_constraints, std::wostream &_os) {
+void prettyPrint(tc::Context &_constraints, std::wostream &_os) {
     static PrettyPrinterCompact pp(_os, NULL, 0);
 
     _os << L"\n";
 
     size_t c = 0;
 
-    for (tc::Formulas::iterator i = _constraints.begin(); i != _constraints.end(); ++i, ++c) {
+    for (tc::Formulas::iterator i = _constraints->begin(); i != _constraints->end(); ++i, ++c) {
         tc::Formula &f = **i;
 
-        if (!f.is(tc::Formula::COMPOUND)) {
+        if (!f.is(tc::Formula::COMPOUND))
             _os << c << ":  ";
-            pp.print(*f.getLhs());
-            _os << L" " << fmtTypeFormulaOp(f.getKind()) << L" ";
-            pp.print(*f.getRhs());
-        } else {
-            tc::CompoundFormula &cf = (tc::CompoundFormula &)f;
 
-            for (size_t j = 0; j < cf.size(); ++j) {
-                if (j > 0)
-                    _os << L"\n  or ";
-
-                _os << L"(";
-
-                tc::Formulas &part = cf.getPart(j);
-
-                for (tc::Formulas::iterator k = part.begin(); k != part.end(); ++k) {
-                    tc::Formula &g = **k;
-
-                    assert(!g.is(tc::Formula::COMPOUND));
-
-                    if (k != part.begin())
-                        _os << L" and ";
-
-                    pp.print(*g.getLhs());
-                    _os << L" " << fmtTypeFormulaOp(g.getKind()) << L" ";
-                    pp.print(*g.getRhs());
-                }
-
-                _os << L")";
-
-                if (!part.substs.empty()) {
-                    _os << L"\t|    ";
-
-                    for (tc::FormulaSet::iterator j = part.substs.begin(); j != part.substs.end(); ++j) {
-                        tc::Formula &g = **j;
-
-                        if (j != part.substs.begin())
-                            _os << L", ";
-
-                        assert(g.getLhs());
-                        assert(g.getRhs());
-
-                        pp.print(*g.getLhs());
-                        _os << L" -> ";
-                        pp.print(*g.getRhs());
-                    }
-                }
-            }
-        }
-
-        _os << L"\n";
+        prettyPrint(f, _os);
     }
 
     _os << L"----------\n";
 
-    for (tc::FormulaSet::iterator i = _constraints.substs.begin(); i != _constraints.substs.end(); ++i) {
+    for (tc::Formulas::iterator i = _constraints.substs->begin(); i != _constraints.substs->end(); ++i) {
         tc::Formula &f = **i;
 
         assert(f.getLhs());
@@ -593,6 +548,44 @@ void prettyPrint(tc::Formulas &_constraints, std::wostream &_os) {
         pp.print(*f.getRhs());
         _os << L"\n";
     }
+}
+
+void prettyPrint(tc::Formula &_formula, std::wostream &_os) {
+    static PrettyPrinterCompact pp(_os, NULL, 0);
+
+    if (!_formula.is(tc::Formula::COMPOUND)) {
+        pp.print(*_formula.getLhs());
+        _os << L" " << fmtTypeFormulaOp(_formula.getKind()) << L" ";
+        pp.print(*_formula.getRhs());
+    } else {
+        tc::CompoundFormula &cf = (tc::CompoundFormula &)_formula;
+
+        for (size_t j = 0; j < cf.size(); ++j) {
+            if (j > 0)
+                _os << L"\n  or ";
+
+            _os << L"(";
+
+            tc::Formulas &part = cf.getPart(j);
+
+            for (tc::Formulas::iterator k = part.begin(); k != part.end(); ++k) {
+                tc::Formula &g = **k;
+
+                assert(!g.is(tc::Formula::COMPOUND));
+
+                if (k != part.begin())
+                    _os << L" and ";
+
+                pp.print(*g.getLhs());
+                _os << L" " << fmtTypeFormulaOp(g.getKind()) << L" ";
+                pp.print(*g.getRhs());
+            }
+
+            _os << L")";
+        }
+    }
+
+    _os << L"\n";
 }
 
 void prettyPrintCompact(Node &_node, std::wostream &_os, int _nFlags) {

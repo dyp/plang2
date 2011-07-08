@@ -8,6 +8,7 @@
 #include "ir/builtins.h"
 
 using namespace lexer;
+using namespace ir;
 
 Context::~Context() {
     delete m_predicates;

@@ -23,8 +23,9 @@ protected:
 };
 
 
-void prettyPrint(ir::Module & _module, std::wostream & _os);
-void prettyPrint(tc::Formulas & _constraints, std::wostream & _os);
+void prettyPrint(ir::Module &_module, std::wostream &_os);
+void prettyPrint(tc::Context &_constraints, std::wostream &_os);
+void prettyPrint(tc::Formula &_formula, std::wostream &_os);
 
 // Compact pretty-printer flags.
 enum {
@@ -34,7 +35,7 @@ enum {
     PPC_NO_INCOMPLETE_TYPES = 0x04,
 };
 
-void prettyPrintCompact(ir::Node & _node, std::wostream & _os, int _nFlags = 0);
+void prettyPrintCompact(ir::Node &_node, std::wostream &_os, int _nFlags = 0);
 
 void print(ir::Node &_node, std::wostream &_os = std::wcout);
 
