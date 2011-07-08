@@ -21,7 +21,7 @@ public:
 
     /// Initialize with destination label.
     /// \param _pDestination Destination label.
-    Jump(const Label * _pDestination) : m_pDestination(_pDestination) {}
+    Jump(const LabelPtr &_pDestination) : m_pDestination(_pDestination) {}
 
     /// Get statement kind.
     /// \returns #Jump.
@@ -29,14 +29,14 @@ public:
 
     /// Get destination label.
     /// \return Destination label (cannot be modified).
-    const Label * getDestination() const { return m_pDestination; }
+    const LabelPtr &getDestination() const { return m_pDestination; }
 
     /// Set destination label.
     /// \param _pDestination Destination label.
-    void setDestination(const Label * _pDestination) { m_pDestination = _pDestination; }
+    void setDestination(const LabelPtr &_pDestination) { m_pDestination = _pDestination; }
 
 private:
-    const Label * m_pDestination;
+    LabelPtr m_pDestination;
 };
 
 /// Assignment statement.
@@ -48,19 +48,8 @@ public:
     /// Initialize with lvalue and rvalue.
     /// \param _pLValue LValue.
     /// \param _pExpression RValue.
-    /// \param _bReparent If specified (default) also sets parent of _pLValue and _pExpression to this node.
-    Assignment(Expression * _pLValue = NULL, Expression * _pExpression = NULL, bool _bReparent = true)
-        : m_pLValue(NULL), m_pExpression(NULL)
-    {
-        _assign(m_pLValue, _pLValue, _bReparent);
-        _assign(m_pExpression, _pExpression, _bReparent);
-    }
-
-    /// Destructor.
-    virtual ~Assignment() {
-        _delete(m_pLValue);
-        _delete(m_pExpression);
-    }
+    Assignment(const ExpressionPtr &_pLValue = NULL, const ExpressionPtr &_pExpression = NULL)
+        : m_pLValue(_pLValue), m_pExpression(_pExpression) {}
 
     /// Get statement kind.
     /// \returns #Assignment.
@@ -68,28 +57,22 @@ public:
 
     /// Get left hand side of the assignemnt.
     /// \return Expression that can be assigned to.
-    Expression * getLValue() const { return m_pLValue; }
+    const ExpressionPtr &getLValue() const { return m_pLValue; }
 
     /// Set left hand side of the assignemnt.
     /// \param _pExpression Expression that can be assigned to.
-    /// \param _bReparent If specified (default) also sets parent of _pExpression to this node.
-    void setLValue(Expression * _pExpression, bool _bReparent = true) {
-        _assign(m_pLValue, _pExpression, _bReparent);
-    }
+    void setLValue(const ExpressionPtr &_pExpression) { m_pLValue = _pExpression; }
 
     /// Get right hand side of the assignemnt.
     /// \return Expression.
-    Expression * getExpression() const { return m_pExpression; }
+    const ExpressionPtr &getExpression() const { return m_pExpression; }
 
     /// Set right hand side of the assignemnt.
     /// \param _pExpression Expression.
-    /// \param _bReparent If specified (default) also sets parent of _pExpression to this node.
-    void setExpression(Expression * _pExpression, bool _bReparent = true) {
-        _assign(m_pExpression, _pExpression, _bReparent);
-    }
+    void setExpression(const ExpressionPtr &_pExpression) { m_pExpression = _pExpression; }
 
 private:
-    Expression * m_pLValue, * m_pExpression;
+    ExpressionPtr m_pLValue, m_pExpression;
 };
 
 /// Branch of a predicate call. Contains both output variables and handler pointer.
@@ -100,22 +83,16 @@ public:
     /// Default constructor.
     CallBranch() : m_pHandler(NULL) {}
 
-    /// Destructor.
-    virtual ~CallBranch() { _delete(m_pHandler); }
-
     /// Get branch handler.
     /// \return Branch handler statement.
-    Statement * getHandler() const { return m_pHandler; }
+    const StatementPtr &getHandler() const { return m_pHandler; }
 
     /// Set branch handler.
     /// \param _pStmt Branch handler statement.
-    /// \param _bReparent If specified (default) also sets parent of _pStmt to this node.
-    void setHandler(Statement * _pStmt, bool _bReparent = true) {
-        _assign(m_pHandler, _pStmt, _bReparent);
-    }
+    void setHandler(const StatementPtr &_pStmt) { m_pHandler = _pStmt; }
 
 private:
-    Statement * m_pHandler;
+    StatementPtr m_pHandler;
 };
 
 /// Predicate call.
@@ -124,46 +101,40 @@ public:
     /// Default constructor.
     Call() : m_pPredicate(NULL) {}
 
-    /// Destructor.
-    virtual ~Call() { _delete(m_pPredicate); }
-
     /// Get statement kind.
     /// \returns #Call.
     virtual int getKind() const { return CALL; }
 
     /// Get predicate expression which is called.
     /// \return Expression of predicate type.
-    Expression * getPredicate() const { return m_pPredicate; }
+    const ExpressionPtr &getPredicate() const { return m_pPredicate; }
 
     /// Set predicate expression which is called.
     /// \param _pExpression Expression of predicate type.
-    /// \param _bReparent If specified (default) also sets parent of _pExpression to this node.
-    void setPredicate(Expression * _pExpression, bool _bReparent = true) {
-        _assign(m_pPredicate, _pExpression, _bReparent);
-    }
+    void setPredicate(const ExpressionPtr &_pExpression) { m_pPredicate = _pExpression; }
 
     /// Get list of actual parameters.
     /// \return List of expressions used as parameters.
-    Collection<Expression> & getArgs() { return m_args; }
-    const Collection<Expression> & getArgs() const { return m_args; }
+    Collection<Expression> &getArgs() { return m_args; }
+    const Collection<Expression> &getArgs() const { return m_args; }
 
     /// Get list of output branches. Each branch contain both list of
     /// assignable expressions used as parameters and a branch handler statement.
     /// \return List of branches.
-    Collection<CallBranch> & getBranches() { return m_branches; }
+    Collection<CallBranch> &getBranches() { return m_branches; }
 
     /// Get list of output branches (const version). Each branch contain both list of
     /// assignable expressions used as parameters and a branch handler statement.
     /// \return List of branches.
-    const Collection<CallBranch> & getBranches() const { return m_branches; }
+    const Collection<CallBranch> &getBranches() const { return m_branches; }
 
     /// Get list of variables declared as part of output parameter list.
     /// \return List of variables.
-    Collection<VariableDeclaration> & getDeclarations() { return m_decls; }
-    const Collection<VariableDeclaration> & getDeclarations() const { return m_decls; }
+    Collection<VariableDeclaration> &getDeclarations() { return m_decls; }
+    const Collection<VariableDeclaration> &getDeclarations() const { return m_decls; }
 
 private:
-    Expression * m_pPredicate;
+    ExpressionPtr m_pPredicate;
     Collection<Expression> m_args;
     Collection<CallBranch> m_branches;
     Collection<VariableDeclaration> m_decls;
@@ -188,11 +159,11 @@ public:
 
     /// Get list of left hand side expressions (expressions must be assignable).
     /// \return List of expressions.
-    Collection<Expression> & getLValues() { return m_LValues; }
+    Collection<Expression> &getLValues() { return m_LValues; }
 
     /// Get list of right hand side expressions.
     /// \return List of expressions.
-    Collection<Expression> & getExpressions() { return m_expressions; }
+    Collection<Expression> &getExpressions() { return m_expressions; }
 
 private:
     Collection<Expression> m_LValues;
@@ -205,29 +176,23 @@ public:
     /// Default constructor.
     SwitchCase() : m_pBody(NULL) {}
 
-    /// Destructor.
-    virtual ~SwitchCase() { _delete(m_pBody); }
-
     virtual int getNodeKind() const { return Node::SWITCH_CASE; }
 
     /// Get list of condition expressions. Can contain ranges.
     /// \return List of expressions.
-    Collection<Expression> & getExpressions() { return m_expressions; }
-    const Collection<Expression> & getExpressions() const { return m_expressions; }
+    Collection<Expression> &getExpressions() { return m_expressions; }
+    const Collection<Expression> &getExpressions() const { return m_expressions; }
 
     /// Get case body statement.
     /// \return Body statement.
-    Statement * getBody() const { return m_pBody; }
+    const StatementPtr &getBody() const { return m_pBody; }
 
     /// Set case body statement.
     /// \param _pStmt Body statement.
-    /// \param _bReparent If specified (default) also sets parent of _pStmt to this node.
-    void setBody(Statement * _pStmt, bool _bReparent = true) {
-        _assign(m_pBody, _pStmt, _bReparent);
-    }
+    void setBody(const StatementPtr &_pStmt) { m_pBody = _pStmt; }
 
 private:
-    Statement * m_pBody;
+    StatementPtr m_pBody;
     Collection<Expression> m_expressions;
 };
 
@@ -238,58 +203,42 @@ public:
     /// Default constructor.
     Switch() : m_pArg(NULL), m_pDefault(NULL), m_pDecl(NULL) {}
 
-    /// Destructor.
-    virtual ~Switch() {
-        _delete(m_pDecl);
-        _delete(m_pArg);
-        _delete(m_pDefault);
-    }
-
     /// Get statement kind.
     /// \returns #Switch.
     virtual int getKind() const { return SWITCH; }
 
     /// Get parameter declaration (optional).
     /// \return Parameter declaration.
-    VariableDeclaration * getParamDecl() const { return m_pDecl; }
+    const VariableDeclarationPtr &getParamDecl() const { return m_pDecl; }
 
     /// Set parameter declaration (optional).
     /// \param _pDecl Parameter declaration.
-    /// \param _bReparent If specified (default) also sets parent of _pDecl to this node.
-    void setParamDecl(VariableDeclaration * _pDecl, bool _bReparent = true) {
-        _assign(m_pDecl, _pDecl, _bReparent);
-    }
+    void setParamDecl(const VariableDeclarationPtr &_pDecl) { m_pDecl = _pDecl; }
 
     /// Get argument expression.
     /// \return Argument expression.
-    Expression * getArg() const { return m_pArg; }
+    const ExpressionPtr &getArg() const { return m_pArg; }
 
     /// Set argument expression.
     /// \param _pExpression Argument expression.
-    /// \param _bReparent If specified (default) also sets parent of _pExpression to this node.
-    void setArg(Expression * _pExpression, bool _bReparent = true) {
-        _assign(m_pArg, _pExpression, _bReparent);
-    }
+    void setArg(const ExpressionPtr &_pExpression) { m_pArg = _pExpression; }
 
     /// Get default alternative statement.
     /// \return Statement for default alternative.
-    Statement * getDefault() const { return m_pDefault; }
+    const StatementPtr &getDefault() const { return m_pDefault; }
 
     /// Set default alternative statement.
     /// \param _pStmt Statement for default alternative.
-    /// \param _bReparent If specified (default) also sets parent of _pStmt to this node.
-    void setDefault(Statement * _pStmt, bool _bReparent = true) {
-        _assign(m_pDefault, _pStmt, _bReparent);
-    }
+    void setDefault(const StatementPtr &_pStmt) { m_pDefault = _pStmt; }
 
     // Check if the statement ends like a block (i.e. separating semicolon is not needed).
     // \return True if the statement ends like a block, false otherwise.
     virtual bool isBlockLike() const { return true; }
 
 private:
-    Expression * m_pArg;
-    Statement * m_pDefault;
-    VariableDeclaration * m_pDecl;
+    ExpressionPtr m_pArg;
+    StatementPtr m_pDefault;
+    VariableDeclarationPtr m_pDecl;
 };
 
 /// Conditional statement.
@@ -298,49 +247,33 @@ public:
     /// Default constructor.
     If() : m_pArg(NULL), m_pBody(NULL), m_pElse(NULL) {}
 
-    /// Destructor.
-    virtual ~If() {
-        _delete(m_pArg);
-        _delete(m_pBody);
-        _delete(m_pElse);
-    }
-
     /// Get statement kind.
     /// \returns #If.
     virtual int getKind() const { return IF; }
 
     /// Get logical argument expression.
     /// \return Argument expression.
-    Expression * getArg() const { return m_pArg; }
+    const ExpressionPtr &getArg() const { return m_pArg; }
 
     /// Set logical argument expression.
     /// \param _pExpression Argument expression.
-    /// \param _bReparent If specified (default) also sets parent of _pExpression to this node.
-    void setArg(Expression * _pExpression, bool _bReparent = true) {
-        _assign(m_pArg, _pExpression, _bReparent);
-    }
+    void setArg(const ExpressionPtr &_pExpression) { m_pArg = _pExpression; }
 
     /// Get statement that is executed if condition is true.
     /// \return Body statement.
-    Statement * getBody() const { return m_pBody; }
+    const StatementPtr &getBody() const { return m_pBody; }
 
     /// Set statement that is executed if condition is true.
     /// \param _pStmt Body statement.
-    /// \param _bReparent If specified (default) also sets parent of _pStmt to this node.
-    void setBody(Statement * _pStmt, bool _bReparent = true) {
-        _assign(m_pBody, _pStmt, _bReparent);
-    }
+    void setBody(const StatementPtr &_pStmt) { m_pBody = _pStmt; }
 
     /// Get statement that is executed if condition is false.
     /// \return Else statement.
-    Statement * getElse() const { return m_pElse; }
+    const StatementPtr &getElse() const { return m_pElse; }
 
     /// Set statement that is executed if condition is false.
     /// \param _pStmt Else statement.
-    /// \param _bReparent If specified (default) also sets parent of _pStmt to this node.
-    void setElse(Statement * _pStmt, bool _bReparent = true) {
-        _assign(m_pElse, _pStmt, _bReparent);
-    }
+    void setElse(const StatementPtr &_pStmt) { m_pElse = _pStmt; }
 
     // Check if the statement ends like a block (i.e. separating semicolon is not needed).
     // \return True if the statement ends like a block, false otherwise.
@@ -354,8 +287,8 @@ public:
     }
 
 private:
-    Expression * m_pArg;
-    Statement * m_pBody, * m_pElse;
+    ExpressionPtr m_pArg;
+    StatementPtr m_pBody, m_pElse;
 };
 
 /// Imperative for-loop.
@@ -364,61 +297,41 @@ public:
     /// Default constructor.
     For() : m_pIterator(NULL), m_pInvariant(NULL), m_pIncrement(NULL), m_pBody(NULL) {}
 
-    /// Destructor.
-    virtual ~For() {
-        _delete(m_pIterator);
-        _delete(m_pInvariant);
-        _delete(m_pIncrement);
-        _delete(m_pBody);
-    }
-
     /// Get statement kind.
     /// \returns #For.
     virtual int getKind() const { return FOR; }
 
     /// Get iterator variable.
     /// \return Iterator variable.
-    VariableDeclaration * getIterator() const { return m_pIterator; }
+    const VariableDeclarationPtr &getIterator() const { return m_pIterator; }
 
     /// Set iterator variable.
     /// \param _pVar Iterator variable.
-    /// \param _bReparent If specified (default) also sets parent of _pVar to this node.
-    void setIterator(VariableDeclaration * _pVar, bool _bReparent = true) {
-        _assign(m_pIterator, _pVar, _bReparent);
-    }
+    void setIterator(const VariableDeclarationPtr &_pVar) { m_pIterator = _pVar; }
 
     /// Get loop invariant expression.
     /// \return Invariant expression.
-    Expression * getInvariant() const { return m_pInvariant; }
+    const ExpressionPtr &getInvariant() const { return m_pInvariant; }
 
     /// Set loop invariant expression.
     /// \param _pExpression Invariant expression.
-    /// \param _bReparent If specified (default) also sets parent of _pExpression to this node.
-    void setInvariant(Expression * _pExpression, bool _bReparent = true) {
-        _assign(m_pInvariant, _pExpression, _bReparent);
-    }
+    void setInvariant(const ExpressionPtr &_pExpression) { m_pInvariant = _pExpression; }
 
     /// Get iterator increment statement.
     /// \return Increment statement.
-    Statement * getIncrement() const { return m_pIncrement; }
+    const StatementPtr &getIncrement() const { return m_pIncrement; }
 
     /// Set iterator increment statement.
     /// \param _pStmt Increment statement.
-    /// \param _bReparent If specified (default) also sets parent of _pStmt to this node.
-    void setIncrement(Statement * _pStmt, bool _bReparent = true) {
-        _assign(m_pIncrement, _pStmt, _bReparent);
-    }
+    void setIncrement(const StatementPtr &_pStmt) { m_pIncrement = _pStmt; }
 
     /// Get loop body statement.
     /// \return Body statement.
-    Statement * getBody() const { return m_pBody; }
+    const StatementPtr &getBody() const { return m_pBody; }
 
     /// Set loop body statement.
     /// \param _pStmt Body statement.
-    /// \param _bReparent If specified (default) also sets parent of _pStmt to this node.
-    void setBody(Statement * _pStmt, bool _bReparent = true) {
-        _assign(m_pBody, _pStmt, _bReparent);
-    }
+    void setBody(const StatementPtr &_pStmt) { m_pBody = _pStmt; }
 
     // Check if the statement ends like a block (i.e. separating semicolon is not needed).
     // \return True if the statement ends like a block, false otherwise.
@@ -430,9 +343,9 @@ public:
     }
 
 private:
-    VariableDeclaration * m_pIterator;
-    Expression * m_pInvariant;
-    Statement * m_pIncrement, * m_pBody;
+    VariableDeclarationPtr m_pIterator;
+    ExpressionPtr m_pInvariant;
+    StatementPtr m_pIncrement, m_pBody;
 };
 
 /// Imperative while-loop.
@@ -441,37 +354,25 @@ public:
     /// Default constructor.
     While() : m_pInvariant(NULL), m_pBody(NULL) {}
 
-    /// Destructor.
-    virtual ~While() {
-        _delete(m_pInvariant);
-        _delete(m_pBody);
-    }
-
     /// Get statement kind.
     /// \returns #While.
     virtual int getKind() const { return WHILE; }
 
     /// Get loop invariant expression.
     /// \return Invariant expression.
-    Expression * getInvariant() const { return m_pInvariant; }
+    const ExpressionPtr &getInvariant() const { return m_pInvariant; }
 
     /// Set loop invariant expression.
     /// \param _pExpression Invariant expression.
-    /// \param _bReparent If specified (default) also sets parent of _pExpression to this node.
-    void setInvariant(Expression * _pExpression, bool _bReparent = true) {
-        _assign(m_pInvariant, _pExpression, _bReparent);
-    }
+    void setInvariant(const ExpressionPtr &_pExpression) { m_pInvariant = _pExpression; }
 
     /// Get loop body statement.
     /// \return Body statement.
-    Statement * getBody() const { return m_pBody; }
+    const StatementPtr &getBody() const { return m_pBody; }
 
     /// Set loop body statement.
     /// \param _pStmt Body statement.
-    /// \param _bReparent If specified (default) also sets parent of _pStmt to this node.
-    void setBody(Statement * _pStmt, bool _bReparent = true) {
-        _assign(m_pBody, _pStmt, _bReparent);
-    }
+    void setBody(const StatementPtr &_pStmt) { m_pBody = _pStmt; }
 
     // Check if the statement ends like a block (i.e. separating semicolon is not needed).
     // \return True if the statement ends like a block, false otherwise.
@@ -483,8 +384,8 @@ public:
     }
 
 private:
-    Expression * m_pInvariant;
-    Statement * m_pBody;
+    ExpressionPtr m_pInvariant;
+    StatementPtr m_pBody;
 };
 
 /// Imperative break statement. Is used to terminate loop iteration.
@@ -507,7 +408,7 @@ public:
     /// Initialize with message and receiver pointers.
     /// \param _pProcess Message receiver process.
     /// \param _pMessage Message declaration.
-    Send(const Process * _pProcess, const Message * _pMessage)
+    Send(const ProcessPtr &_pProcess, const MessagePtr &_pMessage)
         : m_pReceiver(_pProcess), m_pMessage(_pMessage) {}
 
     /// Get statement kind.
@@ -516,27 +417,27 @@ public:
 
     /// Get message receiver.
     /// \return Receiver process.
-    const Process * getReceiver() const { return m_pReceiver; }
+    const ProcessPtr &getReceiver() const { return m_pReceiver; }
 
     /// Set message receiver.
     /// \param _pProcess Message receiver process.
-    void setReceiver(const Process * _pProcess) { m_pReceiver = _pProcess; }
+    void setReceiver(const ProcessPtr &_pProcess) { m_pReceiver = _pProcess; }
 
     /// Get message declaration.
     /// \return Message declaration.
-    const Message * getMessage() const { return m_pMessage; }
+    const MessagePtr &getMessage() const { return m_pMessage; }
 
     /// Set message declaration pointer.
     /// \param _pMessage Message declaration.
-    void setMessage(const Message * _pMessage) { m_pMessage = _pMessage; }
+    void setMessage(const MessagePtr &_pMessage) { m_pMessage = _pMessage; }
 
     /// Get list of actual parameters.
     /// \return List of expressions.
-    Collection<Expression> & getArgs() { return m_args; }
+    Collection<Expression> &getArgs() { return m_args; }
 
 private:
-    const Process * m_pReceiver;
-    const Message * m_pMessage;
+    ProcessPtr m_pReceiver;
+    MessagePtr m_pMessage;
     Collection<Expression> m_args;
 };
 
@@ -548,35 +449,29 @@ public:
 
     /// Initialize with message pointer.
     /// \param _pMessage Message declaration.
-    MessageHandler(const Message * _pMessage) : m_pMessage(_pMessage), m_pBody(NULL) {}
-
-    /// Destructor.
-    virtual ~MessageHandler() { _delete(m_pBody); }
+    MessageHandler(const MessagePtr &_pMessage) : m_pMessage(_pMessage), m_pBody(NULL) {}
 
     virtual int getNodeKind() const { return Node::MESSAGE_HANDLER; }
 
     /// Get message declaration.
     /// \return Message declaration.
-    const Message * getMessage() const { return m_pMessage; }
+    const MessagePtr &getMessage() const { return m_pMessage; }
 
     /// Set message declaration pointer.
     /// \param _pMessage Message declaration.
-    void setMessage(const Message * _pMessage) { m_pMessage = _pMessage; }
+    void setMessage(const MessagePtr &_pMessage) { m_pMessage = _pMessage; }
 
     /// Get handler body statement.
     /// \return Body statement.
-    Statement * getBody() const { return m_pBody; }
+    const StatementPtr &getBody() const { return m_pBody; }
 
     /// Set handler body statement.
     /// \param _pStmt Body statement.
-    /// \param _bReparent If specified (default) also sets parent of _pStmt to this node.
-    void setBody(Statement * _pStmt, bool _bReparent = true) {
-        _assign(m_pBody, _pStmt, _bReparent);
-    }
+    void setBody(const StatementPtr &_pStmt) { m_pBody = _pStmt; }
 
 private:
-    const Message * m_pMessage;
-    Statement * m_pBody;
+    MessagePtr m_pMessage;
+    StatementPtr m_pBody;
 };
 
 /// Receive message statement. \extends Statement
@@ -587,47 +482,35 @@ public:
     /// Default constructor.
     Receive() : m_pTimeout(NULL), m_pTimeoutStatement(NULL) {}
 
-    /// Destructor.
-    virtual ~Receive() {
-        _delete(m_pTimeout);
-        _delete(m_pTimeoutStatement);
-    }
-
     /// Get statement kind.
     /// \returns #Receive.
     virtual int getKind() const { return RECEIVE; }
 
     /// Get timeout expression.
     /// \returns Timeout expression.
-    Expression * getTimeout() const { return m_pTimeout; }
+    const ExpressionPtr &getTimeout() const { return m_pTimeout; }
 
     /// Set timeout expression. The expression should be of positive integral type,
     /// it specifies the timeout in milliseconds after which waiting for a message
     /// is stopped and control is passed to timeout handler.
     /// \param _pExpression Timeout expression.
-    /// \param _bReparent If specified (default) also sets parent of _pExpression to this node.
-    void setTimeout(Expression * _pExpression, bool _bReparent = true) {
-        _assign(m_pTimeout, _pExpression, _bReparent);
-    }
+    void setTimeout(const ExpressionPtr &_pExpression) { m_pTimeout = _pExpression; }
 
     /// Get timeout handler body statement.
     /// \return Timeout handler.
-    Statement * getTimeoutHandler() const { return m_pTimeoutStatement; }
+    const StatementPtr &getTimeoutHandler() const { return m_pTimeoutStatement; }
 
     /// Set timeout handler body statement.
     /// \param _pStmt Timeout handler.
-    /// \param _bReparent If specified (default) also sets parent of _pStmt to this node.
-    void setTimeoutHandler(Statement * _pStmt, bool _bReparent = true) {
-        _assign(m_pTimeoutStatement, _pStmt, _bReparent);
-    }
+    void setTimeoutHandler(const StatementPtr &_pStmt) { m_pTimeoutStatement = _pStmt; }
 
     // Check if the statement ends like a block (i.e. separating semicolon is not needed).
     // \return True if the statement ends like a block, false otherwise.
     virtual bool isBlockLike() const { return true; }
 
 private:
-    Expression * m_pTimeout;
-    Statement * m_pTimeoutStatement;
+    ExpressionPtr m_pTimeout;
+    StatementPtr m_pTimeoutStatement;
 };
 
 /// With statement. Locks variables while executing body.
@@ -636,27 +519,21 @@ public:
     /// Default constructor.
     With() : m_pBody(NULL) {}
 
-    /// Destructor.
-    virtual ~With() { _delete(m_pBody); }
-
     /// Get statement kind.
     /// \returns #Receive.
     virtual int getKind() const { return WITH; }
 
     /// Get list of variables to lock.
     /// \return List of assignable expressions.
-    Collection<Expression> & getArgs() { return m_args; }
+    Collection<Expression> &getArgs() { return m_args; }
 
     /// Get body statement.
     /// \return Body statement.
-    Statement * getBody() const { return m_pBody; }
+    const StatementPtr &getBody() const { return m_pBody; }
 
     /// Set body statement.
     /// \param _pStmt Body statement.
-    /// \param _bReparent If specified (default) also sets parent of _pStmt to this node.
-    void setBody(Statement * _pStmt, bool _bReparent = true) {
-        _assign(m_pBody, _pStmt, _bReparent);
-    }
+    void setBody(const StatementPtr &_pStmt) { m_pBody = _pStmt; }
 
     // Check if the statement ends like a block (i.e. separating semicolon is not needed).
     // \return True if the statement ends like a block, false otherwise.
@@ -669,7 +546,7 @@ public:
 
 private:
     Collection<Expression> m_args;
-    Statement * m_pBody;
+    StatementPtr m_pBody;
 };
 
 } // namespace ir

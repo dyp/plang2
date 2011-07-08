@@ -136,7 +136,7 @@ std::wstring CGenerator::resolveLabel(const Label & _label) {
 }
 
 bool CGenerator::canInline(const Instruction & _instr) const {
-    if (! _instr.getLabel().empty() && _instr.getLabel()->getUsageCount() > 0)
+    if (_instr.getLabel() && _instr.getLabel()->getUsageCount() > 0)
         return false;
 
     if (_instr.getKind() == Instruction::UNARY) {
@@ -575,7 +575,7 @@ std::wostream & CGenerator::generate(std::wostream & _os,
     bool bHasLabel = false;
 
     if (! _bInline) {
-        bHasLabel = ! _instr.getLabel().empty() && _instr.getLabel()->getUsageCount() > 0;
+        bHasLabel = _instr.getLabel() && _instr.getLabel()->getUsageCount() > 0;
         if (bHasLabel)
             _os << resolveLabel(* _instr.getLabel()) << L":" << L" /* " << _instr.getLabel()->getUsageCount() << L" */" << std::endl;
 
@@ -584,7 +584,7 @@ std::wostream & CGenerator::generate(std::wostream & _os,
 
         _os << fmtIndent(L"");
 
-        if (! _instr.getResult().empty()) {
+        if (_instr.getResult()) {
             Variable * pVar = _instr.getResult().ptr();
             pVar->setUsed(true);
             std::wstring strName = resolveVariable(pVar);
@@ -638,7 +638,7 @@ std::wostream & CGenerator::generate(std::wostream & _os,
 }
 
 std::wostream & CGenerator::generate(std::wostream & _os, const Function & _function) {
-    if (! _function.getResult().empty()) {
+    if (_function.getResult()) {
         getChild()->generate(_os, * _function.getReturnType());
         _os << std::endl;
 
@@ -671,7 +671,7 @@ std::wostream & CGenerator::generate(std::wostream & _os, const Function & _func
 
     _os << L") {" << std::endl;
 
-    if (! _function.getResult().empty() && _function.getResult()->getType()->getKind() != Type::VOID) {
+    if (_function.getResult() && _function.getResult()->getType()->getKind() != Type::VOID) {
         getChild()->m_vars[_function.getResult().ptr()] = L"r";
 
         /*_os << getChild()->fmtIndent(L"");

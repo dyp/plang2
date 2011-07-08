@@ -10,11 +10,11 @@ using namespace ir;
 
 // Derived types.
 
-bool DerivedType::rewrite(Type * _pOld, Type * _pNew) {
+bool DerivedType::rewrite(const TypePtr &_pOld, const TypePtr &_pNew) {
     return tc::rewriteType(m_pBaseType, _pOld, _pNew);
 }
 
-int DerivedType::compare(const Type & _other) const {
+int DerivedType::compare(const Type &_other) const {
     if (_other.getKind() == FRESH)
         return ORD_UNKNOWN;
 
@@ -30,16 +30,16 @@ int DerivedType::compare(const Type & _other) const {
     return getBaseType()->compare(*((const DerivedType &)_other).getBaseType());
 }
 
-bool DerivedType::less(const Type & _other) const {
+bool DerivedType::less(const Type &_other) const {
     return *getBaseType() < *((const DerivedType &)_other).getBaseType();
 }
 
 // Sets.
 
-Type *SetType::getMeet(Type & _other) {
-    Type *pMeet = Type::getMeet(_other);
+TypePtr SetType::getMeet(Type &_other) {
+    TypePtr pMeet = Type::getMeet(_other);
 
-    if (pMeet != NULL || _other.getKind() == FRESH)
+    if (pMeet || _other.getKind() == FRESH)
         return pMeet;
 
     pMeet = getBaseType()->getMeet(*((const SetType &)_other).getBaseType());
@@ -47,10 +47,10 @@ Type *SetType::getMeet(Type & _other) {
     return pMeet ? new SetType(pMeet) : NULL;
 }
 
-Type *SetType::getJoin(Type & _other) {
-    Type *pJoin = Type::getJoin(_other);
+TypePtr SetType::getJoin(Type &_other) {
+    TypePtr pJoin = Type::getJoin(_other);
 
-    if (pJoin != NULL || _other.getKind() == FRESH)
+    if (pJoin || _other.getKind() == FRESH)
         return pJoin;
 
     pJoin = getBaseType()->getJoin(*((const SetType &)_other).getBaseType());
@@ -60,10 +60,10 @@ Type *SetType::getJoin(Type & _other) {
 
 // Lists.
 
-Type *ListType::getMeet(Type & _other) {
-    Type *pMeet = Type::getMeet(_other);
+TypePtr ListType::getMeet(Type &_other) {
+    TypePtr pMeet = Type::getMeet(_other);
 
-    if (pMeet != NULL || _other.getKind() == FRESH)
+    if (pMeet || _other.getKind() == FRESH)
         return pMeet;
 
     pMeet = getBaseType()->getMeet(*((const ListType &)_other).getBaseType());
@@ -71,10 +71,10 @@ Type *ListType::getMeet(Type & _other) {
     return pMeet ? new ListType(pMeet) : NULL;
 }
 
-Type *ListType::getJoin(Type & _other) {
-    Type *pJoin = Type::getJoin(_other);
+TypePtr ListType::getJoin(Type &_other) {
+    TypePtr pJoin = Type::getJoin(_other);
 
-    if (pJoin != NULL || _other.getKind() == FRESH)
+    if (pJoin || _other.getKind() == FRESH)
         return pJoin;
 
     pJoin = getBaseType()->getJoin(*((const ListType &)_other).getBaseType());
@@ -84,7 +84,7 @@ Type *ListType::getJoin(Type & _other) {
 
 // Maps.
 
-bool MapType::rewrite(Type *_pOld, Type *_pNew) {
+bool MapType::rewrite(const TypePtr &_pOld, const TypePtr &_pNew) {
     const bool b = DerivedType::rewrite(_pOld, _pNew);
     return tc::rewriteType(m_pIndexType, _pOld, _pNew) || b;
 }
@@ -136,7 +136,7 @@ int MapType::compare(const Type &_other) const {
     return ORD_NONE;
 }
 
-bool MapType::less(const Type & _other) const {
+bool MapType::less(const Type &_other) const {
     const MapType &other = (const MapType &)_other;
 
     if (*getBaseType() < *other.getBaseType())
@@ -148,26 +148,26 @@ bool MapType::less(const Type & _other) const {
     return *getIndexType() < *other.getIndexType();
 }
 
-Type *MapType::getMeet(Type & _other) {
-    Type *pMeet = Type::getMeet(_other);
+TypePtr MapType::getMeet(Type &_other) {
+    TypePtr pMeet = Type::getMeet(_other);
 
-    if (pMeet != NULL || _other.getKind() == FRESH)
+    if (pMeet || _other.getKind() == FRESH)
         return pMeet;
 
-    Type *pBaseJoin = getBaseType()->getJoin(*((const MapType &)_other).getBaseType());
-    Type *pIndexMeet = getIndexType()->getMeet(*((const MapType &)_other).getIndexType());
+    TypePtr pBaseJoin = getBaseType()->getJoin(*((const MapType &)_other).getBaseType());
+    TypePtr pIndexMeet = getIndexType()->getMeet(*((const MapType &)_other).getIndexType().as<Type>());
 
     return (pBaseJoin && pIndexMeet) ? new MapType(pIndexMeet, pBaseJoin) : NULL;
 }
 
-Type *MapType::getJoin(Type & _other) {
-    Type *pJoin = Type::getJoin(_other);
+TypePtr MapType::getJoin(Type &_other) {
+    TypePtr pJoin = Type::getJoin(_other);
 
-    if (pJoin != NULL || _other.getKind() == FRESH)
+    if (pJoin || _other.getKind() == FRESH)
         return pJoin;
 
-    Type *pIndexJoin = getIndexType()->getJoin(*((const MapType &)_other).getIndexType());
-    Type *pBaseMeet = getBaseType()->getMeet(*((const MapType &)_other).getBaseType());
+    TypePtr pIndexJoin = getIndexType()->getJoin(*((const MapType &)_other).getIndexType().as<Type>());
+    TypePtr pBaseMeet = getBaseType()->getMeet(*((const MapType &)_other).getBaseType());
 
     return (pIndexJoin && pBaseMeet) ? new MapType(pIndexJoin, pBaseMeet) : NULL;
 }

@@ -12,9 +12,9 @@ namespace ir {
 /// Builtin predicate holder.
 class Builtins {
 public:
-    static Builtins & instance();
+    static Builtins &instance();
 
-    Predicate * find(const std::wstring & _name) const;
+    PredicatePtr find(const std::wstring &_name) const;
 
 private:
     Collection<Predicate> m_predicates;

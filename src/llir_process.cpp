@@ -44,7 +44,7 @@ void ProcessLL::processInstructions(Instructions & _instrs) {
     m_pInstructions = & _instrs;
 
     for (Instructions::iterator iInstr = _instrs.begin(); iInstr != _instrs.end(); ++ iInstr)
-        if (! iInstr->empty())
+        if (*iInstr)
             processInstructionIter(iInstr);
 
     m_pInstructions = pSaved;
@@ -175,7 +175,7 @@ void RecycleVars::processInstruction(Instruction & _instr)
 
     Auto<Variable> oldVar = _instr.getResult();
 
-    if (! oldVar.empty()) {
+    if (oldVar) {
         typedef RecyclePool::iterator I;
         const Auto<Type> & type = oldVar->getType();
         std::pair<I, I> bounds = m_varPool.equal_range(type);
@@ -188,7 +188,7 @@ void RecycleVars::processInstruction(Instruction & _instr)
             _instr.setResult(newVar);
             m_varPool.erase(bounds.first);
 
-            if (! oldVar.empty())
+            if (oldVar)
                 m_rewriteVars[oldVar] = newVar;
 
             //newVar->setUsed(true);
@@ -212,7 +212,7 @@ void RecycleVars::processOperand(Operand & _op) {
     if (iVar != m_rewriteVars.end())
         _op.setVariable(iVar->second);
 
-    if (! _op.getVariable()->getLastInit().empty())
+    if (_op.getVariable()->getLastInit())
         _op.getVariable()->getLastInit()->incResultUsageCount();
 
     _op.getVariable()->setUsed(true);
@@ -292,17 +292,17 @@ void PruneJumps::collapse(Instructions::iterator _iInstr, Instructions & _instrs
             ProcessLL::processInstructionIter(iInstr);
             if (! m_target.empty())
                 m_target.getLabel()->decUsageCount();
-            if (! (* iInstr)->getLabel().empty() && (* iInstr)->getLabel()->getUsageCount() > 0) {
-                if (pLabel.empty())
+            if ((* iInstr)->getLabel() && (* iInstr)->getLabel()->getUsageCount() > 0) {
+                if (!pLabel)
                     pLabel = (* iInstr)->getLabel();
                 else
                     m_rewriteLabels[(* iInstr)->getLabel()] = pLabel;
             }
         }
 
-        if (! pLabel.empty()) {
+        if (pLabel) {
             if (_iInstr != _instrs.end()) {
-                if (! (* _iInstr)->getLabel().empty())
+                if ((* _iInstr)->getLabel())
                     m_rewriteLabels[(* _iInstr)->getLabel()] = pLabel;
                 (* _iInstr)->setLabel(pLabel);
             } else {
@@ -351,7 +351,7 @@ void PruneJumps::processInstruction(Instruction & _instr) {
     Auto<Label> pLabel = _instr.getLabel();
     bool bBreak = true;
 
-    if (! pLabel.empty()) {
+    if (pLabel) {
         m_labels.insert(pLabel.ptr());
         m_labelsFwd.erase(pLabel.ptr());
         if (_instr.getKind() == Instruction::NOP)
@@ -462,7 +462,7 @@ void CollapseReturns::processBinary(Binary & _instr) {
     if (nextInstr.getUnaryKind() != Unary::RETURN || nextInstr.getOp().getKind() != Operand::VARIABLE)
         return;
 
-    if (! nextInstr.getLabel().empty())
+    if (nextInstr.getLabel())
         return;
 
     if (nextInstr.getOp().getVariable().ptr() != _instr.getOp1().getVariable().ptr())

@@ -26,33 +26,33 @@ enum NodeRole {
 
 class NodeSetter {
 public:
-    virtual void set(Node *_pValue, bool _bReparent = true) {}
+    virtual void set(const NodePtr &_pValue) {}
 };
 
-template<typename _Node, typename _Member, void (_Node::*_Method)(_Member *, bool)>
+template<typename _Node, typename _Member, void (_Node::*_Method)(const Auto<_Member> &)>
 class NodeSetterImpl : public NodeSetter {
 public:
-    NodeSetterImpl(_Node *_pNode) : m_pNode(_pNode) {}
+    NodeSetterImpl(_Node &_node) : m_node(_node) {}
 
-    virtual void set(Node *_pValue, bool _bReparent = true) {
-        ((*m_pNode).*(_Method))((_Member *)_pValue, _bReparent);
+    virtual void set(const NodePtr &_pValue) {
+        (m_node.*(_Method))(_pValue.as<_Member>());
     }
 
 protected:
-    _Node *m_pNode;
+    _Node &m_node;
 };
 
 template<class _Node, class _Base>
 class ItemSetterImpl : public NodeSetter {
 public:
-    ItemSetterImpl(Collection<_Node, _Base> *_pNodes, size_t _cIndex) : m_pNodes(_pNodes), m_cIndex(_cIndex) {}
+    ItemSetterImpl(Collection<_Node, _Base> &_nodes, size_t _cIndex) : m_nodes(_nodes), m_cIndex(_cIndex) {}
 
-    virtual void set(Node *_pValue, bool _bReparent = true) {
-        m_pNodes->set(m_cIndex, (_Node *)_pValue, _bReparent);
+    virtual void set(const NodePtr &_pValue) {
+        m_nodes.set(m_cIndex, _pValue.as<_Node>());
     }
 
 protected:
-    Collection<_Node, _Base> *m_pNodes;
+    Collection<_Node, _Base> &m_nodes;
     size_t m_cIndex;
 };
 
@@ -69,7 +69,7 @@ public:
     Visitor(int _order = PARENTS_FIRST) : m_bStopped(false), m_order(_order) {}
 
     struct Loc {
-        Node *pNode;
+        Node *pNode; // Never NULL.
         NodeType type;
         NodeRole role;
         RoleHandler roleHandler;
@@ -79,9 +79,9 @@ public:
         bool bPartOfCollection;
         bool bFirstInCollection;
 
-        Loc(Node *_pNode, NodeType _type, NodeRole _role, RoleHandler _roleHandler = NULL,
+        Loc(Node &_node, NodeType _type, NodeRole _role, RoleHandler _roleHandler = NULL,
                 RoleHandler _roleHandlerPost = NULL, NodeSetter *_pSetter = NULL, NodeWalkUp _walkUp = NULL) :
-            pNode(_pNode), type(_type), role(_role), roleHandler(_roleHandler), roleHandlerPost(_roleHandlerPost),
+            pNode(&_node), type(_type), role(_role), roleHandler(_roleHandler), roleHandlerPost(_roleHandlerPost),
             pSetter(_pSetter), walkUp(_walkUp), bPartOfCollection(false), bFirstInCollection(false)
         {
         }
@@ -93,12 +93,12 @@ public:
     bool walkUpFromNode(Node &_node);
 
 #define NODE(_NODE, _PARENT)                            \
-        bool walkUpFrom##_NODE(Node &_node) {       \
+        bool walkUpFrom##_NODE(Node &_node) {           \
             if (!walkUpFrom##_PARENT(_node))            \
                 return false;                           \
-            return visit##_NODE((_NODE &)_node);                 \
+            return visit##_NODE((_NODE &)_node);        \
         }                                               \
-        virtual bool visit##_NODE(_NODE &_node) {    \
+        virtual bool visit##_NODE(_NODE &_node) {       \
             return true;                                \
         }                                               \
         virtual bool traverse##_NODE(_NODE &_node);
@@ -118,12 +118,12 @@ protected:
     struct Ctx {
         Visitor *pVisitor;
 
-        Ctx(Visitor *_pVisitor, Node *_pNode, NodeType _type, NodeRole _role,
+        Ctx(Visitor *_pVisitor, Node &_node, NodeType _type, NodeRole _role,
                 RoleHandler _roleHandler = NULL, RoleHandler _roleHandlerPost = NULL,
                 NodeSetter *_pSetter = NULL, NodeWalkUp _walkUp = NULL)
             : pVisitor(_pVisitor)
         {
-            pVisitor->m_path.push_back(Loc(_pNode, _type, _role, _roleHandler, _roleHandlerPost,
+            pVisitor->m_path.push_back(Loc(_node, _type, _role, _roleHandler, _roleHandlerPost,
                     _pSetter, _walkUp));
         }
 
@@ -136,24 +136,24 @@ protected:
     std::list<Loc> m_path;
 
     size_t getDepth() const { return m_path.size(); }
-    Node *getNode() { return m_path.empty() ? NULL : m_path.back().pNode; }
+    Node &getNode() { return *m_path.back().pNode; }
     RoleHandler getRoleHandler(bool _bPreVisit) { return m_path.empty() ? NULL : (_bPreVisit ? m_path.back().roleHandler : m_path.back().roleHandlerPost); }
     NodeWalkUp getWalkUp() { return m_path.empty() ? NULL : m_path.back().walkUp; }
     NodeSetter *getNodeSetter() { return m_path.empty() ? NULL : m_path.back().pSetter; }
     NodeRole getRole() { return m_path.empty() ? R_TopLevel : m_path.back().role; }
-    Loc & getLoc() { return m_path.back(); }
+    Loc &getLoc() { return m_path.back(); }
 
     int callRoleHandler(bool _bPreVisit) {
-        return getRoleHandler(_bPreVisit) == NULL ? 0 : (this->*getRoleHandler(_bPreVisit))(*getNode());
+        return getRoleHandler(_bPreVisit) == NULL ? 0 : (this->*getRoleHandler(_bPreVisit))(getNode());
     }
 
     bool callWalkUp() {
-        return getWalkUp() == NULL ? true : (this->*getWalkUp())(*getNode());
+        return getWalkUp() == NULL ? true : (this->*getWalkUp())(getNode());
     }
 
-    void callSetter(Node *_pNewNode, bool _bReparent = true) {
+    void callSetter(const NodePtr &_pNewNode) {
         if (getNodeSetter() != NULL)
-            getNodeSetter()->set(_pNewNode, _bReparent);
+            getNodeSetter()->set(_pNewNode);
     }
 
     void stop() { m_bStopped = true; }
@@ -174,12 +174,12 @@ bool Visitor::traverseCollection(Collection<_Node, _Base> &_nodes) {
     m_path.back().bFirstInCollection = true;
 
     for (size_t i = 0; i < _nodes.size(); ++i) {
-        if (_nodes.get(i) != NULL) {
-            ItemSetterImpl<_Node, _Base> setter(&_nodes, i);
+        if (_nodes.get(i)) {
+            ItemSetterImpl<_Node, _Base> setter(_nodes, i);
             Loc &loc = m_path.back();
 
-            loc.pNode = _nodes.get(i);
-            loc.pSetter = &setter;
+            loc = Loc(*_nodes.get(i), loc.type, loc.role, loc.roleHandler, loc.roleHandlerPost,
+                    &setter, loc.walkUp);
             loc.bFirstInCollection = !loc.bPartOfCollection;
             loc.bPartOfCollection = true;
 
@@ -202,7 +202,7 @@ bool Visitor::traverseCollection(Collection<_Node, _Base> &_nodes) {
         if (isStopped())                                            \
             return false;                                           \
         if (m_path.empty())                                         \
-            m_path.push_back(Loc(&_PARAM, N_##_TYPE, R_TopLevel));  \
+            m_path.push_back(Loc(_PARAM, N_##_TYPE, R_TopLevel));   \
         if (getOrder() == PARENTS_FIRST) {                          \
             callRoleHandler(true);                                  \
             if (!walkUpFrom##_TYPE(_PARAM))                         \
@@ -227,9 +227,9 @@ bool Visitor::traverseCollection(Collection<_Node, _Base> &_nodes) {
     do {                                                                            \
         if (isStopped())                                                            \
             return false;                                                           \
-        if ((_PARAM) != NULL) {                                                     \
+        if (_PARAM) {                                                    \
             NodeSetterImpl< _PTYPE, _TYPE, &_PTYPE::_SETTER > setter(_PARENT);      \
-            Ctx ctx(this, _PARAM, N_##_TYPE, R_##_ROLE, &Visitor::handle##_ROLE,    \
+            Ctx ctx(this, *(_PARAM), N_##_TYPE, R_##_ROLE, &Visitor::handle##_ROLE, \
                 &Visitor::handle##_ROLE##Post, &setter);                            \
             if (!traverse##_TYPE(*(_PARAM)))                                        \
                 return false;                                                       \
@@ -240,10 +240,10 @@ bool Visitor::traverseCollection(Collection<_Node, _Base> &_nodes) {
     do {                                                                            \
         if (isStopped())                                                            \
             return false;                                                           \
-        if ((_PARAM) != NULL) {                                                     \
+        if (!(_PARAM).empty()) {                                                    \
             Ctx ctx(this, _PARAM, N_##_TYPE, R_##_ROLE, &Visitor::handle##_ROLE,    \
                 &Visitor::handle##_ROLE##Post, NULL);                               \
-            if (!traverseCollection(*(_PARAM)))                                     \
+            if (!traverseCollection(_PARAM))                                        \
                 return false;                                                       \
         }                                                                           \
     } while (0)

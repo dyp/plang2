@@ -449,10 +449,10 @@ std::wostream & DebugGenerator::generate(const Cast & _instr) {
 std::wostream & DebugGenerator::generate(const Instruction & _instr) {
     m_pCurrentInstr = & _instr;
 
-    if (! _instr.getLabel().empty())
+    if (_instr.getLabel())
         m_os << resolveLabel(* _instr.getLabel()) << L":\n";
 
-    if (! _instr.getResult().empty()) {
+    if (_instr.getResult()) {
         const Variable * pVar = _instr.getResult().ptr();
         std::wstring strName = resolveVariable(pVar);
         if (strName.empty()) {
@@ -496,7 +496,7 @@ std::wostream & DebugGenerator::generate(const Instruction & _instr) {
             m_os << L"nop";
     }
 
-    if (! _instr.getResult().empty() && ! _instr.getResult()->getType().empty()) {
+    if (_instr.getResult() && _instr.getResult()->getType()) {
         m_os << "    ## ";
         generate(* _instr.getResult()->getType());
         m_os << "; uc: " << _instr.getResultUsageCount();
@@ -515,7 +515,7 @@ std::wostream & DebugGenerator::generate(const Function & _function) {
 
     addChild();
 
-    if (! _function.getResult().empty()) {
+    if (_function.getResult()) {
         getChild()->m_vars[_function.getResult().ptr()] = L"r";
         m_os << getChild()->fmtIndent(L".result %r ");
         //const size_t c = sizeof(Type);

@@ -54,37 +54,31 @@ int main(int _argc, const char ** _argv) {
         }
     }
 
-    ir::Module * pModule;
+    if (ir::ModulePtr pModule = parse(tokens)) {
+        if (Options::instance().prettyPrint & PP_FLAT)
+            prettyPrintFlatTree(*pModule);
 
-    if (!parse(tokens, pModule))
-        return EXIT_FAILURE;
+        if (Options::instance().prettyPrint & PP_AST)
+            prettyPrint(*pModule, std::wcout);
 
-    if (!pModule)
+        if (Options::instance().backEnd == BE_NONE)
+            return EXIT_SUCCESS;
+
+        llir::Module module;
+
+        llir::translate(module, * pModule);
+
+        if (Options::instance().backEnd & BE_PP)
+            backend::generateDebug(module, std::wcout);
+
+        if (Options::instance().backEnd & BE_C) {
+            std::string strOut = Options::instance().strOutputFilename;
+            std::wofstream ofs(strOut.empty() ? (strFile + ".c").c_str() : strOut.c_str());
+            backend::generateC(module, ofs);
+        }
+
         return EXIT_SUCCESS;
-
-    if (Options::instance().prettyPrint & PP_FLAT)
-        prettyPrintFlatTree(*pModule);
-
-    if (Options::instance().prettyPrint & PP_AST)
-        prettyPrint(*pModule, std::wcout);
-
-    if (Options::instance().backEnd == BE_NONE)
-        return EXIT_SUCCESS;
-
-    llir::Module module;
-
-    llir::translate(module, * pModule);
-
-    if (Options::instance().backEnd & BE_PP)
-        backend::generateDebug(module, std::wcout);
-
-    if (Options::instance().backEnd & BE_C) {
-        std::string strOut = Options::instance().strOutputFilename;
-        std::wofstream ofs(strOut.empty() ? (strFile + ".c").c_str() : strOut.c_str());
-        backend::generateC(module, ofs);
     }
 
-    delete pModule;
-
-    return EXIT_SUCCESS;
+    return EXIT_FAILURE;
 }

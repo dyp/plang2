@@ -28,25 +28,25 @@ bool StructType::hasFresh() const {
     return false;
 }
 
-bool StructType::rewrite(ir::Type *_pOld, ir::Type *_pNew) {
+bool StructType::rewrite(const TypePtr &_pOld, const TypePtr &_pNew) {
     bool bResult = false;
 
     for (size_t j = 0; j < 3; ++j)
         for (size_t i = 0; i < m_fields[j].size(); ++i) {
-            Type *p = m_fields[j].get(i)->getType();
+            TypePtr p = m_fields[j].get(i)->getType();
             if (tc::rewriteType(p, _pOld, _pNew)) {
                 bResult = true;
-                m_fields[j].get(i)->setType(p, false);
+                m_fields[j].get(i)->setType(p);
             }
         }
 
     return bResult;
 }
 
-bool StructType::contains(const ir::Type *_pType) const {
+bool StructType::contains(const TypePtr &_pType) const {
     for (size_t j = 0; j < 3; ++j)
         for (size_t i = 0; i < m_fields[j].size(); ++i) {
-            const Type *pType = m_fields[j].get(i)->getType();
+            TypePtr pType = m_fields[j].get(i)->getType();
             if (*pType == *_pType || pType->contains(_pType))
                 return true;
         }
@@ -74,7 +74,7 @@ bool StructType::less(const Type &_other) const {
     if (getNamesSet().size() != other.getNamesSet().size())
         return getNamesSet().size() < other.getNamesSet().size();
 
-    typedef std::map<std::wstring, std::pair<NamedValue *, NamedValue *> > NameMap;
+    typedef std::map<std::wstring, std::pair<NamedValuePtr, NamedValuePtr> > NameMap;
     NameMap fields;
 
     for (size_t i = 0; i < getNamesSet().size(); ++i) {
@@ -83,13 +83,13 @@ bool StructType::less(const Type &_other) const {
     }
 
     for (NameMap::iterator i = fields.begin(); i != fields.end(); ++i) {
-        NamedValue *pField = i->second.first;
-        NamedValue *pOtherField = i->second.second;
+        NamedValuePtr pField = i->second.first;
+        NamedValuePtr pOtherField = i->second.second;
 
-        if (pField == NULL)
+        if (!pField)
             return false;
 
-        if (pOtherField == NULL)
+        if (!pOtherField)
             return true;
 
         if (*pField->getType() < *pOtherField->getType())
@@ -121,9 +121,9 @@ int StructType::compare(const Type & _other) const {
     const size_t cOrdFieldsOther = other.getNamesOrd().size() + other.getTypesOrd().size();
 
     for (size_t i = 0; i < cOrdFields && i < cOrdFieldsOther; ++i) {
-        NamedValue *pField = i < getNamesOrd().size() ? getNamesOrd().get(i) :
+        NamedValuePtr pField = i < getNamesOrd().size() ? getNamesOrd().get(i) :
                 getTypesOrd().get(i - getNamesOrd().size());
-        NamedValue *pFieldOther = i < other.getNamesOrd().size() ? other.getNamesOrd().get(i) :
+        NamedValuePtr pFieldOther = i < other.getNamesOrd().size() ? other.getNamesOrd().get(i) :
                 other.getTypesOrd().get(i - other.getNamesOrd().size());
 
         if (i < getNamesOrd().size() && i < other.getNamesOrd().size())
@@ -150,7 +150,7 @@ int StructType::compare(const Type & _other) const {
     if (cSub > 0 && cSuper > 0)
         return ORD_NONE;
 
-    typedef std::map<std::wstring, std::pair<NamedValue *, NamedValue *> > NameMap;
+    typedef std::map<std::wstring, std::pair<NamedValuePtr, NamedValuePtr> > NameMap;
     NameMap fields;
 
     for (size_t i = 0; i < getNamesSet().size(); ++i)
@@ -160,28 +160,28 @@ int StructType::compare(const Type & _other) const {
        fields[other.getNamesSet().get(i)->getName()].second = other.getNamesSet().get(i);
 
     for (size_t i = 0; i < getNamesOrd().size(); ++i) {
-        NamedValue *pField = getNamesOrd().get(i);
+        NamedValuePtr pField = getNamesOrd().get(i);
         NameMap::iterator j = fields.find(pField->getName());
 
-        if (j != fields.end() && j->second.second != NULL)
+        if (j != fields.end() && j->second.second)
             fields[pField->getName()].first = pField;
     }
 
     for (size_t i = 0; i < other.getNamesOrd().size(); ++i) {
-        NamedValue *pField = other.getNamesOrd().get(i);
+        NamedValuePtr pField = other.getNamesOrd().get(i);
         NameMap::iterator j = fields.find(pField->getName());
 
-        if (j != fields.end() && j->second.first != NULL)
+        if (j != fields.end() && j->second.first)
             fields[pField->getName()].second = pField;
     }
 
     for (NameMap::iterator i = fields.begin(); i != fields.end(); ++i) {
-        NamedValue *pField = i->second.first;
-        NamedValue *pOtherField = i->second.second;
+        NamedValuePtr pField = i->second.first;
+        NamedValuePtr pOtherField = i->second.second;
 
-        if (pField == NULL)
+        if (!pField)
             ++cSuper;
-        else if (pOtherField == NULL)
+        else if (!pOtherField)
             ++cSub;
         else {
             const int cmp = pField->getType()->compare(*pOtherField->getType());
@@ -212,16 +212,16 @@ int StructType::compare(const Type & _other) const {
     return ORD_EQUALS;
 }
 
-Type *StructType::getMeet(ir::Type &_other) {
-    Type *pMeet = Type::getMeet(_other);
+TypePtr StructType::getMeet(ir::Type &_other) {
+    TypePtr pMeet = Type::getMeet(_other);
 
-    if (pMeet != NULL || _other.getKind() == FRESH)
+    if (pMeet || _other.getKind() == FRESH)
         return pMeet;
 
     const StructType &other = (const StructType &)_other;
-    StructType *pStruct = new StructType();
+    StructTypePtr pStruct = new StructType();
 
-    typedef std::map<std::wstring, std::pair<NamedValue *, NamedValue *> > NameMap;
+    typedef std::map<std::wstring, std::pair<NamedValuePtr, NamedValuePtr> > NameMap;
     NameMap fields;
 
     for (size_t i = 0; i < getNamesSet().size(); ++i)
@@ -234,17 +234,17 @@ Type *StructType::getMeet(ir::Type &_other) {
     const size_t cOrdFieldsOther = other.getNamesOrd().size() + other.getTypesOrd().size();
 
     for (size_t i = 0; i < cOrdFields || i < cOrdFieldsOther; ++i) {
-        NamedValue *pField = i < cOrdFields ? (i < getNamesOrd().size() ? getNamesOrd().get(i) :
-                getTypesOrd().get(i - getNamesOrd().size())) : NULL;
-        NamedValue *pFieldOther = i < cOrdFieldsOther ? (i < other.getNamesOrd().size() ? other.getNamesOrd().get(i) :
-                other.getTypesOrd().get(i - other.getNamesOrd().size())) : NULL;
+        NamedValuePtr pField = i < cOrdFields ? (i < getNamesOrd().size() ? getNamesOrd().get(i) :
+                getTypesOrd().get(i - getNamesOrd().size())) : NamedValuePtr();
+        NamedValuePtr pFieldOther = i < cOrdFieldsOther ? (i < other.getNamesOrd().size() ? other.getNamesOrd().get(i) :
+                other.getTypesOrd().get(i - other.getNamesOrd().size())) : NamedValuePtr();
 
         if (i < getNamesOrd().size() && i < other.getNamesOrd().size())
             if (pField->getName() != pFieldOther->getName())
                 return new Type(BOTTOM);
 
-        Type *pType = pField ? pField->getType() : NULL;
-        Type *pTypeOther = pFieldOther ? pFieldOther->getType() : NULL;
+        TypePtr pType = pField ? pField->getType() : TypePtr();
+        TypePtr pTypeOther = pFieldOther ? pFieldOther->getType() : TypePtr();
         std::wstring strName = (!pField || (pFieldOther && pField->getName().empty())) ?
                 pFieldOther->getName() : pField->getName();
         NameMap::iterator j = fields.find(strName);
@@ -288,11 +288,11 @@ Type *StructType::getMeet(ir::Type &_other) {
     }
 
     for (NameMap::iterator i = fields.begin(); i != fields.end(); ++i) {
-        NamedValue *pField = i->second.first;
-        NamedValue *pFieldOther = i->second.second;
+        NamedValuePtr pField = i->second.first;
+        NamedValuePtr pFieldOther = i->second.second;
 
         if (pField && pFieldOther) {
-            Type *pMeetField = pField->getType()->getMeet(*pFieldOther->getType());
+            TypePtr pMeetField = pField->getType()->getMeet(*pFieldOther->getType());
             if (!pMeetField)
                 return NULL;
             pStruct->getNamesSet().add(new NamedValue(pField->getName(), pMeetField));
@@ -305,16 +305,16 @@ Type *StructType::getMeet(ir::Type &_other) {
     return pStruct;
 }
 
-Type *StructType::getJoin(ir::Type & _other) {
-    Type *pJoin = Type::getMeet(_other);
+TypePtr StructType::getJoin(ir::Type &_other) {
+    TypePtr pJoin = Type::getMeet(_other);
 
-    if (pJoin != NULL || _other.getKind() == FRESH)
+    if (pJoin || _other.getKind() == FRESH)
         return pJoin;
 
     const StructType &other = (const StructType &)_other;
-    StructType *pStruct = new StructType();
+    StructTypePtr pStruct = new StructType();
 
-    typedef std::map<std::wstring, std::pair<NamedValue *, NamedValue *> > NameMap;
+    typedef std::map<std::wstring, std::pair<NamedValuePtr, NamedValuePtr> > NameMap;
     NameMap fields;
 
     for (size_t i = 0; i < getNamesSet().size(); ++i)
@@ -327,17 +327,17 @@ Type *StructType::getJoin(ir::Type & _other) {
     const size_t cOrdFieldsOther = other.getNamesOrd().size() + other.getTypesOrd().size();
 
     for (size_t i = 0; i < cOrdFields && i < cOrdFieldsOther; ++i) {
-        NamedValue *pField = i < getNamesOrd().size() ? getNamesOrd().get(i) :
+        NamedValuePtr pField = i < getNamesOrd().size() ? getNamesOrd().get(i) :
                 getTypesOrd().get(i - getNamesOrd().size());
-        NamedValue *pFieldOther = i < other.getNamesOrd().size() ? other.getNamesOrd().get(i) :
+        NamedValuePtr pFieldOther = i < other.getNamesOrd().size() ? other.getNamesOrd().get(i) :
                 other.getTypesOrd().get(i - other.getNamesOrd().size());
         std::wstring strName = pField->getName();
 
         if (pField->getName() != pFieldOther->getName())
             strName = L"";
 
-        Type *pType = pField->getType();
-        Type *pTypeOther = pFieldOther->getType();
+        TypePtr pType = pField->getType();
+        TypePtr pTypeOther = pFieldOther->getType();
         NameMap::iterator j = fields.find(strName);
 
         if (j != fields.end()) {
@@ -375,8 +375,8 @@ Type *StructType::getJoin(ir::Type & _other) {
         fields[other.getNamesOrd().get(i)->getName()].second = other.getNamesOrd().get(i);
 
     for (NameMap::iterator i = fields.begin(); i != fields.end(); ++i) {
-        NamedValue *pField = i->second.first;
-        NamedValue *pFieldOther = i->second.second;
+        NamedValuePtr pField = i->second.first;
+        NamedValuePtr pFieldOther = i->second.second;
 
         if (pField && pFieldOther) {
             pJoin = pField->getType()->getMeet(*pFieldOther->getType());
@@ -427,17 +427,17 @@ int tc::TupleType::compare(const Type &_other) const {
 
     size_t cSub = 0, cSuper = 0, cUnknown = 0;
 
-    for (size_t i = 0; i < m_fields.size() && i < other.getFields().size(); ++i) {
-        const NamedValue &field = *m_fields.get(i);
+    for (size_t i = 0; i < getFields().size() && i < other.getFields().size(); ++i) {
+        const NamedValue &field = *getFields().get(i);
         const NamedValue &otherField = *other.getFields().get(i);
         const int cmp = field.getType()->compare(*otherField.getType());
 
         if (cmp == ORD_SUB)
-            ++ cSub;
+            ++cSub;
         else if (cmp == ORD_SUPER)
-            ++ cSuper;
+            ++cSuper;
         else if (cmp == ORD_UNKNOWN)
-            ++ cUnknown;
+            ++cUnknown;
         else if (cmp == ORD_NONE)
             return ORD_NONE;
     }
@@ -448,7 +448,7 @@ int tc::TupleType::compare(const Type &_other) const {
     if (cUnknown > 0)
         return ORD_UNKNOWN;
 
-    if (m_fields.size() == other.getFields().size()) {
+    if (getFields().size() == other.getFields().size()) {
         if (cSub > 0)
             return ORD_SUB;
         if (cSuper > 0)
@@ -456,29 +456,29 @@ int tc::TupleType::compare(const Type &_other) const {
         return ORD_EQUALS;
     }
 
-    if (m_fields.size() > other.getFields().size())
+    if (getFields().size() > other.getFields().size())
         return cSuper > 0 ? ORD_NONE : ORD_SUB;
 
-    // m_fields.size() < other.getFields().size()
+    // getFields().size() < other.getFields().size()
     return cSub > 0 ? ORD_NONE : ORD_SUPER;
 }
 
-Type *tc::TupleType::getMeet(ir::Type & _other) {
-    Type *pMeet = Type::getMeet(_other);
+TypePtr tc::TupleType::getMeet(ir::Type &_other) {
+    TypePtr pMeet = Type::getMeet(_other);
 
-    if (pMeet != NULL || _other.getKind() == FRESH)
+    if (pMeet || _other.getKind() == FRESH)
         return pMeet;
 
     const tc::TupleType &other = (const tc::TupleType &)_other;
-    tc::TupleType *pTuple = new tc::TupleType(new NamedValues());
+    tc::TupleTypePtr pTuple = new tc::TupleType(new NamedValues());
 
-    for (size_t i = 0; i < m_fields.size() && i < other.getFields().size(); ++i) {
-        const NamedValue &field = *m_fields.get(i);
+    for (size_t i = 0; i < getFields().size() && i < other.getFields().size(); ++i) {
+        const NamedValue &field = *getFields().get(i);
         const NamedValue &otherField = *other.getFields().get(i);
 
         pMeet = field.getType()->getMeet(*otherField.getType());
 
-        if (pMeet == NULL)
+        if (!pMeet)
             return NULL;
 
         pTuple->getFields().add(new NamedValue(field.getName(), pMeet));
@@ -487,29 +487,28 @@ Type *tc::TupleType::getMeet(ir::Type & _other) {
     for (size_t i = getFields().size(); i < other.getFields().size(); ++i)
         pTuple->getFields().add(new NamedValue(*other.getFields().get(i)));
 
-    for (size_t i = other.getFields().size(); i < m_fields.size(); ++i)
+    for (size_t i = other.getFields().size(); i < getFields().size(); ++i)
         pTuple->getFields().add(new NamedValue(*getFields().get(i)));
 
     return pTuple;
 }
 
-Type *tc::TupleType::getJoin(ir::Type & _other) {
-    Type *pJoin = Type::getJoin(_other);
+TypePtr tc::TupleType::getJoin(ir::Type &_other) {
+    TypePtr pJoin = Type::getJoin(_other);
 
-    if (pJoin != NULL || _other.getKind() == FRESH)
+    if (pJoin || _other.getKind() == FRESH)
         return pJoin;
 
     const tc::TupleType &other = (const tc::TupleType &)_other;
+    tc::TupleTypePtr pTuple = new tc::TupleType(new NamedValues());
 
-    tc::TupleType *pTuple = new tc::TupleType(new NamedValues());
-
-    for (size_t i = 0; i < m_fields.size() && i < other.getFields().size(); ++i) {
-        const NamedValue &field = *m_fields.get(i);
+    for (size_t i = 0; i < getFields().size() && i < other.getFields().size(); ++i) {
+        const NamedValue &field = *getFields().get(i);
         const NamedValue &otherField = *other.getFields().get(i);
 
         pJoin = field.getType()->getJoin(*otherField.getType());
 
-        if (pJoin == NULL)
+        if (!pJoin)
             return NULL;
 
         pTuple->getFields().add(new NamedValue(field.getName(), pJoin));

@@ -11,13 +11,13 @@ using namespace ir;
 // Predicate types.
 
 bool PredicateType::hasFresh() const {
-    for (size_t i = 0; i < m_paramsIn.size(); ++ i)
+    for (size_t i = 0; i < m_paramsIn.size(); ++i)
         if (m_paramsIn.get(i)->getType()->hasFresh())
             return true;
 
-    for (size_t j = 0; j < m_paramsOut.size(); ++ j) {
-        Branch & branch = * m_paramsOut.get(j);
-        for (size_t i = 0; i < branch.size(); ++ i)
+    for (size_t j = 0; j < m_paramsOut.size(); ++j) {
+        Branch & branch = *m_paramsOut.get(j);
+        for (size_t i = 0; i < branch.size(); ++i)
             if (branch.get(i)->getType()->hasFresh())
                 return true;
     }
@@ -25,7 +25,7 @@ bool PredicateType::hasFresh() const {
     return false;
 }
 
-bool PredicateType::less(const Type & _other) const {
+bool PredicateType::less(const Type &_other) const {
     assert(_other.getKind() == PREDICATE);
 
     const PredicateType &other = (const PredicateType &)_other;
@@ -68,24 +68,24 @@ bool PredicateType::less(const Type & _other) const {
     return false;
 }
 
-bool PredicateType::rewrite(ir::Type * _pOld, ir::Type * _pNew) {
+bool PredicateType::rewrite(const TypePtr &_pOld, const TypePtr &_pNew) {
     bool bResult = false;
 
-    for (size_t i = 0; i < m_paramsIn.size(); ++ i) {
-        Type * p = m_paramsIn.get(i)->getType();
+    for (size_t i = 0; i < m_paramsIn.size(); ++i) {
+        TypePtr p = m_paramsIn.get(i)->getType();
         if (tc::rewriteType(p, _pOld, _pNew)) {
             bResult = true;
-            m_paramsIn.get(i)->setType(p, false);
+            m_paramsIn.get(i)->setType(p);
         }
     }
 
-    for (size_t j = 0; j < m_paramsOut.size(); ++ j) {
-        Branch & branch = * m_paramsOut.get(j);
-        for (size_t i = 0; i < branch.size(); ++ i) {
-            Type * p = branch.get(i)->getType();
+    for (size_t j = 0; j < m_paramsOut.size(); ++j) {
+        Branch &branch = *m_paramsOut.get(j);
+        for (size_t i = 0; i < branch.size(); ++i) {
+            TypePtr p = branch.get(i)->getType();
             if (tc::rewriteType(p, _pOld, _pNew)) {
                 bResult = true;
-                branch.get(i)->setType(p, false);
+                branch.get(i)->setType(p);
             }
         }
     }

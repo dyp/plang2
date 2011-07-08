@@ -92,98 +92,98 @@ bool Visitor::traverseType(Type &_type) {
 
 bool Visitor::traverseTypeType(TypeType &_type) {
     ENTER(TypeType, _type);
-    TRAVERSE(TypeDeclaration, TypeTypeDecl, _type.getDeclaration(), &_type, TypeType, setDeclaration);
+    TRAVERSE(TypeDeclaration, TypeTypeDecl, _type.getDeclaration(), _type, TypeType, setDeclaration);
     EXIT();
 }
 
 bool Visitor::traverseEnumType(EnumType &_type) {
     ENTER(EnumType, _type);
-    TRAVERSE_COL(EnumValue, EnumValueDecl, &_type.getValues());
+    TRAVERSE_COL(EnumValue, EnumValueDecl, _type.getValues());
     EXIT();
 }
 
 bool Visitor::traverseStructType(StructType &_type) {
     ENTER(StructType, _type);
-    TRAVERSE_COL(NamedValue, StructFieldDecl, &_type.getNamesOrd());
-    TRAVERSE_COL(NamedValue, StructFieldDecl, &_type.getTypesOrd());
-    TRAVERSE_COL(NamedValue, StructFieldDecl, &_type.getNamesSet());
+    TRAVERSE_COL(NamedValue, StructFieldDecl, _type.getNamesOrd());
+    TRAVERSE_COL(NamedValue, StructFieldDecl, _type.getTypesOrd());
+    TRAVERSE_COL(NamedValue, StructFieldDecl, _type.getNamesSet());
     EXIT();
 }
 
 bool Visitor::traverseUnionType(UnionType &_type) {
     ENTER(UnionType, _type);
-    TRAVERSE_COL(UnionConstructorDeclaration, UnionConstructorDecl, &_type.getConstructors());
+    TRAVERSE_COL(UnionConstructorDeclaration, UnionConstructorDecl, _type.getConstructors());
     EXIT();
 }
 
 bool Visitor::traverseArrayType(ArrayType &_type) {
     ENTER(ArrayType, _type);
-    TRAVERSE_COL(Range, ArrayDimDecl, &_type.getDimensions());
-    TRAVERSE(Type, ArrayBaseType, _type.getBaseType(), &_type, DerivedType, setBaseType);
+    TRAVERSE_COL(Range, ArrayDimDecl, _type.getDimensions());
+    TRAVERSE(Type, ArrayBaseType, _type.getBaseType(), _type, DerivedType, setBaseType);
     EXIT();
 }
 
 bool Visitor::traverseSetType(SetType &_type) {
     ENTER(SetType, _type);
-    TRAVERSE(Type, SetBaseType, _type.getBaseType(), &_type, DerivedType, setBaseType);
+    TRAVERSE(Type, SetBaseType, _type.getBaseType(), _type, DerivedType, setBaseType);
     EXIT();
 }
 
 bool Visitor::traverseMapType(MapType &_type) {
     ENTER(MapType, _type);
-    TRAVERSE(Type, MapIndexType, _type.getIndexType(), &_type, MapType, setIndexType);
-    TRAVERSE(Type, MapBaseType, _type.getBaseType(), &_type, DerivedType, setBaseType);
+    TRAVERSE(Type, MapIndexType, _type.getIndexType(), _type, MapType, setIndexType);
+    TRAVERSE(Type, MapBaseType, _type.getBaseType(), _type, DerivedType, setBaseType);
     EXIT();
 }
 
 bool Visitor::traverseListType(ListType &_type) {
     ENTER(ListType, _type);
-    TRAVERSE(Type, ListBaseType, _type.getBaseType(), &_type, DerivedType, setBaseType);
+    TRAVERSE(Type, ListBaseType, _type.getBaseType(), _type, DerivedType, setBaseType);
     EXIT();
 }
 
 bool Visitor::traverseSubtype(Subtype &_type) {
     ENTER(Subtype, _type);
-    TRAVERSE(NamedValue, SubtypeParam, _type.getParam(), &_type, Subtype, setParam);
-    TRAVERSE(Expression, SubtypeCond, _type.getExpression(), &_type, Subtype, setExpression);
+    TRAVERSE(NamedValue, SubtypeParam, _type.getParam(), _type, Subtype, setParam);
+    TRAVERSE(Expression, SubtypeCond, _type.getExpression(), _type, Subtype, setExpression);
     EXIT();
 }
 
 bool Visitor::traverseRange(Range &_type) {
     ENTER(Range, _type);
-    TRAVERSE(Expression, RangeMin, _type.getMin(), &_type, Range, setMin);
-    TRAVERSE(Expression, RangeMax, _type.getMax(), &_type, Range, setMax);
+    TRAVERSE(Expression, RangeMin, _type.getMin(), _type, Range, setMin);
+    TRAVERSE(Expression, RangeMax, _type.getMax(), _type, Range, setMax);
     EXIT();
 }
 
 bool Visitor::traversePredicateType(PredicateType &_type) {
     ENTER(PredicateType, _type);
-    TRAVERSE_COL(Param, PredicateTypeInParam, &_type.getInParams());
+    TRAVERSE_COL(Param, PredicateTypeInParam, _type.getInParams());
 
     for (size_t i = 0; i < _type.getOutParams().size(); ++i) {
         Branch &br = *_type.getOutParams().get(i);
 
-        TRAVERSE(Label, PredicateTypeBranchLabel, br.getLabel(), &br, Branch, setLabel);
-        TRAVERSE(Formula, PredicateTypeBranchPreCondition, br.getPreCondition(), &br, Branch, setPreCondition);
-        TRAVERSE(Formula, PredicateTypeBranchPostCondition, br.getPostCondition(), &br, Branch, setPostCondition);
-        TRAVERSE_COL(Param, PredicateTypeOutParam, &br);
+        TRAVERSE(Label, PredicateTypeBranchLabel, br.getLabel(), br, Branch, setLabel);
+        TRAVERSE(Formula, PredicateTypeBranchPreCondition, br.getPreCondition(), br, Branch, setPreCondition);
+        TRAVERSE(Formula, PredicateTypeBranchPostCondition, br.getPostCondition(), br, Branch, setPostCondition);
+        TRAVERSE_COL(Param, PredicateTypeOutParam, br);
     }
 
-    TRAVERSE(Formula, PredicateTypePreCondition, _type.getPreCondition(), &_type, PredicateType, setPreCondition);
-    TRAVERSE(Formula, PredicateTypePostCondition, _type.getPostCondition(), &_type, PredicateType, setPreCondition);
+    TRAVERSE(Formula, PredicateTypePreCondition, _type.getPreCondition(), _type, PredicateType, setPreCondition);
+    TRAVERSE(Formula, PredicateTypePostCondition, _type.getPostCondition(), _type, PredicateType, setPreCondition);
     EXIT();
 }
 
 bool Visitor::traverseParameterizedType(ParameterizedType &_type) {
     ENTER(ParameterizedType, _type);
-    TRAVERSE_COL(NamedValue, ParameterizedTypeParam, &_type.getParams());
-    TRAVERSE(Type, ParameterizedTypeBase, _type.getActualType(), &_type, ParameterizedType, setActualType);
+    TRAVERSE_COL(NamedValue, ParameterizedTypeParam, _type.getParams());
+    TRAVERSE(Type, ParameterizedTypeBase, _type.getActualType(), _type, ParameterizedType, setActualType);
     EXIT();
 }
 
 bool Visitor::traverseNamedReferenceType(NamedReferenceType &_type) {
     ENTER(NamedReferenceType, _type);
-    TRAVERSE_COL(Expression, NamedTypeArg, &_type.getArgs());
+    TRAVERSE_COL(Expression, NamedTypeArg, _type.getArgs());
     EXIT();
 }
 
@@ -205,26 +205,26 @@ bool Visitor::traverseNamedValue(NamedValue &_val) {
     }
 
     ENTER(NamedValue, _val);
-    TRAVERSE(Type, NamedValueType, _val.getType(), &_val, NamedValue, setType);
+    TRAVERSE(Type, NamedValueType, _val.getType(), _val, NamedValue, setType);
     EXIT();
 }
 
 bool Visitor::traverseEnumValue(EnumValue &_val) {
     ENTER(EnumValue, _val);
     if (getRole() != R_EnumValueDecl)
-        TRAVERSE(Type, EnumValueType, _val.getType(), &_val, NamedValue, setType);
+        TRAVERSE(Type, EnumValueType, _val.getType(), _val, NamedValue, setType);
     EXIT();
 }
 
 bool Visitor::traverseParam(Param &_val) {
     ENTER(Param, _val);
-    TRAVERSE(Type, ParamType, _val.getType(), &_val, NamedValue, setType);
+    TRAVERSE(Type, ParamType, _val.getType(), _val, NamedValue, setType);
     EXIT();
 }
 
 bool Visitor::traverseVariable(Variable &_val) {
     ENTER(Variable, _val);
-    TRAVERSE(Type, VariableType, _val.getType(), &_val, NamedValue, setType);
+    TRAVERSE(Type, VariableType, _val.getType(), _val, NamedValue, setType);
     EXIT();
 }
 
@@ -284,28 +284,28 @@ bool Visitor::traversePredicateReference(PredicateReference &_expr) {
 
 bool Visitor::traverseUnary(Unary &_expr) {
     ENTER(Unary, _expr);
-    TRAVERSE(Expression, UnarySubexpression, _expr.getExpression(), &_expr, Unary, setExpression);
+    TRAVERSE(Expression, UnarySubexpression, _expr.getExpression(), _expr, Unary, setExpression);
     EXIT();
 }
 
 bool Visitor::traverseBinary(Binary &_expr) {
     ENTER(Binary, _expr);
-    TRAVERSE(Expression, BinarySubexpression, _expr.getLeftSide(), &_expr, Binary, setLeftSide);
-    TRAVERSE(Expression, BinarySubexpression, _expr.getRightSide(), &_expr, Binary, setRightSide);
+    TRAVERSE(Expression, BinarySubexpression, _expr.getLeftSide(), _expr, Binary, setLeftSide);
+    TRAVERSE(Expression, BinarySubexpression, _expr.getRightSide(), _expr, Binary, setRightSide);
     EXIT();
 }
 
 bool Visitor::traverseTernary(Ternary &_expr) {
     ENTER(Ternary, _expr);
-    TRAVERSE(Expression, TernarySubexpression, _expr.getIf(), &_expr, Ternary, setIf);
-    TRAVERSE(Expression, TernarySubexpression, _expr.getThen(), &_expr, Ternary, setThen);
-    TRAVERSE(Expression, TernarySubexpression, _expr.getElse(), &_expr, Ternary, setElse);
+    TRAVERSE(Expression, TernarySubexpression, _expr.getIf(), _expr, Ternary, setIf);
+    TRAVERSE(Expression, TernarySubexpression, _expr.getThen(), _expr, Ternary, setThen);
+    TRAVERSE(Expression, TernarySubexpression, _expr.getElse(), _expr, Ternary, setElse);
     EXIT();
 }
 
 bool Visitor::traverseTypeExpr(TypeExpr &_expr) {
     ENTER(TypeExpr, _expr);
-    TRAVERSE(Type, TypeExprValue, _expr.getContents(), &_expr, TypeExpr, setContents);
+    TRAVERSE(Type, TypeExprValue, _expr.getContents(), _expr, TypeExpr, setContents);
     EXIT();
 }
 
@@ -330,54 +330,54 @@ bool Visitor::traverseComponent(Component &_expr) {
 
 bool Visitor::traverseArrayPartExpr(ArrayPartExpr &_expr) {
     ENTER(ArrayPartExpr, _expr);
-    TRAVERSE(Expression, ArrayPartObject, _expr.getObject(), &_expr, Component, setObject);
-    TRAVERSE_COL(Expression, ArrayPartIndex, &_expr.getIndices());
+    TRAVERSE(Expression, ArrayPartObject, _expr.getObject(), _expr, Component, setObject);
+    TRAVERSE_COL(Expression, ArrayPartIndex, _expr.getIndices());
     EXIT();
 }
 
 bool Visitor::traverseFieldExpr(FieldExpr &_expr) {
     ENTER(FieldExpr, _expr);
-    TRAVERSE(Expression, FieldObject, _expr.getObject(), &_expr, Component, setObject);
+    TRAVERSE(Expression, FieldObject, _expr.getObject(), _expr, Component, setObject);
     EXIT();
 }
 
 bool Visitor::traverseUnionAlternativeExpr(UnionAlternativeExpr &_expr) {
     ENTER(UnionAlternativeExpr, _expr);
-    TRAVERSE(Expression, UnionAlternativeObject, _expr.getObject(), &_expr, Component, setObject);
+    TRAVERSE(Expression, UnionAlternativeObject, _expr.getObject(), _expr, Component, setObject);
     EXIT();
 }
 
 bool Visitor::traverseMapElementExpr(MapElementExpr &_expr) {
     ENTER(MapElementExpr, _expr);
-    TRAVERSE(Expression, MapElementObject, _expr.getObject(), &_expr, Component, setObject);
-    TRAVERSE(Expression, MapElementIndex, _expr.getIndex(), &_expr, MapElementExpr, setIndex);
+    TRAVERSE(Expression, MapElementObject, _expr.getObject(), _expr, Component, setObject);
+    TRAVERSE(Expression, MapElementIndex, _expr.getIndex(), _expr, MapElementExpr, setIndex);
     EXIT();
 }
 
 bool Visitor::traverseListElementExpr(ListElementExpr &_expr) {
     ENTER(ListElementExpr, _expr);
-    TRAVERSE(Expression, ListElementObject, _expr.getObject(), &_expr, Component, setObject);
-    TRAVERSE(Expression, ListElementIndex, _expr.getIndex(), &_expr, ListElementExpr, setIndex);
+    TRAVERSE(Expression, ListElementObject, _expr.getObject(), _expr, Component, setObject);
+    TRAVERSE(Expression, ListElementIndex, _expr.getIndex(), _expr, ListElementExpr, setIndex);
     EXIT();
 }
 
 bool Visitor::traverseReplacement(Replacement &_expr) {
     ENTER(Replacement, _expr);
-    TRAVERSE(Expression, ReplacementObject, _expr.getObject(), &_expr, Component, setObject);
-    TRAVERSE(Constructor, ReplacementValue, _expr.getNewValues(), &_expr, Replacement, setNewValues);
+    TRAVERSE(Expression, ReplacementObject, _expr.getObject(), _expr, Component, setObject);
+    TRAVERSE(Constructor, ReplacementValue, _expr.getNewValues(), _expr, Replacement, setNewValues);
     EXIT();
 }
 
 bool Visitor::traverseFunctionCall(FunctionCall &_expr) {
     ENTER(FunctionCall, _expr);
-    TRAVERSE(Expression, FunctionCallee, _expr.getPredicate(), &_expr, FunctionCall, setPredicate);
-    TRAVERSE_COL(Expression, FunctionCallArgs, &_expr.getArgs());
+    TRAVERSE(Expression, FunctionCallee, _expr.getPredicate(), _expr, FunctionCall, setPredicate);
+    TRAVERSE_COL(Expression, FunctionCallArgs, _expr.getArgs());
     EXIT();
 }
 
 bool Visitor::traverseFormulaCall(FormulaCall &_expr) {
     ENTER(FormulaCall, _expr);
-    TRAVERSE_COL(Expression, FormulaCallArgs, &_expr.getArgs());
+    TRAVERSE_COL(Expression, FormulaCallArgs, _expr.getArgs());
     EXIT();
 }
 
@@ -390,15 +390,15 @@ bool Visitor::traverseLambda(Lambda &_expr) {
 
 bool Visitor::traverseBinder(Binder &_expr) {
     ENTER(Binder, _expr);
-    TRAVERSE(Expression, BinderCallee, _expr.getPredicate(), &_expr, Binder, setPredicate);
-    TRAVERSE_COL(Expression, BinderArgs, &_expr.getArgs());
+    TRAVERSE(Expression, BinderCallee, _expr.getPredicate(), _expr, Binder, setPredicate);
+    TRAVERSE_COL(Expression, BinderArgs, _expr.getArgs());
     EXIT();
 }
 
 bool Visitor::traverseFormula(Formula &_expr) {
     ENTER(Formula, _expr);
-    TRAVERSE_COL(NamedValue, FormulaBoundVariable, &_expr.getBoundVariables());
-    TRAVERSE(Expression, Subformula, _expr.getSubformula(), &_expr, Formula, setSubformula);
+    TRAVERSE_COL(NamedValue, FormulaBoundVariable, _expr.getBoundVariables());
+    TRAVERSE(Expression, Subformula, _expr.getSubformula(), _expr, Formula, setSubformula);
     EXIT();
 }
 
@@ -425,53 +425,53 @@ bool Visitor::traverseConstructor(Constructor &_expr) {
 
 bool Visitor::traverseStructConstructor(StructConstructor &_expr) {
     ENTER(StructConstructor, _expr);
-    TRAVERSE_COL(StructFieldDefinition, StructFieldDef, &_expr);
+    TRAVERSE_COL(StructFieldDefinition, StructFieldDef, _expr);
     EXIT();
 }
 
 bool Visitor::traverseArrayConstructor(ArrayConstructor &_expr) {
     ENTER(ArrayConstructor, _expr);
-    TRAVERSE_COL(ElementDefinition, ArrayElementDef, &_expr);
+    TRAVERSE_COL(ElementDefinition, ArrayElementDef, _expr);
     EXIT();
 }
 
 bool Visitor::traverseSetConstructor(SetConstructor &_expr) {
     ENTER(SetConstructor, _expr);
-    TRAVERSE_COL(Expression, SetElementDef, &_expr);
+    TRAVERSE_COL(Expression, SetElementDef, _expr);
     EXIT();
 }
 
 bool Visitor::traverseMapConstructor(MapConstructor &_expr) {
     ENTER(MapConstructor, _expr);
-    TRAVERSE_COL(ElementDefinition, MapElementDef, &_expr);
+    TRAVERSE_COL(ElementDefinition, MapElementDef, _expr);
     EXIT();
 }
 
 bool Visitor::traverseListConstructor(ListConstructor &_expr) {
     ENTER(ListConstructor, _expr);
-    TRAVERSE_COL(Expression, ListElementDef, &_expr);
+    TRAVERSE_COL(Expression, ListElementDef, _expr);
     EXIT();
 }
 
 bool Visitor::traverseArrayIteration(ArrayIteration &_expr) {
     ENTER(ArrayIteration, _expr);
-    TRAVERSE_COL(NamedValue, ArrayIterator, &_expr.getIterators());
-    TRAVERSE(Expression, ArrayIterationDefault, _expr.getDefault(), &_expr, ArrayIteration, setDefault);
-    TRAVERSE_COL(ArrayPartDefinition, ArrayIterationPart, &_expr);
+    TRAVERSE_COL(NamedValue, ArrayIterator, _expr.getIterators());
+    TRAVERSE(Expression, ArrayIterationDefault, _expr.getDefault(), _expr, ArrayIteration, setDefault);
+    TRAVERSE_COL(ArrayPartDefinition, ArrayIterationPart, _expr);
     EXIT();
 }
 
 bool Visitor::traverseUnionConstructor(UnionConstructor &_expr) {
     ENTER(UnionConstructor, _expr);
-    TRAVERSE_COL(VariableDeclaration, UnionCostructorVarDecl, &_expr.getDeclarations());
-    TRAVERSE_COL(StructFieldDefinition, UnionCostructorParam, &_expr);
+    TRAVERSE_COL(VariableDeclaration, UnionCostructorVarDecl, _expr.getDeclarations());
+    TRAVERSE_COL(StructFieldDefinition, UnionCostructorParam, _expr);
     EXIT();
 }
 
 bool Visitor::traverseCastExpr(CastExpr &_expr) {
     ENTER(CastExpr, _expr);
-    TRAVERSE(TypeExpr, CastToType, _expr.getToType(), &_expr, CastExpr, setToType);
-    TRAVERSE(Expression, CastParam, _expr.getExpression(), &_expr, CastExpr, setExpression);
+    TRAVERSE(TypeExpr, CastToType, _expr.getToType(), _expr, CastExpr, setToType);
+    TRAVERSE(Expression, CastParam, _expr.getExpression(), _expr, CastExpr, setExpression);
     EXIT();
 }
 
@@ -520,57 +520,57 @@ bool Visitor::traverseStatement(Statement &_stmt) {
     }
 
     ENTER(Statement, _stmt);
-    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), &_stmt, Statement, setLabel);
+    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
     EXIT();
 }
 
 bool Visitor::traverseBlock(Block &_stmt) {
     ENTER(Block, _stmt);
-    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), &_stmt, Statement, setLabel);
-    TRAVERSE_COL(Statement, Stmt, &_stmt);
+    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
+    TRAVERSE_COL(Statement, Stmt, _stmt);
     EXIT();
 }
 
 bool Visitor::traverseParallelBlock(ParallelBlock &_stmt) {
     ENTER(ParallelBlock, _stmt);
-    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), &_stmt, Statement, setLabel);
-    TRAVERSE_COL(Statement, Stmt, &_stmt);
+    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
+    TRAVERSE_COL(Statement, Stmt, _stmt);
     EXIT();
 }
 
 bool Visitor::traverseJump(Jump &_stmt) {
     ENTER(Jump, _stmt);
-    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), &_stmt, Statement, setLabel);
+    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
     EXIT();
 }
 
 bool Visitor::traverseAssignment(Assignment &_stmt) {
     ENTER(Assignment, _stmt);
-    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), &_stmt, Statement, setLabel);
-    TRAVERSE(Expression, LValue, _stmt.getLValue(), &_stmt, Assignment, setLValue);
-    TRAVERSE(Expression, RValue, _stmt.getExpression(), &_stmt, Assignment, setExpression);
+    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
+    TRAVERSE(Expression, LValue, _stmt.getLValue(), _stmt, Assignment, setLValue);
+    TRAVERSE(Expression, RValue, _stmt.getExpression(), _stmt, Assignment, setExpression);
     EXIT();
 }
 
 bool Visitor::traverseMultiassignment(Multiassignment &_stmt) {
     ENTER(Multiassignment, _stmt);
-    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), &_stmt, Statement, setLabel);
-    TRAVERSE_COL(Expression, LValue, &_stmt.getLValues());
-    TRAVERSE_COL(Expression, RValue, &_stmt.getExpressions());
+    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
+    TRAVERSE_COL(Expression, LValue, _stmt.getLValues());
+    TRAVERSE_COL(Expression, RValue, _stmt.getExpressions());
     EXIT();
 }
 
 bool Visitor::traverseCall(Call &_stmt) {
     ENTER(Call, _stmt);
-    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), &_stmt, Statement, setLabel);
-    TRAVERSE(Expression, PredicateCallee, _stmt.getPredicate(), &_stmt, Call, setPredicate);
-    TRAVERSE_COL(VariableDeclaration, PredicateVarDecl, &_stmt.getDeclarations());
-    TRAVERSE_COL(Expression, PredicateCallArgs, &_stmt.getArgs());
+    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
+    TRAVERSE(Expression, PredicateCallee, _stmt.getPredicate(), _stmt, Call, setPredicate);
+    TRAVERSE_COL(VariableDeclaration, PredicateVarDecl, _stmt.getDeclarations());
+    TRAVERSE_COL(Expression, PredicateCallArgs, _stmt.getArgs());
 
     for (size_t i = 0; i < _stmt.getBranches().size(); ++i) {
         CallBranch &br = *_stmt.getBranches().get(i);
-        TRAVERSE(Statement, PredicateCallBranchHandler, br.getHandler(), &br, CallBranch, setHandler);
-        TRAVERSE_COL(Expression, PredicateCallBranchResults, &br);
+        TRAVERSE(Statement, PredicateCallBranchHandler, br.getHandler(), br, CallBranch, setHandler);
+        TRAVERSE_COL(Expression, PredicateCallBranchResults, br);
     }
 
     EXIT();
@@ -578,105 +578,105 @@ bool Visitor::traverseCall(Call &_stmt) {
 
 bool Visitor::traverseSwitch(Switch &_stmt) {
     ENTER(Switch, _stmt);
-    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), &_stmt, Statement, setLabel);
-    TRAVERSE(VariableDeclaration, SwitchParamDecl, _stmt.getParamDecl(), &_stmt, Switch, setParamDecl);
-    TRAVERSE(Expression, SwitchArg, _stmt.getArg(), &_stmt, Switch, setArg);
-    TRAVERSE(Statement, SwitchDefault, _stmt.getDefault(), &_stmt, Switch, setDefault);
-    TRAVERSE_COL(SwitchCase, SwitchCase, &_stmt);
+    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
+    TRAVERSE(VariableDeclaration, SwitchParamDecl, _stmt.getParamDecl(), _stmt, Switch, setParamDecl);
+    TRAVERSE(Expression, SwitchArg, _stmt.getArg(), _stmt, Switch, setArg);
+    TRAVERSE(Statement, SwitchDefault, _stmt.getDefault(), _stmt, Switch, setDefault);
+    TRAVERSE_COL(SwitchCase, SwitchCase, _stmt);
     EXIT();
 }
 
 bool Visitor::traverseIf(If &_stmt) {
     ENTER(If, _stmt);
-    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), &_stmt, Statement, setLabel);
-    TRAVERSE(Expression, IfArg, _stmt.getArg(), &_stmt, If, setArg);
-    TRAVERSE(Statement, IfBody, _stmt.getBody(), &_stmt, If, setBody);
-    TRAVERSE(Statement, IfElse, _stmt.getElse(), &_stmt, If, setElse);
+    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
+    TRAVERSE(Expression, IfArg, _stmt.getArg(), _stmt, If, setArg);
+    TRAVERSE(Statement, IfBody, _stmt.getBody(), _stmt, If, setBody);
+    TRAVERSE(Statement, IfElse, _stmt.getElse(), _stmt, If, setElse);
     EXIT();
 }
 
 bool Visitor::traverseFor(For &_stmt) {
     ENTER(For, _stmt);
-    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), &_stmt, Statement, setLabel);
-    TRAVERSE(VariableDeclaration, ForIterator, _stmt.getIterator(), &_stmt, For, setIterator);
-    TRAVERSE(Expression, ForInvariant, _stmt.getInvariant(), &_stmt, For, setInvariant);
-    TRAVERSE(Statement, ForIncrement, _stmt.getIncrement(), &_stmt, For, setIncrement);
-    TRAVERSE(Statement, ForBody, _stmt.getBody(), &_stmt, For, setBody);
+    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
+    TRAVERSE(VariableDeclaration, ForIterator, _stmt.getIterator(), _stmt, For, setIterator);
+    TRAVERSE(Expression, ForInvariant, _stmt.getInvariant(), _stmt, For, setInvariant);
+    TRAVERSE(Statement, ForIncrement, _stmt.getIncrement(), _stmt, For, setIncrement);
+    TRAVERSE(Statement, ForBody, _stmt.getBody(), _stmt, For, setBody);
     EXIT();
 }
 
 bool Visitor::traverseWhile(While &_stmt) {
     ENTER(While, _stmt);
-    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), &_stmt, Statement, setLabel);
-    TRAVERSE(Expression, WhileInvariant, _stmt.getInvariant(), &_stmt, While, setInvariant);
-    TRAVERSE(Statement, WhileBody, _stmt.getBody(), &_stmt, While, setBody);
+    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
+    TRAVERSE(Expression, WhileInvariant, _stmt.getInvariant(), _stmt, While, setInvariant);
+    TRAVERSE(Statement, WhileBody, _stmt.getBody(), _stmt, While, setBody);
     EXIT();
 }
 
 bool Visitor::traverseBreak(Break &_stmt) {
     ENTER(Break, _stmt);
-    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), &_stmt, Statement, setLabel);
+    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
     EXIT();
 }
 
 bool Visitor::traverseWith(With &_stmt) {
     ENTER(With, _stmt);
-    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), &_stmt, Statement, setLabel);
-    TRAVERSE_COL(Expression, WithArg, &_stmt.getArgs());
-    TRAVERSE(Statement, WithBody, _stmt.getBody(), &_stmt, With, setBody);
+    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
+    TRAVERSE_COL(Expression, WithArg, _stmt.getArgs());
+    TRAVERSE(Statement, WithBody, _stmt.getBody(), _stmt, With, setBody);
     EXIT();
 }
 
 bool Visitor::traverseReceive(Receive &_stmt) {
     ENTER(Receive, _stmt);
-    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), &_stmt, Statement, setLabel);
-    TRAVERSE(Expression, ReceiveTimeout, _stmt.getTimeout(), &_stmt, Receive, setTimeout);
-    TRAVERSE(Statement, ReceiveTimeoutHandler, _stmt.getTimeoutHandler(), &_stmt, Receive, setTimeoutHandler);
-    TRAVERSE_COL(MessageHandler, ReceiveHandler, &_stmt);
+    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
+    TRAVERSE(Expression, ReceiveTimeout, _stmt.getTimeout(), _stmt, Receive, setTimeout);
+    TRAVERSE(Statement, ReceiveTimeoutHandler, _stmt.getTimeoutHandler(), _stmt, Receive, setTimeoutHandler);
+    TRAVERSE_COL(MessageHandler, ReceiveHandler, _stmt);
     EXIT();
 }
 
 bool Visitor::traverseSend(Send &_stmt) {
     ENTER(Send, _stmt);
-    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), &_stmt, Statement, setLabel);
-    TRAVERSE_COL(Expression, SendArgs, &_stmt.getArgs());
+    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
+    TRAVERSE_COL(Expression, SendArgs, _stmt.getArgs());
     EXIT();
 }
 
 bool Visitor::traverseTypeDeclaration(TypeDeclaration &_stmt) {
     ENTER(TypeDeclaration, _stmt);
-    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), &_stmt, Statement, setLabel);
-    TRAVERSE(Type, TypeDeclBody, _stmt.getType(), &_stmt, TypeDeclaration, setType);
+    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
+    TRAVERSE(Type, TypeDeclBody, _stmt.getType(), _stmt, TypeDeclaration, setType);
     EXIT();
 }
 
 bool Visitor::traverseVariableDeclaration(VariableDeclaration &_stmt) {
     ENTER(VariableDeclaration, _stmt);
-    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), &_stmt, Statement, setLabel);
-    TRAVERSE(Variable, VarDeclVar, _stmt.getVariable(), &_stmt, VariableDeclaration, setVariable);
-    TRAVERSE(Expression, VarDeclInit, _stmt.getValue(), &_stmt, VariableDeclaration, setValue);
+    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
+    TRAVERSE(Variable, VarDeclVar, _stmt.getVariable(), _stmt, VariableDeclaration, setVariable);
+    TRAVERSE(Expression, VarDeclInit, _stmt.getValue(), _stmt, VariableDeclaration, setValue);
     EXIT();
 }
 
 bool Visitor::traverseFormulaDeclaration(FormulaDeclaration &_stmt) {
     ENTER(FormulaDeclaration, _stmt);
-    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), &_stmt, Statement, setLabel);
-    TRAVERSE_COL(NamedValue, FormulaDeclParams, &_stmt.getParams());
-    TRAVERSE(Type, FormulaDeclResultType, _stmt.getResultType(), &_stmt, FormulaDeclaration, setResultType);
-    TRAVERSE(Expression, FormulaDeclBody, _stmt.getFormula(), &_stmt, FormulaDeclaration, setFormula);
+    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
+    TRAVERSE_COL(NamedValue, FormulaDeclParams, _stmt.getParams());
+    TRAVERSE(Type, FormulaDeclResultType, _stmt.getResultType(), _stmt, FormulaDeclaration, setResultType);
+    TRAVERSE(Expression, FormulaDeclBody, _stmt.getFormula(), _stmt, FormulaDeclaration, setFormula);
     EXIT();
 }
 
 bool Visitor::traverseLemmaDeclaration(LemmaDeclaration &_stmt) {
     ENTER(LemmaDeclaration, _stmt);
-    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), &_stmt, Statement, setLabel);
-    TRAVERSE(Expression, LemmaDeclBody, _stmt.getProposition(), &_stmt, LemmaDeclaration, setProposition);
+    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
+    TRAVERSE(Expression, LemmaDeclBody, _stmt.getProposition(), _stmt, LemmaDeclaration, setProposition);
     EXIT();
 }
 
 bool Visitor::traversePredicate(Predicate &_stmt) {
     ENTER(Predicate, _stmt);
-    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), &_stmt, Statement, setLabel);
+    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
 
     if (!_traverseAnonymousPredicate(_stmt))
         return false;
@@ -688,27 +688,27 @@ bool Visitor::traversePredicate(Predicate &_stmt) {
 
 bool Visitor::traverseUnionConstructorDeclaration(UnionConstructorDeclaration &_cons) {
     ENTER(UnionConstructorDeclaration, _cons);
-    TRAVERSE_COL(NamedValue, UnionConsField, &_cons.getFields());
+    TRAVERSE_COL(NamedValue, UnionConsField, _cons.getFields());
     EXIT();
 }
 
 bool Visitor::traverseStructFieldDefinition(StructFieldDefinition &_cons) {
     ENTER(StructFieldDefinition, _cons);
-    TRAVERSE(Expression, StructFieldValue, _cons.getValue(), &_cons, StructFieldDefinition, setValue);
+    TRAVERSE(Expression, StructFieldValue, _cons.getValue(), _cons, StructFieldDefinition, setValue);
     EXIT();
 }
 
 bool Visitor::traverseElementDefinition(ElementDefinition &_cons) {
     ENTER(ElementDefinition, _cons);
-    TRAVERSE(Expression, ElementIndex, _cons.getIndex(), &_cons, ElementDefinition, setIndex);
-    TRAVERSE(Expression, ElementValue, _cons.getValue(), &_cons, ElementDefinition, setValue);
+    TRAVERSE(Expression, ElementIndex, _cons.getIndex(), _cons, ElementDefinition, setIndex);
+    TRAVERSE(Expression, ElementValue, _cons.getValue(), _cons, ElementDefinition, setValue);
     EXIT();
 }
 
 bool Visitor::traverseArrayPartDefinition(ArrayPartDefinition &_cons) {
     ENTER(ArrayPartDefinition, _cons);
-    TRAVERSE_COL(Expression, ArrayPartCond, &_cons.getConditions());
-    TRAVERSE(Expression, ArrayPartValue, _cons.getExpression(), &_cons, ArrayPartDefinition, setExpression);
+    TRAVERSE_COL(Expression, ArrayPartCond, _cons.getConditions());
+    TRAVERSE(Expression, ArrayPartValue, _cons.getExpression(), _cons, ArrayPartDefinition, setExpression);
     EXIT();
 }
 
@@ -719,39 +719,39 @@ bool Visitor::traverseLabel(Label &_label) {
 
 bool Visitor::traverseSwitchCase(SwitchCase &_case) {
     ENTER(SwitchCase, _case);
-    TRAVERSE_COL(Expression, SwitchCaseValue, &_case.getExpressions());
-    TRAVERSE(Statement, SwitchCaseBody, _case.getBody(), &_case, SwitchCase, setBody);
+    TRAVERSE_COL(Expression, SwitchCaseValue, _case.getExpressions());
+    TRAVERSE(Statement, SwitchCaseBody, _case.getBody(), _case, SwitchCase, setBody);
     EXIT();
 }
 
 bool Visitor::_traverseAnonymousPredicate(AnonymousPredicate &_decl) {
-    TRAVERSE_COL(Param, PredicateInParam, &_decl.getInParams());
+    TRAVERSE_COL(Param, PredicateInParam, _decl.getInParams());
 
     for (size_t i = 0; i < _decl.getOutParams().size(); ++i) {
         Branch &br = *_decl.getOutParams().get(i);
 
-        TRAVERSE(Label, PredicateBranchLabel, br.getLabel(), &br, Branch, setLabel);
-        TRAVERSE(Formula, PredicateBranchPreCondition, br.getPreCondition(), &br, Branch, setPreCondition);
-        TRAVERSE(Formula, PredicateBranchPostCondition, br.getPostCondition(), &br, Branch, setPostCondition);
-        TRAVERSE_COL(Param, PredicateOutParam, &br);
+        TRAVERSE(Label, PredicateBranchLabel, br.getLabel(), br, Branch, setLabel);
+        TRAVERSE(Formula, PredicateBranchPreCondition, br.getPreCondition(), br, Branch, setPreCondition);
+        TRAVERSE(Formula, PredicateBranchPostCondition, br.getPostCondition(), br, Branch, setPostCondition);
+        TRAVERSE_COL(Param, PredicateOutParam, br);
     }
 
-    TRAVERSE(Formula, PredicatePreCondition, _decl.getPreCondition(), &_decl, AnonymousPredicate, setPreCondition);
-    TRAVERSE(Formula, PredicatePostCondition, _decl.getPostCondition(), &_decl, AnonymousPredicate, setPostCondition);
-    TRAVERSE(Expression, PredicateMeasure, _decl.getMeasure(), &_decl, AnonymousPredicate, setMeasure);
-    TRAVERSE(Block, PredicateBody, _decl.getBlock(), &_decl, AnonymousPredicate, setBlock);
+    TRAVERSE(Formula, PredicatePreCondition, _decl.getPreCondition(), _decl, AnonymousPredicate, setPreCondition);
+    TRAVERSE(Formula, PredicatePostCondition, _decl.getPostCondition(), _decl, AnonymousPredicate, setPostCondition);
+    TRAVERSE(Expression, PredicateMeasure, _decl.getMeasure(), _decl, AnonymousPredicate, setMeasure);
+    TRAVERSE(Block, PredicateBody, _decl.getBlock(), _decl, AnonymousPredicate, setBlock);
 
     return true;
 }
 
 bool Visitor::_traverseDeclarationGroup(DeclarationGroup &_decl) {
-    TRAVERSE_COL(Predicate, PredicateDecl, &_decl.getPredicates());
-    TRAVERSE_COL(TypeDeclaration, TypeDecl, &_decl.getTypes());
-    TRAVERSE_COL(VariableDeclaration, VarDecl, &_decl.getVariables());
-    TRAVERSE_COL(FormulaDeclaration, FormulaDecl, &_decl.getFormulas());
-    TRAVERSE_COL(LemmaDeclaration, LemmaDecl, &_decl.getLemmas());
-    TRAVERSE_COL(Message, MessageDecl, &_decl.getMessages());
-    TRAVERSE_COL(Process, ProcessDecl, &_decl.getProcesses());
+    TRAVERSE_COL(Predicate, PredicateDecl, _decl.getPredicates());
+    TRAVERSE_COL(TypeDeclaration, TypeDecl, _decl.getTypes());
+    TRAVERSE_COL(VariableDeclaration, VarDecl, _decl.getVariables());
+    TRAVERSE_COL(FormulaDeclaration, FormulaDecl, _decl.getFormulas());
+    TRAVERSE_COL(LemmaDeclaration, LemmaDecl, _decl.getLemmas());
+    TRAVERSE_COL(Message, MessageDecl, _decl.getMessages());
+    TRAVERSE_COL(Process, ProcessDecl, _decl.getProcesses());
     return true;
 }
 
@@ -765,7 +765,7 @@ bool Visitor::traverseModule(Module &_module) {
     if (!_traverseDeclarationGroup(_module))
         return false;
 
-    TRAVERSE_COL(Class, ClassDecl, &_module.getClasses());
+    TRAVERSE_COL(Class, ClassDecl, _module.getClasses());
 
     EXIT();
 }
@@ -781,29 +781,29 @@ bool Visitor::traverseClass(Class &_class) {
 
 bool Visitor::traverseMessage(Message &_message) {
     ENTER(Message, _message);
-    TRAVERSE_COL(Param, MessageParam, &_message.getParams());
+    TRAVERSE_COL(Param, MessageParam, _message.getParams());
     EXIT();
 }
 
 bool Visitor::traverseProcess(Process &_process) {
     ENTER(Process, _process);
-    TRAVERSE_COL(Param, ProcessInParam, &_process.getInParams());
+    TRAVERSE_COL(Param, ProcessInParam, _process.getInParams());
 
     for (size_t i = 0; i < _process.getOutParams().size(); ++i) {
         Branch &br = *_process.getOutParams().get(i);
 
-        TRAVERSE(Label, ProcessBranchLabel, br.getLabel(), &br, Branch, setLabel);
-        TRAVERSE(Formula, ProcessBranchPreCondition, br.getPreCondition(), &br, Branch, setPreCondition);
-        TRAVERSE(Formula, ProcessBranchPostCondition, br.getPostCondition(), &br, Branch, setPostCondition);
-        TRAVERSE_COL(Param, ProcessOutParam, &br);
+        TRAVERSE(Label, ProcessBranchLabel, br.getLabel(), br, Branch, setLabel);
+        TRAVERSE(Formula, ProcessBranchPreCondition, br.getPreCondition(), br, Branch, setPreCondition);
+        TRAVERSE(Formula, ProcessBranchPostCondition, br.getPostCondition(), br, Branch, setPostCondition);
+        TRAVERSE_COL(Param, ProcessOutParam, br);
     }
 
-    TRAVERSE(Block, ProcessBody, _process.getBlock(), &_process, Process, setBlock);
+    TRAVERSE(Block, ProcessBody, _process.getBlock(), _process, Process, setBlock);
     EXIT();
 }
 
 bool Visitor::traverseMessageHandler(MessageHandler &_messageHandler) {
     ENTER(MessageHandler, _messageHandler);
-    TRAVERSE(Statement, MessageHandlerBody, _messageHandler.getBody(), &_messageHandler, MessageHandler, setBody);
+    TRAVERSE(Statement, MessageHandlerBody, _messageHandler.getBody(), _messageHandler, MessageHandler, setBody);
     EXIT();
 }

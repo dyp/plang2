@@ -51,29 +51,29 @@ public:
     virtual bool traverseSwitch(Switch &_stmt);
 
 protected:
-    template<typename Node>
-    tc::FreshType * createFreshGeneric(Node * _pParam);
+    template<typename _Node>
+    tc::FreshTypePtr createFreshGeneric(const _Node *_pParam);
 
     // Need these wrappers since e.g. Binary::setType() is actually Expression::setType() but
     // _pParam won't be implicitly downcast to Expression*.
-    tc::FreshType * createFresh(Expression * _pParam) { return createFreshGeneric(_pParam); }
-    tc::FreshType * createFresh(NamedValue * _pParam) { return createFreshGeneric(_pParam); }
+    tc::FreshTypePtr createFresh(const Expression *_pParam) { return createFreshGeneric(_pParam); }
+    tc::FreshTypePtr createFresh(const NamedValue *_pParam) { return createFreshGeneric(_pParam); }
+    tc::FreshTypePtr createFresh(const DerivedType *_pParam);
+    tc::FreshTypePtr createFresh(const DerivedTypePtr &_pParam) { return createFresh(_pParam.ptr()); }
+    tc::FreshTypePtr createFreshIndex(const MapTypePtr &_pParam);
 
-    tc::FreshType * createFresh(DerivedType * _pParam);
-    tc::FreshType * createFreshIndex(MapType * _pParam);
+    template<typename _Node>
+    void setFreshType(const Auto<_Node> &_pParam, const TypePtr &_pType);
 
-    template<typename Node>
-    void setFreshType(Node * _pParam, Type * _pType);
+    tc::FreshTypePtr getKnownType(const TypePtr &_pType);
 
-    tc::FreshType *getKnownType(const Type *_pType);
-
-    void collectParam(NamedValue * _pParam, int _nFlags);
+    void collectParam(const NamedValuePtr &_pParam, int _nFlags);
 
 private:
     tc::Formulas & m_constraints;
     Context & m_ctx;
     tc::FreshTypes & m_types;
-    std::stack<Switch *> m_switches;
+    std::stack<SwitchPtr> m_switches;
 };
 
 Collector::Collector(tc::Formulas & _constraints, Context & _ctx, tc::FreshTypes & _types)
@@ -81,66 +81,61 @@ Collector::Collector(tc::Formulas & _constraints, Context & _ctx, tc::FreshTypes
 {
 }
 
-template<typename Node>
-void Collector::setFreshType(Node * _pParam, Type * _pType) {
+template<typename _Node>
+void Collector::setFreshType(const Auto<_Node> &_pParam, const TypePtr &_pType) {
     _pParam->setType(_pType);
     if (_pType->getKind() == Type::FRESH)
-        m_types.insert(std::make_pair((tc::FreshType *) _pType, tc::createTypeSetter<Node>(_pParam)));
+        m_types.insert(std::make_pair(_pType.as<tc::FreshType>(), tc::createTypeSetter<_Node>(_pParam)));
 }
 
-tc::FreshType *Collector::getKnownType(const Type *_pType) {
-    if (_pType != NULL && _pType->getKind() == Type::NAMED_REFERENCE)
-        if (const Type *pType = ((NamedReferenceType *)_pType)->getDeclaration()->getType())
+tc::FreshTypePtr Collector::getKnownType(const TypePtr &_pType) {
+    if (_pType && _pType->getKind() == Type::NAMED_REFERENCE)
+        if (TypePtr pType = _pType.as<NamedReferenceType>()->getDeclaration()->getType())
             if (pType->getKind() == Type::FRESH)
-                return (tc::FreshType *)pType;
+                return pType.as<tc::FreshType>();
 
     return NULL;
 }
 
 template<typename _Node>
-tc::FreshType * Collector::createFreshGeneric(_Node * _pParam) {
-    tc::FreshType *pFresh = getKnownType(_pParam->getType());
+tc::FreshTypePtr Collector::createFreshGeneric(const _Node *_pParam) {
+    tc::FreshTypePtr pFresh = getKnownType(_pParam->getType());
 
-    if (pFresh == NULL)
+    if (!pFresh)
         pFresh = new tc::FreshType();
 
-    m_types.insert(std::make_pair(pFresh, tc::createTypeSetter(_pParam)));
+    m_types.insert(std::make_pair(pFresh, tc::createTypeSetter(ref(_pParam))));
 
     return pFresh;
 }
 
-tc::FreshType * Collector::createFresh(DerivedType * _pParam) {
-    tc::FreshType *pType = new tc::FreshType();
-    m_types.insert(std::make_pair(pType, tc::createBaseTypeSetter(_pParam)));
+tc::FreshTypePtr Collector::createFresh(const DerivedType *_pParam) {
+    tc::FreshTypePtr pType = new tc::FreshType();
+    m_types.insert(std::make_pair(pType, tc::createBaseTypeSetter(ref(_pParam))));
     return pType;
 }
 
-tc::FreshType * Collector::createFreshIndex(MapType * _pParam) {
-    tc::FreshType *pType = new tc::FreshType();
+tc::FreshTypePtr Collector::createFreshIndex(const MapTypePtr &_pParam) {
+    tc::FreshTypePtr pType = new tc::FreshType();
     m_types.insert(std::make_pair(pType, tc::createIndexTypeSetter(_pParam)));
     return pType;
 }
 
-void Collector::collectParam(NamedValue * _pParam, int _nFlags) {
-    Type * pType = _pParam->getType();
+void Collector::collectParam(const NamedValuePtr &_pParam, int _nFlags) {
+    TypePtr pType = _pParam->getType();
 
     if (pType->getKind() == Type::TYPE) {
-        TypeType *pTypeType = (TypeType *)pType;
+        TypeTypePtr pTypeType = pType.as<TypeType>();
         pTypeType->getDeclaration()->setType(new tc::FreshType());
         return;
     }
 
-    tc::FreshType *pFresh = createFresh(_pParam);
+    tc::FreshTypePtr pFresh = createFresh(_pParam.ptr());
 
-    assert((pType != NULL));
+    assert(pType);
 
-    if (pType != NULL) {
-        _pParam->getType()->setParent(NULL); // Suppress delete.
-        if (pType->getKind() != Type::GENERIC && getKnownType(pType) == NULL) {
-            m_constraints.insert(new tc::Formula(tc::Formula::EQUALS,
-                    pFresh, pType));
-        }
-    }
+    if (pType && pType->getKind() != Type::GENERIC && getKnownType(pType))
+        m_constraints.insert(new tc::Formula(tc::Formula::EQUALS, pFresh, pType));
 
     _pParam->setType(pFresh);
     pFresh->addFlags(_nFlags);
@@ -157,13 +152,13 @@ bool Collector::visitPredicateReference(PredicateReference &_ref) {
     if (! m_ctx.getPredicates(_ref.getName(), funcs))
         assert(false);
 
-    _ref.setType(createFresh(&_ref), false);
+    _ref.setType(createFresh(&_ref));
 
     if (funcs.size() > 1) {
-        tc::CompoundFormula * pConstraint = new tc::CompoundFormula();
+        tc::CompoundFormulaPtr pConstraint = new tc::CompoundFormula();
 
         for (size_t i = 0; i < funcs.size(); ++ i) {
-            Predicate * pPred = funcs.get(i);
+            PredicatePtr pPred = funcs.get(i);
             tc::Formulas & part = pConstraint->addPart();
 
             part.insert(new tc::Formula(tc::Formula::EQUALS, pPred->getType(), _ref.getType()));
@@ -178,14 +173,14 @@ bool Collector::visitPredicateReference(PredicateReference &_ref) {
 }
 
 bool Collector::visitFunctionCall(FunctionCall &_call) {
-    PredicateType *pType = new PredicateType();
+    PredicateTypePtr pType = new PredicateType();
 
-    _call.setType(createFresh(&_call), false);
-    pType->getOutParams().add(new Branch(), true);
-    pType->getOutParams().get(0)->add(new Param(L"", _call.getType(), false), true);
+    _call.setType(createFresh(&_call));
+    pType->getOutParams().add(new Branch());
+    pType->getOutParams().get(0)->add(new Param(L"", _call.getType()));
 
     for (size_t i = 0; i < _call.getArgs().size(); ++ i)
-        pType->getInParams().add(new Param(L"", _call.getArgs().get(i)->getType(), false), true);
+        pType->getInParams().add(new Param(L"", _call.getArgs().get(i)->getType()));
 
     m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
             _call.getPredicate()->getType(), pType));
@@ -196,18 +191,18 @@ bool Collector::visitFunctionCall(FunctionCall &_call) {
 }
 
 bool Collector::visitCall(Call &_call) {
-    PredicateType *pType = new PredicateType();
+    PredicateTypePtr pType = new PredicateType();
 
     for (size_t i = 0; i < _call.getArgs().size(); ++i)
-        pType->getInParams().add(new Param(L"", _call.getArgs().get(i)->getType(), false), true);
+        pType->getInParams().add(new Param(L"", _call.getArgs().get(i)->getType()));
 
     for (size_t i = 0; i < _call.getBranches().size(); ++i) {
         CallBranch &br = *_call.getBranches().get(i);
 
-        pType->getOutParams().add(new Branch(), true);
+        pType->getOutParams().add(new Branch());
 
         for (size_t j = 0; j < br.size(); ++j)
-            pType->getOutParams().get(i)->add(new Param(L"", br.get(j)->getType(), false), true);
+            pType->getOutParams().get(i)->add(new Param(L"", br.get(j)->getType()));
     }
 
     m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
@@ -265,7 +260,7 @@ bool Collector::visitUnary(Unary &_unary) {
             // ------------------------------------------------
             // (A = bool and B = bool) or (A = {C} and B = {C})
             {
-                tc::CompoundFormula *p = new tc::CompoundFormula();
+                tc::CompoundFormulaPtr p = new tc::CompoundFormula();
 
                 // Boolean negation.
                 tc::Formulas &part1 = p->addPart();
@@ -277,9 +272,9 @@ bool Collector::visitUnary(Unary &_unary) {
 
                 // Set negation.
                 tc::Formulas &part2 = p->addPart();
-                SetType *pSet = m_ctx.attach(new SetType(NULL));
+                SetTypePtr pSet = new SetType(NULL);
 
-                pSet->setBaseType(createFresh(pSet));
+                pSet->setBaseType(createFresh(pSet.as<DerivedType>()));
                 part2.insert(new tc::Formula(tc::Formula::EQUALS,
                         _unary.getExpression()->getType(), pSet));
                 part2.insert(new tc::Formula(tc::Formula::EQUALS,
@@ -312,7 +307,7 @@ bool Collector::visitBinary(Binary &_binary) {
             //   or (A <= C and B <= C and C = {D})
             //   or (A <= C and B <= C and C = [[D]])   /* Operator "+" only. */
             {
-                tc::CompoundFormula * p = new tc::CompoundFormula();
+                tc::CompoundFormulaPtr p = new tc::CompoundFormula();
                 tc::Formulas & part1 = p->addPart();
                 tc::Formulas & part2 = p->addPart();
 
@@ -350,9 +345,9 @@ bool Collector::visitBinary(Binary &_binary) {
 
                 // Set operations.
                 tc::Formulas & part3 = p->addPart();
-                SetType * pSet = m_ctx.attach(new SetType(NULL));
+                SetTypePtr pSet = new SetType(NULL);
 
-                pSet->setBaseType(createFresh(pSet));
+                pSet->setBaseType(createFresh(pSet.as<DerivedType>()));
 
                 part3.insert(new tc::Formula(tc::Formula::SUBTYPE,
                         _binary.getLeftSide()->getType(),
@@ -365,9 +360,9 @@ bool Collector::visitBinary(Binary &_binary) {
 
                 if (_binary.getOperator() == Binary::ADD) {
                     tc::Formulas & part = p->addPart();
-                    ListType * pList = m_ctx.attach(new ListType(NULL));
+                    ListTypePtr pList = new ListType(NULL);
 
-                    pList->setBaseType(createFresh(pList));
+                    pList->setBaseType(createFresh(pList.as<DerivedType>()));
 
                     part.insert(new tc::Formula(tc::Formula::SUBTYPE,
                             _binary.getLeftSide()->getType(),
@@ -391,7 +386,7 @@ bool Collector::visitBinary(Binary &_binary) {
             // -----------------------------------
             // (A <= B and C = B) or (B < A and C = A)
             {
-                tc::CompoundFormula * p = new tc::CompoundFormula();
+                tc::CompoundFormulaPtr p = new tc::CompoundFormula();
                 tc::Formulas & part1 = p->addPart();
                 tc::Formulas & part2 = p->addPart();
 
@@ -448,7 +443,7 @@ bool Collector::visitBinary(Binary &_binary) {
                     _binary.getType(), new Type(Type::BOOL)));
 
             {
-                tc::CompoundFormula * p = new tc::CompoundFormula();
+                tc::CompoundFormulaPtr p = new tc::CompoundFormula();
 
                 p->addPart().insert(new tc::Formula(tc::Formula::SUBTYPE,
                         _binary.getLeftSide()->getType(),
@@ -476,7 +471,7 @@ bool Collector::visitBinary(Binary &_binary) {
             //     or (B < A and C = A and A <= int)
             //     or (A <= C and B <= C and C = {D})      (set operations)
             {
-                tc::CompoundFormula * p = new tc::CompoundFormula();
+                tc::CompoundFormulaPtr p = new tc::CompoundFormula();
                 tc::Formulas & part1 = p->addPart();
                 tc::Formulas & part2 = p->addPart();
                 tc::Formulas & part3 = p->addPart();
@@ -509,9 +504,9 @@ bool Collector::visitBinary(Binary &_binary) {
 
                 // Set operations.
                 tc::Formulas & part4 = p->addPart();
-                SetType * pSet = m_ctx.attach(new SetType(NULL));
+                SetTypePtr pSet = new SetType(NULL);
 
-                pSet->setBaseType(createFresh(pSet));
+                pSet->setBaseType(createFresh(pSet.as<DerivedType>()));
 
                 part4.insert(new tc::Formula(tc::Formula::SUBTYPE,
                         _binary.getLeftSide()->getType(),
@@ -538,9 +533,9 @@ bool Collector::visitBinary(Binary &_binary) {
 
         case Binary::IN:
             {
-                SetType *pSet = m_ctx.attach(new SetType(NULL));
+                SetTypePtr pSet = new SetType(NULL);
 
-                pSet->setBaseType(createFresh(pSet));
+                pSet->setBaseType(createFresh(pSet.as<DerivedType>()));
                 m_constraints.insert(new tc::Formula(tc::Formula::EQUALS,
                         _binary.getRightSide()->getType(), pSet));
                 m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
@@ -555,11 +550,11 @@ bool Collector::visitBinary(Binary &_binary) {
 }
 
 bool Collector::visitStructConstructor(StructConstructor &_cons) {
-    StructType *pStruct = m_ctx.attach(new StructType());
+    StructTypePtr pStruct = new StructType();
 
     for (size_t i = 0; i < _cons.size(); ++i) {
-        StructFieldDefinition *pDef = _cons.get(i);
-        NamedValue *pField = new NamedValue(pDef->getName());
+        StructFieldDefinitionPtr pDef = _cons.get(i);
+        NamedValuePtr pField = new NamedValue(pDef->getName());
 
         setFreshType(pField, pDef->getValue()->getType());
         if (pDef->getName().empty())
@@ -577,24 +572,22 @@ bool Collector::visitStructConstructor(StructConstructor &_cons) {
 }
 
 bool Collector::visitUnionConstructor(UnionConstructor &_cons) {
-    UnionType *pUnion = m_ctx.attach(new UnionType());
-    UnionConstructorDeclaration *pCons = m_ctx.attach(new UnionConstructorDeclaration(_cons.getName()));
+    UnionTypePtr pUnion = new UnionType();
+    UnionConstructorDeclarationPtr pCons = new UnionConstructorDeclaration(_cons.getName());
 
     pUnion->getConstructors().add(pCons);
 
     for (size_t i = 0; i < _cons.size(); ++i) {
-        StructFieldDefinition *pDef = _cons.get(i);
-        NamedValue *pField = new NamedValue(pDef->getName());
+        StructFieldDefinitionPtr pDef = _cons.get(i);
+        NamedValuePtr pField = new NamedValue(pDef->getName());
 
         setFreshType(pField, pDef->getValue()->getType());
         pCons->getFields().add(pField);
         pDef->setField(pField);
     }
 
-    if (_cons.getType() != NULL) {
-        _cons.getType()->setParent(NULL); // Suppress delete.
+    if (_cons.getType())
         m_constraints.insert(new tc::Formula(tc::Formula::EQUALS, pUnion, _cons.getType()));
-    }
 
     _cons.setType(pUnion);
 
@@ -602,9 +595,9 @@ bool Collector::visitUnionConstructor(UnionConstructor &_cons) {
 }
 
 bool Collector::visitSetConstructor(SetConstructor &_cons) {
-    SetType * pSet = m_ctx.attach(new SetType(NULL));
+    SetTypePtr pSet = new SetType(NULL);
 
-    pSet->setBaseType(createFresh(pSet));
+    pSet->setBaseType(createFresh(pSet.as<DerivedType>()));
     _cons.setType(pSet);
 
     for (size_t i = 0; i < _cons.size(); ++i)
@@ -615,9 +608,9 @@ bool Collector::visitSetConstructor(SetConstructor &_cons) {
 }
 
 bool Collector::visitListConstructor(ListConstructor &_cons) {
-    ListType *pList = m_ctx.attach(new ListType(NULL));
+    ListTypePtr pList = new ListType(NULL);
 
-    pList->setBaseType(createFresh(pList));
+    pList->setBaseType(createFresh(pList.as<DerivedType>()));
     _cons.setType(pList);
 
     for (size_t i = 0; i < _cons.size(); ++i)
@@ -628,9 +621,9 @@ bool Collector::visitListConstructor(ListConstructor &_cons) {
 }
 
 bool Collector::visitArrayConstructor(ArrayConstructor &_cons) {
-    ArrayType *pArray = m_ctx.attach(new ArrayType(NULL));
+    ArrayTypePtr pArray = new ArrayType(NULL);
 
-    pArray->setBaseType(createFresh(pArray));
+    pArray->setBaseType(createFresh(pArray.as<DerivedType>()));
     _cons.setType(pArray);
 
     for (size_t i = 0; i < _cons.size(); ++i)
@@ -641,14 +634,14 @@ bool Collector::visitArrayConstructor(ArrayConstructor &_cons) {
 }
 
 bool Collector::visitMapConstructor(MapConstructor &_cons) {
-    MapType *pMap = m_ctx.attach(new MapType(NULL, NULL));
+    MapTypePtr pMap = new MapType(NULL, NULL);
 
-    pMap->setBaseType(createFresh(pMap));
+    pMap->setBaseType(createFresh(pMap.as<DerivedType>()));
     pMap->setIndexType(createFreshIndex(pMap));
     _cons.setType(pMap);
 
     for (size_t i = 0; i < _cons.size(); ++i) {
-        ElementDefinition *pElement = _cons.get(i);
+        ElementDefinitionPtr pElement = _cons.get(i);
 
         m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
                 pElement->getIndex()->getType(), pMap->getIndexType()));
@@ -660,15 +653,15 @@ bool Collector::visitMapConstructor(MapConstructor &_cons) {
 }
 
 bool Collector::visitFieldExpr(FieldExpr &_field) {
-    tc::FreshType *pFresh = createFresh(&_field);
-    ir::StructType * pStruct = m_ctx.attach(new StructType());
-    ir::NamedValue * pField = new NamedValue(_field.getFieldName(), pFresh, false);
+    tc::FreshTypePtr pFresh = createFresh(&_field);
+    ir::StructTypePtr pStruct = new StructType();
+    ir::NamedValuePtr pField = new NamedValue(_field.getFieldName(), pFresh);
 
     _field.setType(pFresh);
     pStruct->getNamesSet().add(pField);
 
     if (_field.getObject()->getType()->getKind() == Type::FRESH)
-        pFresh->setFlags(((tc::FreshType *) _field.getObject()->getType())->getFlags());
+        pFresh->setFlags(_field.getObject()->getType().as<tc::FreshType>()->getFlags());
 
     // (x : A).foo : B  |-  A <= struct(B foo)
     m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
@@ -680,23 +673,23 @@ bool Collector::visitFieldExpr(FieldExpr &_field) {
 }
 
 bool Collector::visitCastExpr(CastExpr &_cast) {
-    Type *pToType = (Type *)_cast.getToType()->getContents();
+    TypePtr pToType = (TypePtr)_cast.getToType()->getContents();
 
-    _cast.setType(pToType, false);
+    _cast.setType(pToType);
 
     if (pToType->getKind() == Type::STRUCT &&
             _cast.getExpression()->getKind() == Expression::CONSTRUCTOR &&
-            ((Constructor *)_cast.getExpression())->getConstructorKind() == Constructor::STRUCT_FIELDS)
+            _cast.getExpression().as<Constructor>()->getConstructorKind() == Constructor::STRUCT_FIELDS)
     {
         // We can cast form tuples to structs explicitly.
-        StructType *pStruct = (StructType *)pToType;
-        StructConstructor *pFields = (StructConstructor *)_cast.getExpression();
+        StructTypePtr pStruct = pToType.as<StructType>();
+        StructConstructorPtr pFields = _cast.getExpression().as<StructConstructor>();
         bool bSuccess = true;
 
         // TODO: maybe use default values for fields.
         if (pStruct->getNamesOrd().size() == pFields->size()) {
             for (size_t i = 0; i < pFields->size(); ++i) {
-                StructFieldDefinition *pDef = pFields->get(i);
+                StructFieldDefinitionPtr pDef = pFields->get(i);
                 size_t cOtherIdx = pDef->getName().empty() ? i : pStruct->getNamesOrd().findByNameIdx(pDef->getName());
 
                 if (cOtherIdx == (size_t)-1) {
@@ -704,15 +697,15 @@ bool Collector::visitCastExpr(CastExpr &_cast) {
                     break;
                 }
 
-                NamedValue *pField = pStruct->getNamesOrd().get(cOtherIdx);
+                NamedValuePtr pField = pStruct->getNamesOrd().get(cOtherIdx);
 
                 m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
                         pDef->getValue()->getType(), pField->getType()));
             }
         } else if (pStruct->getTypesOrd().size() == pFields->size()) {
             for (size_t i = 0; i < pFields->size(); ++i) {
-                StructFieldDefinition *pDef = pFields->get(i);
-                NamedValue *pField = pStruct->getTypesOrd().get(i);
+                StructFieldDefinitionPtr pDef = pFields->get(i);
+                NamedValuePtr pField = pStruct->getTypesOrd().get(i);
 
                 m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
                         pDef->getValue()->getType(), pField->getType()));
@@ -744,7 +737,7 @@ int Collector::handleVarDeclVar(Node &_node) {
 }
 
 bool Collector::visitVariableDeclaration(VariableDeclaration &_var) {
-    if (_var.getValue() != NULL)
+    if (_var.getValue())
         // x : A = y : B |- B <= A
         m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
                 _var.getValue()->getType(),
@@ -776,18 +769,18 @@ int Collector::handleParameterizedTypeParam(Node &_node) {
 bool Collector::visitNamedReferenceType(NamedReferenceType &_type) {
     // Replace reference type with actual one.
     if (NodeSetter *pSetter = getNodeSetter()) {
-        TypeDeclaration *pDecl = (TypeDeclaration *)_type.getDeclaration();
-        Type *pType = pDecl->getType();
+        TypeDeclarationPtr pDecl = (TypeDeclarationPtr)_type.getDeclaration();
+        TypePtr pType = pDecl->getType();
 
         if (!_type.getArgs().empty()) {
             assert(pType->getKind() == Type::PARAMETERIZED);
             assert(false && "Not implemented");
 
-            ParameterizedType *pOrigType = (ParameterizedType *)pType->clone();
+            ParameterizedTypePtr pOrigType = pType->clone().as<ParameterizedType>();
 
             for (size_t i = 0; i < pOrigType->getParams().size(); ++i) {
-                Type *pParamType = pOrigType->getParams().get(i)->getType();
-                Type *pReplacement = ((TypeExpr *)_type.getArgs().get(i))->getContents();
+                TypePtr pParamType = pOrigType->getParams().get(i)->getType();
+                TypePtr pReplacement = _type.getArgs().get(i).as<TypeExpr>()->getContents();
 
                 assert(pParamType->getKind() == Type::FRESH);
 
@@ -796,15 +789,15 @@ bool Collector::visitNamedReferenceType(NamedReferenceType &_type) {
             pType = pOrigType;
         }
 
-        pSetter->set((Node *)pType, false);
+        pSetter->set(pType);
     }
 
     return true;
 }
 
 bool Collector::visitTypeExpr(TypeExpr &_expr) {
-    TypeType *pType = new TypeType();
-    pType->getDeclaration()->setType(_expr.getContents(), false);
+    TypeTypePtr pType = new TypeType();
+    pType->getDeclaration()->setType(_expr.getContents());
     _expr.setType(pType);
     return true;
 }
@@ -817,9 +810,9 @@ bool Collector::traverseSwitch(Switch &_stmt) {
 }
 
 int Collector::handleSwitchCaseValuePost(Node &_node) {
-    Expression *pExpr = (Expression *)&_node;
+    ExpressionPtr pExpr((Expression *)&_node);
 
-    if (m_switches.top()->getArg() != NULL)
+    if (m_switches.top()->getArg())
         m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
             pExpr->getType(), m_switches.top()->getArg()->getType()));
     else if (m_switches.top()->getParamDecl())

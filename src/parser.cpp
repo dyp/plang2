@@ -24,7 +24,7 @@
 using namespace ir;
 using namespace lexer;
 
-#define PARSER_FN(_Node,_Name,...) _Node * (Parser::* _Name) (Context & _ctx, ## __VA_ARGS__)
+#define PARSER_FN(_Node,_Name,...) Auto<_Node> (Parser::*_Name) (Context &_ctx, ## __VA_ARGS__)
 
 #define CASE_BUILTIN_TYPE \
     case INT_TYPE: \
@@ -61,6 +61,14 @@ using namespace lexer;
         return NULL; \
     } while (0)
 
+#define UNEXPECTED_R(_CTX,_TOK,_RETVAL) \
+    do { \
+        (_CTX).fmtError(L"Expected %ls, got: %ls", fmtQuote(L##_TOK).c_str(), \
+                fmtQuote((_CTX).getValue()).c_str()); \
+        (_CTX).fail(); \
+        return _RETVAL; \
+    } while (0)
+
 #define WARNING(_CTX,...) (_CTX).fmtWarning(__VA_ARGS__)
 
 #define DEBUG(_FMT,...) \
@@ -84,68 +92,65 @@ struct operator_t {
 
 class Parser {
 public:
-    Parser(Tokens & _tokens) : m_tokens(_tokens) { initOps(); }
+    Parser(Tokens &_tokens) : m_tokens(_tokens) { initOps(); }
 
-    bool parseModule(Context & _ctx, Module * & _pModule);
-    bool parseModuleHeader(Context & _ctx, Module * _pModule);
-    bool parseImport(Context & _ctx, Module * _pModule);
+    ModulePtr parseModule(Context &_ctx);
+    bool parseModuleHeader(Context &_ctx, Module &_module);
+    bool parseImport(Context &_ctx, Module &_module);
 
-    Type * parseType(Context & _ctx);
-    Type * parseDerivedTypeParameter(Context & _ctx);
-    ArrayType * parseArrayType(Context & _ctx);
-    MapType * parseMapType(Context & _ctx);
-    Range * parseRange(Context & _ctx);
-    NamedReferenceType * parseTypeReference(Context & _ctx);
-    StructType * parseStructType(Context & _ctx);
-    UnionType * parseUnionType(Context & _ctx);
-    EnumType * parseEnumType(Context & _ctx);
-    Subtype * parseSubtype(Context & _ctx);
-    PredicateType * parsePredicateType(Context & _ctx);
-    Expression * parseCastOrTypeReference(Context & _ctx, Type * _pType);
+    TypePtr parseType(Context &_ctx);
+    TypePtr parseDerivedTypeParameter(Context &_ctx);
+    ArrayTypePtr parseArrayType(Context &_ctx);
+    MapTypePtr parseMapType(Context &_ctx);
+    RangePtr parseRange(Context &_ctx);
+    NamedReferenceTypePtr parseTypeReference(Context &_ctx);
+    StructTypePtr parseStructType(Context &_ctx);
+    UnionTypePtr parseUnionType(Context &_ctx);
+    EnumTypePtr parseEnumType(Context &_ctx);
+    SubtypePtr parseSubtype(Context &_ctx);
+    PredicateTypePtr parsePredicateType(Context &_ctx);
+    ExpressionPtr parseCastOrTypeReference(Context &_ctx, const TypePtr &_pType);
 
-    TypeDeclaration * parseTypeDeclaration(Context & _ctx);
-    VariableDeclaration * parseVariableDeclaration(Context & _ctx, int _nFlags);
-    FormulaDeclaration * parseFormulaDeclaration(Context & _ctx);
-    Expression * parseExpression(Context & _ctx, int _nFlags);
-    Expression * parseExpression(Context & _ctx) { return parseExpression(_ctx, 0); }
-    Expression * parseSubexpression(Context & _ctx, Expression * _lhs, int _minPrec, int _nFlags = 0);
-    Expression * parseAtom(Context & _ctx, int _nFlags);
-    Expression * parseAtom(Context & _ctx) { return parseAtom(_ctx, 0); }
-    Expression * parseComponent(Context & _ctx, Expression & _base);
-    Formula * parseFormula(Context & _ctx);
-    ArrayIteration * parseArrayIteration(Context & _ctx);
-    ArrayPartExpr * parseArrayPart(Context & _ctx, Expression & _base);
-    FunctionCall * parseFunctionCall(Context & _ctx, Expression & _base);
-    Binder * parseBinder(Context & _ctx, Expression & _base);
-    Replacement * parseReplacement(Context & _ctx, Expression & _base);
-    Lambda * parseLambda(Context & _ctx);
-    bool parsePredicateParamsAndBody(Context & _ctx, AnonymousPredicate & _pred);
-    Predicate * parsePredicate(Context & _ctx);
-    Process * parseProcess(Context & _ctx);
+    TypeDeclarationPtr parseTypeDeclaration(Context &_ctx);
+    VariableDeclarationPtr parseVariableDeclaration(Context &_ctx, int _nFlags);
+    FormulaDeclarationPtr parseFormulaDeclaration(Context &_ctx);
+    ExpressionPtr parseExpression(Context &_ctx, int _nFlags);
+    ExpressionPtr parseExpression(Context &_ctx) { return parseExpression(_ctx, 0); }
+    ExpressionPtr parseSubexpression(Context &_ctx, const ExpressionPtr &_lhs, int _minPrec, int _nFlags = 0);
+    ExpressionPtr parseAtom(Context &_ctx, int _nFlags);
+    ExpressionPtr parseAtom(Context &_ctx) { return parseAtom(_ctx, 0); }
+    ExpressionPtr parseComponent(Context &_ctx, Expression &_base);
+    FormulaPtr parseFormula(Context &_ctx);
+    ArrayIterationPtr parseArrayIteration(Context &_ctx);
+    ArrayPartExprPtr parseArrayPart(Context &_ctx, Expression &_base);
+    FunctionCallPtr parseFunctionCall(Context &_ctx, Expression &_base);
+    BinderPtr parseBinder(Context &_ctx, Expression &_base);
+    ReplacementPtr parseReplacement(Context &_ctx, Expression &_base);
+    LambdaPtr parseLambda(Context &_ctx);
+    bool parsePredicateParamsAndBody(Context &_ctx, AnonymousPredicate &_pred);
+    PredicatePtr parsePredicate(Context &_ctx);
+    ProcessPtr parseProcess(Context &_ctx);
 
-    Statement * parseStatement(Context & _ctx);
-    Block * parseBlock(Context & _ctx);
-    Statement * parseAssignment(Context & _ctx);
-    Multiassignment * parseMultiAssignment(Context & _ctx);
-    Switch * parseSwitch(Context & _ctx);
-    If * parseConditional(Context & _ctx);
-    Jump * parseJump(Context & _ctx);
-//    Statement * parsePragma(Context & _ctx);
-    Receive * parseReceive(Context & _ctx);
-    Send * parseSend(Context & _ctx);
-    With * parseWith(Context & _ctx);
-    For * parseFor(Context & _ctx);
-    While * parseWhile(Context & _ctx);
-    Break * parseBreak(Context & _ctx);
-    Call * parseCall(Context & _ctx);
-    Expression * parseCallResult(Context & _ctx, VariableDeclaration * & _pDecl);
-    bool parseCallResults(Context & _ctx, Call & _call, Collection<Expression> & _list);
+    StatementPtr parseStatement(Context &_ctx);
+    BlockPtr parseBlock(Context &_ctx);
+    StatementPtr parseAssignment(Context &_ctx);
+    MultiassignmentPtr parseMultiAssignment(Context &_ctx);
+    SwitchPtr parseSwitch(Context &_ctx);
+    IfPtr parseConditional(Context &_ctx);
+    JumpPtr parseJump(Context &_ctx);
+    ReceivePtr parseReceive(Context &_ctx);
+    SendPtr parseSend(Context &_ctx);
+    WithPtr parseWith(Context &_ctx);
+    ForPtr parseFor(Context &_ctx);
+    WhilePtr parseWhile(Context &_ctx);
+    BreakPtr parseBreak(Context &_ctx);
+    CallPtr parseCall(Context &_ctx);
+    ExpressionPtr parseCallResult(Context &_ctx, VariableDeclarationPtr &_pDecl);
+    bool parseCallResults(Context &_ctx, Call &_call, Collection<Expression> &_list);
 
-    Context * parsePragma(Context & _ctx);
+    Context *parsePragma(Context &_ctx);
 
-    bool parseDeclarations(Context & _ctx, Module & _module);
-
-//    DeclarationGroup
+    bool parseDeclarations(Context &_ctx, Module &_module);
 
     // Parameter parsing constants.
     enum {
@@ -166,52 +171,51 @@ public:
     };
 
     template<class _Param>
-    bool parseParamList(Context & _ctx, Collection<_Param> & _params,
+    bool parseParamList(Context &_ctx, Collection<_Param> &_params,
             PARSER_FN(_Param,_parser,int), int _nFlags = 0);
 
     template<class _Node, class _Base>
-    bool parseList(Context & _ctx, Collection<_Node, _Base> & _list, PARSER_FN(_Node,_parser),
+    bool parseList(Context &_ctx, Collection<_Node, _Base> &_list, PARSER_FN(_Node,_parser),
             int _startMarker, int _endMarker, int _delimiter);
 
-    bool parseActualParameterList(Context & _ctx, Collection<Expression> & _exprs) {
-        return parseList(_ctx, _exprs, & Parser::parseExpression, LPAREN, RPAREN, COMMA);
+    bool parseActualParameterList(Context &_ctx, Collection<Expression> &_exprs) {
+        return parseList(_ctx, _exprs, &Parser::parseExpression, LPAREN, RPAREN, COMMA);
     }
 
-    bool parseArrayIndices(Context & _ctx, Collection<Expression> & _exprs) {
-        return parseList(_ctx, _exprs, & Parser::parseExpression, LBRACKET, RBRACKET, COMMA);
+    bool parseArrayIndices(Context &_ctx, Collection<Expression> &_exprs) {
+        return parseList(_ctx, _exprs, &Parser::parseExpression, LBRACKET, RBRACKET, COMMA);
     }
 
-    Param * parseParam(Context & _ctx, int _nFlags = 0);
-//    StructFieldDefinition * parseParam(Context & _ctx);
-    NamedValue * parseVariableName(Context & _ctx, int _nFlags = 0);
-    EnumValue * parseEnumValue(Context & _ctx);
-    NamedValue * parseNamedValue(Context & _ctx);
-    ElementDefinition * parseArrayElement(Context & _ctx);
-    ElementDefinition * parseMapElement(Context & _ctx);
-    StructFieldDefinition * parseFieldDefinition(Context & _ctx);
-    StructFieldDefinition * parseConstructorField(Context & _ctx);
-    UnionConstructorDeclaration * parseConstructorDeclaration(Context & _ctx);
-    UnionConstructor * parseConstructor(Context & _ctx, UnionType * _pUnion);
+    ParamPtr parseParam(Context &_ctx, int _nFlags = 0);
+    NamedValuePtr parseVariableName(Context &_ctx, int _nFlags = 0);
+    EnumValuePtr parseEnumValue(Context &_ctx);
+    NamedValuePtr parseNamedValue(Context &_ctx);
+    ElementDefinitionPtr parseArrayElement(Context &_ctx);
+    ElementDefinitionPtr parseMapElement(Context &_ctx);
+    StructFieldDefinitionPtr parseFieldDefinition(Context &_ctx);
+    StructFieldDefinitionPtr parseConstructorField(Context &_ctx);
+    UnionConstructorDeclarationPtr parseConstructorDeclaration(Context &_ctx);
+    UnionConstructorPtr parseConstructor(Context &_ctx, const UnionTypePtr &_pUnion);
 
     template<class _T>
-    _T * findByName(const Collection<_T> & _list, const std::wstring & _name);
+    Auto<_T> findByName(const Collection<_T> &_list, const std::wstring &_name);
 
     template<class _T>
-    size_t findByNameIdx(const Collection<_T> & _list, const std::wstring & _name);
+    size_t findByNameIdx(const Collection<_T> &_list, const std::wstring &_name);
 
-    typedef std::map<std::wstring, Branch *> branch_map_t;
-
-    template<class _Pred>
-    bool parsePreconditions(Context & _ctx, _Pred & _pred, branch_map_t & _branches);
+    typedef std::map<std::wstring, BranchPtr> branch_map_t;
 
     template<class _Pred>
-    bool parsePostconditions(Context & _ctx, _Pred & _pred, branch_map_t & _branches);
+    bool parsePreconditions(Context &_ctx, _Pred &_pred, branch_map_t &_branches);
 
     template<class _Pred>
-    bool parseMeasure(Context & _ctx, _Pred & _pred);
+    bool parsePostconditions(Context &_ctx, _Pred &_pred, branch_map_t &_branches);
+
+    template<class _Pred>
+    bool parseMeasure(Context &_ctx, _Pred &_pred);
 
 private:
-    Tokens & m_tokens;
+    Tokens &m_tokens;
     std::vector<operator_t> m_ops;
 
     void initOps();
@@ -219,106 +223,100 @@ private:
     int getUnaryOp(int _token) const;
     int getBinaryOp(int _token) const;
 
-    bool isTypeName(Context & _ctx, const std::wstring & _name) const;
-    bool fixupAsteriskedParameters(Context & _ctx, Params & _in, Params & _out);
-
-    bool isTypeVariable(const NamedValue * _pVar) const {
-        const Type * pType = NULL;
-        return ir::isTypeVariable(_pVar, pType);
-    }
+    bool isTypeName(Context &_ctx, const std::wstring &_name) const;
+    bool fixupAsteriskedParameters(Context &_ctx, Params &_in, Params &_out);
 
     void typecheck(Context &_ctx, Node &_node);
 };
 
 template<class _Node, class _Base>
-bool Parser::parseList(Context & _ctx, Collection<_Node,_Base> & _list, PARSER_FN(_Node,_parser),
+bool Parser::parseList(Context &_ctx, Collection<_Node,_Base> &_list, PARSER_FN(_Node,_parser),
         int _startMarker, int _endMarker, int _delimiter)
 {
-    Context & ctx = * _ctx.createChild(false);
+    Context &ctx = *_ctx.createChild(false);
 
-    if (_startMarker >= 0 && ! ctx.consume(_startMarker))
+    if (_startMarker >= 0 && !ctx.consume(_startMarker))
         return false;
 
     Collection<_Node> list;
-    _Node * pNode = (this->*_parser) (ctx);
+    Auto<_Node> pNode = (this->*_parser)(ctx);
 
-    if (! pNode)
+    if (!pNode)
         return false;
 
     list.add(pNode);
 
     while (_delimiter < 0 || ctx.consume(_delimiter)) {
-        if (! (pNode = (this->*_parser) (ctx)))
+        if (!(pNode = (this->*_parser)(ctx)))
             return false;
-        list.add(pNode, false);
+        list.add(pNode);
     }
 
-    if (_endMarker >= 0 && ! ctx.consume(_endMarker))
+    if (_endMarker >= 0 && !ctx.consume(_endMarker))
         return false;
 
-    for (size_t i = 0; i < list.size(); ++ i)
+    for (size_t i = 0; i < list.size(); ++i)
         _list.add(list.get(i));
 
-    //    _list.append(list);
     _ctx.mergeChildren();
 
     return true;
 }
 
 template<class _T>
-_T * Parser::findByName(const Collection<_T> & _list, const std::wstring & _name) {
+Auto<_T> Parser::findByName(const Collection<_T> &_list, const std::wstring &_name) {
     const size_t cIdx = findByNameIdx(_list, _name);
-    return cIdx == (size_t) -1 ? _list.get(cIdx) : NULL;
+    return cIdx == (size_t) -1 ? _list.get(cIdx) : Auto<_T>();
 }
 
 template<class _T>
-size_t Parser::findByNameIdx(const Collection<_T> & _list, const std::wstring & _name) {
-    for (size_t i = 0; i < _list.size(); ++ i)
+size_t Parser::findByNameIdx(const Collection<_T> &_list, const std::wstring &_name) {
+    for (size_t i = 0; i < _list.size(); ++i)
         if (_list.get(i)->getName() == _name)
             return i;
 
-    return (size_t) -1;
+    return (size_t)-1;
 }
 
-ArrayPartExpr * Parser::parseArrayPart(Context & _ctx, Expression & _base) {
-    Context & ctx = * _ctx.createChild(false);
-    ArrayPartExpr * pParts = ctx.attach(new ArrayPartExpr());
+ArrayPartExprPtr Parser::parseArrayPart(Context &_ctx, Expression &_base) {
+    Context &ctx = *_ctx.createChild(false);
+    ArrayPartExprPtr pParts = new ArrayPartExpr();
 
-    if (! parseArrayIndices(ctx, pParts->getIndices()))
+    if (!parseArrayIndices(ctx, pParts->getIndices()))
         return NULL;
 
-    pParts->setObject(& _base);
+    pParts->setObject(&_base);
     _ctx.mergeChildren();
 
     return pParts;
 }
 
-FunctionCall * Parser::parseFunctionCall(Context & _ctx, Expression & _base) {
-    Context & ctx = * _ctx.createChild(false);
-    FunctionCall * pCall = ctx.attach(new FunctionCall());
+FunctionCallPtr Parser::parseFunctionCall(Context &_ctx, Expression &_base) {
+    Context &ctx = *_ctx.createChild(false);
+    FunctionCallPtr pCall = new FunctionCall();
 
-    if (! parseActualParameterList(ctx, pCall->getArgs()))
+    if (!parseActualParameterList(ctx, pCall->getArgs()))
         return NULL;
 
-    pCall->setPredicate(& _base);
+    pCall->setPredicate(&_base);
     _ctx.mergeChildren();
 
     return pCall;
 }
 
-Binder * Parser::parseBinder(Context & _ctx, Expression & _base) {
-    Context & ctx = * _ctx.createChild(false);
-    Binder * pBinder = ctx.attach(new Binder());
+BinderPtr Parser::parseBinder(Context &_ctx, Expression &_base) {
+    Context &ctx = *_ctx.createChild(false);
+    BinderPtr pBinder = new Binder();
 
-    if (! ctx.consume(LPAREN))
+    if (!ctx.consume(LPAREN))
         UNEXPECTED(ctx, "(");
 
-    Expression * pParam = NULL;
+    ExpressionPtr pParam;
 
-    if (! ctx.consume(ELLIPSIS)) {
+    if (!ctx.consume(ELLIPSIS)) {
         if (ctx.consume(UNDERSCORE))
             pParam = NULL;
-        else if (! (pParam = parseExpression(ctx)))
+        else if (!(pParam = parseExpression(ctx)))
             ERROR(ctx, NULL, L"Error parsing expression");
 
         pBinder->getArgs().add(pParam);
@@ -328,88 +326,86 @@ Binder * Parser::parseBinder(Context & _ctx, Expression & _base) {
                 break;
             else if (ctx.consume(UNDERSCORE))
                 pParam = NULL;
-            else if (! (pParam = parseExpression(ctx)))
+            else if (!(pParam = parseExpression(ctx)))
                 ERROR(ctx, NULL, L"Error parsing expression");
 
             pBinder->getArgs().add(pParam);
         }
     }
 
-    if (! ctx.consume(RPAREN))
+    if (!ctx.consume(RPAREN))
         UNEXPECTED(ctx, ")");
 
-    pBinder->setPredicate(& _base);
+    pBinder->setPredicate(&_base);
     _ctx.mergeChildren();
 
     return pBinder;
 }
 
-Replacement * Parser::parseReplacement(Context & _ctx, Expression & _base) {
-    Context & ctx = * _ctx.createChild(false);
-    Expression * pNewValues = parseExpression(ctx);
+ReplacementPtr Parser::parseReplacement(Context &_ctx, Expression &_base) {
+    Context &ctx = *_ctx.createChild(false);
+    ExpressionPtr pNewValues = parseExpression(ctx);
 
-    if (! pNewValues)
+    if (!pNewValues)
         ERROR(ctx, NULL, L"Error parsing replacement values");
 
     if (pNewValues->getKind() != Expression::CONSTRUCTOR)
         ERROR(ctx, NULL, L"Constructor expected");
 
-    Replacement * pExpr = ctx.attach(new Replacement());
+    ReplacementPtr pExpr = new Replacement();
 
-    pExpr->setObject(& _base);
-    pExpr->setNewValues((Constructor *) pNewValues);
+    pExpr->setObject(&_base);
+    pExpr->setNewValues(pNewValues.as<Constructor>());
     _ctx.mergeChildren();
 
     return pExpr;
 }
 
-Expression * Parser::parseComponent(Context & _ctx, Expression & _base) {
-    Context & ctx = * _ctx.createChild(false);
-    Expression * pExpr = NULL;
+ExpressionPtr Parser::parseComponent(Context &_ctx, Expression &_base) {
+    Context &ctx = *_ctx.createChild(false);
+    ExpressionPtr pExpr;
 
     if (ctx.is(DOT)) {
-        const std::wstring & fieldName = ctx.scan(2, 1);
-        Component * pExpr = new FieldExpr(fieldName);
+        const std::wstring &fieldName = ctx.scan(2, 1);
+        ComponentPtr pExpr = new FieldExpr(fieldName);
 
         _ctx.mergeChildren();
-        _ctx.attach(pExpr);
-        pExpr->setObject(& _base);
+        pExpr->setObject(&_base);
 
         return pExpr;
     } else if (ctx.is(LBRACKET)) {
         pExpr = parseArrayPart(ctx, _base);
 
-        if (! pExpr)
+        if (!pExpr)
             pExpr = parseReplacement(ctx, _base);
     } else if (ctx.is(LPAREN)) {
         if (_base.getKind() == Expression::TYPE) {
             pExpr = parseExpression(ctx);
 
-            if (! pExpr)
+            if (!pExpr)
                 return NULL;
 
-            CastExpr * pCast = new CastExpr();
+            CastExprPtr pCast = new CastExpr();
 
-            pCast->setToType((TypeExpr *) & _base, true);
+            pCast->setToType(ExpressionPtr(&_base).as<TypeExpr>());
             pCast->setExpression(pExpr);
             _ctx.mergeChildren();
-            _ctx.attach(pCast);
 
             return pCast;
         }
 
         pExpr = parseFunctionCall(ctx, _base);
 
-        if (! pExpr)
+        if (!pExpr)
             pExpr = parseBinder(ctx, _base);
 
-        if (! pExpr)
+        if (!pExpr)
             pExpr = parseReplacement(ctx, _base);
     } else if (ctx.in(MAP_LBRACKET, FOR)) {
         pExpr = parseReplacement(ctx, _base);
     }
 
-    if (! pExpr)
+    if (!pExpr)
         return NULL;
 
     _ctx.mergeChildren();
@@ -417,62 +413,68 @@ Expression * Parser::parseComponent(Context & _ctx, Expression & _base) {
     return pExpr;
 }
 
-ArrayIteration * Parser::parseArrayIteration(Context & _ctx) {
-    Context & ctx = * _ctx.createChild(true);
+ArrayIterationPtr Parser::parseArrayIteration(Context &_ctx) {
+    Context &ctx = *_ctx.createChild(true);
 
-    if (! ctx.consume(FOR))
+    if (!ctx.consume(FOR))
         UNEXPECTED(ctx, "for");
 
-    ArrayIteration * pArray = _ctx.attach(new ArrayIteration());
+    ArrayIterationPtr pArray = new ArrayIteration();
 
-    if (! ctx.consume(LPAREN))
+    if (!ctx.consume(LPAREN))
         UNEXPECTED(ctx, "(");
 
-    if (! parseParamList(ctx, pArray->getIterators(), & Parser::parseVariableName))
+    if (!parseParamList(ctx, pArray->getIterators(), &Parser::parseVariableName))
         ERROR(ctx, NULL, L"Failed parsing list of iterators");
 
     if (! ctx.consume(RPAREN))
         UNEXPECTED(ctx, ")");
 
     if (ctx.is(LBRACE)) {
-        Context & ctxParts = * ctx.createChild(false);
+        Context &ctxParts = *ctx.createChild(false);
 
-        ++ ctxParts;
+        ++ctxParts;
 
         while (ctxParts.is(CASE)) {
-            ArrayPartDefinition * pPart = ctxParts.attach(new ArrayPartDefinition());
+            ArrayPartDefinitionPtr pPart = new ArrayPartDefinition();
 
-            if (! parseList(ctxParts, pPart->getConditions(),
-                    & Parser::parseExpression, CASE, COLON, COMMA))
+            if (!parseList(ctxParts, pPart->getConditions(),
+                    &Parser::parseExpression, CASE, COLON, COMMA))
                 ERROR(ctxParts, NULL, L"Error parsing list of expressions");
 
-            Expression * pExpr = parseExpression(ctxParts);
-            if (! pExpr)
-                ERROR(ctxParts, NULL, L"Expression required");
-            pPart->setExpression(pExpr);
+            ExpressionPtr pExpr = parseExpression(ctxParts);
 
+            if (!pExpr)
+                ERROR(ctxParts, NULL, L"Expression required");
+
+            pPart->setExpression(pExpr);
             pArray->add(pPart);
         }
 
         if (ctxParts.is(DEFAULT, COLON)) {
             ctxParts.skip(2);
-            Expression * pExpr = parseExpression(ctxParts);
+
+            ExpressionPtr pExpr = parseExpression(ctxParts);
+
             if (! pExpr)
                 ERROR(ctxParts, NULL, L"Expression required");
+
             pArray->setDefault(pExpr);
         }
 
-        if (! pArray->empty() || pArray->getDefault()) {
-            if (! ctxParts.consume(RBRACE))
+        if (!pArray->empty() || pArray->getDefault()) {
+            if (!ctxParts.consume(RBRACE))
                 UNEXPECTED(ctxParts, "}");
             ctx.mergeChildren();
         }
     }
 
-    if (pArray->empty() && ! pArray->getDefault()) {
-        Expression * pExpr = parseExpression(ctx);
-        if (! pExpr)
+    if (pArray->empty() && !pArray->getDefault()) {
+        ExpressionPtr pExpr = parseExpression(ctx);
+
+        if (!pExpr)
             ERROR(ctx, NULL, L"Expression or parts definition required");
+
         pArray->setDefault(pExpr);
     }
 
@@ -502,34 +504,34 @@ void Parser::initOps() {
 
     m_ops[IMPLIES]    = operator_t(nPrec, Binary::IMPLIES);
     m_ops[IFF]        = operator_t(nPrec, Binary::IFF);
-    m_ops[QUESTION]   = operator_t(++ nPrec);
+    m_ops[QUESTION]   = operator_t(++nPrec);
 //    m_oPS[COLON]      = operator_t(nPrec);
-    m_ops[OR]         = operator_t(++ nPrec, Binary::BOOL_OR);
-    m_ops[XOR]        = operator_t(++ nPrec, Binary::BOOL_XOR);
-    m_ops[AMPERSAND]  = operator_t(++ nPrec, Binary::BOOL_AND);
+    m_ops[OR]         = operator_t(++nPrec, Binary::BOOL_OR);
+    m_ops[XOR]        = operator_t(++nPrec, Binary::BOOL_XOR);
+    m_ops[AMPERSAND]  = operator_t(++nPrec, Binary::BOOL_AND);
     m_ops[AND]        = operator_t(nPrec, Binary::BOOL_AND);
-    m_ops[EQ]         = operator_t(++ nPrec, Binary::EQUALS);
+    m_ops[EQ]         = operator_t(++nPrec, Binary::EQUALS);
     m_ops[NE]         = operator_t(nPrec, Binary::NOT_EQUALS);
-    m_ops[LT]         = operator_t(++ nPrec, Binary::LESS);
+    m_ops[LT]         = operator_t(++nPrec, Binary::LESS);
     m_ops[LTE]        = operator_t(nPrec, Binary::LESS_OR_EQUALS);
     m_ops[GT]         = operator_t(nPrec, Binary::GREATER);
     m_ops[GTE]        = operator_t(nPrec, Binary::GREATER_OR_EQUALS);
-    m_ops[IN]         = operator_t(++ nPrec, Binary::IN);
-    m_ops[SHIFTLEFT]  = operator_t(++ nPrec, Binary::SHIFT_LEFT);
+    m_ops[IN]         = operator_t(++nPrec, Binary::IN);
+    m_ops[SHIFTLEFT]  = operator_t(++nPrec, Binary::SHIFT_LEFT);
     m_ops[SHIFTRIGHT] = operator_t(nPrec, Binary::SHIFT_RIGHT);
-    m_ops[PLUS]       = operator_t(++ nPrec, Binary::ADD, Unary::PLUS);
+    m_ops[PLUS]       = operator_t(++nPrec, Binary::ADD, Unary::PLUS);
     m_ops[MINUS]      = operator_t(nPrec, Binary::SUBTRACT, Unary::MINUS);
-    m_ops[BANG]       = operator_t(++ nPrec, -1, Unary::BOOL_NEGATE);
+    m_ops[BANG]       = operator_t(++nPrec, -1, Unary::BOOL_NEGATE);
     m_ops[TILDE]      = operator_t(nPrec, -1, Unary::BITWISE_NEGATE);
-    m_ops[ASTERISK]   = operator_t(++ nPrec, Binary::MULTIPLY);
+    m_ops[ASTERISK]   = operator_t(++nPrec, Binary::MULTIPLY);
     m_ops[SLASH]      = operator_t(nPrec, Binary::DIVIDE);
     m_ops[PERCENT]    = operator_t(nPrec, Binary::REMAINDER);
-    m_ops[CARET]      = operator_t(++ nPrec, Binary::POWER);
+    m_ops[CARET]      = operator_t(++nPrec, Binary::POWER);
 }
 
-Expression * Parser::parseCastOrTypeReference(Context & _ctx, Type * _pType) {
-    Expression * pExpr = NULL;
-    Context & ctx = * _ctx.createChild(false);
+ExpressionPtr Parser::parseCastOrTypeReference(Context &_ctx, const TypePtr &_pType) {
+    ExpressionPtr pExpr;
+    Context &ctx = *_ctx.createChild(false);
 
     if (ctx.in(LPAREN, LBRACKET, MAP_LBRACKET, LBRACE, LIST_LBRACKET)) {
         switch (_pType->getKind()) {
@@ -547,26 +549,26 @@ Expression * Parser::parseCastOrTypeReference(Context & _ctx, Type * _pType) {
         }
     }
 
-    if (! pExpr)
-        pExpr = _ctx.attach(new TypeExpr(_pType));
+    if (!pExpr)
+        pExpr = new TypeExpr(_pType);
 
     _ctx.mergeChildren();
 
     return pExpr;
 }
 
-Lambda * Parser::parseLambda(Context & _ctx) {
-    Context & ctx = * _ctx.createChild(true);
+LambdaPtr Parser::parseLambda(Context &_ctx) {
+    Context &ctx = *_ctx.createChild(true);
 
-    if (! ctx.consume(PREDICATE))
+    if (!ctx.consume(PREDICATE))
         UNEXPECTED(ctx, "predicate");
 
-    Lambda * pLambda = _ctx.attach(new Lambda());
+    LambdaPtr pLambda = new Lambda();
 
-    if (! parsePredicateParamsAndBody(ctx, pLambda->getPredicate()))
+    if (!parsePredicateParamsAndBody(ctx, pLambda->getPredicate()))
         return NULL;
 
-    if (! pLambda->getPredicate().getBlock())
+    if (!pLambda->getPredicate().getBlock())
         ERROR(ctx, NULL, L"No body defined for anonymous predicate");
 
     _ctx.mergeChildren();
@@ -574,29 +576,28 @@ Lambda * Parser::parseLambda(Context & _ctx) {
     return pLambda;
 }
 
-Formula * Parser::parseFormula(Context & _ctx) {
-    Context & ctx = * _ctx.createChild(true);
+FormulaPtr Parser::parseFormula(Context &_ctx) {
+    Context &ctx = *_ctx.createChild(true);
 
-    if (! ctx.in(BANG, QUESTION, FORALL, EXISTS))
+    if (!ctx.in(BANG, QUESTION, FORALL, EXISTS))
         ERROR(ctx, NULL, L"Quantifier expected");
 
-    Formula * pFormula = _ctx.attach(new Formula(ctx.in(BANG, FORALL) ?
+    FormulaPtr pFormula = new Formula(ctx.in(BANG, FORALL ?
             Formula::UNIVERSAL : Formula::EXISTENTIAL));
 
-    ++ ctx;
+    ++ctx;
 
-    if (! parseParamList(ctx, pFormula->getBoundVariables(),
-            & Parser::parseVariableName, 0))
+    if (!parseParamList(ctx, pFormula->getBoundVariables(), &Parser::parseVariableName, 0))
         ERROR(ctx, NULL, L"Failed parsing bound variables");
 
-    if (! ctx.consume(DOT))
+    if (!ctx.consume(DOT))
         UNEXPECTED(ctx, ".");
 
     // OK to use parseExpression instead of parseSubexpression
     // since quantifiers are lowest priority right-associative operators.
-    Expression * pSub = parseExpression(ctx, ALLOW_FORMULAS);
+    ExpressionPtr pSub = parseExpression(ctx, ALLOW_FORMULAS);
 
-    if (! pSub)
+    if (!pSub)
         ERROR(ctx, NULL, L"Failed parsing subformula");
 
     pFormula->setSubformula(pSub);
@@ -605,10 +606,10 @@ Formula * Parser::parseFormula(Context & _ctx) {
     return pFormula;
 }
 
-Expression * Parser::parseAtom(Context & _ctx, int _nFlags) {
-    Context & ctx = * _ctx.createChild(false);
-    ir::Expression * pExpr = NULL;
-    const bool bAllowTypes = ! (_nFlags & RESTRICT_TYPES);
+ExpressionPtr Parser::parseAtom(Context &_ctx, int _nFlags) {
+    Context &ctx = *_ctx.createChild(false);
+    ExpressionPtr pExpr;
+    const bool bAllowTypes = !(_nFlags &RESTRICT_TYPES);
     int token = ctx.getToken();
 
     _nFlags &= ~RESTRICT_TYPES;
@@ -617,75 +618,74 @@ Expression * Parser::parseAtom(Context & _ctx, int _nFlags) {
             ctx.is(LIST_LBRACKET, LIST_RBRACKET) || ctx.is(MAP_LBRACKET, MAP_RBRACKET))
     {
         ctx.skip(2);
-        pExpr = ctx.attach(new Literal());
+        pExpr = new Literal();
         token = -1;
     }
 
     switch (token) {
         case INTEGER: {
             Number num(ctx.scan(), Number::INTEGER);
-            pExpr = ctx.attach(new Literal(num));
+            pExpr = new Literal(num);
             break;
         }
         case REAL:
         case NOT_A_NUMBER:
         case INF: {
             Number num(ctx.scan(), Number::REAL);
-            pExpr = ctx.attach(new Literal(num));
+            pExpr = new Literal(num);
             break;
         }
         case TRUE:
         case FALSE:
-            pExpr = ctx.attach(new Literal(ctx.getToken() == TRUE));
-            ++ ctx;
+            pExpr = new Literal(ctx.getToken() == TRUE);
+            ++ctx;
             break;
         case CHAR:
-            pExpr = ctx.attach(new Literal(ctx.scan()[0]));
+            pExpr = new Literal(ctx.scan()[0]);
             break;
         case STRING:
-            pExpr = ctx.attach(new Literal(ctx.scan()));
+            pExpr = new Literal(ctx.scan());
             break;
         case NIL:
-            ++ ctx;
-            pExpr = ctx.attach(new Literal());
+            ++ctx;
+            pExpr = new Literal();
             break;
         case LPAREN: {
-            Context * pCtx = ctx.createChild(false);
-            ++ (* pCtx);
-
-            pExpr = parseExpression(* pCtx, _nFlags);
-            if (! pExpr || ! pCtx->consume(RPAREN)) {
+            Context *pCtx = ctx.createChild(false);
+            ++(*pCtx);
+            pExpr = parseExpression(*pCtx, _nFlags);
+            if (!pExpr || !pCtx->consume(RPAREN)) {
                 // Try to parse as a struct literal.
                 pCtx = ctx.createChild(false);
-                StructConstructor * pStruct = pCtx->attach(new StructConstructor());
-                if (! parseList(* pCtx, * pStruct, & Parser::parseFieldDefinition, LPAREN, RPAREN, COMMA))
-                    ERROR(* pCtx, NULL, L"Expected \")\" or a struct literal");
+                StructConstructorPtr pStruct = new StructConstructor();
+                if (!parseList(*pCtx, *pStruct, &Parser::parseFieldDefinition, LPAREN, RPAREN, COMMA))
+                    ERROR(*pCtx, NULL, L"Expected \")\" or a struct literal");
                 pExpr = pStruct;
             }
             ctx.mergeChildren();
             break;
         }
         case LBRACKET:
-            pExpr = ctx.attach(new ArrayConstructor());
-            if (! parseList(ctx, * (ArrayConstructor *) pExpr, & Parser::parseArrayElement,
+            pExpr = new ArrayConstructor();
+            if (!parseList(ctx, (ArrayConstructor &)*pExpr, &Parser::parseArrayElement,
                     LBRACKET, RBRACKET, COMMA))
                 ERROR(ctx, NULL, L"Failed parsing array constructor");
             break;
         case MAP_LBRACKET:
-            pExpr = ctx.attach(new MapConstructor());
-            if (! parseList(ctx, * (MapConstructor *) pExpr, & Parser::parseMapElement,
+            pExpr = new MapConstructor();
+            if (!parseList(ctx, (MapConstructor &)*pExpr, &Parser::parseMapElement,
                     MAP_LBRACKET, MAP_RBRACKET, COMMA))
                 ERROR(ctx, NULL, L"Failed parsing map constructor");
             break;
         case LBRACE:
-            pExpr = ctx.attach(new SetConstructor());
-            if (! parseList(ctx, * (SetConstructor *) pExpr, & Parser::parseExpression,
+            pExpr = new SetConstructor();
+            if (!parseList(ctx, (SetConstructor &)*pExpr, &Parser::parseExpression,
                     LBRACE, RBRACE, COMMA))
                 ERROR(ctx, NULL, L"Failed parsing set constructor");
             break;
         case LIST_LBRACKET:
-            pExpr = ctx.attach(new ListConstructor());
-            if (! parseList(ctx, * (ListConstructor *) pExpr, & Parser::parseExpression,
+            pExpr = new ListConstructor();
+            if (!parseList(ctx, (ListConstructor &)*pExpr, &Parser::parseExpression,
                     LIST_LBRACKET, LIST_RBRACKET, COMMA))
                 ERROR(ctx, NULL, L"Failed parsing list constructor");
             break;
@@ -699,12 +699,10 @@ Expression * Parser::parseAtom(Context & _ctx, int _nFlags) {
             // No break; try to parse as a predicate type.
         CASE_BUILTIN_TYPE:
             if (bAllowTypes) {
-                Type * pType = parseType(ctx);
-
-                if (! pType)
+                if (TypePtr pType = parseType(ctx))
+                    pExpr = parseCastOrTypeReference(ctx, pType);
+                else
                     ERROR(ctx, NULL, L"Type reference expected");
-
-                pExpr = parseCastOrTypeReference(ctx, pType);
             }
             break;
         case BANG:
@@ -716,9 +714,9 @@ Expression * Parser::parseAtom(Context & _ctx, int _nFlags) {
             break;
     }
 
-    if (! pExpr && ctx.is(IDENTIFIER)) {
+    if (!pExpr && ctx.is(IDENTIFIER)) {
         std::wstring str = ctx.getValue();
-        const NamedValue * pVar = NULL;
+        NamedValuePtr pVar;
         bool bLinkedIdentifier = false;
 
         if (ctx.nextIs(SINGLE_QUOTE)) {
@@ -727,194 +725,195 @@ Expression * Parser::parseAtom(Context & _ctx, int _nFlags) {
         }
 
         if ((pVar = ctx.getVariable(str)) && (!bAllowTypes || !isTypeVariable(pVar))) {
-            pExpr = ctx.attach(new VariableReference(pVar));
+            pExpr = new VariableReference(pVar);
             ctx.skip(bLinkedIdentifier ? 2 : 1);
         }
 
-        if (bLinkedIdentifier && ! pExpr)
+        if (bLinkedIdentifier && !pExpr)
             ERROR(ctx, NULL, L"Parameter with name %ls not found", str.c_str());
 
-        if (! pExpr && _ctx.getConstructor(str) != NULL) {
+        if (!pExpr && _ctx.getConstructor(str)) {
             if (ctx.nextIs(QUESTION) && !ctx.nextLoc()->hasLeadingSpace()) {
+                assert(false && "Unimplemented");
                 // ParseRecognizer?
             } else
                 pExpr = parseConstructor(ctx, NULL);
         }
 
-        const Predicate * pPred = NULL;
+        PredicatePtr pPred;
 
-        if (! pExpr && (pPred = ctx.getPredicate(str))) {
-//            pExpr = ctx.attach(new PredicateReference(pPred));
-//            pExpr->setType(pPred->getType(), false);
-            pExpr = ctx.attach(new PredicateReference(str));
-            //pExpr->setType(pPred->getType(), false);
-            ++ ctx;
+        if (!pExpr && (pPred = ctx.getPredicate(str))) {
+            pExpr = new PredicateReference(str);
+            ++ctx;
         }
 
-        FormulaDeclaration * pFormula = NULL;
+        FormulaDeclarationPtr pFormula;
 
-        if (! pExpr && (_nFlags & ALLOW_FORMULAS) && (pFormula = ctx.getFormula(str))) {
-            FormulaCall * pCall = ctx.attach(new FormulaCall());
+        if (!pExpr && (_nFlags & ALLOW_FORMULAS) && (pFormula = ctx.getFormula(str))) {
+            FormulaCallPtr pCall = new FormulaCall();
 
-            ++ ctx;
+            ++ctx;
 
             if (ctx.is(LPAREN, RPAREN))
                 ctx.skip(2);
-            else if (! parseActualParameterList(ctx, pCall->getArgs()))
+            else if (!parseActualParameterList(ctx, pCall->getArgs()))
                 return NULL;
 
             pCall->setTarget(pFormula);
             pExpr = pCall;
         }
 
-        TypeDeclaration * pTypeDecl = NULL;
-        const Type * pRealType = NULL;
+        TypePtr pRealType;
 
-        if (! pExpr) {
-            pTypeDecl = ctx.getType(str);
-            if (pTypeDecl != NULL)
+        if (!pExpr) {
+            if (TypeDeclarationPtr pTypeDecl = ctx.getType(str))
                 pRealType = pTypeDecl->getType();
-//            pRealType = resolveBaseType(pTypeDecl->getType());
         }
 
-        if (! pExpr && pRealType != NULL && pRealType->getKind() == Type::UNION && ctx.nextIs(DOT, IDENTIFIER)) {
+        if (!pExpr && pRealType && pRealType->getKind() == Type::UNION && ctx.nextIs(DOT, IDENTIFIER)) {
             // It's ok since we always know the UnionType in UnionType.ConstructorName expression even
             // before type inference.
             ctx.skip(2);
-            pExpr = parseConstructor(ctx, (UnionType *) pRealType);
-            if (pExpr == NULL)
+            pExpr = parseConstructor(ctx, pRealType.as<UnionType>());
+            if (!pExpr)
                 return NULL;
         }
 
-        //if (! pExpr && pType != NULL && pType->getKind() == Type::Union && ctx.nextIs(Dot, Identifier)) {
-        //}
-
-
-        if (! pExpr && bAllowTypes) {
-            Type * pType = parseType(ctx);
-            if (pType != NULL)
+        if (!pExpr && bAllowTypes) {
+            if (TypePtr pType = parseType(ctx))
                 pExpr = parseCastOrTypeReference(ctx, pType);
         }
 
-        if (! pExpr)
+        if (!pExpr)
             ERROR(ctx, NULL, L"Unknown identifier: %ls", str.c_str());
     }
 
     // Other things should be implemented HERE.
 
-    if (pExpr) {
-        Expression * pCompound = NULL;
-        while ((pCompound = parseComponent(ctx, * pExpr)))
+    if (pExpr)
+        while (ExpressionPtr pCompound = parseComponent(ctx, *pExpr)) {
             pExpr = pCompound;
-    }
+            pCompound = parseComponent(ctx, *pExpr);
+        }
 
     if (pExpr && bAllowTypes && ctx.consume(DOUBLE_DOT)) {
         // Can be a range.
-        Expression * pMax = parseExpression(ctx, _nFlags);
-        if (! pMax)
+        ExpressionPtr pMax = parseExpression(ctx, _nFlags);
+
+        if (!pMax)
             return NULL;
-        pExpr = ctx.attach(new TypeExpr(new Range(pExpr, pMax)));
+
+        pExpr = new TypeExpr(new Range(pExpr, pMax));
     }
 
-    if (! pExpr)
+    if (!pExpr)
         ERROR(ctx, NULL, L"Unexpected token while parsing expression: %ls", TOK_S(ctx));
 
     _ctx.mergeChildren();
+
     return pExpr;
 }
 
-Expression * Parser::parseSubexpression(Context & _ctx, Expression * _lhs, int _minPrec, int _nFlags)
+ExpressionPtr Parser::parseSubexpression(Context &_ctx, const ExpressionPtr &_pLhs, int _minPrec, int _nFlags)
 {
-    Context & ctx = * _ctx.createChild(false);
+    Context &ctx = *_ctx.createChild(false);
     bool bParseElse = false;
+    ExpressionPtr pLhs = _pLhs;
 
-    while (! _lhs || getPrecedence(ctx.getToken(), bParseElse) >= _minPrec) {
+    while (!pLhs || getPrecedence(ctx.getToken(), bParseElse) >= _minPrec) {
         const int op = ctx.getToken();
-        Expression * rhs = NULL;
+        ExpressionPtr pRhs;
         int nPrec = std::max(_minPrec, getPrecedence(op, bParseElse));
 
-        if ((_nFlags & ALLOW_FORMULAS) && ! _lhs && ctx.in(BANG, QUESTION)) {
+        if ((_nFlags & ALLOW_FORMULAS) && !pLhs && ctx.in(BANG, QUESTION)) {
             // Try to parse as a quantified formula first.
-            _lhs = parseFormula(ctx);
-            if (_lhs)
+            pLhs = parseFormula(ctx);
+            if (pLhs)
                 break;
         }
 
-        ++ ctx;
+        ++ctx;
 
         const int tokRHS = ctx.getToken();
 
         if (getUnaryOp(ctx.getToken()) >= 0) {
-            rhs = parseSubexpression(ctx, NULL, nPrec + 1, _nFlags);
+            pRhs = parseSubexpression(ctx, NULL, nPrec + 1, _nFlags);
         } else {
-            rhs = parseAtom(ctx, _nFlags);
+            pRhs = parseAtom(ctx, _nFlags);
         }
 
-        if (! rhs) return NULL;
+        if (!pRhs)
+            return NULL;
 
         while (getPrecedence(ctx.getToken(), bParseElse) > nPrec) {
-            Expression * rhsNew = parseSubexpression(ctx, rhs, getPrecedence(ctx.getToken(), bParseElse), _nFlags);
-            if (! rhsNew) return NULL;
-            rhs = rhsNew;
+            if (ExpressionPtr rhsNew =
+                    parseSubexpression(ctx, pRhs, getPrecedence(ctx.getToken(), bParseElse), _nFlags))
+                pRhs = rhsNew;
+            else
+                return NULL;
         }
 
         if (bParseElse) {
             if (op != COLON)
                 ERROR(ctx, NULL, L"\":\" expected");
-            ((Ternary *) _lhs)->setElse(rhs);
+            pLhs.as<Ternary>()->setElse(pRhs);
             bParseElse = false;
         } else if (op == QUESTION) {
-            if (! _lhs) return NULL;
+            if (!pLhs)
+                return NULL;
             bParseElse = true;
-            _lhs = ctx.attach(new Ternary(_lhs, rhs));
-        } else if (! _lhs) {
+            pLhs = new Ternary(pLhs, pRhs);
+        } else if (!pLhs) {
             const int unaryOp = getUnaryOp(op);
 
             if (unaryOp < 0)
                 ERROR(ctx, NULL, L"Unary operator expected");
 
             if (tokRHS != LPAREN && // Disable optimization of "-(NUMBER)" expressions for now.
-                    rhs->getKind() == Expression::LITERAL &&
-                    ((Literal *) rhs)->getLiteralKind() == Literal::NUMBER)
+                    pRhs->getKind() == Expression::LITERAL &&
+                    pRhs.as<Literal>()->getLiteralKind() == Literal::NUMBER)
             {
                 // Ok, handle unary plus/minus here.
                 if (unaryOp == Unary::MINUS) {
-                    Number num = ((Literal *)rhs)->getNumber();
+                    Number num = pRhs.as<Literal>()->getNumber();
                     num.negate();
-                    ((Literal *)rhs)->setNumber(num);
+                    pRhs.as<Literal>()->setNumber(num);
                 }
                 if (unaryOp == Unary::MINUS || unaryOp == Unary::PLUS) {
-                    _lhs = rhs;
+                    pLhs = pRhs;
                     continue;
                 }
             }
 
-            _lhs = ctx.attach(new Unary(unaryOp, rhs));
-            ((Unary *) _lhs)->getOverflow().set(_ctx.getOverflow());
+            pLhs = new Unary(unaryOp, pRhs);
+            pLhs.as<Unary>()->getOverflow().set(_ctx.getOverflow());
         } else {
             const int binaryOp = getBinaryOp(op);
+
             if (binaryOp < 0)
                 ERROR(ctx, NULL, L"Binary operator expected");
-            _lhs = ctx.attach(new Binary(binaryOp, _lhs, rhs));
-            ((Binary *) _lhs)->getOverflow().set(_ctx.getOverflow());
+
+            pLhs = new Binary(binaryOp, pLhs, pRhs);
+            pLhs.as<Binary>()->getOverflow().set(_ctx.getOverflow());
         }
     }
 
     _ctx.mergeChildren();
 
-    return _lhs;
+    return pLhs;
 }
 
-Expression * Parser::parseExpression(Context & _ctx, int _nFlags) {
-    Expression * pExpr = parseAtom(_ctx, _nFlags);
+ExpressionPtr Parser::parseExpression(Context &_ctx, int _nFlags) {
+    ExpressionPtr pExpr = parseAtom(_ctx, _nFlags);
 
-    if (! pExpr) {
+    if (!pExpr) {
         Context * pCtx = _ctx.getChild();
+
         _ctx.setChild(NULL);
         pExpr = parseSubexpression(_ctx, pExpr, 0, _nFlags);
 
         // Restore context if parsing failed.
-        if (! pExpr && pCtx && ! pCtx->getMessages().empty())
+        if (!pExpr && pCtx != NULL && !pCtx->getMessages().empty())
             _ctx.setChild(pCtx);
         else
             delete pCtx;
@@ -926,8 +925,8 @@ Expression * Parser::parseExpression(Context & _ctx, int _nFlags) {
 }
 
 template<class _Pred>
-bool Parser::parsePreconditions(Context & _ctx, _Pred & _pred, branch_map_t & _branches) {
-    if (! _ctx.consume(PRE))
+bool Parser::parsePreconditions(Context &_ctx, _Pred &_pred, branch_map_t &_branches) {
+    if (!_ctx.consume(PRE))
         return false;
 
     branch_map_t::iterator iBranch = _branches.end();
@@ -936,70 +935,74 @@ bool Parser::parsePreconditions(Context & _ctx, _Pred & _pred, branch_map_t & _b
         iBranch = _branches.find(_ctx.getValue());
 
     if (iBranch != _branches.end()) {
-        Branch * pBranch = iBranch->second;
+        BranchPtr pBranch = iBranch->second;
+
         _ctx.skip(2);
-        Expression * pFormula = parseExpression(_ctx, ALLOW_FORMULAS);
-        if (! pFormula)
+
+        if (ExpressionPtr pFormula = parseExpression(_ctx, ALLOW_FORMULAS)) {
+            if (pFormula->getKind() == Expression::FORMULA)
+                pBranch->setPreCondition(pFormula.as<Formula>());
+            else
+                pBranch->setPreCondition(new Formula(Formula::NONE, pFormula));
+        } else
             ERROR(_ctx, false, L"Formula expected");
-        if (pFormula->getKind() == Expression::FORMULA)
-            pBranch->setPreCondition((Formula *) pFormula);
-        else
-            pBranch->setPreCondition(_ctx.attach(new Formula(Formula::NONE, pFormula)));
     } else {
-        Expression * pFormula = parseExpression(_ctx, ALLOW_FORMULAS);
-        if (! pFormula)
+        if (ExpressionPtr pFormula = parseExpression(_ctx, ALLOW_FORMULAS)) {
+            if (pFormula->getKind() == Expression::FORMULA)
+                _pred.setPreCondition(pFormula.as<Formula>());
+            else
+                _pred.setPreCondition(new Formula(Formula::NONE, pFormula));
+        } else
             ERROR(_ctx, false, L"Formula expected");
-        if (pFormula->getKind() == Expression::FORMULA)
-            _pred.setPreCondition((Formula *) pFormula);
-        else
-            _pred.setPreCondition(_ctx.attach(new Formula(Formula::NONE, pFormula)));
     }
 
     while (_ctx.consume(PRE)) {
-        Branch * pBranch = _branches[_ctx.getValue()];
+        BranchPtr pBranch = _branches[_ctx.getValue()];
 
-        if (! _ctx.in(LABEL, IDENTIFIER, INTEGER) || ! _ctx.nextIs(COLON) || ! pBranch)
+        if (!_ctx.in(LABEL, IDENTIFIER, INTEGER) || !_ctx.nextIs(COLON) || !pBranch)
             ERROR(_ctx, false, L"Branch name expected");
 
         _ctx.skip(2);
-        Expression * pFormula = parseExpression(_ctx, ALLOW_FORMULAS);
-        if (! pFormula)
+
+        if (ExpressionPtr pFormula = parseExpression(_ctx, ALLOW_FORMULAS)) {
+            if (pFormula->getKind() != Expression::FORMULA)
+                pFormula = new Formula(Formula::NONE, pFormula);
+            pBranch->setPreCondition(pFormula.as<Formula>());
+        } else
             ERROR(_ctx, NULL, L"Formula expected");
-        if (pFormula->getKind() != Expression::FORMULA)
-            pFormula = _ctx.attach(new Formula(Formula::NONE, pFormula));
-        pBranch->setPreCondition((Formula *) pFormula);
     }
 
     return true;
 }
 
 template<class _Pred>
-bool Parser::parsePostconditions(Context & _ctx, _Pred & _pred, branch_map_t & _branches) {
-    if (! _ctx.is(POST))
+bool Parser::parsePostconditions(Context &_ctx, _Pred &_pred, branch_map_t &_branches) {
+    if (!_ctx.is(POST))
         return false;
 
     if (_pred.isHyperFunction()) {
         while (_ctx.consume(POST)) {
-            Branch * pBranch = _branches[_ctx.getValue()];
+            BranchPtr pBranch = _branches[_ctx.getValue()];
 
-            if (! _ctx.in(LABEL, IDENTIFIER, INTEGER) || ! _ctx.nextIs(COLON) || ! pBranch)
+            if (!_ctx.in(LABEL, IDENTIFIER, INTEGER) || !_ctx.nextIs(COLON) || !pBranch)
                 ERROR(_ctx, false, L"Branch name expected");
 
             _ctx.skip(2);
-            Expression * pFormula = parseExpression(_ctx, ALLOW_FORMULAS);
-            if (! pFormula)
+
+            if (ExpressionPtr pFormula = parseExpression(_ctx, ALLOW_FORMULAS)) {
+                if (pFormula->getKind() != Expression::FORMULA)
+                    pFormula = new Formula(Formula::NONE, pFormula);
+                pBranch->setPostCondition(pFormula.as<Formula>());
+            } else
                 ERROR(_ctx, NULL, L"Formula expected");
-            if (pFormula->getKind() != Expression::FORMULA)
-                pFormula = _ctx.attach(new Formula(Formula::NONE, pFormula));
-            pBranch->setPostCondition((Formula *) pFormula);
         }
     } else if (_ctx.consume(POST)) {
-        Expression * pFormula = parseExpression(_ctx, ALLOW_FORMULAS);
-        if (! pFormula)
+        if (ExpressionPtr pFormula = parseExpression(_ctx, ALLOW_FORMULAS)) {
+            if (pFormula->getKind() != Expression::FORMULA)
+                pFormula = new Formula(Formula::NONE, pFormula);
+            _pred.setPostCondition(pFormula.as<Formula>());
+        } else
             ERROR(_ctx, false, L"Formula expected");
-        if (pFormula->getKind() != Expression::FORMULA)
-            pFormula = _ctx.attach(new Formula(Formula::NONE, pFormula));
-        _pred.setPostCondition((Formula *) pFormula);
     }
 
     return true;
@@ -1010,7 +1013,7 @@ bool Parser::parseMeasure(Context &_ctx, _Pred &_pred) {
     if (!_ctx.consume(MEASURE))
         return false;
 
-    Expression *pMeasure = parseExpression(_ctx);
+    ExpressionPtr pMeasure = parseExpression(_ctx);
 
     if (!pMeasure)
         ERROR(_ctx, false, L"Expression expected");
@@ -1020,21 +1023,22 @@ bool Parser::parseMeasure(Context &_ctx, _Pred &_pred) {
     return true;
 }
 
-bool Parser::fixupAsteriskedParameters(Context & _ctx, Params & _in, Params & _out) {
+bool Parser::fixupAsteriskedParameters(Context &_ctx, Params &_in, Params &_out) {
     bool bResult = false;
 
-    for (size_t i = 0; i < _in.size(); ++ i) {
-        Param * pInParam = _in.get(i);
+    for (size_t i = 0; i < _in.size(); ++i) {
+        ParamPtr pInParam = _in.get(i);
+
         if (pInParam->getLinkedParam() != pInParam)
             continue;
 
         const std::wstring name = pInParam->getName() + L'\'';
-        Param * pOutParam = new Param(name);
+        ParamPtr pOutParam = new Param(name);
 
         _out.add(pOutParam);
         pInParam->setLinkedParam(pOutParam);
         pOutParam->setLinkedParam(pInParam);
-        pOutParam->setType(pInParam->getType(), false);
+        pOutParam->setType(pInParam->getType());
         pOutParam->setOutput(true);
         bResult = true;
         _ctx.addVariable(pOutParam);
@@ -1043,41 +1047,42 @@ bool Parser::fixupAsteriskedParameters(Context & _ctx, Params & _in, Params & _o
     return bResult;
 }
 
-bool Parser::parsePredicateParamsAndBody(Context & _ctx, AnonymousPredicate & _pred) {
-    if (! _ctx.consume(LPAREN))
+bool Parser::parsePredicateParamsAndBody(Context &_ctx, AnonymousPredicate &_pred) {
+    if (!_ctx.consume(LPAREN))
         ERROR(_ctx, NULL, L"Expected \"(\", got: %ls", TOK_S(_ctx));
 
-    if (! parseParamList(_ctx, _pred.getInParams(), & Parser::parseParam, ALLOW_ASTERSK | ALLOW_EMPTY_NAMES))
+    if (!parseParamList(_ctx, _pred.getInParams(), &Parser::parseParam, ALLOW_ASTERSK | ALLOW_EMPTY_NAMES))
         ERROR(_ctx, false, L"Failed to parse input parameters");
 
     branch_map_t branches;
-
     bool bHasAsterisked = false;
 
     while (_ctx.consume(COLON)) {
-        Branch * pBranch = new Branch();
+        BranchPtr pBranch = new Branch();
 
         _pred.getOutParams().add(pBranch);
 
         if (_pred.getOutParams().size() == 1)
-            bHasAsterisked = fixupAsteriskedParameters(_ctx, _pred.getInParams(), * pBranch);
+            bHasAsterisked = fixupAsteriskedParameters(_ctx, _pred.getInParams(), *pBranch);
         else if (bHasAsterisked)
             ERROR(_ctx, false, L"Hyperfunctions cannot use '*' in parameter list");
 
-        parseParamList(_ctx, * pBranch, & Parser::parseParam, OUTPUT_PARAMS | ALLOW_EMPTY_NAMES);
-        for (size_t i = 0; i < pBranch->size(); ++ i)
+        parseParamList(_ctx, *pBranch, &Parser::parseParam, OUTPUT_PARAMS | ALLOW_EMPTY_NAMES);
+
+        for (size_t i = 0; i < pBranch->size(); ++i)
             pBranch->get(i)->setOutput(true);
 
         if (_ctx.is(HASH) && _ctx.nextIn(IDENTIFIER, LABEL, INTEGER)) {
-            ++ _ctx;
+            ++_ctx;
+
             std::wstring strLabel = _ctx.getValue();
 
             if (_ctx.is(INTEGER) && wcstoul(strLabel.c_str(), NULL, 10) != _pred.getOutParams().size())
                 ERROR(_ctx, false, L"Numbers of numeric branch labels should correspond to branch order");
 
-            ++ _ctx;
+            ++_ctx;
 
-            if (! branches.insert(std::make_pair(strLabel, pBranch)).second)
+            if (!branches.insert(std::make_pair(strLabel, pBranch)).second)
                 ERROR(_ctx, false, L"Duplicate branch name \"%ls\"", strLabel.c_str());
 
             pBranch->setLabel(new Label(strLabel));
@@ -1086,16 +1091,18 @@ bool Parser::parsePredicateParamsAndBody(Context & _ctx, AnonymousPredicate & _p
     }
 
     if (_pred.getOutParams().empty()) {
-        Branch * pBranch = new Branch();
+        BranchPtr pBranch = new Branch();
+
         _pred.getOutParams().add(pBranch);
-        fixupAsteriskedParameters(_ctx, _pred.getInParams(), * pBranch);
+        fixupAsteriskedParameters(_ctx, _pred.getInParams(), *pBranch);
     }
 
     // Create labels for unlabeled branches.
     if (_pred.getOutParams().size() > 1) {
         for (size_t i = 0; i < _pred.getOutParams().size(); ++ i) {
-            Branch * pBranch = _pred.getOutParams().get(i);
-            if (! pBranch->getLabel()) {
+            BranchPtr pBranch = _pred.getOutParams().get(i);
+
+            if (!pBranch->getLabel()) {
                 pBranch->setLabel(new Label(fmtInt(i + 1)));
                 _ctx.addLabel(pBranch->getLabel());
                 branches[pBranch->getLabel()->getName()] = pBranch;
@@ -1103,24 +1110,22 @@ bool Parser::parsePredicateParamsAndBody(Context & _ctx, AnonymousPredicate & _p
         }
     }
 
-    if (! _ctx.consume(RPAREN))
+    if (!_ctx.consume(RPAREN))
         ERROR(_ctx, false, L"Expected \")\", got: %ls", TOK_S(_ctx));
 
     if (_ctx.is(PRE))
-        if (! parsePreconditions(_ctx, _pred, branches))
+        if (!parsePreconditions(_ctx, _pred, branches))
             ERROR(_ctx, false, L"Failed parsing preconditions");
 
     if (_ctx.is(LBRACE)) {
-        Block * pBlock = parseBlock(_ctx);
-
-        if (! pBlock)
+        if (BlockPtr pBlock = parseBlock(_ctx))
+            _pred.setBlock(pBlock);
+        else
             ERROR(_ctx, false, L"Failed parsing predicate body");
-
-        _pred.setBlock(pBlock);
     }
 
     if (_ctx.is(POST))
-        if (! parsePostconditions(_ctx, _pred, branches))
+        if (!parsePostconditions(_ctx, _pred, branches))
             ERROR(_ctx, false, L"Failed parsing postconditions");
 
     if (_ctx.is(MEASURE))
@@ -1130,44 +1135,44 @@ bool Parser::parsePredicateParamsAndBody(Context & _ctx, AnonymousPredicate & _p
     return true;
 }
 
-Predicate * Parser::parsePredicate(Context & _ctx) {
-    Context * pCtx = _ctx.createChild(false);
+PredicatePtr Parser::parsePredicate(Context &_ctx) {
+    Context *pCtx = _ctx.createChild(false);
 
-    if (! pCtx->is(IDENTIFIER))
+    if (!pCtx->is(IDENTIFIER))
         return NULL;
 
-    Predicate * pPred = pCtx->attach(new Predicate(pCtx->scan()));
+    PredicatePtr pPred = new Predicate(pCtx->scan());
 
     pCtx->addPredicate(pPred);
     pCtx = pCtx->createChild(true);
 
-    if (! parsePredicateParamsAndBody(* pCtx, * pPred))
+    if (!parsePredicateParamsAndBody(*pCtx, *pPred))
         return NULL;
 
-    if (! pPred->getBlock() && ! pCtx->consume(SEMICOLON))
-        ERROR(* pCtx, NULL, L"Expected block or a semicolon");
+    if (!pPred->getBlock() && !pCtx->consume(SEMICOLON))
+        ERROR(*pCtx, NULL, L"Expected block or a semicolon");
 
     _ctx.mergeChildren();
 
     return pPred;
 }
 
-VariableDeclaration * Parser::parseVariableDeclaration(Context & _ctx, int _nFlags) {
-    Context & ctx = * _ctx.createChild(false);
+VariableDeclarationPtr Parser::parseVariableDeclaration(Context &_ctx, int _nFlags) {
+    Context &ctx = *_ctx.createChild(false);
     const bool bMutable = ctx.consume(MUTABLE);
-    Type * pType = NULL;
+    TypePtr pType;
 
     if ((_nFlags & PART_OF_LIST) == 0) {
         pType = parseType(ctx);
 
-        if (! pType)
+        if (!pType)
             return NULL;
     }
 
-    if (! ctx.is(IDENTIFIER))
+    if (!ctx.is(IDENTIFIER))
         ERROR(ctx, NULL, L"Expected identifier, got: %ls", TOK_S(ctx));
 
-    VariableDeclaration * pDecl = ctx.attach(new VariableDeclaration(_nFlags & LOCAL_VARIABLE, ctx.scan()));
+    VariableDeclarationPtr pDecl = new VariableDeclaration(_nFlags & LOCAL_VARIABLE, ctx.scan());
 
     if ((_nFlags & PART_OF_LIST) == 0)
         pDecl->getVariable()->setType(pType);
@@ -1175,10 +1180,10 @@ VariableDeclaration * Parser::parseVariableDeclaration(Context & _ctx, int _nFla
     pDecl->getVariable()->setMutable(bMutable);
 
     if ((_nFlags & ALLOW_INITIALIZATION) && ctx.consume(EQ)) {
-        Expression * pExpr = parseExpression(ctx);
-
-        if (! pExpr) return NULL;
-        pDecl->setValue(pExpr);
+        if (ExpressionPtr pExpr = parseExpression(ctx))
+            pDecl->setValue(pExpr);
+        else
+            return NULL;
     }
 
     _ctx.mergeChildren();
@@ -1187,170 +1192,172 @@ VariableDeclaration * Parser::parseVariableDeclaration(Context & _ctx, int _nFla
     return pDecl;
 }
 
-bool Parser::parseModuleHeader(Context & _ctx, Module * _pModule) {
+bool Parser::parseModuleHeader(Context &_ctx, Module &_module) {
     if (_ctx.is(MODULE, IDENTIFIER, SEMICOLON)) {
-        _pModule->setName(_ctx.scan(3, 1));
+        _module.setName(_ctx.scan(3, 1));
         return true;
     }
 
     return false;
 }
 
-bool Parser::parseImport(Context & _ctx, Module * _pModule) {
+bool Parser::parseImport(Context &_ctx, Module &_module) {
     if (_ctx.is(IMPORT, IDENTIFIER, SEMICOLON)) {
-        _pModule->getImports().push_back(_ctx.scan(3, 1));
+        _module.getImports().push_back(_ctx.scan(3, 1));
         return true;
     }
 
     return false;
 }
 
-Type * Parser::parseDerivedTypeParameter(Context & _ctx) {
-    Context & ctx = * _ctx.createChild(false);
-    Type * pType = NULL;
+TypePtr Parser::parseDerivedTypeParameter(Context &_ctx) {
+    Context &ctx = *_ctx.createChild(false);
 
-    if (! ctx.consume(LPAREN))
+    if (!ctx.consume(LPAREN))
         ERROR(ctx, NULL, L"Expected \"(\", got: %ls", TOK_S(ctx));
-    if (! (pType = parseType(ctx)))
+
+    TypePtr pType = parseType(ctx);
+
+    if (!pType)
         return NULL;
-    if (! ctx.consume(RPAREN))
+
+    if (!ctx.consume(RPAREN))
         ERROR(ctx, NULL, L"Expected \")\", got: %ls", TOK_S(ctx));
 
     _ctx.mergeChildren();
+
     return pType;
 }
 
-ArrayType * Parser::parseArrayType(Context & _ctx) {
-    Context & ctx = * _ctx.createChild(false);
-    NamedValue * parseNamedValue(Context & _ctx);
+ArrayTypePtr Parser::parseArrayType(Context &_ctx) {
+    Context &ctx = *_ctx.createChild(false);
 
-    if (! ctx.consume(ARRAY))
+    if (!ctx.consume(ARRAY))
         ERROR(ctx, NULL, L"Expected \"array\", got: %ls", TOK_S(ctx));
 
     if (! ctx.consume(LPAREN))
         ERROR(ctx, NULL, L"Expected \"(\", got: %ls", TOK_S(ctx));
 
-    Type * pType = parseType(ctx);
+    TypePtr pType = parseType(ctx);
 
-    if (! pType)
+    if (!pType)
         return NULL;
 
-    ArrayType * pArray = ctx.attach(new ArrayType(pType));
+    ArrayTypePtr pArray = new ArrayType(pType);
 
-    if (! parseList(ctx, pArray->getDimensions(), & Parser::parseRange, COMMA, RPAREN, COMMA))
+    if (!parseList(ctx, pArray->getDimensions(), &Parser::parseRange, COMMA, RPAREN, COMMA))
         return NULL;
 
     _ctx.mergeChildren();
+
     return pArray;
 }
 
-MapType * Parser::parseMapType(Context & _ctx) {
-    Context & ctx = * _ctx.createChild(false);
+MapTypePtr Parser::parseMapType(Context &_ctx) {
+    Context &ctx = *_ctx.createChild(false);
 
-    if (! ctx.consume(MAP))
+    if (!ctx.consume(MAP))
         UNEXPECTED(ctx, "map");
 
-    if (! ctx.consume(LPAREN))
+    if (!ctx.consume(LPAREN))
         UNEXPECTED(ctx, "(");
 
-    Type * pIndexType = parseType(ctx);
+    TypePtr pIndexType = parseType(ctx);
 
-    if (! pIndexType)
+    if (!pIndexType)
         return NULL;
 
-    if (! ctx.consume(COMMA))
+    if (!ctx.consume(COMMA))
         UNEXPECTED(ctx, ",");
 
-    Type * pBaseType = parseType(ctx);
+    TypePtr pBaseType = parseType(ctx);
 
-    if (! pBaseType)
+    if (!pBaseType)
         return NULL;
 
     if (! ctx.consume(RPAREN))
         UNEXPECTED(ctx, ")");
 
-    MapType * pType = ctx.attach(new MapType(pIndexType, pBaseType));
-
     _ctx.mergeChildren();
 
-    return pType;
+    return new MapType(pIndexType, pBaseType);
 }
 
-bool Parser::isTypeName(Context & _ctx, const std::wstring & _name) const {
-    const TypeDeclaration * pDecl = _ctx.getType(_name);
+bool Parser::isTypeName(Context &_ctx, const std::wstring &_name) const {
+    TypeDeclarationPtr pDecl = _ctx.getType(_name);
 
     if (pDecl)
         return true;
 
-    const NamedValue * pVar = _ctx.getVariable(_name);
+    if (NamedValuePtr pVar = _ctx.getVariable(_name))
+        return isTypeVariable(pVar);
 
-    return pVar ? isTypeVariable(pVar) : false;
+    return false;
 }
 
-NamedReferenceType * Parser::parseTypeReference(Context & _ctx) {
-    Context & ctx = * _ctx.createChild(false);
+NamedReferenceTypePtr Parser::parseTypeReference(Context &_ctx) {
+    Context &ctx = *_ctx.createChild(false);
 
-    if (! ctx.is(IDENTIFIER))
+    if (!ctx.is(IDENTIFIER))
         UNEXPECTED(ctx, "identifier");
 
-    NamedReferenceType * pType = NULL;
+    const std::wstring &str = ctx.scan();
+    TypeDeclarationPtr pDecl = ctx.getType(str);
 
-    const std::wstring & str = ctx.scan();
-    const TypeDeclaration * pDecl = ctx.getType(str);
-
-    DEBUG(L"%ls %d", str.c_str(), (pDecl != NULL));
-
-    if (pDecl == NULL)
+    if (!pDecl)
         ERROR(ctx, NULL, L"Unknown type identifier: %ls", str.c_str());
-
-    assert(pDecl != NULL);
 
 //    if (! pDecl) {
 //        const NamedValue * pVar = ctx.getVariable(str);
 //
 //        if (isTypeVariable(pVar))
-//            pType = ctx.attach(new NamedReferenceType(pVar));
+//            pType = new NamedReferenceType(pVar);
 //        else
 //            ERROR(ctx, NULL, L"Unknown type identifier: %ls", str.c_str());
 //    } else
-        pType = ctx.attach(new NamedReferenceType(pDecl));
 
-    if (pDecl != NULL && pDecl->getType() && pDecl->getType()->hasParameters() && ctx.is(LPAREN)) {
-        if (! parseActualParameterList(ctx, ((NamedReferenceType *) pType)->getArgs()))
+    NamedReferenceTypePtr pType = new NamedReferenceType(pDecl);
+
+    if (pDecl && pDecl->getType() && pDecl->getType()->hasParameters() && ctx.is(LPAREN)) {
+        if (!parseActualParameterList(ctx, pType.as<NamedReferenceType>()->getArgs()))
             ERROR(ctx, NULL, L"Garbage in argument list");
     }
 
     _ctx.mergeChildren();
+
     return pType;
 }
 
-Range * Parser::parseRange(Context & _ctx) {
-    Context & ctx = * _ctx.createChild(false);
-    Expression * pMin = parseSubexpression(ctx, parseAtom(ctx, RESTRICT_TYPES), 0);
+RangePtr Parser::parseRange(Context &_ctx) {
+    Context &ctx = *_ctx.createChild(false);
+    ExpressionPtr pMin = parseSubexpression(ctx, parseAtom(ctx, RESTRICT_TYPES), 0);
 
-    if (! pMin) return NULL;
-    if (! ctx.consume(DOUBLE_DOT))
+    if (!pMin)
+        return NULL;
+
+    if (!ctx.consume(DOUBLE_DOT))
         UNEXPECTED(ctx, "..");
 
-    Expression * pMax = parseExpression(ctx);
+    ExpressionPtr pMax = parseExpression(ctx);
 
-    if (! pMax) return NULL;
+    if (!pMax)
+        return NULL;
 
     _ctx.mergeChildren();
 
-    return _ctx.attach(new Range(pMin, pMax));
+    return new Range(pMin, pMax);
 }
 
-StructType * Parser::parseStructType(Context & _ctx) {
-    Context & ctx = * _ctx.createChild(false);
+StructTypePtr Parser::parseStructType(Context &_ctx) {
+    Context &ctx = *_ctx.createChild(false);
 
-    if (! ctx.consume(STRUCT))
+    if (!ctx.consume(STRUCT))
         UNEXPECTED(ctx, "struct");
 
-    if (! ctx.consume(LPAREN))
+    if (!ctx.consume(LPAREN))
         UNEXPECTED(ctx, "(");
 
-    StructType * pType = ctx.attach(new StructType());
+    StructTypePtr pType = new StructType();
     NamedValues fields;
 
     if (!parseParamList(ctx, fields, &Parser::parseVariableName, ALLOW_EMPTY_NAMES))
@@ -1361,7 +1368,7 @@ StructType * Parser::parseStructType(Context & _ctx) {
     else
         pType->getTypesOrd().append(fields);
 
-    if (! ctx.consume(RPAREN))
+    if (!ctx.consume(RPAREN))
         UNEXPECTED(ctx, ")");
 
     _ctx.mergeChildren();
@@ -1369,19 +1376,19 @@ StructType * Parser::parseStructType(Context & _ctx) {
     return pType;
 }
 
-UnionType * Parser::parseUnionType(Context & _ctx) {
-    Context & ctx = * _ctx.createChild(false);
+UnionTypePtr Parser::parseUnionType(Context &_ctx) {
+    Context &ctx = *_ctx.createChild(false);
 
-    if (! ctx.consume(UNION))
+    if (!ctx.consume(UNION))
         UNEXPECTED(ctx, "union");
 
-    UnionType * pType = ctx.attach(new UnionType());
+    UnionTypePtr pType = new UnionType();
 
-    if (! parseList(ctx, pType->getConstructors(), & Parser::parseConstructorDeclaration,
+    if (!parseList(ctx, pType->getConstructors(), &Parser::parseConstructorDeclaration,
             LPAREN, RPAREN, COMMA))
         return NULL;
 
-    for (size_t i = 0; i < pType->getConstructors().size(); ++ i) {
+    for (size_t i = 0; i < pType->getConstructors().size(); ++i) {
         pType->getConstructors().get(i)->setOrdinal(i);
         pType->getConstructors().get(i)->setUnion(pType);
     }
@@ -1391,20 +1398,19 @@ UnionType * Parser::parseUnionType(Context & _ctx) {
     return pType;
 }
 
-EnumType * Parser::parseEnumType(Context & _ctx) {
-    Context & ctx = * _ctx.createChild(false);
+EnumTypePtr Parser::parseEnumType(Context &_ctx) {
+    Context &ctx = *_ctx.createChild(false);
 
-    if (! ctx.consume(ENUM))
+    if (!ctx.consume(ENUM))
         UNEXPECTED(ctx, "enum");
 
-    EnumType * pType = ctx.attach(new EnumType());
+    EnumTypePtr pType = new EnumType();
 
-    if (! parseList(ctx, pType->getValues(), & Parser::parseEnumValue,
-            LPAREN, RPAREN, COMMA))
+    if (!parseList(ctx, pType->getValues(), &Parser::parseEnumValue, LPAREN, RPAREN, COMMA))
         return NULL;
 
     for (size_t i = 0; i < pType->getValues().size(); ++ i) {
-        pType->getValues().get(i)->setType(pType, false);
+        pType->getValues().get(i)->setType(pType);
         pType->getValues().get(i)->setOrdinal(i);
     }
 
@@ -1413,114 +1419,114 @@ EnumType * Parser::parseEnumType(Context & _ctx) {
     return pType;
 }
 
-Subtype * Parser::parseSubtype(Context & _ctx) {
-    Context & ctx = * _ctx.createChild(false);
+SubtypePtr Parser::parseSubtype(Context &_ctx) {
+    Context &ctx = *_ctx.createChild(false);
 
-    if (! ctx.consume(SUBTYPE))
+    if (!ctx.consume(SUBTYPE))
         UNEXPECTED(ctx, "subtype");
 
-    if (! ctx.consume(LPAREN))
+    if (!ctx.consume(LPAREN))
         UNEXPECTED(ctx, "(");
 
-    NamedValue * pVar = parseNamedValue(ctx);
+    NamedValuePtr pVar = parseNamedValue(ctx);
 
-    if (! pVar)
+    if (!pVar)
         return NULL;
 
-    if (! ctx.consume(COLON))
+    if (!ctx.consume(COLON))
         UNEXPECTED(ctx, ":");
 
-    Expression * pExpr = parseExpression(ctx);
+    ExpressionPtr pExpr = parseExpression(ctx);
 
-    if (! pExpr)
+    if (!pExpr)
         return NULL;
 
-    if (! ctx.consume(RPAREN))
+    if (!ctx.consume(RPAREN))
         UNEXPECTED(ctx, ")");
-
-    Subtype * pType = ctx.attach(new Subtype(pVar, pExpr));
 
     _ctx.mergeChildren();
 
-    return pType;
+    return new Subtype(pVar, pExpr);
 }
 
-PredicateType * Parser::parsePredicateType(Context & _ctx) {
-    Context & ctx = * _ctx.createChild(false);
+PredicateTypePtr Parser::parsePredicateType(Context &_ctx) {
+    Context &ctx = *_ctx.createChild(false);
 
-    if (! ctx.consume(PREDICATE))
+    if (!ctx.consume(PREDICATE))
         UNEXPECTED(ctx, "predicate");
 
-    PredicateType * pType = ctx.attach(new PredicateType());
+    PredicateTypePtr pType = new PredicateType();
 
-    if (! ctx.consume(LPAREN))
+    if (!ctx.consume(LPAREN))
         UNEXPECTED(ctx, "(");
 
-    if (! parseParamList(ctx, pType->getInParams(), & Parser::parseParam, ALLOW_EMPTY_NAMES))
-        ERROR(ctx, false, L"Failed to parse input parameters");
+    if (!parseParamList(ctx, pType->getInParams(), &Parser::parseParam, ALLOW_EMPTY_NAMES))
+        ERROR(ctx, NULL, L"Failed to parse input parameters");
 
     branch_map_t branches;
 
     while (ctx.consume(COLON)) {
-        Branch * pBranch = new Branch();
+        BranchPtr pBranch = new Branch();
 
         pType->getOutParams().add(pBranch);
-        parseParamList(ctx, * pBranch, & Parser::parseParam, OUTPUT_PARAMS | ALLOW_EMPTY_NAMES);
+        parseParamList(ctx, *pBranch, &Parser::parseParam, OUTPUT_PARAMS | ALLOW_EMPTY_NAMES);
 
-        for (size_t i = 0; i < pBranch->size(); ++ i)
+        for (size_t i = 0; i < pBranch->size(); ++i)
             pBranch->get(i)->setOutput(true);
 
-        if (ctx.is(HASH) && ctx.nextIn(IDENTIFIER, LABEL, INTEGER)) {
+        if (ctx.is(HASH) &&ctx.nextIn(IDENTIFIER, LABEL, INTEGER)) {
             std::wstring strLabel = ctx.scan(2, 1);
-            if (! branches.insert(std::make_pair(strLabel, pBranch)).second)
-                ERROR(ctx, false, L"Duplicate branch name \"%ls\"", strLabel.c_str());
+
+            if (!branches.insert(std::make_pair(strLabel, pBranch)).second)
+                ERROR(ctx, NULL, L"Duplicate branch name \"%ls\"", strLabel.c_str());
+
             pBranch->setLabel(new Label(strLabel));
         }
     }
 
-    if (! ctx.consume(RPAREN))
+    if (!ctx.consume(RPAREN))
         UNEXPECTED(ctx, ")");
 
     if (ctx.is(PRE))
-        if (! parsePreconditions(ctx, * pType, branches))
-            ERROR(ctx, false, L"Failed parsing preconditions");
+        if (!parsePreconditions(ctx, *pType, branches))
+            ERROR(ctx, NULL, L"Failed parsing preconditions");
 
     if (ctx.is(POST))
-        if (! parsePostconditions(ctx, * pType, branches))
-            ERROR(ctx, false, L"Failed parsing postconditions");
+        if (!parsePostconditions(ctx, *pType, branches))
+            ERROR(ctx, NULL, L"Failed parsing postconditions");
 
     _ctx.mergeChildren();
 
     return pType;
 }
 
-Type * Parser::parseType(Context & _ctx) {
-    Context & ctx = * _ctx.createChild(false);
-    Type * pType = NULL;
+TypePtr Parser::parseType(Context &_ctx) {
+    Context &ctx = *_ctx.createChild(false);
+    TypePtr pType;
 
     bool bBuiltinType = true;
 
     switch (ctx.getToken()) {
         case NAT_TYPE:
-            pType = ctx.attach(new Type(Type::NAT));
+            pType = new Type(Type::NAT);
             pType->setBits(ctx.getIntBits());
-            ++ ctx;
+            ++ctx;
             break;
         case INT_TYPE:
-            pType = ctx.attach(new Type(Type::INT));
+            pType = new Type(Type::INT);
             pType->setBits(ctx.getIntBits());
-            ++ ctx;
+            ++ctx;
             break;
         case REAL_TYPE:
-            pType = ctx.attach(new Type(Type::REAL));
+            pType = new Type(Type::REAL);
             pType->setBits(ctx.getRealBits());
-            ++ ctx;
+            ++ctx;
             break;
-        case BOOL_TYPE:   pType = ctx.attach(new Type(Type::BOOL)); ++ ctx; break;
-        case CHAR_TYPE:   pType = ctx.attach(new Type(Type::CHAR)); ++ ctx; break;
-        case STRING_TYPE: pType = ctx.attach(new Type(Type::STRING)); ++ ctx; break;
-        case TYPE:        pType = ctx.attach(new TypeType()); ++ ctx; break;
-        case VAR:         pType = ctx.attach(new Type(Type::GENERIC)); ++ ctx; break;
+        case BOOL_TYPE:   pType = new Type(Type::BOOL); ++ctx; break;
+        case CHAR_TYPE:   pType = new Type(Type::CHAR); ++ctx; break;
+        case STRING_TYPE: pType = new Type(Type::STRING); ++ctx; break;
+        case TYPE:        pType = new TypeType(); ++ctx; break;
+        case VAR:         pType = new Type(Type::GENERIC); ++ctx; break;
 
         case STRUCT:
             pType = parseStructType(ctx);
@@ -1535,19 +1541,19 @@ Type * Parser::parseType(Context & _ctx) {
             pType = parseSubtype(ctx);
             break;
         case SEQ:
-            if (! (pType = parseDerivedTypeParameter(++ ctx)))
+            if (!(pType = parseDerivedTypeParameter(++ctx)))
                 return NULL;
-            pType = ctx.attach(new SeqType(pType));
+            pType = new SeqType(pType);
             break;
         case SET:
-            if (! (pType = parseDerivedTypeParameter(++ ctx)))
+            if (!(pType = parseDerivedTypeParameter(++ctx)))
                 return NULL;
-            pType = ctx.attach(new SetType(pType));
+            pType = new SetType(pType);
             break;
         case LIST:
-            if (! (pType = parseDerivedTypeParameter(++ ctx)))
+            if (!(pType = parseDerivedTypeParameter(++ ctx)))
                 return NULL;
-            pType = ctx.attach(new ListType(pType));
+            pType = new ListType(pType);
             break;
         case ARRAY:
             pType = parseArrayType(ctx);
@@ -1568,20 +1574,20 @@ Type * Parser::parseType(Context & _ctx) {
     if (bNumeric && ctx.is(LPAREN, INTEGER, RPAREN))
         pType->setBits(wcstol(ctx.scan(3, 1).c_str(), NULL, 10));
 
-    if (bBuiltinType && ! pType)
+    if (bBuiltinType && !pType)
         ERROR(ctx, NULL, L"Error parsing type reference");
 
-    if (! pType && ctx.is(IDENTIFIER))
+    if (!pType && ctx.is(IDENTIFIER))
         pType = parseTypeReference(ctx);
 
-    if (! pType)
+    if (!pType)
         pType = parseRange(ctx);
 
-    if (! pType)
+    if (!pType)
         ERROR(ctx, NULL, L"Unexpected token while parsing type reference: %ls", TOK_S(ctx));
 
     if (ctx.consume(ASTERISK))
-        pType = ctx.attach(new OptionalType(pType));
+        pType = new OptionalType(pType);
 
     _ctx.mergeChildren();
 
@@ -1589,48 +1595,49 @@ Type * Parser::parseType(Context & _ctx) {
 }
 
 template<class _Param>
-bool Parser::parseParamList(Context & _ctx, Collection<_Param> & _params,
+bool Parser::parseParamList(Context &_ctx, Collection<_Param> &_params,
         PARSER_FN(_Param,_parser,int), int _nFlags)
 {
     if (_ctx.in(RPAREN, COLON, DOT))
         return true;
 
-    Context & ctx = * _ctx.createChild(false);
-    Type * pType = NULL;
+    Context &ctx = *_ctx.createChild(false);
+    TypePtr pType;
     Collection<_Param> params;
 
     do {
-        const bool bNeedType = ! pType
-            || ! ctx.is(IDENTIFIER)
-            || ! (ctx.nextIn(COMMA, RPAREN, COLON, DOT) ||  ctx.nextIn(SEMICOLON, EQ))
+        const bool bNeedType = !pType
+            || !ctx.is(IDENTIFIER)
+            || !(ctx.nextIn(COMMA, RPAREN, COLON, DOT) ||  ctx.nextIn(SEMICOLON, EQ))
             || ((_nFlags & ALLOW_EMPTY_NAMES) && isTypeName(ctx, ctx.getValue()));
 
         if (bNeedType) {
             pType = parseType(ctx);
-            if (! pType)
+            if (!pType)
                 ERROR(ctx, false, L"Type required");
         }
 
-        _Param * pParam = NULL;
+        Auto<_Param> pParam;
 
-        if (! ctx.is(IDENTIFIER)) {
-            if (! (_nFlags & ALLOW_EMPTY_NAMES))
+        if (!ctx.is(IDENTIFIER)) {
+            if (!(_nFlags & ALLOW_EMPTY_NAMES))
                 ERROR(ctx, false, L"Identifier required");
-            pParam = ctx.attach(new _Param());
+            pParam = new _Param();
         } else
-            pParam = (this->*_parser) (ctx, _nFlags);
+            pParam = (this->*_parser)(ctx, _nFlags);
 
-        if (! pParam)
+        if (!pParam)
             ERROR(ctx, false, L"Variable or parameter definition required");
 
         if (pType->getKind() == Type::TYPE) {
-            TypeDeclaration *pDecl = ((TypeType *)pType)->getDeclaration();
+            TypeDeclarationPtr pDecl = pType.as<TypeType>()->getDeclaration();
+
             pDecl->setName(pParam->getName());
             _ctx.addType(pDecl);
         }
 
-        pParam->setType(pType, ! pType->getParent());
-        params.add(pParam, false);
+        pParam->setType(pType);
+        params.add(pParam);
     } while (ctx.consume(COMMA));
 
     _params.append(params);
@@ -1639,63 +1646,57 @@ bool Parser::parseParamList(Context & _ctx, Collection<_Param> & _params,
     return true;
 }
 
-Param * Parser::parseParam(Context & _ctx, int _nFlags) {
-    if (! _ctx.is(IDENTIFIER))
+ParamPtr Parser::parseParam(Context &_ctx, int _nFlags) {
+    if (!_ctx.is(IDENTIFIER))
         return NULL;
 
-    Context & ctx = * _ctx.createChild(false);
-
+    Context &ctx = *_ctx.createChild(false);
     std::wstring name = ctx.scan();
-
-    Param * pParam = NULL;
+    ParamPtr pParam;
 
     if (ctx.consume(SINGLE_QUOTE)) {
-        if (! (_nFlags & OUTPUT_PARAMS))
+        if (!(_nFlags & OUTPUT_PARAMS))
             ERROR(ctx, NULL, L"Only output parameters can be declared as joined");
 
-        NamedValue * pVar = ctx.getVariable(name, true);
+        NamedValuePtr pVar = ctx.getVariable(name, true);
 
-        if (! pVar)
+        if (!pVar)
             ERROR(ctx, NULL, L"Parameter '%ls' is not defined.", name.c_str());
 
-        if (pVar->getKind() != NamedValue::PREDICATE_PARAMETER || ((Param *) pVar)->isOutput())
+        if (pVar->getKind() != NamedValue::PREDICATE_PARAMETER || pVar.as<Param>()->isOutput())
             ERROR(ctx, NULL, L"Identifier '%ls' does not name a predicate input parameter.", name.c_str());
 
         name += L'\'';
-        pParam = ctx.attach(new Param(name));
-        pParam->setLinkedParam((Param *) pVar);
-        ((Param *) pVar)->setLinkedParam(pParam);
+        pParam = new Param(name);
+        pParam->setLinkedParam(pVar.as<Param>());
+        pVar.as<Param>()->setLinkedParam(pParam);
     } else
-        pParam = ctx.attach(new Param(name));
+        pParam = new Param(name);
 
     if (ctx.consume(ASTERISK)) {
-        if (! (_nFlags & ALLOW_ASTERSK))
+        if (!(_nFlags & ALLOW_ASTERSK))
             ERROR(ctx, NULL, L"Only input predicate parameters can automatically declare joined output parameters");
         pParam->setLinkedParam(pParam); // Just a mark, should be processed later.
     }
 
     pParam->setOutput(_nFlags & OUTPUT_PARAMS);
-
-    DEBUG(L"Adding var %ls", name.c_str());
-
     ctx.addVariable(pParam);
     _ctx.mergeChildren();
 
     return pParam;
 }
 
-NamedValue * Parser::parseNamedValue(Context & _ctx) {
-    Context & ctx = * _ctx.createChild(false);
+NamedValuePtr Parser::parseNamedValue(Context &_ctx) {
+    Context &ctx = *_ctx.createChild(false);
+    TypePtr pType = parseType(ctx);
 
-    Type * pType = parseType(ctx);
+    if (!pType)
+        ERROR(ctx, NULL, L"Type required");
 
-    if (! pType)
-        ERROR(ctx, false, L"Type required");
+    if (!ctx.is(IDENTIFIER))
+        ERROR(ctx, NULL, L"Identifier required");
 
-    if (! ctx.is(IDENTIFIER))
-        ERROR(ctx, false, L"Identifier required");
-
-    NamedValue * pVar = ctx.attach(new NamedValue(ctx.scan(), pType));
+    NamedValuePtr pVar = new NamedValue(ctx.scan(), pType);
 
     _ctx.mergeChildren();
     _ctx.addVariable(pVar);
@@ -1703,12 +1704,12 @@ NamedValue * Parser::parseNamedValue(Context & _ctx) {
     return pVar;
 }
 
-ElementDefinition * Parser::parseArrayElement(Context & _ctx) {
-    Context & ctx = * _ctx.createChild(false);
-    ElementDefinition * pElem = ctx.attach(new ElementDefinition());
-    Expression * pExpr = parseExpression(ctx);
+ElementDefinitionPtr Parser::parseArrayElement(Context &_ctx) {
+    Context &ctx = *_ctx.createChild(false);
+    ElementDefinitionPtr pElem = new ElementDefinition();
+    ExpressionPtr pExpr = parseExpression(ctx);
 
-    if (! pExpr)
+    if (!pExpr)
         ERROR(ctx, NULL, L"Expression expected.");
 
     if (ctx.consume(COLON)) {
@@ -1716,7 +1717,7 @@ ElementDefinition * Parser::parseArrayElement(Context & _ctx) {
         pExpr = parseExpression(ctx);
     }
 
-    if (! pExpr)
+    if (!pExpr)
         ERROR(ctx, NULL, L"Expression expected.");
 
     pElem->setValue(pExpr);
@@ -1725,21 +1726,21 @@ ElementDefinition * Parser::parseArrayElement(Context & _ctx) {
     return pElem;
 }
 
-ElementDefinition * Parser::parseMapElement(Context & _ctx) {
-    Context & ctx = * _ctx.createChild(false);
-    ElementDefinition * pElem = ctx.attach(new ElementDefinition());
-    Expression * pExpr = parseExpression(ctx);
+ElementDefinitionPtr Parser::parseMapElement(Context &_ctx) {
+    Context &ctx = *_ctx.createChild(false);
+    ElementDefinitionPtr pElem = new ElementDefinition();
+    ExpressionPtr pExpr = parseExpression(ctx);
 
-    if (! pExpr)
+    if (!pExpr)
         ERROR(ctx, NULL, L"Index expression expected.");
 
-    if (! ctx.consume(COLON))
+    if (!ctx.consume(COLON))
         UNEXPECTED(ctx, ":");
 
     pElem->setIndex(pExpr);
     pExpr = parseExpression(ctx);
 
-    if (! pExpr)
+    if (!pExpr)
         ERROR(ctx, NULL, L"Value expression expected.");
 
     pElem->setValue(pExpr);
@@ -1748,19 +1749,19 @@ ElementDefinition * Parser::parseMapElement(Context & _ctx) {
     return pElem;
 }
 
-StructFieldDefinition * Parser::parseFieldDefinition(Context & _ctx) {
-    Context & ctx = * _ctx.createChild(false);
-    StructFieldDefinition * pField = ctx.attach(new StructFieldDefinition());
+StructFieldDefinitionPtr Parser::parseFieldDefinition(Context &_ctx) {
+    Context &ctx = *_ctx.createChild(false);
+    StructFieldDefinitionPtr pField = new StructFieldDefinition();
 
     if (ctx.is(IDENTIFIER, COLON))
         pField->setName(ctx.getValue());
 
-    Expression * pExpr = parseExpression(ctx);
+    ExpressionPtr pExpr = parseExpression(ctx);
 
-    if (! pExpr) {
+    if (!pExpr) {
         if (pField->getName().empty())
             ERROR(ctx, NULL, L"Field name expected.");
-        ++ ctx;
+        ++ctx;
     }
 
     if (ctx.consume(COLON)) {
@@ -1769,7 +1770,7 @@ StructFieldDefinition * Parser::parseFieldDefinition(Context & _ctx) {
         pExpr = parseExpression(ctx);
     }
 
-    if (! pExpr)
+    if (!pExpr)
         ERROR(ctx, NULL, L"Expression expected.");
 
     pField->setValue(pExpr);
@@ -1778,48 +1779,46 @@ StructFieldDefinition * Parser::parseFieldDefinition(Context & _ctx) {
     return pField;
 }
 
-StructFieldDefinition * Parser::parseConstructorField(Context & _ctx) {
-    Context & ctx = * _ctx.createChild(false);
-    StructFieldDefinition * pField = ctx.attach(new StructFieldDefinition());
+StructFieldDefinitionPtr Parser::parseConstructorField(Context &_ctx) {
+    Context &ctx = *_ctx.createChild(false);
+    StructFieldDefinitionPtr pField = new StructFieldDefinition();
     std::wstring strIdent;
 
     if (ctx.is(IDENTIFIER))
         strIdent = ctx.getValue();
 
-    Expression * pExpr = parseExpression(ctx, RESTRICT_TYPES);
+    if (ExpressionPtr pExpr = parseExpression(ctx, RESTRICT_TYPES)) {
+        pField->setValue(pExpr);
+    } else {
+        VariableDeclarationPtr pDecl = parseVariableDeclaration(ctx, LOCAL_VARIABLE);
 
-    if (! pExpr) {
-        VariableDeclaration * pDecl = parseVariableDeclaration(ctx, LOCAL_VARIABLE);
-
-        if (! pDecl && strIdent.empty())
+        if (!pDecl && strIdent.empty())
             ERROR(ctx, NULL, L"Expression, declaration or identifier expected.");
 
-        if (! pDecl) {
+        if (!pDecl) {
             // Unresolved identifier treated as variable declaration.
-            pDecl = ctx.attach(new VariableDeclaration(true, ctx.scan()));
+            pDecl = new VariableDeclaration(true, ctx.scan());
             pDecl->getVariable()->setType(new Type(Type::GENERIC));
         }
 
         if (ctx.getCurrentConstructor())
             ctx.getCurrentConstructor()->getDeclarations().add(pDecl);
 
-        pExpr = ctx.attach(new VariableReference(pDecl->getVariable()));
-        pField->setValue(pExpr);
-    } else
-        pField->setValue(pExpr);
+        pField->setValue(new VariableReference(pDecl->getVariable()));
+    }
 
     _ctx.mergeChildren();
 
     return pField;
 }
 
-UnionConstructor * Parser::parseConstructor(Context & _ctx, UnionType * _pUnion) {
-    if (! _ctx.is(IDENTIFIER))
+UnionConstructorPtr Parser::parseConstructor(Context &_ctx, const UnionTypePtr &_pUnion) {
+    if (!_ctx.is(IDENTIFIER))
         return NULL;
 
-    Context & ctx = * _ctx.createChild(false);
-    const std::wstring & strName = ctx.scan();
-    UnionConstructor * pCons = ctx.attach(new UnionConstructor(strName));
+    Context &ctx = *_ctx.createChild(false);
+    const std::wstring &strName = ctx.scan();
+    UnionConstructorPtr pCons = new UnionConstructor(strName);
 
     if ((_pUnion && _pUnion->getConstructors().findByNameIdx(strName) == (size_t)-1) ||
             (!_pUnion && !_ctx.getConstructor(strName)))
@@ -1827,12 +1826,14 @@ UnionConstructor * Parser::parseConstructor(Context & _ctx, UnionType * _pUnion)
 
     if (ctx.is(LPAREN)) {
         ctx.setCurrentConstructor(pCons);
-        if (! parseList(ctx, * pCons, & Parser::parseConstructorField, LPAREN, RPAREN, COMMA))
+
+        if (!parseList(ctx, *pCons, &Parser::parseConstructorField, LPAREN, RPAREN, COMMA))
             ERROR(ctx, NULL, L"Union constructor parameters expected");
     }
 
     if (_pUnion) {
-        UnionConstructorDeclaration *pDecl = _pUnion->getConstructors().get(_pUnion->getConstructors().findByNameIdx(strName));
+        UnionConstructorDeclarationPtr pDecl =
+                _pUnion->getConstructors().get(_pUnion->getConstructors().findByNameIdx(strName));
 
         if (pDecl->getFields().size() != pCons->size())
             ERROR(ctx, NULL, L"Constructor %ls requires %u arguments, %u given.",
@@ -1844,19 +1845,19 @@ UnionConstructor * Parser::parseConstructor(Context & _ctx, UnionType * _pUnion)
     return pCons;
 }
 
-UnionConstructorDeclaration * Parser::parseConstructorDeclaration(Context & _ctx) {
-    Context & ctx = * _ctx.createChild(false);
+UnionConstructorDeclarationPtr Parser::parseConstructorDeclaration(Context &_ctx) {
+    Context &ctx = *_ctx.createChild(false);
 
-    if (! ctx.is(IDENTIFIER))
+    if (!ctx.is(IDENTIFIER))
         ERROR(ctx, NULL, L"Constructor name expected.");
 
-    UnionConstructorDeclaration * pCons = ctx.attach(new UnionConstructorDeclaration(ctx.scan()));
+    UnionConstructorDeclarationPtr pCons = new UnionConstructorDeclaration(ctx.scan());
 
     if (ctx.consume(LPAREN)) {
-        if (! parseParamList(ctx, pCons->getFields(), & Parser::parseVariableName))
+        if (!parseParamList(ctx, pCons->getFields(), &Parser::parseVariableName))
             return NULL;
 
-        if (! ctx.consume(RPAREN))
+        if (!ctx.consume(RPAREN))
             UNEXPECTED(ctx, ")");
     }
 
@@ -1867,50 +1868,52 @@ UnionConstructorDeclaration * Parser::parseConstructorDeclaration(Context & _ctx
 }
 
 
-EnumValue * Parser::parseEnumValue(Context & _ctx) {
-    if (! _ctx.is(IDENTIFIER))
+EnumValuePtr Parser::parseEnumValue(Context &_ctx) {
+    if (!_ctx.is(IDENTIFIER))
         return NULL;
 
-    EnumValue * pVar = _ctx.attach(new EnumValue(_ctx.scan()));
+    EnumValuePtr pVar = new EnumValue(_ctx.scan());
+
     _ctx.addVariable(pVar);
 
     return pVar;
 }
 
-NamedValue * Parser::parseVariableName(Context & _ctx, int) {
-    if (! _ctx.is(IDENTIFIER))
+NamedValuePtr Parser::parseVariableName(Context &_ctx, int /* _nFlags */) {
+    if (!_ctx.is(IDENTIFIER))
         return NULL;
 
-    NamedValue * pVar = _ctx.attach(new NamedValue(_ctx.scan()));
+    NamedValuePtr pVar = new NamedValue(_ctx.scan());
+
     _ctx.addVariable(pVar);
 
     return pVar;
 }
 
-TypeDeclaration * Parser::parseTypeDeclaration(Context & _ctx) {
-    if (! _ctx.is(TYPE, IDENTIFIER))
+TypeDeclarationPtr Parser::parseTypeDeclaration(Context &_ctx) {
+    if (!_ctx.is(TYPE, IDENTIFIER))
         return NULL;
 
-    Context * pCtx = _ctx.createChild(false);
-    TypeDeclaration * pDecl = pCtx->attach(new TypeDeclaration(pCtx->scan(2, 1)));
-    ParameterizedType * pParamType = NULL;
+    Context *pCtx = _ctx.createChild(false);
+    TypeDeclarationPtr pDecl = new TypeDeclaration(pCtx->scan(2, 1));
+    ParameterizedTypePtr pParamType;
 
     if (pCtx->consume(LPAREN)) {
         pCtx = pCtx->createChild(true);
         pParamType = new ParameterizedType();
         pDecl->setType(pParamType);
-        if (! parseParamList(* pCtx, pParamType->getParams(), & Parser::parseVariableName))
+        if (!parseParamList(*pCtx, pParamType->getParams(), &Parser::parseVariableName))
             return NULL;
-        if (! pCtx->consume(RPAREN))
-            ERROR(* pCtx, NULL, L"Expected \")\", got: %ls", TOK_S(* pCtx));
+        if (!pCtx->consume(RPAREN))
+            ERROR(*pCtx, NULL, L"Expected \")\", got: %ls", TOK_S(*pCtx));
     }
 
     _ctx.addType(pDecl); // So that recursive definitions would work.
 
     if (pCtx->consume(EQ)) {
-        Type * pType = parseType(* pCtx);
+        TypePtr pType = parseType(* pCtx);
 
-        if (! pType)
+        if (!pType)
             return NULL;
 
         if (pParamType)
@@ -1920,32 +1923,35 @@ TypeDeclaration * Parser::parseTypeDeclaration(Context & _ctx) {
     }
 
     _ctx.mergeChildren();
-//    _ctx.addType(pDecl);
 
     return pDecl;
 }
 
-Block * Parser::parseBlock(Context & _ctx) {
-    Context * pCtx = _ctx.createChild(false);
+BlockPtr Parser::parseBlock(Context &_ctx) {
+    Context *pCtx = _ctx.createChild(false);
 
-    if (! pCtx->consume(LBRACE))
+    if (!pCtx->consume(LBRACE))
         return NULL;
 
-    Block * pBlock = pCtx->attach(new Block());
+    BlockPtr pBlock = new Block();
+
     pCtx = pCtx->createChild(true);
 
-    while (! pCtx->is(RBRACE)) {
+    while (!pCtx->is(RBRACE)) {
         bool bNeedSeparator = false;
 
         if (pCtx->is(PRAGMA)) {
-            Context * pCtxNew = parsePragma(* pCtx);
-            if (! pCtxNew)
-                ERROR(* pCtx, NULL, L"Failed parsing compiler directive");
+            Context *pCtxNew = parsePragma(*pCtx);
+
+            if (!pCtxNew)
+                ERROR(*pCtx, NULL, L"Failed parsing compiler directive");
 
             if (pCtxNew->is(LBRACE)) {
-                Block * pNewBlock = parseBlock(* pCtxNew);
-                if (! pNewBlock)
+                BlockPtr pNewBlock = parseBlock(*pCtxNew);
+
+                if (!pNewBlock)
                     ERROR(* pCtxNew, NULL, L"Failed parsing block");
+
                 pBlock->add(pNewBlock);
                 pCtx->mergeChildren();
             } else {
@@ -1953,174 +1959,124 @@ Block * Parser::parseBlock(Context & _ctx) {
                 bNeedSeparator = true;
             }
         } else {
-            Statement * pStmt = parseStatement(* pCtx);
+            StatementPtr pStmt = parseStatement(*pCtx);
 
-            if (! pStmt)
-                ERROR(* pCtx, NULL, L"Error parsing statement");
+            if (!pStmt)
+                ERROR(*pCtx, NULL, L"Error parsing statement");
 
             if (pCtx->is(DOUBLE_PIPE)) {
-                ParallelBlock * pNewBlock = pCtx->attach(new ParallelBlock());
+                ParallelBlockPtr pNewBlock = new ParallelBlock();
+
                 pNewBlock->add(pStmt);
+
                 while (pCtx->consume(DOUBLE_PIPE)) {
-                    Statement * pStmt = parseStatement(* pCtx);
-                    if (! pStmt)
-                        ERROR(* pCtx, NULL, L"Error parsing parallel statement");
-                    pNewBlock->add(pStmt);
+                    if (StatementPtr pStmt = parseStatement(* pCtx))
+                        pNewBlock->add(pStmt);
+                    else
+                        ERROR(*pCtx, NULL, L"Error parsing parallel statement");
                 }
+
                 pStmt = pNewBlock;
             }
 
             pBlock->add(pStmt);
-            bNeedSeparator = ! pStmt->isBlockLike() && ! pCtx->in(LBRACE, RBRACE);
+            bNeedSeparator = !pStmt->isBlockLike() && !pCtx->in(LBRACE, RBRACE);
         }
 
-        if (bNeedSeparator && ! pCtx->consume(SEMICOLON))
+        if (bNeedSeparator && !pCtx->consume(SEMICOLON))
             ERROR(* pCtx, NULL, L"Expected \";\", got: %ls", TOK_S(* pCtx));
     }
 
-    ++ (* pCtx);
+    ++(*pCtx);
     _ctx.mergeChildren();
 
     return pBlock;
 }
 
-Multiassignment * Parser::parseMultiAssignment(Context & _ctx) {
-    Context & ctx = * _ctx.createChild(false);
-    Multiassignment * pMA = ctx.attach(new Multiassignment());
+MultiassignmentPtr Parser::parseMultiAssignment(Context &_ctx) {
+    Context &ctx = *_ctx.createChild(false);
+    MultiassignmentPtr pMA = new Multiassignment();
 
-    if (! parseList(ctx, pMA->getLValues(), & Parser::parseAtom, PIPE, PIPE, COMMA))
+    if (!parseList(ctx, pMA->getLValues(), &Parser::parseAtom, PIPE, PIPE, COMMA))
         ERROR(ctx, NULL, L"Error parsing list of l-values");
 
-    if (! ctx.consume(EQ))
+    if (!ctx.consume(EQ))
         UNEXPECTED(ctx, "=");
 
     if (ctx.is(PIPE)) {
-        if (! parseList(ctx, pMA->getExpressions(), & Parser::parseExpression, PIPE, PIPE, COMMA))
+        if (!parseList(ctx, pMA->getExpressions(), &Parser::parseExpression, PIPE, PIPE, COMMA))
             ERROR(ctx, NULL, L"Error parsing list of expression");
-    } else {
-        Expression * pExpr = parseExpression(ctx);
-        if (! pExpr)
-            ERROR(ctx, NULL, L"Expression expected");
+    } else if (ExpressionPtr pExpr = parseExpression(ctx)) {
         pMA->getExpressions().add(pExpr);
-    }
+    } else
+        ERROR(ctx, NULL, L"Expression expected");
 
     _ctx.mergeChildren();
 
     return pMA;
 }
 
-Switch * Parser::parseSwitch(Context & _ctx) {
-    Context & ctx = * _ctx.createChild(true);
+SwitchPtr Parser::parseSwitch(Context &_ctx) {
+    Context &ctx = *_ctx.createChild(true);
 
-    if (! ctx.consume(SWITCH))
+    if (!ctx.consume(SWITCH))
         UNEXPECTED(ctx, "switch");
 
-    if (! ctx.consume(LPAREN))
+    if (!ctx.consume(LPAREN))
         UNEXPECTED(ctx, "(");
 
-    VariableDeclaration * pDecl = parseVariableDeclaration(ctx, LOCAL_VARIABLE | ALLOW_INITIALIZATION);
-    Expression * pExpr = NULL;
+    VariableDeclarationPtr pDecl = parseVariableDeclaration(ctx, LOCAL_VARIABLE | ALLOW_INITIALIZATION);
+    ExpressionPtr pExpr;
 
-    if (! pDecl) {
+    if (!pDecl) {
         pExpr = parseExpression(ctx);
-        if (! pExpr)
+
+        if (!pExpr)
             ERROR(ctx, NULL, L"Expression or variable declaration expected");
     }
 
-    if (! ctx.consume(RPAREN))
+    if (!ctx.consume(RPAREN))
         UNEXPECTED(ctx, ")");
 
-    Switch * pSwitch = _ctx.attach(new Switch());
+    SwitchPtr pSwitch = new Switch();
 
     if (pDecl) {
         pSwitch->setParamDecl(pDecl);
         pExpr = new VariableReference(pDecl->getVariable());
         pExpr->setType(pExpr->getType());
-//        pExpr->setType((Type *) resolveBaseType(pExpr->getType()));
-        pSwitch->setArg(pExpr, true);
+        pSwitch->setArg(pExpr);
     } else
         pSwitch->setArg(pExpr);
 
-    if (! ctx.consume(LBRACE))
+    if (!ctx.consume(LBRACE))
         UNEXPECTED(ctx, "{");
 
-    const Type * pBaseType = NULL; //resolveBaseType(pExpr->getType());
-    typedef std::map<std::wstring, size_t> map_union_alts_t;
-    map_union_alts_t mapUnionAlts;
-    bool bUnion = false;
-
-    // TODO: implement switch for unions.
-
-    if (pBaseType && pBaseType->getKind() == Type::UNION) {
-        //assert(false);
-        /*UnionType * pUnion = (UnionType *) pBaseType;
-        for (size_t i = 0; i < pUnion->getAlternatives().size(); ++ i)
-            mapUnionAlts[pUnion->getAlternatives().get(i)->getName()] = i;
-        bUnion = true;*/
-    }
-
     while (ctx.in(CASE)) {
-        Context & ctxCase = * ctx.createChild(true);
-        SwitchCase * pCase = ctxCase.attach(new SwitchCase());
-        //Type * pParamType = NULL;
+        Context &ctxCase = *ctx.createChild(true);
+        SwitchCasePtr pCase = new SwitchCase();
 
-        if (bUnion) {
-            assert(false);
-            /*ctx.consume(Case);
+        if (!parseList(ctxCase, pCase->getExpressions(), &Parser::parseExpression, CASE, COLON, COMMA))
+            ERROR(ctxCase, NULL, L"Error parsing list of expressions");
 
-            if (! ctx.is(Identifier))
-                ERROR(ctx, NULL, L"Expected identifier, got: %ls", TOK_S(ctx));
-
-            while (ctx.in(Identifier)) {
-                const std::wstring & strAlt = ctx.scan();
-                map_union_alts_t::iterator iAlt = mapUnionAlts.find(strAlt);
-
-                if (iAlt == mapUnionAlts.end())
-                    ERROR(ctx, NULL, L"Unknown alternative identifier: %ls", strAlt.c_str());
-
-                UnionAlternativeExpr * pRef =
-                    new UnionAlternativeExpr((UnionType *) pBaseType, iAlt->second);
-
-                pCase->getExpressions().add(pRef, true);
-
-                //if (! pParamType)
-                //    pParamType = ((UnionType *) pBaseType)->getAlternatives().get(iAlt->second)->getType();
-
-                if (! ctx.consume(Comma))
-                    break;
-            }
-
-            if (! ctx.consume(Colon))
-                UNEXPECTED(ctx, ":");*/
-        } else {
-            if (! parseList(ctxCase, pCase->getExpressions(),
-                    & Parser::parseExpression, CASE, COLON, COMMA))
-                ERROR(ctxCase, NULL, L"Error parsing list of expressions");
-        }
-
-//        Context & ctxBody = * ctx.createChild(true);
-        Statement * pStmt = parseStatement(ctxCase);
-
-        if (! pStmt)
+        if (StatementPtr pStmt = parseStatement(ctxCase))
+            pCase->setBody(pStmt);
+        else
             ERROR(ctxCase, NULL, L"Statement required");
 
-        pCase->setBody(pStmt);
         pSwitch->add(pCase);
         ctx.mergeChildren();
-//        ctx.mergeChildren();
     }
 
     if (ctx.is(DEFAULT, COLON)) {
         ctx.skip(2);
-        Statement * pStmt = parseStatement(ctx);
 
-        if (! pStmt)
+        if (StatementPtr pStmt = parseStatement(ctx))
+            pSwitch->setDefault(pStmt);
+        else
             ERROR(ctx, NULL, L"Statement required");
-
-        pSwitch->setDefault(pStmt);
     }
 
-    if (! ctx.consume(RBRACE))
+    if (!ctx.consume(RBRACE))
         UNEXPECTED(ctx, "}");
 
     _ctx.mergeChildren();
@@ -2128,29 +2084,29 @@ Switch * Parser::parseSwitch(Context & _ctx) {
     return pSwitch;
 }
 
-If * Parser::parseConditional(Context & _ctx) {
-    Context & ctx = * _ctx.createChild(false);
+IfPtr Parser::parseConditional(Context &_ctx) {
+    Context &ctx = *_ctx.createChild(false);
 
-    if (! ctx.consume(IF))
+    if (!ctx.consume(IF))
         UNEXPECTED(ctx, "if");
 
-    if (! ctx.consume(LPAREN))
+    if (!ctx.consume(LPAREN))
         UNEXPECTED(ctx, "(");
 
-    Expression * pExpr = parseExpression(ctx);
+    ExpressionPtr pExpr = parseExpression(ctx);
 
-    if (! pExpr)
+    if (!pExpr)
         ERROR(ctx, NULL, L"Expression expected");
 
-    if (! ctx.consume(RPAREN))
+    if (!ctx.consume(RPAREN))
         UNEXPECTED(ctx, ")");
 
-    Statement * pStmt = parseStatement(ctx);
+    StatementPtr pStmt = parseStatement(ctx);
 
-    if (! pStmt)
+    if (!pStmt)
         ERROR(ctx, NULL, L"Statement expected");
 
-    If * pIf = ctx.attach(new If());
+    IfPtr pIf = new If();
 
     pIf->setArg(pExpr);
     pIf->setBody(pStmt);
@@ -2158,7 +2114,7 @@ If * Parser::parseConditional(Context & _ctx) {
     if (ctx.consume(ELSE)) {
         pStmt = parseStatement(ctx);
 
-        if (! pStmt)
+        if (!pStmt)
             ERROR(ctx, NULL, L"Statement expected");
 
         pIf->setElse(pStmt);
@@ -2169,187 +2125,170 @@ If * Parser::parseConditional(Context & _ctx) {
     return pIf;
 }
 
-Jump * Parser::parseJump(Context & _ctx) {
-    Context & ctx = * _ctx.createChild(false);
+JumpPtr Parser::parseJump(Context &_ctx) {
+    Context &ctx = *_ctx.createChild(false);
 
-    if (! ctx.consume(HASH))
+    if (!ctx.consume(HASH))
         UNEXPECTED(ctx, "#");
 
-    if (! ctx.in(LABEL, IDENTIFIER, INTEGER))
+    if (!ctx.in(LABEL, IDENTIFIER, INTEGER))
         ERROR(ctx, NULL, L"Label identifier expected");
 
     std::wstring name = ctx.scan();
-    Label * pLabel = ctx.getLabel(name);
+    LabelPtr pLabel = ctx.getLabel(name);
 
-    if (! pLabel)
+    if (!pLabel)
         ERROR(ctx, NULL, L"Unknown label %ls", name.c_str());
 
     _ctx.mergeChildren();
 
-    return _ctx.attach(new Jump(pLabel));
+    return new Jump(pLabel);
 }
 
-//Statement * Parser::parsePragma(Context & _ctx) {
-//    return NULL;
-//}
-
-Receive * Parser::parseReceive(Context & _ctx) {
+ReceivePtr Parser::parseReceive(Context &_ctx) {
+    assert(false && "Unimplemented");
     return NULL;
 }
 
-Send * Parser::parseSend(Context & _ctx) {
+SendPtr Parser::parseSend(Context &_ctx) {
+    assert(false && "Unimplemented");
     return NULL;
 }
 
-With * Parser::parseWith(Context & _ctx) {
-    Context & ctx = * _ctx.createChild(false);
+WithPtr Parser::parseWith(Context &_ctx) {
+    Context &ctx = *_ctx.createChild(false);
 
-    if (! ctx.consume(WITH))
+    if (!ctx.consume(WITH))
         UNEXPECTED(ctx, "with");
 
-    With * pWith = ctx.attach(new With());
+    WithPtr pWith = new With();
 
-    if (! parseList(ctx, pWith->getArgs(),
-            & Parser::parseExpression, LPAREN, RPAREN, COMMA))
+    if (!parseList(ctx, pWith->getArgs(), &Parser::parseExpression, LPAREN, RPAREN, COMMA))
         ERROR(ctx, NULL, L"Error parsing list of expressions");
 
-    Statement * pStmt = parseStatement(ctx);
-
-    if (! pStmt)
+    if (StatementPtr pStmt = parseStatement(ctx))
+        pWith->setBody(pStmt);
+    else
         ERROR(ctx, NULL, L"Statement expected");
-
-    pWith->setBody(pStmt);
 
     _ctx.mergeChildren();
 
     return pWith;
 }
 
-For * Parser::parseFor(Context & _ctx) {
-    Context & ctx = * _ctx.createChild(true);
+ForPtr Parser::parseFor(Context &_ctx) {
+    Context &ctx = *_ctx.createChild(true);
 
-    if (! ctx.consume(FOR))
+    if (!ctx.consume(FOR))
         UNEXPECTED(ctx, "for");
 
-    if (! ctx.consume(LPAREN))
+    if (!ctx.consume(LPAREN))
         UNEXPECTED(ctx, "(");
 
-    For * pFor = _ctx.attach(new For());
+    ForPtr pFor = new For();
 
-    if (! ctx.in(SEMICOLON)) {
-        VariableDeclaration * pDecl = parseVariableDeclaration(ctx, LOCAL_VARIABLE | ALLOW_INITIALIZATION);
-        if (! pDecl)
+    if (!ctx.in(SEMICOLON)) {
+        if (VariableDeclarationPtr pDecl = parseVariableDeclaration(ctx, LOCAL_VARIABLE | ALLOW_INITIALIZATION))
+            pFor->setIterator(pDecl);
+        else
             ERROR(ctx, NULL, L"Variable declaration expected");
-        pFor->setIterator(pDecl);
     }
 
-    if (! ctx.consume(SEMICOLON))
+    if (!ctx.consume(SEMICOLON))
         UNEXPECTED(ctx, ";");
 
-    if (! ctx.in(SEMICOLON)) {
-        Expression * pExpr = parseExpression(ctx);
-        if (! pExpr)
+    if (!ctx.in(SEMICOLON)) {
+        if (ExpressionPtr pExpr = parseExpression(ctx))
+            pFor->setInvariant(pExpr);
+        else
             ERROR(ctx, NULL, L"Expression expected");
-        pFor->setInvariant(pExpr);
     }
 
-    if (! ctx.consume(SEMICOLON))
+    if (!ctx.consume(SEMICOLON))
         UNEXPECTED(ctx, ";");
 
-    if (! ctx.is(RPAREN)) {
-        Statement * pStmt = parseStatement(ctx);
-        if (! pStmt)
+    if (!ctx.is(RPAREN)) {
+        if (StatementPtr pStmt = parseStatement(ctx))
+            pFor->setIncrement(pStmt);
+        else
             ERROR(ctx, NULL, L"Statement expected");
-        pFor->setIncrement(pStmt);
     }
 
-    if (! ctx.consume(RPAREN))
+    if (!ctx.consume(RPAREN))
         UNEXPECTED(ctx, ")");
 
-    Statement * pStmt = parseStatement(ctx);
-
-    if (! pStmt)
+    if (StatementPtr pStmt = parseStatement(ctx))
+        pFor->setBody(pStmt);
+    else
         ERROR(ctx, NULL, L"Statement expected");
-
-    pFor->setBody(pStmt);
 
     _ctx.mergeChildren();
 
     return pFor;
 }
 
-While * Parser::parseWhile(Context & _ctx) {
-    Context & ctx = * _ctx.createChild(false);
+WhilePtr Parser::parseWhile(Context &_ctx) {
+    Context &ctx = *_ctx.createChild(false);
 
-    if (! ctx.consume(WHILE))
+    if (!ctx.consume(WHILE))
         UNEXPECTED(ctx, "while");
 
-    if (! ctx.consume(LPAREN))
+    if (!ctx.consume(LPAREN))
         UNEXPECTED(ctx, "(");
 
-    While * pWhile = ctx.attach(new While());
-    Expression * pExpr = parseExpression(ctx);
+    WhilePtr pWhile = new While();
 
-    if (! pExpr)
+    if (ExpressionPtr pExpr = parseExpression(ctx))
+        pWhile->setInvariant(pExpr);
+    else
         ERROR(ctx, NULL, L"Expression expected");
 
-    pWhile->setInvariant(pExpr);
-
-    if (! ctx.consume(RPAREN))
+    if (!ctx.consume(RPAREN))
         UNEXPECTED(ctx, ")");
 
-    Statement * pStmt = parseStatement(ctx);
-
-    if (! pStmt)
+    if (StatementPtr pStmt = parseStatement(ctx))
+        pWhile->setBody(pStmt);
+    else
         ERROR(ctx, NULL, L"Statement expected");
-
-    pWhile->setBody(pStmt);
 
     _ctx.mergeChildren();
 
     return pWhile;
 }
 
-Break * Parser::parseBreak(Context & _ctx) {
-    Context & ctx = * _ctx.createChild(false);
+BreakPtr Parser::parseBreak(Context &_ctx) {
+    Context &ctx = *_ctx.createChild(false);
 
-    if (! ctx.consume(BREAK))
+    if (!ctx.consume(BREAK))
         UNEXPECTED(ctx, "break");
 
     _ctx.mergeChildren();
 
-    return _ctx.attach(new Break());
+    return new Break();
 }
 
-Statement * Parser::parseAssignment(Context & _ctx) {
-    Context & ctx = * _ctx.createChild(false);
-    Expression * pLHS = parseAtom(ctx);
-    Statement * pStmt = NULL;
+StatementPtr Parser::parseAssignment(Context &_ctx) {
+    Context &ctx = *_ctx.createChild(false);
+    ExpressionPtr pLHS = parseAtom(ctx);
+    StatementPtr pStmt;
 
-    if (! pLHS)
+    if (!pLHS)
         ERROR(ctx, NULL, L"Error parsing expression");
 
     if (ctx.consume(EQ)) {
-        Expression * pRHS = parseExpression(ctx);
-
-        if (! pRHS)
+        if (ExpressionPtr pRHS = parseExpression(ctx))
+            pStmt = new Assignment(pLHS, pRHS);
+        else
             ERROR(ctx, NULL, L"Error parsing expression");
-
-        pStmt = ctx.attach(new Assignment(pLHS, pRHS));
-
-        // TODO: RHS's type cannot be derived here actually. Tmp solution until
-        // proper type inference gets implemented.
-        //if (pLHS->getType() && ! pRHS->getType())
-        //    pRHS->setType((Type *) resolveBaseType(pLHS->getType()), false);
     } else if (ctx.consume(COMMA)) {
-        Multiassignment * pMA = ctx.attach(new Multiassignment());
+        MultiassignmentPtr pMA = new Multiassignment();
 
         pMA->getLValues().add(pLHS);
 
-        if (! parseList(ctx, pMA->getLValues(), & Parser::parseAtom, -1, EQ, COMMA))
+        if (!parseList(ctx, pMA->getLValues(), &Parser::parseAtom, -1, EQ, COMMA))
             ERROR(ctx, NULL, L"Error parsing list of l-values");
 
-        if (! parseList(ctx, pMA->getExpressions(), & Parser::parseExpression, -1, -1, COMMA))
+        if (!parseList(ctx, pMA->getExpressions(), &Parser::parseExpression, -1, -1, COMMA))
             ERROR(ctx, NULL, L"Error parsing list of expression");
 
         pStmt = pMA;
@@ -2361,28 +2300,28 @@ Statement * Parser::parseAssignment(Context & _ctx) {
     return pStmt;
 }
 
-Expression * Parser::parseCallResult(Context & _ctx, VariableDeclaration * & _pDecl) {
-    Context * pCtx = _ctx.createChild(false);
-    Expression * pExpr = NULL;
+ExpressionPtr Parser::parseCallResult(Context &_ctx, VariableDeclarationPtr &_pDecl) {
+    Context *pCtx = _ctx.createChild(false);
+    ExpressionPtr pExpr;
 
     // Try variable declaration.
-    Type * pType = parseType(* pCtx);
+    TypePtr pType = parseType(*pCtx);
 
     if (pType && pCtx->is(IDENTIFIER)) {
-        // TODO Need to check (was: don't attach to context, caller is responsible for management of this object.)
-        _pDecl = pCtx->attach(new VariableDeclaration(true, pCtx->scan()));
+        _pDecl = new VariableDeclaration(true, pCtx->scan());
         _pDecl->getVariable()->setType(pType);
         _pDecl->getVariable()->setMutable(false);
-        pExpr = pCtx->attach(new VariableReference(_pDecl->getVariable()));
+        pExpr = new VariableReference(_pDecl->getVariable());
         _ctx.addVariable(_pDecl->getVariable());
     }
 
-    if (! pExpr) {
+    if (!pExpr) {
         _pDecl = NULL;
         pCtx = _ctx.createChild(false);
-        pExpr = parseExpression(* pCtx);
-        if (! pExpr)
-            ERROR(* pCtx, NULL, L"Error parsing output parameter");
+        pExpr = parseExpression(*pCtx);
+
+        if (!pExpr)
+            ERROR(*pCtx, NULL, L"Error parsing output parameter");
     }
 
     _ctx.mergeChildren();
@@ -2390,28 +2329,34 @@ Expression * Parser::parseCallResult(Context & _ctx, VariableDeclaration * & _pD
     return pExpr;
 }
 
-bool Parser::parseCallResults(Context & _ctx, Call & _call, Collection<Expression> & _list) {
-    Context & ctx = * _ctx.createChild(false);
-    Expression * pExpr = NULL;
-    VariableDeclaration * pDecl = NULL;
+bool Parser::parseCallResults(Context &_ctx, Call &_call, Collection<Expression> &_list) {
+    Context &ctx = *_ctx.createChild(false);
+    ExpressionPtr pExpr;
+    VariableDeclarationPtr pDecl;
 
-    if (ctx.consume(UNDERSCORE))
-        pExpr = NULL;
-    else if (! (pExpr = parseCallResult(ctx, pDecl)))
-        ERROR(ctx, false, L"Error parsing output parameter");
+    if (!ctx.consume(UNDERSCORE)) {
+        pExpr = parseCallResult(ctx, pDecl);
+
+        if (!pExpr)
+            ERROR(ctx, false, L"Error parsing output parameter");
+    }
 
     // It's okay to modify call object since if this function fails parseCall() fails too.
     _list.add(pExpr);
+
     if (pDecl)
         _call.getDeclarations().add(pDecl);
 
     while (ctx.consume(COMMA)) {
-        if (ctx.consume(UNDERSCORE))
-            pExpr = NULL;
-        else if (! (pExpr = parseCallResult(ctx, pDecl)))
-            ERROR(ctx, false, L"Error parsing output parameter");
+        if (!ctx.consume(UNDERSCORE)) {
+            pExpr = parseCallResult(ctx, pDecl);
+
+            if (!pExpr)
+                ERROR(ctx, false, L"Error parsing output parameter");
+        }
 
         _list.add(pExpr);
+
         if (pDecl)
             _call.getDeclarations().add(pDecl);
     }
@@ -2421,80 +2366,75 @@ bool Parser::parseCallResults(Context & _ctx, Call & _call, Collection<Expressio
     return true;
 }
 
-Call * Parser::parseCall(Context & _ctx) {
-    Context & ctx = * _ctx.createChild(false);
+CallPtr Parser::parseCall(Context &_ctx) {
+    Context &ctx = *_ctx.createChild(false);
     std::wstring name = ctx.getValue();
-    Predicate * pPred = ctx.getPredicate(name);
-    Expression * pExpr = NULL;
+    ExpressionPtr pExpr;
 
-    DEBUG(name.c_str());
-
-    if (pPred) {
-        ++ ctx;
-        pExpr = ctx.attach(new PredicateReference(pPred));
-        pExpr->setType(pPred->getType(), false);
-    } else
+    if (PredicatePtr pPred = ctx.getPredicate(name)) {
+        ++ctx;
+        pExpr = new PredicateReference(pPred);
+        pExpr->setType(pPred->getType());
+    } else {
         pExpr = parseAtom(ctx);
 
-    if (! pExpr)
-        ERROR(ctx, NULL, L"Predicate expression expected");
+        if (!pExpr)
+            ERROR(ctx, NULL, L"Predicate expression expected");
+    }
 
-    Call * pCall = ctx.attach(new Call());
+    CallPtr pCall = new Call();
 
     pCall->setPredicate(pExpr);
 
-    if (! ctx.consume(LPAREN))
+    if (!ctx.consume(LPAREN))
         UNEXPECTED(ctx, "(");
 
-    if (! parseList(ctx, pCall->getArgs(), & Parser::parseExpression, -1, -1, COMMA))
-        ERROR(ctx, false, L"Failed to parse input parameters");
+    if (!parseList(ctx, pCall->getArgs(), &Parser::parseExpression, -1, -1, COMMA))
+        ERROR(ctx, NULL, L"Failed to parse input parameters");
 
-    typedef std::multimap<std::wstring, CallBranch *> call_branch_map_t;
+    typedef std::multimap<std::wstring, CallBranchPtr> call_branch_map_t;
     call_branch_map_t branches;
 
     while (ctx.consume(COLON)) {
-        CallBranch * pBranch = new CallBranch();
+        CallBranchPtr pBranch = new CallBranch();
 
         pCall->getBranches().add(pBranch);
 
-        if (! ctx.in(RPAREN, HASH, COLON)) {
-            if (! parseCallResults(ctx, * pCall, * pBranch))
+        if (!ctx.in(RPAREN, HASH, COLON)) {
+            if (!parseCallResults(ctx, *pCall, *pBranch))
                 ERROR(ctx, NULL, L"Failed to parse output parameters");
         }
 
         if (ctx.is(HASH) && ctx.nextIn(IDENTIFIER, LABEL, INTEGER)) {
-            std::wstring strLabel = ctx.scan(2, 1);
-            Label * pLabel = ctx.getLabel(strLabel);
+            const std::wstring strLabel = ctx.scan(2, 1);
 
-            if (pLabel)
+            if (LabelPtr pLabel = ctx.getLabel(strLabel))
                 pBranch->setHandler(new Jump(pLabel));
             else
                 branches.insert(std::make_pair(strLabel, pBranch));
         }
     }
 
-    if (! ctx.consume(RPAREN))
+    if (!ctx.consume(RPAREN))
         UNEXPECTED(ctx, ")");
 
     while (ctx.consume(CASE)) {
-        if (! ctx.in(LABEL, IDENTIFIER, INTEGER) || ! ctx.nextIs(COLON))
+        if (!ctx.in(LABEL, IDENTIFIER, INTEGER) || !ctx.nextIs(COLON))
             ERROR(ctx, NULL, L"Label identifier expected");
 
         typedef call_branch_map_t::iterator I;
         std::pair<I, I> bounds = branches.equal_range(ctx.scan());
 
-        ++ ctx;
+        ++ctx;
 
         if (bounds.first == bounds.second)
             ERROR(ctx, NULL, L"Label identifier expected");
 
-        Statement * pStmt = parseStatement(ctx);
-
-        if (! pStmt)
+        if (StatementPtr pStmt = parseStatement(ctx))
+            for (I i = bounds.first; i != bounds.second; ++ i)
+                i->second->setHandler(pStmt);
+        else
             ERROR(ctx, NULL, L"Statement required");
-
-        for (I i = bounds.first; i != bounds.second; ++ i)
-            i->second->setHandler(pStmt);
     }
 
     _ctx.mergeChildren();
@@ -2502,7 +2442,7 @@ Call * Parser::parseCall(Context & _ctx) {
     return pCall;
 }
 
-Statement * Parser::parseStatement(Context & _ctx) {
+StatementPtr Parser::parseStatement(Context &_ctx) {
     switch (_ctx.getToken()) {
         case PIPE:   return parseMultiAssignment(_ctx);
         case LBRACE: return parseBlock(_ctx);
@@ -2536,32 +2476,32 @@ Statement * Parser::parseStatement(Context & _ctx) {
                 return decls.get(0);
 
             // decls.size() > 1
-            ParallelBlock *pBlock = new ParallelBlock();
+            ParallelBlockPtr pBlock = new ParallelBlock();
 
-            pBlock->append(decls, true);
+            pBlock->append(decls);
             _ctx.mergeChildren();
 
             return pBlock;
         }
     }
 
-    Statement * pStmt = NULL;
+    StatementPtr pStmt;
 
     if (_ctx.in(IDENTIFIER, LABEL, INTEGER) && _ctx.nextIs(COLON)) {
-        Context & ctx = * _ctx.createChild(false);
-        // A label.
-        Label * pLabel = ctx.attach(new Label(ctx.scan(2)));
+        Context &ctx = *_ctx.createChild(false);
+        LabelPtr pLabel = new Label(ctx.scan(2));
 
         if (ctx.is(RBRACE))
-            pStmt = ctx.attach(new Statement());
+            pStmt = new Statement();
         else
             pStmt = parseStatement(ctx);
 
-        if (! pStmt) return NULL;
+        if (!pStmt)
+            return NULL;
 
         if (pStmt->getLabel()) {
             // We should somehow make two labels to point to the same statement.
-            Block * pBlock = ctx.attach(new Block());
+            BlockPtr pBlock = new Block();
             pBlock->add(pStmt);
             pStmt = pBlock;
         }
@@ -2569,28 +2509,28 @@ Statement * Parser::parseStatement(Context & _ctx) {
         pStmt->setLabel(pLabel);
         ctx.addLabel(pLabel);
         _ctx.mergeChildren();
+
         return pStmt;
     }
-
-    DEBUG(L"Stmt start: %ls", _ctx.getValue().c_str());
 
     if (_ctx.getType(_ctx.getValue()))
         return parseVariableDeclaration(_ctx, LOCAL_VARIABLE | ALLOW_INITIALIZATION);
 
-    DEBUG(L"Not a type: %ls", _ctx.getValue().c_str());
-
-    Context & ctx = * _ctx.createChild(false);
+    Context &ctx = *_ctx.createChild(false);
 
     // Maybe call?
-    if (! pStmt) pStmt = parseCall(ctx);
+    if (!pStmt)
+        pStmt = parseCall(ctx);
 
     // Maybe assignment?
-    if (! pStmt) pStmt = parseAssignment(ctx);
+    if (!pStmt)
+        pStmt = parseAssignment(ctx);
 
     // Maybe nested predicate?
-    if (! pStmt) pStmt = parsePredicate(ctx);
+    if (!pStmt)
+        pStmt = parsePredicate(ctx);
 
-    if (! pStmt)
+    if (!pStmt)
         return NULL;
 
     _ctx.mergeChildren();
@@ -2598,51 +2538,51 @@ Statement * Parser::parseStatement(Context & _ctx) {
     return pStmt;
 }
 
-Process * Parser::parseProcess(Context & _ctx) {
-    Context & ctx = * _ctx.createChild(true);
+ProcessPtr Parser::parseProcess(Context &_ctx) {
+    Context &ctx = *_ctx.createChild(true);
 
-    if (! ctx.consume(PROCESS))
+    if (!ctx.consume(PROCESS))
         UNEXPECTED(ctx, "process");
 
-    if (! ctx.is(IDENTIFIER))
+    if (!ctx.is(IDENTIFIER))
         ERROR(ctx, NULL, L"Identifier expected");
 
-    Process * pProcess = _ctx.attach(new Process(ctx.scan()));
+    ProcessPtr pProcess = new Process(ctx.scan());
 
-    if (! ctx.consume(LPAREN))
+    if (!ctx.consume(LPAREN))
         UNEXPECTED(ctx, "(");
 
-    if (! parseParamList(ctx, pProcess->getInParams(), & Parser::parseParam, 0))
-        ERROR(ctx, false, L"Failed to parse input parameters");
+    if (!parseParamList(ctx, pProcess->getInParams(), &Parser::parseParam, 0))
+        ERROR(ctx, NULL, L"Failed to parse input parameters");
 
     branch_map_t branches;
 
     while (ctx.consume(COLON)) {
-        Branch * pBranch = new Branch();
+        BranchPtr pBranch = new Branch();
 
         pProcess->getOutParams().add(pBranch);
-        parseParamList(ctx, * pBranch, & Parser::parseParam, OUTPUT_PARAMS);
+        parseParamList(ctx, *pBranch, &Parser::parseParam, OUTPUT_PARAMS);
 
-        for (size_t i = 0; i < pBranch->size(); ++ i)
+        for (size_t i = 0; i < pBranch->size(); ++i)
             pBranch->get(i)->setOutput(true);
 
         if (ctx.is(HASH) && ctx.nextIn(IDENTIFIER, LABEL, INTEGER)) {
-            std::wstring strLabel = ctx.scan(2, 1);
-            if (! branches.insert(std::make_pair(strLabel, pBranch)).second)
-                ERROR(ctx, false, L"Duplicate branch name \"%ls\"", strLabel.c_str());
+            const std::wstring strLabel = ctx.scan(2, 1);
+
+            if (!branches.insert(std::make_pair(strLabel, pBranch)).second)
+                ERROR(ctx, NULL, L"Duplicate branch name \"%ls\"", strLabel.c_str());
+
             pBranch->setLabel(new Label(strLabel));
         }
     }
 
-    if (! ctx.consume(RPAREN))
+    if (!ctx.consume(RPAREN))
         UNEXPECTED(ctx, ")");
 
-    Block * pBlock = parseBlock(ctx);
-
-    if (! pBlock)
-        ERROR(ctx, false, L"Failed parsing process body");
-
-    pProcess->setBlock(pBlock);
+    if (BlockPtr pBlock = parseBlock(ctx))
+        pProcess->setBlock(pBlock);
+    else
+        ERROR(ctx, NULL, L"Failed parsing process body");
 
     _ctx.mergeChildren();
     _ctx.addProcess(pProcess);
@@ -2650,12 +2590,12 @@ Process * Parser::parseProcess(Context & _ctx) {
     return pProcess;
 }
 
-FormulaDeclaration * Parser::parseFormulaDeclaration(Context & _ctx) {
-    if (! _ctx.is(FORMULA, IDENTIFIER))
+FormulaDeclarationPtr Parser::parseFormulaDeclaration(Context &_ctx) {
+    if (!_ctx.is(FORMULA, IDENTIFIER))
         return NULL;
 
-    Context * pCtx = _ctx.createChild(false);
-    FormulaDeclaration * pDecl = pCtx->attach(new FormulaDeclaration(pCtx->scan(2, 1)));
+    Context *pCtx = _ctx.createChild(false);
+    FormulaDeclarationPtr pDecl = new FormulaDeclaration(pCtx->scan(2, 1));
 
     pCtx->addFormula(pDecl);
     pCtx = pCtx->createChild(true);
@@ -2666,29 +2606,25 @@ FormulaDeclaration * Parser::parseFormulaDeclaration(Context & _ctx) {
     if (!pCtx->consume(RPAREN)) {
         pCtx = pCtx->createChild(true);
 
-        if (! parseParamList(* pCtx, pDecl->getParams(), & Parser::parseVariableName))
+        if (!parseParamList(*pCtx, pDecl->getParams(), &Parser::parseVariableName))
             return NULL;
 
         if (pCtx->consume(COLON)) {
-            Type *pType = parseType(*pCtx);
-
-            if (!pType)
+            if (TypePtr pType = parseType(*pCtx))
+                pDecl->setResultType(pType);
+            else
                 ERROR(*pCtx, NULL, L"Failed parsing formula result type");
-
-            pDecl->setResultType(pType);
         }
 
-        if (! pCtx->consume(RPAREN))
-            UNEXPECTED(* pCtx, ")");
+        if (!pCtx->consume(RPAREN))
+            UNEXPECTED(*pCtx, ")");
     }
 
     if (pCtx->consume(EQ)) {
-        Expression * pFormula = parseExpression(* pCtx, ALLOW_FORMULAS);
-
-        if (! pFormula)
+        if (ExpressionPtr pFormula = parseExpression(* pCtx, ALLOW_FORMULAS))
+            pDecl->setFormula(pFormula);
+        else
             return NULL;
-
-        pDecl->setFormula(pFormula);
     }
 
     _ctx.mergeChildren();
@@ -2697,32 +2633,35 @@ FormulaDeclaration * Parser::parseFormulaDeclaration(Context & _ctx) {
     return pDecl;
 }
 
-Context * Parser::parsePragma(Context & _ctx) {
-    Context & ctx = * _ctx.createChild(false);
+Context *Parser::parsePragma(Context &_ctx) {
+    Context &ctx = *_ctx.createChild(false);
 
-    if (! ctx.consume(PRAGMA))
-        UNEXPECTED(ctx, "pragma");
+    if (!ctx.consume(PRAGMA))
+        UNEXPECTED_R(ctx, "pragma", NULL);
 
-    if (! ctx.consume(LPAREN))
-        UNEXPECTED(ctx, "(");
+    if (!ctx.consume(LPAREN))
+        UNEXPECTED_R(ctx, "(", NULL);
 
     do {
-        if (! ctx.is(IDENTIFIER))
+        if (!ctx.is(IDENTIFIER))
             ERROR(ctx, NULL, L"Pragma name expected");
 
-        std::wstring name = ctx.scan();
+        const std::wstring name = ctx.scan();
 
-        if (! ctx.consume(COLON))
-            UNEXPECTED(ctx, ":");
+        if (!ctx.consume(COLON))
+            UNEXPECTED_R(ctx, ":", NULL);
 
         if (name == L"int_bitness") {
             int nBitness = 0;
+
             if (ctx.is(INTEGER)) {
                 nBitness = wcstol(ctx.scan().c_str(), NULL, 10);
+
                 if (nBitness < 1 || nBitness > 64)
                     ERROR(ctx, NULL, L"Integer bitness out of range: %d", nBitness);
             } else if (ctx.is(IDENTIFIER)) {
-                std::wstring strBitness = ctx.scan();
+                const std::wstring strBitness = ctx.scan();
+
                 if (strBitness == L"native")
                     nBitness = Number::NATIVE;
                 else if (strBitness == L"unbounded")
@@ -2730,15 +2669,19 @@ Context * Parser::parsePragma(Context & _ctx) {
                 else
                     ERROR(ctx, NULL, L"Unknown bitness value: %ls", strBitness.c_str());
             }
+
             ctx.getPragma().setIntBitness(nBitness);
         } else if (name == L"real_bitness") {
             int nBitness = 0;
+
             if (ctx.is(INTEGER)) {
                 nBitness = wcstol(ctx.scan().c_str(), NULL, 10);
-                if (nBitness != 32 && nBitness != 64 && nBitness != 128)
+
+                if (nBitness != 32 &&nBitness != 64 &&nBitness != 128)
                     ERROR(ctx, NULL, L"Real bitness out of range: %d", nBitness);
             } else if (ctx.is(IDENTIFIER)) {
                 std::wstring strBitness = ctx.scan();
+
                 if (strBitness == L"native")
                     nBitness = Number::NATIVE;
                 else if (strBitness == L"unbounded")
@@ -2746,43 +2689,44 @@ Context * Parser::parsePragma(Context & _ctx) {
                 else
                     ERROR(ctx, NULL, L"Unknown bitness value: %ls", strBitness.c_str());
             }
+
             ctx.getPragma().setRealBitness(nBitness);
         } else if (name == L"overflow") {
             if (ctx.consume(HASH)) {
                 if (! ctx.in(LABEL, IDENTIFIER, INTEGER))
                     ERROR(ctx, NULL, L"Label identifier expected");
 
-                std::wstring strLabel = ctx.scan();
-                Label * pLabel = ctx.getLabel(strLabel);
+                const std::wstring strLabel = ctx.scan();
 
-                if (! pLabel)
+                if (LabelPtr pLabel = ctx.getLabel(strLabel))
+                    ctx.getPragma().overflow().set(Overflow::RETURN, pLabel);
+                else
                     ERROR(ctx, NULL, L"Unknown label %ls", strLabel.c_str());
-
-                ctx.getPragma().overflow().set(Overflow::RETURN, pLabel);
             } else if (ctx.is(IDENTIFIER)) {
-                std::wstring strOverflow = ctx.scan();
+                const std::wstring strOverflow = ctx.scan();
                 int nOverflow = Overflow::WRAP;
 
-                if (strOverflow == L"wrap") {
+                if (strOverflow == L"wrap")
                     nOverflow = Overflow::WRAP;
-                } else if (strOverflow == L"saturate") {
+                else if (strOverflow == L"saturate")
                     nOverflow = Overflow::SATURATE;
-                } else if (strOverflow == L"strict") {
+                else if (strOverflow == L"strict")
                     nOverflow = Overflow::STRICT;
-                } else
+                else
                     ERROR(ctx, NULL, L"Unknown overflow value: %ls", strOverflow.c_str());
 
                 ctx.getPragma().overflow().set(nOverflow);
             }
+
             ctx.getPragma().set(Pragma::Overflow, true);
         } else
             ERROR(ctx, NULL, L"Unknown pragma %ls", name.c_str());
     } while (ctx.consume(COMMA));
 
-    if (! ctx.consume(RPAREN))
-        UNEXPECTED(ctx, ")");
+    if (!ctx.consume(RPAREN))
+        UNEXPECTED_R(ctx, ")", NULL);
 
-    return & ctx;
+    return &ctx;
 }
 
 void Parser::typecheck(Context &_ctx, Node &_node) {
@@ -2799,86 +2743,79 @@ void Parser::typecheck(Context &_ctx, Node &_node) {
         tc::apply(constraints, freshTypes);
 }
 
-bool Parser::parseDeclarations(Context & _ctx, Module & _module) {
-    Context * pCtx = _ctx.createChild(false);
+bool Parser::parseDeclarations(Context &_ctx, Module &_module) {
+    Context *pCtx = _ctx.createChild(false);
 
     while (!pCtx->in(END_OF_FILE, RBRACE)) {
         switch (pCtx->getToken()) {
-            case IDENTIFIER: {
+            case IDENTIFIER:
                 if (! pCtx->getType(pCtx->getValue())) {
-                    Predicate * pPred = parsePredicate(* pCtx);
-                    if (! pPred)
-                        ERROR(* pCtx, false, L"Failed parsing predicate");
-                    _module.getPredicates().add(pPred);
-                    typecheck(*pCtx, *pPred);
+                    if (PredicatePtr pPred = parsePredicate(*pCtx)) {
+                        _module.getPredicates().add(pPred);
+                        typecheck(*pCtx, *pPred);
+                    } else
+                        ERROR(*pCtx, false, L"Failed parsing predicate");
                     break;
                 }
                 // no break;
-            }
             CASE_BUILTIN_TYPE:
-            case MUTABLE: {
-                VariableDeclaration * pDecl = parseVariableDeclaration(* pCtx, ALLOW_INITIALIZATION);
-                if (! pDecl)
-                    ERROR(* pCtx, false, L"Failed parsing variable declaration");
-                if (! pCtx->consume(SEMICOLON))
-                    ERROR(* pCtx, false, L"Semicolon expected");
-                _module.getVariables().add(pDecl);
-                typecheck(*pCtx, *pDecl);
-                break;
-            }
-            case TYPE: {
-                TypeDeclaration * pDecl = parseTypeDeclaration(* pCtx);
-                if (! pDecl)
-                    ERROR(* pCtx, false, L"Failed parsing type declaration");
-                if (! pCtx->consume(SEMICOLON))
-                    ERROR(* pCtx, false, L"Semicolon expected");
-                _module.getTypes().add(pDecl);
-                break;
-            }
-            case PROCESS: {
-                Process * pProcess = parseProcess(* pCtx);
-                if (! pProcess)
-                    ERROR(* pCtx, false, L"Failed parsing process declaration");
-                _module.getProcesses().add(pProcess);
-                 break;
-            }
-            case FORMULA: {
-                FormulaDeclaration * pFormula = parseFormulaDeclaration(* pCtx);
-                if (! pFormula)
-                    ERROR(* pCtx, false, L"Failed parsing formula declaration");
-                _module.getFormulas().add(pFormula);
-                break;
-            }
-            case LEMMA: {
-                ++*pCtx;
-                LemmaDeclaration *pLemma = pCtx->attach(new LemmaDeclaration());
-                Expression *pProposition = parseExpression(*pCtx, ALLOW_FORMULAS);
-
-                if (pProposition == NULL)
-                    ERROR(*pCtx, false, L"Failed parsing lemma declaration");
-
-                pLemma->setProposition(pProposition);
-                _module.getLemmas().add(pLemma);
-                break;
-            }
-            case PRAGMA: {
-                Context * pCtxNew = parsePragma(* pCtx);
-                if (! pCtxNew)
-                    ERROR(* pCtx, false, L"Failed parsing compiler directive");
-
-                if (pCtxNew->consume(SEMICOLON)) {
-                    pCtx = pCtxNew;
-                    break;
-                } else if (pCtxNew->consume(LBRACE)) {
-                    if (! parseDeclarations(* pCtxNew, _module))
-                        ERROR(* pCtxNew, false, L"Failed parsing declarations");
-                    if (! pCtxNew->consume(RBRACE))
-                        ERROR(* pCtxNew, false, L"Closing brace expected");
-                    pCtx->mergeChildren();
-                    break;
+            case MUTABLE:
+                if (VariableDeclarationPtr pDecl = parseVariableDeclaration(*pCtx, ALLOW_INITIALIZATION)) {
+                    if (!pCtx->consume(SEMICOLON))
+                        ERROR(*pCtx, false, L"Semicolon expected");
+                    _module.getVariables().add(pDecl);
+                    typecheck(*pCtx, *pDecl);
                 } else
-                    ERROR(* pCtx, false, L"Semicolon or opening brace expected");
-            }
+                    ERROR(* pCtx, false, L"Failed parsing variable declaration");
+                break;
+            case TYPE:
+                if (TypeDeclarationPtr pDecl = parseTypeDeclaration(*pCtx)) {
+                    if (!pCtx->consume(SEMICOLON))
+                        ERROR(*pCtx, false, L"Semicolon expected");
+                    _module.getTypes().add(pDecl);
+                } else
+                    ERROR(*pCtx, false, L"Failed parsing type declaration");
+                break;
+            case PROCESS:
+                if (ProcessPtr pProcess = parseProcess(*pCtx))
+                    _module.getProcesses().add(pProcess);
+                else
+                    ERROR(*pCtx, false, L"Failed parsing process declaration");
+                break;
+            case FORMULA:
+                if (FormulaDeclarationPtr pFormula = parseFormulaDeclaration(*pCtx))
+                    _module.getFormulas().add(pFormula);
+                else
+                    ERROR(* pCtx, false, L"Failed parsing formula declaration");
+                break;
+            case LEMMA:
+                ++*pCtx;
+                if (ExpressionPtr pProposition = parseExpression(*pCtx, ALLOW_FORMULAS)) {
+                    LemmaDeclarationPtr pLemma = new LemmaDeclaration();
+
+                    pLemma->setProposition(pProposition);
+                    _module.getLemmas().add(pLemma);
+                } else
+                    ERROR(*pCtx, false, L"Failed parsing lemma declaration");
+                break;
+            case PRAGMA:
+                if (Context *pCtxNew = parsePragma(*pCtx)) {
+                    if (pCtxNew->consume(SEMICOLON)) {
+                        pCtx = pCtxNew;
+                        break;
+                    } else if (pCtxNew->consume(LBRACE)) {
+                        if (!parseDeclarations(*pCtxNew, _module))
+                            ERROR(*pCtxNew, false, L"Failed parsing declarations");
+
+                        if (!pCtxNew->consume(RBRACE))
+                            ERROR(*pCtxNew, false, L"Closing brace expected");
+
+                        pCtx->mergeChildren();
+                        break;
+                    } else
+                        ERROR(*pCtx, false, L"Semicolon or opening brace expected");
+                } else
+                    ERROR(*pCtx, false, L"Failed parsing compiler directive");
             default:
                 ERROR(*pCtx, false, L"Declaration expected");
         }
@@ -2891,62 +2828,50 @@ bool Parser::parseDeclarations(Context & _ctx, Module & _module) {
     return true;
 }
 
-bool Parser::parseModule(Context & _ctx, ir::Module * & _pModule) {
-    _pModule = new ir::Module();
+ModulePtr Parser::parseModule(Context &_ctx) {
+    ModulePtr pModule = new ir::Module();
 
-    parseModuleHeader(_ctx, _pModule);
+    parseModuleHeader(_ctx, *pModule);
 
     while (_ctx.is(IMPORT))
-        if (! parseImport(_ctx, _pModule)) {
+        if (!parseImport(_ctx, *pModule)) {
             _ctx.fmtError(L"Invalid import statement");
-            return false;
+            return NULL;
         }
 
     if (_ctx.is(END_OF_FILE) || _ctx.loc() == m_tokens.end())
-        return true;
+        return pModule;
 
-    if (!parseDeclarations(_ctx, * _pModule))
-        return false;
+    if (!parseDeclarations(_ctx, *pModule))
+        return NULL;
 
     if (!_ctx.is(END_OF_FILE) && _ctx.loc() != m_tokens.end())
         UNEXPECTED(_ctx, "End of file");
 
-    return true;
+    return pModule;
 }
 
-bool parse(Tokens & _tokens, ir::Module * & _pModule) {
+ModulePtr parse(Tokens &_tokens) {
     Loc loc = _tokens.begin();
     Parser parser(_tokens);
     Context ctx(loc, true);
 
-    if (! parser.parseModule(ctx, _pModule)) {
-/*        Context * pCtx = & ctx;
-
-        while (pCtx->getChild())
-            pCtx = pCtx->getChild();
-
-//        std::wcerr << L"Parsing failed at line " << pCtx->loc()->getLine();
-
-        std::wcerr << pCtx->getMessages().size() << std::endl;
-*/
+    if (ModulePtr pModule = parser.parseModule(ctx)) {
         ctx.mergeChildren(true);
-        std::wcerr << L"Parsing failed at line " << ctx.loc()->getLine() << std::endl;
+        DEBUG(L"Done.");
 
-        for (StatusMessages::const_iterator i = ctx.getMessages().begin();
-            i != ctx.getMessages().end(); ++ i)
-        {
-            const StatusMessage & msg = * i;
-            std::wcerr << msg;
-        }
-
-        delete _pModule;
-        _pModule = NULL;
-        return false;
+        return pModule;
     }
 
     ctx.mergeChildren(true);
+    std::wcerr << L"Parsing failed at line " << ctx.loc()->getLine() << std::endl;
 
-    DEBUG(L"Done.");
+    for (StatusMessages::const_iterator i = ctx.getMessages().begin();
+        i != ctx.getMessages().end(); ++ i)
+    {
+        const StatusMessage &msg = *i;
+        std::wcerr << msg;
+    }
 
-    return true;
+    return NULL;
 }

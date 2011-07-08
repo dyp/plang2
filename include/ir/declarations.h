@@ -16,7 +16,7 @@ class Predicate : public AnonymousPredicate {
 public:
     /// Initialize with predicate name.
     /// \param _strName Predicate name.
-    Predicate(const std::wstring & _strName, bool _bBuiltin = false) : m_strName(_strName), m_bBuiltin(_bBuiltin) {}
+    Predicate(const std::wstring &_strName, bool _bBuiltin = false) : m_strName(_strName), m_bBuiltin(_bBuiltin) {}
 
     /// Get statement kind.
     /// \returns #PredicateDeclaration.
@@ -24,11 +24,11 @@ public:
 
     /// Get predicate name.
     /// \return Identifier.
-    const std::wstring & getName() const { return m_strName; }
+    const std::wstring &getName() const { return m_strName; }
 
     /// Set predicate name.
     /// \param _strName Identifier.
-    void setName(const std::wstring & _strName) { m_strName = _strName; }
+    void setName(const std::wstring &_strName) { m_strName = _strName; }
 
     bool isBuiltin() const { return m_bBuiltin; }
 
@@ -63,11 +63,11 @@ public:
 
     /// Get message name.
     /// \return Identifier.
-    const std::wstring & getName() const { return m_strName; }
+    const std::wstring &getName() const { return m_strName; }
 
     /// Set message name.
     /// \param _strName Identifier.
-    void setName(const std::wstring & _strName) { m_strName = _strName; }
+    void setName(const std::wstring &_strName) { m_strName = _strName; }
 
     /// Get processing type.
     /// \return Processing type (one of #Message and #Queue).
@@ -79,7 +79,7 @@ public:
 
     /// Get list of message parameters.
     /// \return List of parameters.
-    Params & getParams() { return m_params; }
+    Params &getParams() { return m_params; }
 
 private:
     int m_processingType;
@@ -95,48 +95,40 @@ public:
 
     /// Initialize with process name.
     /// \param _strName Process name.
-    Process(const std::wstring & _strName) : m_strName(_strName), m_pBlock(NULL) {}
-
-    /// Destructor.
-    virtual ~Process() {
-        _delete(m_pBlock);
-    }
+    Process(const std::wstring &_strName) : m_strName(_strName), m_pBlock(NULL) {}
 
     virtual int getNodeKind() const { return Node::PROCESS; }
 
     /// Get process name.
     /// \return Identifier.
-    const std::wstring & getName() const { return m_strName; }
+    const std::wstring &getName() const { return m_strName; }
 
     /// Set process name.
     /// \param _strName Identifier.
-    void setName(const std::wstring & _strName) { m_strName = _strName; }
+    void setName(const std::wstring &_strName) { m_strName = _strName; }
 
     /// Get list of formal input parameters.
     /// \return List of parameters.
-    Params & getInParams() { return m_paramsIn; }
+    Params &getInParams() { return m_paramsIn; }
 
     /// Get list of output branches. Each branch can contain a list of parameters,
     /// a precondition and a postcondition.
     /// \return List of branches.
-    Branches & getOutParams() { return m_paramsOut; }
+    Branches &getOutParams() { return m_paramsOut; }
 
     /// Set predicate body.
     /// \param _pBlock Predicate body.
-    /// \param _bReparent If specified (default) also sets parent of _pBlock to this node.
-    void setBlock(Block * _pBlock, bool _bReparent = true) {
-        _assign(m_pBlock, _pBlock, _bReparent);
-    }
+    void setBlock(const BlockPtr &_pBlock) { m_pBlock = _pBlock; }
 
     /// Get predicate body.
     /// \return Predicate body.
-    Block * getBlock() const { return m_pBlock; }
+    const BlockPtr &getBlock() const { return m_pBlock; }
 
 private:
     Branches m_paramsOut;
     Params m_paramsIn;
     std::wstring m_strName;
-    Block * m_pBlock;
+    BlockPtr m_pBlock;
 };
 
 class VariableDeclaration;
@@ -147,7 +139,7 @@ public:
     /// Initialize with variable name.
     /// \param _bLocal Specifies if it is a local variable.
     /// \param _strName Variable name.
-    Variable(bool _bLocal, const std::wstring & _strName = L"")
+    Variable(bool _bLocal, const std::wstring &_strName = L"")
         : NamedValue(_strName), m_bMutable(false), m_kind(_bLocal ? LOCAL : GLOBAL), m_pDeclaration(NULL) {}
 
     /// Get value kind.
@@ -164,16 +156,16 @@ public:
 
     /// Get referenced variable.
     /// \return Referenced variable.
-    const VariableDeclaration * getDeclaration() const { return m_pDeclaration; }
+    const VariableDeclarationPtr &getDeclaration() const { return m_pDeclaration; }
 
     /// Set referenced variable.
     /// \param _pTarget Referenced variable.
-    void setDeclaration(const VariableDeclaration * _pDeclaration) { m_pDeclaration = _pDeclaration; }
+    void setDeclaration(const VariableDeclarationPtr &_pDeclaration) { m_pDeclaration = _pDeclaration; }
 
 private:
     bool m_bMutable;
     const int m_kind;
-    const VariableDeclaration * m_pDeclaration;
+    VariableDeclarationPtr m_pDeclaration;
 };
 
 /// Statement that wraps variable declaration.
@@ -185,12 +177,9 @@ public:
     /// Initialize with variable name.
     /// \param _bLocal Specifies if it is a local variable.
     /// \param _strName Variable name.
-    VariableDeclaration(bool _bLocal, const std::wstring & _strName) : m_pVar(NULL), m_pValue(NULL) {
+    VariableDeclaration(bool _bLocal, const std::wstring &_strName) : m_pVar(NULL), m_pValue(NULL) {
         setVariable(new Variable(_bLocal, _strName));
     }
-
-    /// Destructor.
-    virtual ~VariableDeclaration() { _delete(m_pValue); }
 
     /// Get statement kind.
     /// \returns #VariableDeclaration.
@@ -198,33 +187,28 @@ public:
 
     /// Get underlying variable.
     /// \return Variable.
-    Variable * getVariable() const { return m_pVar; }
+    const VariablePtr &getVariable() const { return m_pVar; }
 
-    void setVariable(Variable *_pVar, bool _bReparent = true) {
-        _assign(m_pVar, _pVar, _bReparent);
+    void setVariable(const VariablePtr &_pVar) {
+        m_pVar = _pVar;
         m_pVar->setDeclaration(this);
     }
 
     /// Get value expression. Possibly NULL if variable is not initialized.
     /// \return Value.
-    Expression * getValue() const { return m_pValue; }
+    const ExpressionPtr &getValue() const { return m_pValue; }
 
     /// Set expression. Use NULL if variable is not initialized.
     /// \param _pExpression Value.
-    /// \param _bReparent If specified (default) also sets parent of _pExpression to this node.
-    void setValue(Expression * _pExpression, bool _bReparent = true) {
-        _assign(m_pValue, _pExpression, _bReparent);
-    }
+    void setValue(const ExpressionPtr &_pExpression) { m_pValue = _pExpression; }
 
-    void setType(Type *_pType, bool _bReparent = true) {
-        m_pVar->setType(_pType, _bReparent);
-    }
+    void setType(const TypePtr &_pType) { m_pVar->setType(_pType); }
 
     std::wstring getName() const;
 
 private:
-    Variable *m_pVar;
-    Expression * m_pValue;
+    VariablePtr m_pVar;
+    ExpressionPtr m_pValue;
 };
 
 /// Statement that wraps type declaration.
@@ -235,7 +219,7 @@ public:
 
     /// Initialize with type name.
     /// \param _strName Declared type name.
-    TypeDeclaration(const std::wstring & _strName) : m_strName(_strName), m_pType(NULL) {}
+    TypeDeclaration(const std::wstring &_strName) : m_strName(_strName), m_pType(NULL) {}
 
     /// Get statement kind.
     /// \returns #TypeDeclaration.
@@ -243,27 +227,23 @@ public:
 
     /// Get underlying type.
     /// \return Type reference.
-    Type * getType() { return m_pType; }
-    const Type * getType() const { return m_pType; }
+    const TypePtr &getType() const { return m_pType; }
 
     /// Set underlying type.
     /// \param _pType Underlying type.
-    /// \param _bReparent If specified (default) also sets parent of _pType to this node.
-    void setType(Type * _pType, bool _bReparent = true) {
-        _assign(m_pType, _pType, _bReparent);
-    }
+    void setType(const TypePtr &_pType) { m_pType = _pType; }
 
     /// Get type identifier.
     /// \return Identifier.
-    const std::wstring & getName() const { return m_strName; }
+    const std::wstring &getName() const { return m_strName; }
 
     /// Set type identifier.
     /// \param _strName Identifier.
-    void setName(const std::wstring & _strName) { m_strName = _strName; }
+    void setName(const std::wstring &_strName) { m_strName = _strName; }
 
 private:
     std::wstring m_strName;
-    Type * m_pType;
+    TypePtr m_pType;
 };
 
 /// Named formula declaration.
@@ -275,61 +255,48 @@ public:
     /// Initialize with formula name.
     /// \param _strName Declared type name.
     /// \param _pType Result type.
-    /// \param _bReparent If specified (default) also sets parent of _pType to this node.
-    FormulaDeclaration(const std::wstring &_strName, Type *_pType = NULL, bool _bReparent = true) : m_strName(_strName), m_pFormula(NULL), m_pType(NULL) {
+    FormulaDeclaration(const std::wstring &_strName, const TypePtr &_pType = NULL) : m_strName(_strName), m_pFormula(NULL), m_pType(_pType) {
         if (!_pType)
-            _assign(m_pType, new Type(Type::BOOL), true);
-        else
-            _assign(m_pType, _pType, _bReparent);
+            m_pType = new Type(Type::BOOL);
     }
 
-    /// Destructor.
-    virtual ~FormulaDeclaration() {
-        _delete(m_pFormula);
-    }
     /// Get statement kind.
     /// \returns #FormulaDeclaration.
     virtual int getKind() const { return FORMULA_DECLARATION; }
 
     /// Get list of formal parameters.
     /// \return List of parameters.
-    NamedValues & getParams() { return m_params; }
+    NamedValues &getParams() { return m_params; }
 
     /// Get formula name.
     /// \return Identifier.
-    const std::wstring & getName() const { return m_strName; }
+    const std::wstring &getName() const { return m_strName; }
 
     /// Set formula name.
     /// \param _strName Identifier.
-    void setName(const std::wstring & _strName) { m_strName = _strName; }
+    void setName(const std::wstring &_strName) { m_strName = _strName; }
 
     /// Get result type.
     /// \return Type reference.
-    Type *getResultType() { return m_pType; }
+    const TypePtr &getResultType() { return m_pType; }
 
     /// Set result type.
     /// \param _pType Result type.
-    /// \param _bReparent If specified (default) also sets parent of _pType to this node.
-    void setResultType(Type *_pType, bool _bReparent = true) {
-        _assign(m_pType, _pType, _bReparent);
-    }
+    void setResultType(const TypePtr &_pType) { m_pType = _pType; }
 
     /// Get declared formula.
     /// \return Formula.
-    Expression * getFormula() const { return m_pFormula; }
+    const ExpressionPtr &getFormula() const { return m_pFormula; }
 
     /// Set declared formula postcondition.
     /// \param _pFormula Formula.
-    /// \param _bReparent If specified (default) also sets parent of _pFormula to this node.
-    void setFormula(Expression * _pFormula, bool _bReparent = true) {
-        _assign(m_pFormula, _pFormula, _bReparent);
-    }
+    void setFormula(const ExpressionPtr &_pFormula) { m_pFormula = _pFormula; }
 
 private:
     std::wstring m_strName;
     NamedValues m_params;
-    Expression * m_pFormula;
-    Type *m_pType;
+    ExpressionPtr m_pFormula;
+    TypePtr m_pType;
 };
 
 /// Lemma declaration.
@@ -338,28 +305,20 @@ public:
     /// Default constructor.
     LemmaDeclaration() : m_pProposition(NULL) {}
 
-    /// Destructor.
-    virtual ~LemmaDeclaration() {
-        _delete(m_pProposition);
-    }
-
     /// Get statement kind.
     /// \returns #LemmaDeclaration.
     virtual int getKind() const { return LEMMA_DECLARATION; }
 
     /// Get proposition (boolean-typed expression).
     /// \return Proposition.
-    Expression * getProposition() const { return m_pProposition; }
+    const ExpressionPtr &getProposition() const { return m_pProposition; }
 
     /// Set proposition.
     /// \param _pProposition Proposition.
-    /// \param _bReparent If specified (default) also sets parent of _pProposition to this node.
-    void setProposition(Expression * _pProposition, bool _bReparent = true) {
-        _assign(m_pProposition, _pProposition, _bReparent);
-    }
+    void setProposition(const ExpressionPtr &_pProposition) { m_pProposition = _pProposition; }
 
 private:
-    Expression * m_pProposition;
+    ExpressionPtr m_pProposition;
 };
 
 /// Base class for objects containing common declarations.
@@ -370,32 +329,32 @@ public:
 
     /// Get list of predicates.
     /// \return List of predicates.
-    Collection<Predicate> & getPredicates() { return m_predicates; }
-    const Collection<Predicate> & getPredicates() const { return m_predicates; }
+    Collection<Predicate> &getPredicates() { return m_predicates; }
+    const Collection<Predicate> &getPredicates() const { return m_predicates; }
 
     /// Get list of declared types.
     /// \return List of declared types.
-    Collection<TypeDeclaration> & getTypes() { return m_types; }
+    Collection<TypeDeclaration> &getTypes() { return m_types; }
 
     /// Get list of declared variables.
     /// \return List of declared variables.
-    Collection<VariableDeclaration> & getVariables() { return m_variables; }
+    Collection<VariableDeclaration> &getVariables() { return m_variables; }
 
     /// Get list of declared messages.
     /// \return List of declared messages.
-    Collection<Message> & getMessages() { return m_messages; }
+    Collection<Message> &getMessages() { return m_messages; }
 
     /// Get list of processes.
     /// \return List of processes.
-    Collection<Process> & getProcesses() { return m_processes; }
+    Collection<Process> &getProcesses() { return m_processes; }
 
     /// Get list of formulas.
     /// \return List of formulas.
-    Collection<FormulaDeclaration> & getFormulas() { return m_formulas; }
+    Collection<FormulaDeclaration> &getFormulas() { return m_formulas; }
 
     /// Get list of lemmas.
     /// \return List of lemmas.
-    Collection<LemmaDeclaration> & getLemmas() { return m_lemmas; }
+    Collection<LemmaDeclaration> &getLemmas() { return m_lemmas; }
 
 private:
     Collection<Predicate> m_predicates;
@@ -415,28 +374,28 @@ public:
 
     /// Initialize with class name.
     /// \param _strName Class name.
-    Class(const std::wstring & _strName) : m_pAncestor(NULL), m_strName(_strName) {}
+    Class(const std::wstring &_strName) : m_pAncestor(NULL), m_strName(_strName) {}
 
     virtual int getNodeKind() const { return Node::CLASS; }
 
     /// Get class name.
     /// \return Identifier.
-    const std::wstring & getName() const { return m_strName; }
+    const std::wstring &getName() const { return m_strName; }
 
     /// Set class name.
     /// \param _strName Identifier.
-    void setName(const std::wstring & _strName) { m_strName = _strName; }
+    void setName(const std::wstring &_strName) { m_strName = _strName; }
 
     /// Get ancestor class.
     /// \return Pointer to ancestor class declaration.
-    const Class * getAncestor() const { return m_pAncestor; }
+    const ClassPtr &getAncestor() const { return m_pAncestor; }
 
     /// Set ancestor class.
     /// \param _pClass Pointer to ancestor class declaration.
-    void setAncestor(const Class * _pClass) { m_pAncestor = _pClass; }
+    void setAncestor(const ClassPtr &_pClass) { m_pAncestor = _pClass; }
 
 private:
-    const Class * m_pAncestor;
+    ClassPtr m_pAncestor;
     std::wstring m_strName;
 };
 
@@ -451,28 +410,23 @@ public:
 
     /// Get module name.
     /// \return Identifier.
-    const std::wstring & getName() const { return m_strName; }
+    const std::wstring &getName() const { return m_strName; }
 
     /// Set module name.
     /// \param _strName Identifier.
-    void setName(const std::wstring & _strName) { m_strName = _strName; }
+    void setName(const std::wstring &_strName) { m_strName = _strName; }
 
     /// Get list of imported module names.
     /// \return List of imported module names.
-    std::vector<std::wstring> & getImports() { return m_imports; }
+    std::vector<std::wstring> &getImports() { return m_imports; }
 
     /// Get list of declared classes.
     /// \return List of declared classes.
-    Collection<Class> & getClasses() { return m_classes; }
-
-    /// Get list of combinations of pragmas.
-    /// \return List of combinations of pragmas.
-//    Collection<PragmaGroup> & getPragmas() { return m_pragmas; }
+    Collection<Class> &getClasses() { return m_classes; }
 
 private:
     std::vector<std::wstring> m_imports;
     Collection<Class> m_classes;
-//    Collection<PragmaGroup> m_pragmas;
     std::wstring m_strName;
 };
 

@@ -24,7 +24,20 @@
 #include <string>
 #include <map>
 
+#include "autoptr.h"
+
 namespace ir {
+
+// Used s/Auto<([^_][\w:]*)>(?:\s+(>))?/\1Ptr\2/g to replace "Auto<Foo>" with "FooPtr".
+#define NODE(_Node, ...)    \
+    class _Node;            \
+    typedef Auto<_Node> _Node##Ptr;
+#include "nodes.inl"
+NODE(Node)
+NODE(Branch)
+NODE(CallBranch)
+NODE(NamedValues)
+#undef NODE
 
 /// Base class for all internal representation objects.
 ///
@@ -44,7 +57,7 @@ namespace ir {
 /// Node class also contains a (possibly NULL) pointer to list of pragmas
 /// relevant to the node's location in source code.
 ///
-class Node {
+class Node : public Counted {
 public:
     /// Node kind.
     enum {
@@ -68,59 +81,12 @@ public:
     };
 
     /// Default constructor.
-    Node() : m_pParent(NULL) /*, m_pPragmas(NULL)*/ {}
+    Node() {}
 
     /// Destructor.
     virtual ~Node() {}
 
     virtual int getNodeKind() const { return NONE; }
-
-    /// Get pointer to parent.
-    /// \return Parent of the parent node.
-    Node * getParent() const { return m_pParent; }
-
-    /// Set new parent for the node. Removes the node from the list children of
-    /// it's former parent.
-    /// \param _pParent New parent.
-    void setParent(Node * _pParent) const { m_pParent = _pParent; }
-/*
-    /// Get assosciated pragmas.
-    /// \return Pointer to pragma context relevant for the node.
-    const PragmaGroup * getPragmas() const {
-        return (m_pPragmas || ! m_pParent) ? m_pPragmas : m_pParent->getPragmas();
-    }
-
-    /// Set pragma context relevant for the node.
-    /// \param _pPragmas Pointer to the list of pragmas. Should point to the
-    ///   object stored in Module.
-    /// \see Module
-    void setPragmas(const PragmaGroup * _pPragmas) { m_pPragmas = _pPragmas; }
-*/
-protected:
-    mutable Node * m_pParent;
-//    const PragmaGroup * m_pPragmas;
-
-    /// Delete _pChild if it's parent is this node or NULL.
-    /// \param _pChild Node to delete.
-    void _delete(Node * _pChild) const {
-//        if (_pChild != NULL && _pChild->getParent() == this)
-//            delete _pChild;
-    }
-
-    /// Assign a subnode performing necessary checks and deleting old subnode if needed.
-    /// \param _pMember Pointer to a subnode to assign to.
-    /// \param _pNode Pointer to the new subnode.
-    /// \param _bReparent If specified (default) also sets parent of _pNode to this node.
-    template<class _Node>
-    void _assign(_Node * & _pMember, _Node * _pNode, bool _bReparent) {
-        if (_pMember != _pNode) {
-            _delete(_pMember);
-            _pMember = _pNode;
-        }
-
-        if (_bReparent && _pMember != NULL && ! _pMember->getParent())
-            _pMember->setParent(this);
-    }
 };
 
 /// Collection of homogeneous nodes.
@@ -137,11 +103,6 @@ class Collection : public _Base {
 public:
     /// Default constructor.
     Collection() {}
-
-    virtual ~Collection() {
-        for (size_t i = size(); i > 0; -- i)
-            _delete(get(i - 1));
-    }
 
     virtual int getNodeKind() const {
         if (_Base::getNodeKind() != Node::NONE)
@@ -160,71 +121,59 @@ public:
     /// Get element by index.
     /// \param _c Index of element (zero-based).
     /// \return Pointer to element or NULL if index is out of bounds.
-    _Node * get(size_t _c) const {
-        return _c < m_nodes.size() ? (_Node *) (m_nodes[_c]) : NULL;
+    Auto<_Node> get(size_t _c) const {
+        return _c < m_nodes.size() ? m_nodes[_c] : Auto<_Node>();
     }
 
     /// Add element to the collection.
     /// \param _pNode Pointer to node to add.
-    /// \param _bReparent If specified (default) also sets parent of _pNode to this node.
-    void add(_Node * _pNode, bool _bReparent = true) {
-        m_nodes.push_back((void *) _pNode);
-        if (_pNode && _bReparent)
-            _pNode->setParent(this);
+    void add(const Auto<_Node> &_pNode) {
+        m_nodes.push_back(_pNode);
     }
 
     /// Append elements from another collection.
     /// \param _other Other collection.
-    /// \param _bReparent If specified (default) also sets parent of new nodes to this node.
     template<typename _OtherNode>
-    void append(const Collection<_OtherNode> & _other, bool _bReparent = true) {
-        for (size_t i = 0; i < _other.size(); ++ i)
-            add(_other.get(i), _bReparent);
+    void append(const Collection<_OtherNode> &_other) {
+        for (size_t i = 0; i < _other.size(); ++i)
+            add(_other.get(i));
     }
 
     /// Replace element by index.
     /// \param _c Index of element (zero-based).
     /// \param _pNode Pointer to new element.
-    /// \param _bReparent If specified (default) also sets parent of _pNode to this node.
-    void set(size_t _c, _Node * _pNode, bool _bReparent = true) {
-        if (_c < m_nodes.size()) {
-            _delete((_Node *) (m_nodes[_c]));
-            m_nodes.push_back((void *) _pNode);
-            if (_pNode && _bReparent)
-                _pNode->setParent(this);
-        }
+    void set(size_t _c, const Auto<_Node> &_pNode) {
+        if (_c < m_nodes.size())
+            m_nodes[_c] = _pNode;
     }
 
     /// Remove element.
     /// \param _pNode Pointer to element to remove.
-    /// \param _bDeleteIfOwned Also delete _pNode if it is owned by the collection.
     /// \return True if node was successfully removed, false if not found.
-    bool remove(_Node * _pNode, bool _bDeleteIfOwned = false) {
+    bool remove(const Auto<_Node> &_pNode) {
         std::vector<void *>::iterator iNode =
-            std::find(m_nodes.begin(), m_nodes.end(), (void *) _pNode);
+            std::find(m_nodes.begin(), m_nodes.end(), _pNode);
         if (iNode == m_nodes.end())
             return false;
-        if (_bDeleteIfOwned)
-            _delete(_pNode);
         m_nodes.erase(iNode);
         return true;
     }
 
-    size_t findByNameIdx(const std::wstring & _name) const {
-        for (size_t i = 0; i < size(); ++ i)
+    size_t findByNameIdx(const std::wstring &_name) const {
+        for (size_t i = 0; i < size(); ++i)
             if (get(i)->getName() == _name)
                 return i;
 
-        return (size_t) -1;
+        return (size_t)-1;
     }
 
 private:
-    std::vector<void *> m_nodes;
+    std::vector<Auto<_Node> > m_nodes;
 };
 
 class Type;
 
-typedef std::map<Type *, Type *> TypeSubst;
+typedef std::map<TypePtr, TypePtr> TypeSubst;
 
 /// Virtual ancestor of all types.
 class Type : public Node {
@@ -316,32 +265,27 @@ public:
         ORD_EQUALS  = 0x10,
     };
 
-    virtual int compare(const Type & _other) const;
-    bool compare(const Type & _other, int _order) const;
+    // Subtyping.
+    virtual int compare(const Type &_other) const;
+    bool compare(const Type &_other, int _order) const;
+    virtual TypePtr getJoin(Type &_other); // Supremum.
+    virtual TypePtr getMeet(Type &_other); // Infinum.
 
     // For comparison/sorting only, no subtyping relation is implied.
-    bool operator <(const Type & _other) const;
-    bool operator ==(const Type & _other) const;
-    bool operator !=(const Type & _other) const;
-    virtual bool less(const Type & _other) const;
+    bool operator <(const Type &_other) const;
+    bool operator ==(const Type &_other) const;
+    bool operator !=(const Type &_other) const;
+    virtual bool less(const Type &_other) const;
 
-    /*bool operator ==(const Type & _other) const { return compare(_other) == OrdEquals; }
-    bool operator <(const Type & _other) const { return compare(_other) == OrdSub; }
-    bool operator <=(const Type & _other) const {
-        const int n = compare(_other);
-        return n == OrdSub || n == OrdEquals;
-    }*/
+    // Perform deep copy.
+    virtual TypePtr clone() const;
 
-    virtual Type *getJoin(ir::Type & _other); // Supremum.
-    virtual Type *getMeet(ir::Type & _other); // Infinum.
-
-    virtual ir::Type * clone() const;
     virtual bool hasFresh() const;
-    virtual bool rewrite(ir::Type * _pOld, ir::Type * _pNew) { return false; }
+    virtual bool rewrite(const TypePtr &_pOld, const TypePtr &_pNew) { return false; }
     virtual bool rewriteFlags(int _flags) { return false; }
 
     // Check if _pType is structurally contained.
-    virtual bool contains(const ir::Type *_pType) const { return false; }
+    virtual bool contains(const TypePtr &_pType) const { return false; }
 
     virtual bool hasParameters() const { return m_kind == INT || m_kind == NAT || m_kind == REAL; }
 
@@ -383,15 +327,8 @@ public:
     /// Constructor for initializing using name.
     /// \param _strName Identifier.
     /// \param _pType Type associated with value.
-    /// \param _bReparent If specified (default) also sets parent of _pType to this node.
-    NamedValue(const std::wstring & _strName, Type * _pType = NULL, bool _bReparent = true)
-        : m_pType(NULL), m_strName(_strName)
-    {
-        _assign(m_pType, _pType, _bReparent);
-    }
-
-    /// Destructor.
-    virtual ~NamedValue() { _delete(m_pType); }
+    NamedValue(const std::wstring &_strName, const TypePtr &_pType = NULL)
+        : m_pType(_pType), m_strName(_strName) {}
 
     virtual int getNodeKind() const { return Node::NAMED_VALUE; }
 
@@ -401,25 +338,22 @@ public:
 
     /// Get name of the value.
     /// \returns Identifier.
-    const std::wstring & getName() const { return m_strName; }
+    const std::wstring &getName() const { return m_strName; }
 
     /// Set name of the value.
     /// \param _strName Identifier.
-    void setName(const std::wstring & _strName) { m_strName = _strName; }
+    void setName(const std::wstring &_strName) { m_strName = _strName; }
 
     /// Get type of the value.
     /// \returns Type associated with value.
-    Type * getType() const { return m_pType; }
+    TypePtr getType() const { return m_pType; }
 
     /// Set type of the value.
     /// \param _pType Type associated with value.
-    /// \param _bReparent If specified (default) also sets parent of _pType to this node.
-    void setType(Type * _pType, bool _bReparent = true) {
-        _assign(m_pType, _pType, _bReparent);
-    }
+    void setType(const TypePtr &_pType) { m_pType = _pType; }
 
 private:
-    Type * m_pType;
+    TypePtr m_pType;
     std::wstring m_strName;
 };
 
@@ -436,12 +370,8 @@ public:
     /// Constructor for initializing using name.
     /// \param _strName Identifier.
     /// \param _pType Type associated with value.
-    /// \param _bReparent If specified (default) also sets parent of _pType to this node.
-    Param(const std::wstring & _strName, Type * _pType = NULL, bool _bReparent = true)
-        : NamedValue(_strName, _pType, _bReparent), m_pLinkedParam(NULL), m_bOutput(false) {}
-
-    /// Destructor.
-    virtual ~Param() {}
+    Param(const std::wstring &_strName, const TypePtr &_pType = NULL)
+        : NamedValue(_strName, _pType), m_pLinkedParam(NULL), m_bOutput(false) {}
 
     /// Get value kind.
     /// \returns #PredicateParameter.
@@ -449,11 +379,11 @@ public:
 
     /// Get pointer to (constant) linked parameter.
     /// \returns Linked parameter.
-    const Param * getLinkedParam() const { return m_pLinkedParam; }
+    const ParamPtr &getLinkedParam() const { return m_pLinkedParam; }
 
     /// Set linked parameter pointer.
     /// \param _pParam Linked parameter.
-    void setLinkedParam(const Param * _pParam) { m_pLinkedParam = _pParam; }
+    void setLinkedParam(const ParamPtr &_pParam) { m_pLinkedParam = _pParam; }
 
     /// Check if a linked parameter is needed.
     /// \returns True if a linked parameter is needed, false otherwise.
@@ -464,7 +394,7 @@ public:
     void setOutput(bool _bValue) { m_bOutput = _bValue; }
 
 private:
-    const Param * m_pLinkedParam;
+    ParamPtr m_pLinkedParam;
     bool m_bOutput;
 };
 
@@ -488,20 +418,17 @@ public:
 
     /// Constructor for initializing using name.
     /// \param _strName Label name.
-    Label(const std::wstring & _strName) : m_strName(_strName) {}
-
-    /// Destructor.
-    virtual ~Label() {}
+    Label(const std::wstring &_strName) : m_strName(_strName) {}
 
     virtual int getNodeKind() const { return Node::LABEL; }
 
     /// Get name of the value.
     /// \returns Label name.
-    const std::wstring & getName() const { return m_strName; }
+    const std::wstring &getName() const { return m_strName; }
 
     /// Set name of the value.
     /// \param _strName Label name.
-    void setName(const std::wstring & _strName) { m_strName = _strName; }
+    void setName(const std::wstring &_strName) { m_strName = _strName; }
 
 private:
     std::wstring m_strName;
@@ -557,8 +484,6 @@ public:
     /// Default constructor.
     Statement() : m_pLabel(NULL) {}
 
-    virtual ~Statement() { _delete(m_pLabel); }
-
     virtual int getNodeKind() const { return Node::STATEMENT; }
 
     /// Get statement kind.
@@ -567,21 +492,18 @@ public:
 
     /// Get optional label that can be associated with the statement.
     /// \return Label pointer (possibly NULL).
-    Label * getLabel() const { return m_pLabel; }
+    const LabelPtr &getLabel() const { return m_pLabel; }
 
     /// Associated a label with the statement.
     /// \param _pLabel Label pointer (possibly NULL).
-    /// \param _bReparent If specified (default) also sets parent of _pLabel to this node.
-    void setLabel(Label * _pLabel, bool _bReparent = true) {
-        _assign(m_pLabel, _pLabel, _bReparent);
-    }
+    void setLabel(const LabelPtr &_pLabel) { m_pLabel = _pLabel; }
 
     // Check if the statement ends like a block (i.e. separating semicolon is not needed).
     // \return True if the statement ends like a block, false otherwise.
     virtual bool isBlockLike() const { return false; }
 
 private:
-    Label * m_pLabel;
+    LabelPtr m_pLabel;
 };
 
 /// Block of statements (statements surrounded by curly braces in source code).
@@ -616,9 +538,9 @@ public:
     virtual bool isBlockLike() const { return false; }
 };
 
-bool isTypeVariable(const NamedValue *_pVar, const Type *&_pType);
+bool isTypeVariable(const NamedValuePtr &_pVar);
 
-const Type *resolveBaseType(const Type *_pType);
+TypePtr resolveBaseType(const TypePtr &_pType);
 
 } // namespace ir
 

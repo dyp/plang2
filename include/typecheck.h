@@ -16,47 +16,50 @@
 
 namespace tc {
 
+class Formula;
+typedef Auto<Formula> FormulaPtr;
+class CompoundFormula;
+typedef Auto<CompoundFormula> CompoundFormulaPtr;
+
 class TypeSetterBase {
 public:
     virtual ~TypeSetterBase() {}
-    virtual void setType(ir::Type * _pType) = 0;
+    virtual void setType(const ir::TypePtr &_pType) = 0;
 };
 
-template <typename Node, void (Node::*Method)(ir::Type *, bool)>
+typedef Auto<TypeSetterBase> TypeSetterBasePtr;
+
+template <typename _Node, void (_Node::*_Method)(const ir::TypePtr &)>
 class TypeSetter : public TypeSetterBase {
 public:
-    TypeSetter(Node * _pNode) : m_pNode(_pNode) {}
+    TypeSetter(const Auto<_Node> &_pNode) : m_pNode(_pNode) {}
 
-    virtual void setType(ir::Type * _pType) { ((*m_pNode).*(Method))(_pType, true); }
+    virtual void setType(const ir::TypePtr &_pType) { ((*m_pNode).*(_Method))(_pType); }
 
 protected:
-    Node * m_pNode;
+    Auto<_Node> m_pNode;
 };
 
-template <typename Node>
-inline TypeSetterBase *createTypeSetter(Node *_pNode) {
-    return new TypeSetter<Node, &Node::setType>(_pNode);
+template <typename _Node>
+inline TypeSetterBasePtr createTypeSetter(const Auto<_Node> &_pNode) {
+    return ptr(new TypeSetter<_Node, &_Node::setType>(_pNode));
 }
 
-template <typename Node>
-inline TypeSetterBase *createBaseTypeSetter(Node *_pNode) {
-    return new TypeSetter<Node, &Node::setBaseType>(_pNode);
+template <typename _Node>
+inline TypeSetterBasePtr createBaseTypeSetter(const Auto<_Node> &_pNode) {
+    return ptr(new TypeSetter<_Node, &_Node::setBaseType>(_pNode));
 }
 
-template <typename Node>
-inline TypeSetterBase *createIndexTypeSetter(Node *_pNode) {
-    return new TypeSetter<Node, &Node::setIndexType>(_pNode);
+template <typename _Node>
+inline TypeSetterBasePtr createIndexTypeSetter(const Auto<_Node> &_pNode) {
+    return ptr(new TypeSetter<_Node, &_Node::setIndexType>(_pNode));
 }
 
 class FreshType : public ir::Type {
 public:
-    //template <typename Node>
-    FreshType(/*Node * _pNode*/) : m_flags(0) {
-        //m_pTypeSetter = new TypeSetter<Node>(_pNode);
-        m_cOrd = ++ g_cOrdMax;
+    FreshType() : m_flags(0) {
+        m_cOrd = ++g_cOrdMax;
     }
-
-    virtual ~FreshType() { /*delete m_pTypeSetter;*/ }
 
     enum {
         NONE      = 0x00,
@@ -65,12 +68,18 @@ public:
     };
 
     int getFlags() const { return m_flags; }
+
     void setFlags(int _flags) { m_flags = _flags; }
-    int addFlags(int _flags) { m_flags |= _flags; return m_flags; }
 
-    virtual bool rewriteFlags(int _flags) { addFlags(_flags); return true; }
+    int addFlags(int _flags) {
+        m_flags |= _flags;
+        return m_flags;
+    }
 
-    //void replaceType(ir::Type * _pType) { m_pTypeSetter->setType(_pType); }
+    virtual bool rewriteFlags(int _flags) {
+        addFlags(_flags);
+        return true;
+    }
 
     /// Get type kind.
     /// \returns #Fresh.
@@ -78,24 +87,22 @@ public:
 
     virtual bool less(const ir::Type & _other) const;
 
-    virtual ir::Type * clone() const;
+    virtual ir::TypePtr clone() const;
 
     size_t getOrdinal() const { return m_cOrd; }
 
 private:
-    /*FreshType(TypeSetterBase * _pTypeSetter, size_t _cOrd) : m_pTypeSetter(_pTypeSetter), m_cOrd(_cOrd) {
-    }*/
-
-    //TypeSetterBase * m_pTypeSetter;
     size_t m_cOrd;
     static size_t g_cOrdMax;
     int m_flags;
 };
 
+typedef Auto<FreshType> FreshTypePtr;
+
 class TupleType : public ir::Type {
 public:
     /// Default constructor.
-    TupleType(const ir::NamedValues *_pFields) : m_fields(*_pFields) {}
+    TupleType(const ir::NamedValuesPtr &_pFields) : m_pFields(_pFields) {}
 
     /// Get type kind.
     /// \returns #Tuple.
@@ -103,21 +110,23 @@ public:
 
     /// Get list of struct fields.
     /// \return List of fields.
-    ir::NamedValues &getFields() { return (ir::NamedValues &)m_fields; }
-    const ir::NamedValues &getFields() const { return m_fields; }
+    ir::NamedValues &getFields() { return *m_pFields; }
+    const ir::NamedValues &getFields() const { return *m_pFields; }
 
     virtual int compare(const Type &_other) const;
-    virtual ir::Type *getMeet(ir::Type &_other);
-    virtual ir::Type *getJoin(ir::Type &_other);
+    virtual ir::TypePtr getMeet(ir::Type &_other);
+    virtual ir::TypePtr getJoin(ir::Type &_other);
     virtual bool less(const Type &_other) const;
 
 private:
-    const ir::NamedValues &m_fields;
+    ir::NamedValuesPtr m_pFields;
 };
 
-typedef std::multimap<FreshType *, TypeSetterBase *> FreshTypes;
+typedef Auto<TupleType> TupleTypePtr;
 
-class Formula {
+typedef std::multimap<FreshTypePtr, TypeSetterBasePtr> FreshTypes;
+
+class Formula : public Counted {
 public:
     enum {
         EQUALS          = 0x01,
@@ -138,55 +147,50 @@ public:
         TRUE,
     };
 
-    Formula(int _kind, ir::Type * _pLhs = NULL, ir::Type * _pRhs = NULL) : m_kind(_kind), m_pLhs(_pLhs), m_pRhs(_pRhs) {}
+    Formula(int _kind, const ir::TypePtr &_pLhs = NULL, const ir::TypePtr &_pRhs = NULL) :
+        m_kind(_kind), m_pLhs(_pLhs), m_pRhs(_pRhs) {}
 
     bool is(int _kind) const { return (m_kind & _kind) != 0; }
+
     int getKind() const { return m_kind; }
-    ir::Type * getLhs() const { return m_pLhs; }
-    void setLhs(ir::Type * _pType) { m_pLhs = _pType; }
-    ir::Type * getRhs() const { return m_pRhs; }
-    void setRhs(ir::Type * _pType) { m_pRhs = _pType; }
+
+    const ir::TypePtr &getLhs() const { return m_pLhs; }
+    void setLhs(const ir::TypePtr &_pType) { m_pLhs = _pType; }
+
+    const ir::TypePtr &getRhs() const { return m_pRhs; }
+    void setRhs(const ir::TypePtr &_pType) { m_pRhs = _pType; }
 
     bool hasFresh() const;
 
-    virtual bool rewrite(ir::Type * _pOld, ir::Type * _pNew);
+    virtual bool rewrite(const ir::TypePtr &_pOld, const ir::TypePtr &_pNew);
 
     virtual int eval() const;
 
-    // return A && B if it can be expressed as a single formula.
-    Formula * mergeAnd(Formula & _other);
-
-    // return A || B if it can be expressed as a single formula.
-    Formula * mergeOr(Formula & _other);
-
-    bool implies(Formula & _other);
+    bool implies(const Formula &_other);
 
     bool isSymmetric() const;
 
-    virtual Formula *clone() const;
-
-//    int invKind() const;
+    virtual FormulaPtr clone() const;
 
 private:
     int m_kind;
-    ir::Type * m_pLhs, * m_pRhs;
+    ir::TypePtr m_pLhs, m_pRhs;
 };
 
 struct FormulaCmp {
-    typedef Formula * T;
-    bool operator()(const T & _lhs, const T & _rhs) const;
+    typedef FormulaPtr T;
+    bool operator()(const T &_lhs, const T &_rhs) const;
 };
 
-typedef std::set<Formula *, FormulaCmp> FormulaSet;
-typedef std::list<Formula *> FormulaList;
+typedef std::set<FormulaPtr, FormulaCmp> FormulaSet;
+typedef std::list<FormulaPtr> FormulaList;
 
 struct Formulas : public FormulaSet {
     FormulaSet substs;
 
-    bool rewrite(ir::Type * _pOld, ir::Type * _pNew, bool _bKeepOrig = false);
-    Formula * lookup(int _op, int _ordLhs, ir::Type * _pLhs, int _ordRhs, ir::Type * _pRhs);
-    bool implies(Formula & _f) const;
-    virtual Formulas *clone() const;
+    bool rewrite(const ir::TypePtr &_pOld, const ir::TypePtr &_pNew);
+    bool implies(Formula &_f) const;
+    virtual Auto<Formulas> clone() const;
 };
 
 class CompoundFormula : public Formula {
@@ -194,29 +198,28 @@ public:
     CompoundFormula() : Formula(COMPOUND) {}
 
     size_t size() const { return m_parts.size(); }
-    Formulas & getPart(size_t _i) { return * m_parts[_i]; }
-    const Formulas & getPart(size_t _i) const { return * m_parts[_i]; }
-    Formulas & addPart();
-    void addPart(Formulas *_pFormulas);
+    Formulas &getPart(size_t _i) { return *m_parts[_i]; }
+    const Formulas &getPart(size_t _i) const { return *m_parts[_i]; }
+    Formulas &addPart();
+    void addPart(const Auto<Formulas> &_pFormulas);
     void removePart(size_t _i) { m_parts.erase(m_parts.begin() + _i); }
 
-    virtual bool rewrite(ir::Type * _pOld, ir::Type * _pNew);
-    void merge(Formulas & _dest);
+    virtual bool rewrite(const ir::TypePtr &_pOld, const ir::TypePtr &_pNew);
     virtual int eval() const;
     size_t count() const;
-    virtual Formula *clone() const;
+    virtual FormulaPtr clone() const;
 
 private:
-    std::vector<Formulas *> m_parts;
+    std::vector<Auto<Formulas> > m_parts;
 };
 
-bool rewriteType(ir::Type * & _pType, ir::Type * _pOld, ir::Type * _pNew);
+bool rewriteType(ir::TypePtr &_pType, const ir::TypePtr &_pOld, const ir::TypePtr &_pNew);
 
-bool solve(Formulas & _formulas);
+bool solve(Formulas &_formulas);
 
-void collect(Formulas & _constraints, ir::Node &_node, Context & _ctx, FreshTypes & _types);
+void collect(Formulas &_constraints, ir::Node &_node, Context &_ctx, FreshTypes &_types);
 
-void apply(Formulas & _constraints, tc::FreshTypes & _types);
+void apply(Formulas &_constraints, tc::FreshTypes &_types);
 
 }; // namespace tc
 

@@ -19,7 +19,7 @@ inline void freeList(std::list<T *> & _list) {
     _list.clear();
 }
 
-class Type {
+class Type : public Counted {
 public:
     enum {
         UNDEFINED,
@@ -183,7 +183,7 @@ private:
 
 class Instruction;
 
-class Variable {
+class Variable : public Counted {
 public:
     Variable() : m_bAlive(true), m_bUsed(false) {}
     Variable(const Auto<Type> & _type) : m_type(_type), m_bAlive(true), m_bUsed(false) {}
@@ -220,7 +220,7 @@ class Literal;
 
 typedef std::list<Auto<Literal> > Literals;
 
-class Literal {
+class Literal : public Counted {
 public:
     enum {
         NUMBER,
@@ -243,7 +243,7 @@ public:
     void setNumber(const Number & _number) {
         //m_type = new Type(Type::Int32);
         m_kind = NUMBER;
-        assert(! m_type.empty());
+        assert(m_type);
         m_number = _number;
     }
 
@@ -296,7 +296,7 @@ private:
 
 typedef std::list<Auto<Constant> > Consts;
 
-class Label {
+class Label : public Counted {
 public:
     Label() : m_cUsageCount(0) {}
 
@@ -313,7 +313,7 @@ private:
     size_t m_cUsageCount;
 };
 
-class Instruction {
+class Instruction : public Counted {
 public:
     enum {
         UNDEFINED,
@@ -386,7 +386,7 @@ private:
 
 typedef std::list<Auto<Function> > Functions;
 
-class Module {
+class Module : public Counted {
 public:
     ~Module() { /*freeList(m_functions);*/ }
 
@@ -409,7 +409,7 @@ private:
     Consts m_consts;
 };
 
-class Operand {
+class Operand : public Counted {
 public:
     enum {
         EMPTY,
@@ -480,7 +480,7 @@ public:
                 break;
         }
 
-        if (! type.empty())
+        if (type)
             m_var = new Variable(type);
     }
 
@@ -552,7 +552,7 @@ public:
         else if (_kind == QINIT)
             type = new Type(Type::GMP_Q);
 
-        if (! type.empty())
+        if (type)
             m_var = new Variable(type);
     }
 
@@ -593,7 +593,7 @@ typedef std::list<Operand> Operands;
 class Call : public Instruction {
 public:
     Call(const Operand & _function, const Auto<FunctionType> & _type) : m_function(_function), m_type(_type) {
-        if (! m_type->getReturnType().empty() && m_type->getReturnType()->getKind() != Type::VOID)
+        if (m_type->getReturnType() && m_type->getReturnType()->getKind() != Type::VOID)
             m_var = new Variable(m_type->getReturnType());
     }
 

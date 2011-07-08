@@ -14,13 +14,13 @@ public:
     }
 
     std::list<std::wstring> m_path;
-    Node *m_pPrevNode;
+    NodePtr m_pPrevNode;
     int m_nPrevDepth;
 
     void print() {
         for (std::list<std::wstring>::iterator i = m_path.begin(); i != m_path.end(); ++i)
             std::wcout << L"/" << *i;
-        if (m_pPrevNode != NULL) {
+        if (m_pPrevNode) {
             std::wcout << L" = ";
             prettyPrintCompact(*m_pPrevNode, std::wcout, PPC_NO_INCOMPLETE_TYPES);
         }

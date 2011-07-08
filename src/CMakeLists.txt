@@ -3,6 +3,8 @@ cmake_minimum_required(VERSION 2.8)
 set(TARGET plang)
 
 set(SOURCES
+    autoptr.cpp
+    utils.cpp
     ir/base.cpp
     ir/builtins.cpp
     ir/expressions.cpp
@@ -27,7 +29,6 @@ set(SOURCES
     prettyprinter.cpp
     solve_constraints.cpp
     typecheck.cpp
-    utils.cpp
 )
 
 add_definitions(

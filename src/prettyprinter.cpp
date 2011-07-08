@@ -14,7 +14,7 @@ static std::wstring fmtBits(int _bits) {
     switch (_bits) {
         case Number::GENERIC: return L"generic"; break;
         case Number::NATIVE:  return L"native";  break;
-        default:               return fmtInt(_bits);
+        default:              return fmtInt(_bits);
     }
 }
 
@@ -73,7 +73,7 @@ static std::wstring fmtQuantifier(int _kind) {
     switch (_kind) {
         case Formula::UNIVERSAL:   return L"universal";
         case Formula::EXISTENTIAL: return L"existential";
-        default:                    return L"";
+        default:                   return L"";
     }
 }
 
@@ -84,7 +84,7 @@ static std::wstring fmtLiteralKind(int _kind) {
         case Literal::BOOL:   return L"bool";
         case Literal::CHAR:   return L"char";
         case Literal::STRING: return L"string";
-        default:               return L"";
+        default:              return L"";
     }
 }
 
@@ -107,7 +107,7 @@ static std::wstring fmtLiteral(const Literal &_lit) {
         case Literal::BOOL:   return fmtBool(_lit.getBool());
         case Literal::CHAR:   return fmtChar(_lit.getChar());
         case Literal::STRING: return fmtQuote(_lit.getString());
-        default:               return L"";
+        default:              return L"";
     }
 }
 
@@ -117,18 +117,18 @@ static std::wstring fmtOverflow(const Overflow &_ovf) {
         case Overflow::STRICT:   return L"strict";
         case Overflow::RETURN:   return L"return";
         case Overflow::WRAP:     return L"wrap";
-        default:                  return L"";
+        default:                 return L"";
     }
 }
 
-static std::wstring fmtLabel(const Label *_pLabel) {
+static std::wstring fmtLabel(const LabelPtr &_pLabel) {
     return fmtQuote(_pLabel ? _pLabel->getName() : L"");
 }
 
-std::map<ir::Type *, std::wstring> g_freshTypes;
+std::map<size_t, std::wstring> g_freshTypes;
 
 static std::wstring fmtFreshType(tc::FreshType &_type) {
-    std::wstring strName = g_freshTypes[&_type];
+    std::wstring strName = g_freshTypes[_type.getOrdinal()];
 
     if (strName.empty()) {
         const size_t nType = g_freshTypes.size() - 1;
@@ -141,13 +141,13 @@ static std::wstring fmtFreshType(tc::FreshType &_type) {
         if (nNum > 0)
             strName += fmtInt(nNum);
 
-        g_freshTypes[& _type] = strName;
+        g_freshTypes[_type.getOrdinal()] = strName;
     }
 
     return strName;
 }
 
-std::wstring PrettyPrinterBase::fmtIndent(const std::wstring & _s) {
+std::wstring PrettyPrinterBase::fmtIndent(const std::wstring &_s) {
     std::wstring res;
 
     for (size_t i = 0; i < getDepth(); ++ i)
@@ -158,7 +158,7 @@ std::wstring PrettyPrinterBase::fmtIndent(const std::wstring & _s) {
 
 std::wstring PrettyPrinterBase::fmtType(int _kind) {
     switch (_kind) {
-        case Type::FRESH:   return fmtFreshType(*(tc::FreshType *)getLoc().pNode);
+        case Type::FRESH:   return fmtFreshType((tc::FreshType &)getNode());
         case Type::BOTTOM:  return L"\x22a5";
         case Type::TOP:     return L"\x22a4";
         case Type::UNIT:    return L"nil";
@@ -170,7 +170,7 @@ std::wstring PrettyPrinterBase::fmtType(int _kind) {
         case Type::STRING:  return L"string";
         case Type::TYPE:    return L"type";
         case Type::GENERIC: return L"generic";
-        default:             return L"";
+        default:            return L"";
     }
 }
 
@@ -282,11 +282,8 @@ protected:
     );
 
     VISITOR(Expression,
-            if (_node.getType()) {
-                Ctx ctx(this, _node.getType(), N_Type, R_ExprType, &Visitor::handleExprType, NULL);
-                return traverseType(*_node.getType());
-            } else
-                return true;
+            VISITOR_TRAVERSE(Type, ExprType, _node.getType(), _node, Expression, setType);
+            return true;
     );
 
     VISITOR(Param,
@@ -339,7 +336,7 @@ void print(ir::Node &_node, std::wostream &_os) {
 
 class PrettyPrinterCompact: public PrettyPrinterBase {
 public:
-    PrettyPrinterCompact(std::wostream &_os, const Node *_pRoot, int _nFlags) : PrettyPrinterBase(_os), m_pRoot(_pRoot), m_nFlags(_nFlags) {}
+    PrettyPrinterCompact(std::wostream &_os, NodePtr _pRoot, int _nFlags) : PrettyPrinterBase(_os), m_pRoot(_pRoot), m_nFlags(_nFlags) {}
 
     void print(Node &_node) {
         if (&_node == NULL)
@@ -349,7 +346,7 @@ public:
     }
 
     virtual bool visitNamedValue(NamedValue &_val) {
-        if (&_val != m_pRoot) {
+        if (&_val != m_pRoot.ptr()) {
             if (getLoc().bPartOfCollection && !getLoc().bFirstInCollection)
                 m_os << L", ";
             else if (getLoc().role == R_PredicateTypeOutParam && getLoc().bFirstInCollection)
@@ -389,7 +386,7 @@ public:
 
     virtual bool visitTypeType(TypeType &_type) {
         m_os << L"<";
-        if (Type *pType = _type.getDeclaration()->getType())
+        if (TypePtr pType = _type.getDeclaration()->getType())
             traverseType(*pType);
         m_os << L">";
         return false;
@@ -460,25 +457,25 @@ public:
     virtual bool traverseStructType(StructType &_type) {
         m_os << L"(";
         VISITOR_ENTER(StructType, _type);
-        VISITOR_TRAVERSE_COL(NamedValue, StructFieldDecl, &_type.getNamesOrd());
+        VISITOR_TRAVERSE_COL(NamedValue, StructFieldDecl, _type.getNamesOrd());
         if (!_type.getNamesOrd().empty() && !_type.getTypesOrd().empty())
             m_os << L"; ";
-        VISITOR_TRAVERSE_COL(NamedValue, StructFieldDecl, &_type.getTypesOrd());
+        VISITOR_TRAVERSE_COL(NamedValue, StructFieldDecl, _type.getTypesOrd());
 
         if (!_type.getNamesSet().empty()) {
             // Ensure sorting for debug purposes (don't reorder source collection though).
-            std::map<std::wstring, NamedValue *> sortedFieldsMap;
+            std::map<std::wstring, NamedValuePtr> sortedFieldsMap;
             NamedValues sortedFields;
 
             for (size_t i = 0; i < _type.getNamesSet().size(); ++i)
                 sortedFieldsMap[_type.getNamesSet().get(i)->getName()] = _type.getNamesSet().get(i);
 
-            for (std::map<std::wstring, NamedValue *>::iterator i = sortedFieldsMap.begin();
+            for (std::map<std::wstring, NamedValuePtr>::iterator i = sortedFieldsMap.begin();
                     i != sortedFieldsMap.end(); ++i)
-                sortedFields.add(i->second, false);
+                sortedFields.add(i->second);
 
             m_os << L"; ";
-            VISITOR_TRAVERSE_COL(NamedValue, StructFieldDecl, &sortedFields);
+            VISITOR_TRAVERSE_COL(NamedValue, StructFieldDecl, sortedFields);
         }
         m_os << L")";
         VISITOR_EXIT();
@@ -492,11 +489,11 @@ public:
     }
 
     virtual bool visitUnionConstructorDeclaration(UnionConstructorDeclaration &_cons) {
-        if (&_cons != m_pRoot && getLoc().bPartOfCollection && !getLoc().bFirstInCollection)
+        if (&_cons != m_pRoot.ptr() && getLoc().bPartOfCollection && !getLoc().bFirstInCollection)
             m_os << L", ";
 
         m_os << _cons.getName() << L"(";
-        VISITOR_TRAVERSE_COL(NamedValue, UnionConsField, &_cons.getFields());
+        VISITOR_TRAVERSE_COL(NamedValue, UnionConsField, _cons.getFields());
         m_os << L")";
         return false;
     }
@@ -513,60 +510,66 @@ public:
     }
 
 private:
-    const Node *m_pRoot;
+    NodePtr m_pRoot;
     int m_nFlags;
 };
 
-void prettyPrint(tc::Formulas & _constraints, std::wostream & _os) {
+void prettyPrint(tc::Formulas &_constraints, std::wostream &_os) {
     static PrettyPrinterCompact pp(_os, NULL, 0);
 
     _os << L"\n";
 
     size_t c = 0;
 
-    for (tc::Formulas::iterator i = _constraints.begin(); i != _constraints.end(); ++ i, ++c) {
-        tc::Formula & f = ** i;
+    for (tc::Formulas::iterator i = _constraints.begin(); i != _constraints.end(); ++i, ++c) {
+        tc::Formula &f = **i;
 
-        if (! f.is(tc::Formula::COMPOUND)) {
+        if (!f.is(tc::Formula::COMPOUND)) {
             _os << c << ":  ";
-            pp.print(* f.getLhs());
+            pp.print(*f.getLhs());
             _os << L" " << fmtTypeFormulaOp(f.getKind()) << L" ";
-            pp.print(* f.getRhs());
+            pp.print(*f.getRhs());
         } else {
-            tc::CompoundFormula & cf = (tc::CompoundFormula &) f;
+            tc::CompoundFormula &cf = (tc::CompoundFormula &)f;
 
-            for (size_t j = 0; j < cf.size(); ++ j) {
+            for (size_t j = 0; j < cf.size(); ++j) {
                 if (j > 0)
                     _os << L"\n  or ";
+
                 _os << L"(";
 
-                tc::Formulas & part = cf.getPart(j);
+                tc::Formulas &part = cf.getPart(j);
 
-                for (tc::Formulas::iterator k = part.begin(); k != part.end(); ++ k) {
-                    tc::Formula & g = ** k;
-                    assert(! g.is(tc::Formula::COMPOUND));
+                for (tc::Formulas::iterator k = part.begin(); k != part.end(); ++k) {
+                    tc::Formula &g = **k;
+
+                    assert(!g.is(tc::Formula::COMPOUND));
+
                     if (k != part.begin())
                         _os << L" and ";
-                    pp.print(* g.getLhs());
+
+                    pp.print(*g.getLhs());
                     _os << L" " << fmtTypeFormulaOp(g.getKind()) << L" ";
-                    pp.print(* g.getRhs());
+                    pp.print(*g.getRhs());
                 }
+
                 _os << L")";
 
-                if (! part.substs.empty()) {
+                if (!part.substs.empty()) {
                     _os << L"\t|    ";
 
-                    for (tc::FormulaSet::iterator j = part.substs.begin(); j != part.substs.end(); ++ j) {
-                        tc::Formula & g = ** j;
+                    for (tc::FormulaSet::iterator j = part.substs.begin(); j != part.substs.end(); ++j) {
+                        tc::Formula &g = **j;
 
                         if (j != part.substs.begin())
                             _os << L", ";
-                        assert(g.getLhs() != NULL);
-                        assert(g.getRhs() != NULL);
 
-                        pp.print(* g.getLhs());
+                        assert(g.getLhs());
+                        assert(g.getRhs());
+
+                        pp.print(*g.getLhs());
                         _os << L" -> ";
-                        pp.print(* g.getRhs());
+                        pp.print(*g.getRhs());
                     }
                 }
             }
@@ -577,20 +580,20 @@ void prettyPrint(tc::Formulas & _constraints, std::wostream & _os) {
 
     _os << L"----------\n";
 
-    for (tc::FormulaSet::iterator i = _constraints.substs.begin(); i != _constraints.substs.end(); ++ i) {
-        tc::Formula & f = ** i;
+    for (tc::FormulaSet::iterator i = _constraints.substs.begin(); i != _constraints.substs.end(); ++i) {
+        tc::Formula &f = **i;
 
-        assert(f.getLhs() != NULL);
-        assert(f.getRhs() != NULL);
+        assert(f.getLhs());
+        assert(f.getRhs());
 
-        pp.print(* f.getLhs());
+        pp.print(*f.getLhs());
         _os << L" -> ";
-        pp.print(* f.getRhs());
+        pp.print(*f.getRhs());
         _os << L"\n";
     }
 }
 
-void prettyPrintCompact(Node & _node, std::wostream & _os, int _nFlags) {
+void prettyPrintCompact(Node &_node, std::wostream &_os, int _nFlags) {
     PrettyPrinterCompact pp(_os, &_node, _nFlags);
     pp.traverseNode(_node);
 }

@@ -12,8 +12,8 @@ bool Type::hasFresh() const {
     return getKind() == FRESH;
 }
 
-Type * Type::clone() const {
-    Type * pType = new Type(m_kind);
+TypePtr Type::clone() const {
+    TypePtr pType = new Type(m_kind);
 
     pType->setBits(m_nBits);
 
@@ -47,11 +47,11 @@ int cmpNatInt(int _bitsL, int _bitsR) {
     return Type::ORD_NONE;
 }
 
-int Type::compare(const Type & _other) const {
+int Type::compare(const Type &_other) const {
     typedef std::pair<int, int> P;
     P kinds(getKind(), _other.getKind());
 
-    if (this == & _other)
+    if (this == &_other)
         return ORD_EQUALS;
 
     if (getKind() == BOTTOM || _other.getKind() == TOP)
@@ -99,19 +99,19 @@ int Type::compare(const Type & _other) const {
     return ORD_NONE;
 }
 
-bool Type::compare(const Type & _other, int _order) const {
+bool Type::compare(const Type &_other, int _order) const {
     return (compare(_other) & _order) != 0;
 }
 
-bool Type::operator ==(const Type & _other) const {
+bool Type::operator ==(const Type &_other) const {
     return !(*this < _other || _other < *this);
 }
 
-bool Type::operator !=(const Type & _other) const {
+bool Type::operator !=(const Type &_other) const {
     return *this < _other || _other < *this;
 }
 
-bool Type::less(const Type & _other) const {
+bool Type::less(const Type &_other) const {
     assert(getKind() == _other.getKind());
 
     if (getKind() == FRESH)
@@ -125,7 +125,7 @@ bool Type::less(const Type & _other) const {
     return nOrder == ORD_SUB;
 }
 
-bool Type::operator <(const Type & _other) const {
+bool Type::operator <(const Type &_other) const {
     if (getKind() < _other.getKind())
         return true;
 
@@ -153,7 +153,7 @@ int maxBitsIntNat(int _bitsInt, int _bitsNat) {
     return _bitsInt;
 }
 
-Type *Type::getJoin(ir::Type &_other) {
+TypePtr Type::getJoin(Type &_other) {
     if (getKind() == TOP || _other.getKind() == BOTTOM)
         return this;
 
@@ -193,7 +193,7 @@ Type *Type::getJoin(ir::Type &_other) {
     return (Type *)NULL;
 }
 
-Type *Type::getMeet(ir::Type &_other) {
+TypePtr Type::getMeet(ir::Type &_other) {
     if (getKind() == TOP || _other.getKind() == BOTTOM)
         return &_other;
 
@@ -239,18 +239,14 @@ TypeType::TypeType() : m_pDecl(NULL) {
     setDeclaration(new TypeDeclaration());
 }
 
-TypeType::~TypeType() {
-    _delete(m_pDecl);
-}
-
-bool TypeType::rewrite(ir::Type * _pOld, ir::Type * _pNew) {
-    if (m_pDecl == NULL || m_pDecl->getType() == NULL)
+bool TypeType::rewrite(const TypePtr &_pOld, const TypePtr &_pNew) {
+    if (!m_pDecl || !m_pDecl->getType())
         return false;
 
-    Type *p = m_pDecl->getType();
+    TypePtr p = m_pDecl->getType();
 
     if (tc::rewriteType(p, _pOld, _pNew)) {
-        m_pDecl->setType(p, false);
+        m_pDecl->setType(p);
         return true;
     }
 
@@ -272,25 +268,29 @@ int TypeType::compare(const Type &_other) const {
 
     const TypeType &other = (const TypeType &)_other;
 
-    if (m_pDecl != NULL && m_pDecl->getType() != NULL) {
-        if (other.m_pDecl != NULL && other.m_pDecl->getType() != NULL)
+    if (m_pDecl && m_pDecl->getType()) {
+        if (other.m_pDecl && other.m_pDecl->getType())
             return m_pDecl->getType()->compare(*other.m_pDecl->getType());
 
         return ORD_NONE;
     }
 
-    return (other.m_pDecl != NULL && other.m_pDecl->getType() != NULL) ? ORD_NONE : ORD_EQUALS;
+    return (other.m_pDecl && other.m_pDecl->getType()) ? ORD_NONE : ORD_EQUALS;
 }
 
-bool TypeType::less(const Type & _other) const {
+bool TypeType::less(const Type &_other) const {
     const TypeType &other = (const TypeType &)_other;
 
-    if (m_pDecl != NULL && m_pDecl->getType() != NULL) {
-        if (other.m_pDecl != NULL && other.m_pDecl->getType() != NULL)
+    if (m_pDecl && m_pDecl->getType()) {
+        if (other.m_pDecl && other.m_pDecl->getType())
             return *m_pDecl->getType() < *other.m_pDecl->getType();
 
         return false;
     }
 
-    return other.m_pDecl != NULL && other.m_pDecl->getType() != NULL;
+    return other.m_pDecl && other.m_pDecl->getType();
+}
+
+TypePtr TypeType::clone() const {
+    return new TypeType(*this);
 }

@@ -45,11 +45,11 @@ std::string strNarrow(const std::wstring & _s) {
     const int bufLen = (_s.length() + 1)*mbcLen;
     char *mbcBuf = (char *)alloca(bufLen);
 
-    char * pNextOut = mbcBuf;
-    const wchar_t * pNextIn = _s.c_str();
+    char *pNextOut = mbcBuf;
+    const wchar_t *pNextIn = _s.c_str();
 
-    memset((void *) & state, 0, sizeof(state));
-    memset((void *) mbcBuf, 0, sizeof(bufLen));
+    memset((void *)&state, 0, sizeof(state));
+    memset((void *)mbcBuf, 0, sizeof(bufLen));
 
     result = facet.out(state,
             _s.c_str(), _s.c_str() + _s.length() + 2, pNextIn,

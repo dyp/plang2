@@ -18,24 +18,24 @@ public:
     Translator(Translator * _pParent) :
         m_pParent(_pParent),
         m_pModule(_pParent ? _pParent->m_pModule : NULL),
-        m_pFunction(_pParent ? _pParent->m_pFunction : NULL)
+        m_pFunction(_pParent ? _pParent->m_pFunction : Auto<Function>())
      {}
     ~Translator();
 
     Translator * addChild();
 
     Auto<Variable> resolveVariable(const void * _pVar, bool & _bReference);
-    int resolveLabel(const ir::Label *);
+    int resolveLabel(const ir::LabelPtr &);
     void addVariable(const void * _pOrig, Auto<Variable> _pNew, bool _bReference = false);
 
-    void addType(const ir::Type * _pIRType, const Auto<Type> & _pLLIRType);
-    Auto<Type> resolveType(const ir::Node * _pType);
+    void addType(const ir::TypePtr &_pIRType, const Auto<Type> & _pLLIRType);
+    Auto<Type> resolveType(const ir::NodePtr &_pType);
 
     void addBuiltin(const std::wstring & _strName, const Auto<Function> & _pFunc);
     Auto<Function> resolveBuiltin(const std::wstring & _strName);
 
-    void addComparator(const ir::Type * _pType, const Auto<Function> & _pFunc);
-    Auto<Function> resolveComparator(const ir::Type * _pType);
+    void addComparator(const ir::TypePtr &_pType, const Auto<Function> & _pFunc);
+    Auto<Function> resolveComparator(const ir::TypePtr &_pType);
 
     void translate(const ir::Module & _module, Module & _dest);
 
@@ -50,7 +50,7 @@ public:
     void translate(const ir::Block & _stmt, Instructions & _instrs);
     void translate(const ir::If & _stmt, Instructions & _instrs);
     void translate(const ir::Assignment & _stmt, Instructions & _instrs);
-    void translateAsssignment(const ir::NamedValue * _pLHS, const ir::Expression * _pExpr, Instructions & _instrs);
+    void translateAsssignment(const ir::NamedValuePtr &_pLHS, const ir::ExpressionPtr &_pExpr, Instructions & _instrs);
     void translate(const ir::Call & _stmt, Instructions & _instrs);
     void translate(const ir::VariableDeclaration & _stmt, Instructions & _instrs);
     void translate(const ir::Jump & _stmt, Instructions & _instrs);
@@ -71,8 +71,8 @@ public:
     Operand translate(const ir::FieldExpr & _expr, Instructions & _instrs);
     Operand translate(const ir::UnionAlternativeExpr & _expr, Instructions & _instrs);
     Operand translate(const ir::Constructor & _expr, Instructions & _instrs);
-    Operand translateEq(const ir::Type * _pType, const Operand & _lhs, const Operand & _rhs, Instructions & _instrs);
-    Operand translateEqUnion(const ir::UnionType * _pType, const Operand & _lhs, const Operand & _rhs, Instructions & _instrs);
+    Operand translateEq(const ir::TypePtr &_pType, const Operand & _lhs, const Operand & _rhs, Instructions & _instrs);
+    Operand translateEqUnion(const ir::UnionTypePtr &_pType, const Operand & _lhs, const Operand & _rhs, Instructions & _instrs);
     Operand translateEqStruct(const ir::NamedValues &_fields, const Operand & _lhs, const Operand & _rhs, Instructions & _instrs);
 
     void initStruct(const ir::StructConstructor & _expr, Instructions & _instrs, const ir::NamedValues &_fields, const Operand & _ptr);
@@ -92,9 +92,9 @@ public:
 
 private:
     typedef std::map<const void *, std::pair<Auto<Variable>, bool> > variable_map_t;
-    typedef std::map<const ir::Label *, int> label_numbers_t;
-    typedef std::map<const ir::Node *, Auto<Type> > type_map_t;
-    typedef std::map<const ir::Type *, Auto<Function> > compare_map_t;
+    typedef std::map<ir::LabelPtr, int> label_numbers_t;
+    typedef std::map<ir::NodePtr, Auto<Type> > type_map_t;
+    typedef std::map<ir::TypePtr, Auto<Function> > compare_map_t;
     typedef std::map<std::wstring, Auto<Function> > builtin_map_t;
 
     Auto<StructType> m_unionType;
@@ -136,20 +136,20 @@ Auto<Variable> Translator::resolveVariable(const void * _pVar, bool & _bReferenc
         return NULL;
 }
 
-void Translator::addType(const ir::Type * _pIRType, const Auto<Type> & _pLLIRType) {
+void Translator::addType(const ir::TypePtr &_pIRType, const Auto<Type> & _pLLIRType) {
     if (! m_pParent)
         m_types[_pIRType] = _pLLIRType;
     else
         m_pParent->addType(_pIRType, _pLLIRType);
 }
 
-Auto<Type> Translator::resolveType(const ir::Node * _pType) {
+Auto<Type> Translator::resolveType(const ir::NodePtr &_pType) {
     if (m_pParent)
         return m_pParent->resolveType(_pType);
 
     type_map_t::iterator iType = m_types.find(_pType);
 
-    return (iType == m_types.end()) ? NULL : iType->second;
+    return (iType == m_types.end()) ? Auto<Type>() : iType->second;
 }
 
 void Translator::addBuiltin(const std::wstring & _strName, const Auto<Function> & _pFunc) {
@@ -165,26 +165,26 @@ Auto<Function> Translator::resolveBuiltin(const std::wstring & _strName) {
 
     builtin_map_t::iterator iFunc = m_builtins.find(_strName);
 
-    return (iFunc == m_builtins.end()) ? NULL : iFunc->second;
+    return (iFunc == m_builtins.end()) ? Auto<Function>() : iFunc->second;
 }
 
-void Translator::addComparator(const ir::Type * _pType, const Auto<Function> & _pFunc) {
+void Translator::addComparator(const ir::TypePtr &_pType, const Auto<Function> & _pFunc) {
     if (! m_pParent)
         m_comparators[_pType] = _pFunc;
     else
         m_pParent->addComparator(_pType, _pFunc);
 }
 
-Auto<Function> Translator::resolveComparator(const ir::Type * _pType) {
+Auto<Function> Translator::resolveComparator(const ir::TypePtr &_pType) {
     if (m_pParent)
         return m_pParent->resolveComparator(_pType);
 
     compare_map_t::iterator iFunc = m_comparators.find(_pType);
 
-    return (iFunc == m_comparators.end()) ? NULL : iFunc->second;
+    return (iFunc == m_comparators.end()) ? Auto<Function>() : iFunc->second;
 }
 
-int Translator::resolveLabel(const ir::Label * _pLabel) {
+int Translator::resolveLabel(const ir::LabelPtr &_pLabel) {
     label_numbers_t::iterator iLabel = m_labels.find(_pLabel);
 
     if (iLabel != m_labels.end())
@@ -198,7 +198,7 @@ int Translator::resolveLabel(const ir::Label * _pLabel) {
 Auto<FunctionType> Translator::translate(const ir::PredicateType & _type) {
     const size_t cBranches = _type.getOutParams().size();
     Auto<Type> returnType;
-    ir::NamedValue * pResult = NULL;
+    ir::NamedValuePtr pResult;
 
     if (cBranches == 1 && _type.getOutParams().get(0)->size() == 1) {
         // Trivial predicate: one branch, one output parameter.
@@ -215,7 +215,7 @@ Auto<FunctionType> Translator::translate(const ir::PredicateType & _type) {
     Auto<FunctionType> pFunc = new FunctionType(returnType);
 
     for (size_t i = 0; i < _type.getInParams().size(); ++ i) {
-        ir::NamedValue * pVar = _type.getInParams().get(i);
+        ir::NamedValuePtr pVar = _type.getInParams().get(i);
         pFunc->argTypes().push_back(translate(* pVar->getType()));
     }
 
@@ -223,7 +223,7 @@ Auto<FunctionType> Translator::translate(const ir::PredicateType & _type) {
         for (size_t i = 0; i < _type.getOutParams().size(); ++ i) {
             ir::Branch & branch = * _type.getOutParams().get(i);
             for (size_t j = 0; j < branch.size(); ++ j) {
-                ir::NamedValue * pVar = branch.get(j);
+                ir::NamedValuePtr pVar = branch.get(j);
                 pFunc->argTypes().push_back(new PointerType(translate(* pVar->getType())));
             }
         }
@@ -241,9 +241,9 @@ Auto<Type> Translator::translate(const ir::NamedReferenceType & _type) {
 }
 
 Auto<StructType> Translator::translate(const ir::StructType & _type) {
-    Auto<StructType> structType = Auto<StructType> (resolveType(& _type));
+    Auto<StructType> structType = resolveType(& _type).as<StructType>();
 
-    if (! structType.empty())
+    if (structType)
         return structType;
 
     structType = new StructType();
@@ -264,7 +264,7 @@ Auto<StructType> Translator::translate(const ir::UnionType & _type) {
     if (m_pParent)
         return m_pParent->translate(_type);
 
-    if (m_unionType.empty()) {
+    if (!m_unionType) {
         m_unionType = new StructType();
         m_unionType->fieldTypes().push_back(new Type(Type::UINT32));
         m_unionType->fieldTypes().push_back(new PointerType(new Type(Type::VOID)));
@@ -277,7 +277,7 @@ Auto<StructType> Translator::translate(const ir::UnionType & _type) {
 }
 
 Auto<StructType> Translator::translate(const ir::UnionConstructorDeclaration &_cons) {
-    Auto<StructType> structType = Auto<StructType> (resolveType(& _cons));
+    Auto<StructType> structType = resolveType(& _cons).as<StructType>();
 
 /*    if (! structType.empty())
         return structType;
@@ -401,12 +401,12 @@ int _selectBinaryInstr(int _op, const Auto<llir::Type> _pType) {
     return -1;
 }
 
-Operand Translator::translateEqUnion(const ir::UnionType * _pType, const Operand & _lhs, const Operand & _rhs, Instructions & _instrs) {
+Operand Translator::translateEqUnion(const ir::UnionTypePtr &_pType, const Operand & _lhs, const Operand & _rhs, Instructions & _instrs) {
     Auto<Function> func = resolveComparator(_pType);
     Auto<FunctionType> funcType;
 
-    if (! func.empty()) {
-        funcType = func->getType();
+    if (func) {
+        funcType = func->getType().as<FunctionType>();
         Auto<Variable> funcVar = func;
         Auto<Call> call = new Call(funcVar, funcType);
 
@@ -476,7 +476,7 @@ Operand Translator::translateEqUnion(const ir::UnionType * _pType, const Operand
             SwitchCase & swCase = sw->cases().back();
             Instructions & body = swCase.body;
 
-            const ir::UnionConstructorDeclaration * pCons = _pType->getConstructors().get(i);
+            ir::UnionConstructorDeclarationPtr pCons = _pType->getConstructors().get(i);
             const ir::NamedValues &fields = pCons->getFields();
 //            const ir::StructType & dataType = pCons->getStruct();
 
@@ -489,7 +489,7 @@ Operand Translator::translateEqUnion(const ir::UnionType * _pType, const Operand
             }
 
             if (fields.size() == 1) {
-                const ir::Type * pFieldType = resolveBaseType(fields.get(0)->getType());
+                ir::TypePtr pFieldType = resolveBaseType(fields.get(0)->getType());
                 Auto<Type> fieldType = translate(* pFieldType);
                 Operand l = lPtr, r = rPtr;
 
@@ -569,7 +569,7 @@ Operand Translator::translateEqStruct(const ir::NamedValues &_fields, const Oper
     Operand rPtr = Operand(_instrs.back()->getResult());
 
     for (size_t i = 0; i < _fields.size(); ++ i) {
-        const ir::Type * pFieldType = resolveBaseType(_fields.get(i)->getType());
+        ir::TypePtr pFieldType = resolveBaseType(_fields.get(i)->getType());
 
         _instrs.push_back(new Field(lPtr, i));
         _instrs.push_back(new Unary(Unary::LOAD, Operand(_instrs.back()->getResult())));
@@ -589,13 +589,14 @@ Operand Translator::translateEqStruct(const ir::NamedValues &_fields, const Oper
     return Operand(varResult);
 }
 
-Operand Translator::translateEq(const ir::Type * _pType, const Operand & _lhs, const Operand & _rhs, Instructions & _instrs) {
+Operand Translator::translateEq(const ir::TypePtr &_pType, const Operand & _lhs, const Operand & _rhs, Instructions & _instrs) {
     std::wcerr << L"!! _pType->getKind() = " << _pType->getKind() << std::endl;
     switch (_pType->getKind()) {
         case ir::Type::UNION:
-            return translateEqUnion((const ir::UnionType *) _pType, _lhs, _rhs, _instrs);
+            return translateEqUnion(_pType.as<ir::UnionType>(), _lhs, _rhs, _instrs);
         case ir::Type::STRUCT: {
-            const ir::StructType *pStruct = (const ir::StructType *)_pType;
+            ir::StructTypePtr pStruct = _pType.as<ir::StructType>();
+
             if (!pStruct->getNamesOrd().empty())
                 return translateEqStruct(pStruct->getNamesOrd(), _lhs, _rhs, _instrs);
             if (!pStruct->getTypesOrd().empty())
@@ -642,7 +643,7 @@ Operand Translator::translate(const ir::Component & _expr, Instructions & _instr
 }
 
 Operand Translator::translate(const ir::FieldExpr & _expr, Instructions & _instrs) {
-/*    const ir::StructType * pStruct = _expr.getStructType();
+/*    const ir::StructTypePtr &pStruct = _expr.getStructType();
     Auto<StructType> st = translate(* pStruct);
     Operand object = translate(* _expr.getObject(), _instrs);
 
@@ -656,7 +657,7 @@ Operand Translator::translate(const ir::FieldExpr & _expr, Instructions & _instr
 }
 
 Operand Translator::translate(const ir::UnionAlternativeExpr & _expr, Instructions & _instrs) {
-    const ir::UnionType * pUnion = _expr.getUnionType();
+    ir::UnionTypePtr pUnion = _expr.getUnionType();
     Auto<StructType> st = translate(* pUnion);
     Operand object = translate(* _expr.getObject(), _instrs);
 
@@ -664,7 +665,7 @@ Operand Translator::translate(const ir::UnionAlternativeExpr & _expr, Instructio
     _instrs.push_back(new Field(Operand(_instrs.back()->getResult()), 1));
     _instrs.push_back(new Unary(Unary::LOAD, Operand(_instrs.back()->getResult())));
 
-    const ir::UnionConstructorDeclaration * pCons = _expr.getConstructor();
+    ir::UnionConstructorDeclarationPtr pCons = _expr.getConstructor();
 //    const ir::StructType & dataType = pCons->getStruct();
 
     if (pCons->getFields().size() > 1) {
@@ -672,7 +673,7 @@ Operand Translator::translate(const ir::UnionAlternativeExpr & _expr, Instructio
         assert(false);
     } else {
         // Treat it as a plain value.
-        const ir::NamedValue * pField = _expr.getField();
+        ir::NamedValuePtr pField = _expr.getField();
         Auto<Type> type = translate(* pField->getType());
 
         if (type->sizeOf() <= Type::sizeOf(Type::POINTER)) {
@@ -688,7 +689,7 @@ Operand Translator::translate(const ir::FunctionCall & _expr, Instructions & _in
     assert(_expr.getPredicate()->getType()->getKind() == ir::Type::PREDICATE);
 
     Operand function = translate(* _expr.getPredicate(), _instrs);
-    Auto<FunctionType> type = translate(* (ir::PredicateType *) _expr.getPredicate()->getType());
+    Auto<FunctionType> type = translate(*_expr.getPredicate()->getType().as<ir::PredicateType>());
     Call * pCall = new Call(function, type);
 
     for (size_t i = 0; i < _expr.getArgs().size(); ++ i)
@@ -727,9 +728,9 @@ Operand Translator::translate(const ir::Literal & _expr, Instructions & _instrs)
 
 Operand Translator::translate(const ir::VariableReference & _expr, Instructions & _instrs) {
     bool bReference = false;
-    Auto<Variable> pVar = resolveVariable(_expr.getTarget(), bReference);
+    Auto<Variable> pVar = resolveVariable(_expr.getTarget().ptr(), bReference);
 
-    assert(! pVar.empty());
+    assert(pVar);
 
     if (bReference) {
         _instrs.push_back(new Unary(Unary::LOAD, Operand(pVar)));
@@ -741,9 +742,9 @@ Operand Translator::translate(const ir::VariableReference & _expr, Instructions 
 
 Operand Translator::translate(const ir::PredicateReference & _expr, Instructions & _instrs) {
     bool bReference = false;
-    Auto<Variable> pVar = resolveVariable(_expr.getTarget(), bReference);
+    Auto<Variable> pVar = resolveVariable(_expr.getTarget().ptr(), bReference);
 
-    assert(! pVar.empty());
+    assert(pVar);
 
     if (bReference) {
         _instrs.push_back(new Unary(Unary::LOAD, Operand(pVar)));
@@ -794,14 +795,14 @@ void Translator::initStruct(const ir::StructConstructor & _expr, Instructions & 
         const ir::NamedValues &_fields, const Operand & _ptr)
 {
     for (size_t i = 0; i < _expr.size(); ++ i) {
-        ir::StructFieldDefinition * pFieldDef = _expr.get(i);
-        ir::Type * pFieldType = (ir::Type *) ir::resolveBaseType(_fields.get(i)->getType());
+        ir::StructFieldDefinitionPtr pFieldDef = _expr.get(i);
+        ir::TypePtr pFieldType = (ir::TypePtr) ir::resolveBaseType(_fields.get(i)->getType());
 
         // FIXME: assumes constant order of constructor values.
 
         // Should be done by middle end.
         if (! pFieldDef->getValue()->getType())
-            pFieldDef->getValue()->setType(pFieldType, false);
+            pFieldDef->getValue()->setType(pFieldType);
 
         Operand rhs = translate(* _expr.get(i)->getValue(), _instrs);
 
@@ -823,7 +824,7 @@ Operand Translator::translate(const ir::StructConstructor & _expr, Instructions 
     m_pFunction->locals().push_back(var);
     _instrs.push_back(ptr);
 
-    const ir::StructType *pStruct = (const ir::StructType *)_expr.getType();
+    ir::StructTypePtr pStruct = _expr.getType().as<ir::StructType>();
 
     if (!pStruct->getNamesOrd().empty())
         initStruct(_expr, _instrs, pStruct->getNamesOrd(), Operand(ptr->getResult()));
@@ -837,7 +838,7 @@ Operand Translator::translate(const ir::UnionConstructor & _expr, Instructions &
     assert(_expr.getType());
     assert(_expr.isComplete());
 
-    ir::UnionConstructorDeclaration * pProto = _expr.getPrototype();
+    ir::UnionConstructorDeclarationPtr pProto = _expr.getPrototype();
     Auto<Type> type = translate(* _expr.getType());
     Auto<Variable> var = new Variable(type);
     Auto<Unary> ptr = new Unary(Unary::PTR, Operand(var));
@@ -867,13 +868,13 @@ Operand Translator::translate(const ir::UnionConstructor & _expr, Instructions &
 
         initStruct(_expr, _instrs, pProto->getFields(), opBuf);
     } else if (!pProto->getFields().empty()) {
-        ir::StructFieldDefinition * pFieldDef = _expr.get(0);
-        ir::Type * pFieldType = (ir::Type *) ir::resolveBaseType(pProto->getFields().get(0)->getType());
+        ir::StructFieldDefinitionPtr pFieldDef = _expr.get(0);
+        ir::TypePtr pFieldType = (ir::TypePtr) ir::resolveBaseType(pProto->getFields().get(0)->getType());
         Auto<Type> ft = translate(* pFieldType);
 
         // Should be done by middle end.
         if (! pFieldDef->getValue()->getType())
-            pFieldDef->getValue()->setType(pFieldType, false);
+            pFieldDef->getValue()->setType(pFieldType);
 
         Operand rhs = translate(* _expr.get(0)->getValue(), _instrs);
 
@@ -943,13 +944,13 @@ void Translator::translate(const ir::If & _stmt, Instructions & _instrs) {
         translate(* _stmt.getElse(), pIf->brFalse());
 }
 
-void Translator::translateAsssignment(const ir::NamedValue * _pLHS,
-        const ir::Expression * _pExpr, Instructions & _instrs)
+void Translator::translateAsssignment(const ir::NamedValuePtr &_pLHS,
+        const ir::ExpressionPtr &_pExpr, Instructions & _instrs)
 {
     bool bReference = false;
-    Auto<Variable> pVar = resolveVariable(_pLHS, bReference);
+    Auto<Variable> pVar = resolveVariable(_pLHS.ptr(), bReference);
 
-    assert(! pVar.empty());
+    assert(pVar);
 
     Operand left = Operand(pVar); //translate(* _stmt.getLValue(), _instrs);
     Operand right = translate(* _pExpr, _instrs);
@@ -1002,7 +1003,7 @@ void Translator::translateAsssignment(const ir::NamedValue * _pLHS,
 void Translator::translate(const ir::Assignment & _stmt, Instructions & _instrs) {
     assert(_stmt.getLValue()->getKind() == ir::Expression::VAR);
 
-    const ir::VariableReference * pLValue = (const ir::VariableReference *) _stmt.getLValue();
+    ir::VariableReferencePtr pLValue = _stmt.getLValue().as<ir::VariableReference>();
 
     translateAsssignment(pLValue->getTarget(), _stmt.getExpression(), _instrs);
 }
@@ -1015,12 +1016,12 @@ void Translator::translate(const ir::Jump & _stmt, Instructions & _instrs) {
 }
 
 bool Translator::translateBuiltin(const ir::Call & _stmt, Instructions & _instrs) {
-    ir::Expression * pExpr = _stmt.getPredicate();
+    ir::ExpressionPtr pExpr = _stmt.getPredicate();
 
     if (pExpr->getKind() != ir::Expression::PREDICATE)
         return false;
 
-    ir::PredicateReference * pPredRef = (ir::PredicateReference *) pExpr;
+    ir::PredicateReferencePtr pPredRef = pExpr.as<ir::PredicateReference>();
 
     if (! pPredRef->getTarget()->isBuiltin())
         return false;
@@ -1073,7 +1074,7 @@ void Translator::translatePrintExpr(const ir::Expression & _expr, Instructions &
     Auto<Function> pFunc = resolveBuiltin(strFunc);
     Auto<FunctionType> pFuncType;
 
-    if (pFunc.empty()) {
+    if (!pFunc) {
         pFuncType = new FunctionType(new Type(Type::VOID));
         pFuncType->argTypes().push_back(type);
         pFunc = new Function(strFunc, new Type(Type::VOID));
@@ -1081,7 +1082,7 @@ void Translator::translatePrintExpr(const ir::Expression & _expr, Instructions &
         addBuiltin(strFunc, pFunc);
         m_pModule->usedBuiltins().push_back(pFunc);
     } else
-        pFuncType = pFunc->getType();
+        pFuncType = pFunc->getType().as<FunctionType>();
 
     Auto<Variable> pFuncVar = pFunc;
     Auto<Call> pCall = new Call(Operand(pFuncVar), pFuncType);
@@ -1092,7 +1093,7 @@ void Translator::translatePrintExpr(const ir::Expression & _expr, Instructions &
 
 void Translator::translatePrint(const ir::Call & _stmt, Instructions & _instrs) {
     for (size_t i = 0; i < _stmt.getArgs().size(); ++ i) {
-        const ir::Expression * pParam = _stmt.getArgs().get(i);
+        ir::ExpressionPtr pParam = _stmt.getArgs().get(i);
         translatePrintExpr(* pParam, _instrs);
     }
 }
@@ -1107,7 +1108,7 @@ void Translator::translate(const ir::Call & _stmt, Instructions & _instrs) {
         return;
 
     Operand function = translate(* _stmt.getPredicate(), _instrs);
-    ir::PredicateType & predType = * (ir::PredicateType *) _stmt.getPredicate()->getType();
+    ir::PredicateType & predType = * _stmt.getPredicate()->getType().as<ir::PredicateType>();
     Auto<FunctionType> type = translate(predType);
     Call * pCall = new Call(function, type);
     Types::const_iterator iType = type->argTypes().begin();
@@ -1136,7 +1137,7 @@ void Translator::translate(const ir::Call & _stmt, Instructions & _instrs) {
         Switch * pSwitch = new Switch(Operand(pCall->getResult()));
 
         for (size_t i = 0; i < _stmt.getBranches().size(); ++ i) {
-            ir::Statement * pHandler = _stmt.getBranches().get(i)->getHandler();
+            ir::StatementPtr pHandler = _stmt.getBranches().get(i)->getHandler();
             if (pHandler) {
                 pSwitch->cases().push_back(SwitchCase());
                 SwitchCase & switchCase = pSwitch->cases().back();
@@ -1159,7 +1160,8 @@ void Translator::translate(const ir::VariableDeclaration & _stmt, Instructions &
     Auto<Type> type = translate(* _stmt.getVariable()->getType());
     m_pFunction->locals().push_back(new Variable(type));
     Auto<Variable> var = m_pFunction->locals().back();
-    addVariable(_stmt.getVariable(), var);
+
+    addVariable(_stmt.getVariable().ptr(), var);
 
     if (_stmt.getValue())
         translateAsssignment(_stmt.getVariable(), _stmt.getValue(), _instrs);
@@ -1171,7 +1173,7 @@ Operand Translator::translateSwitchCond(const ir::Expression & _expr, const Oper
     if (_expr.getKind() == ir::Expression::TYPE) {
         const ir::TypeExpr & te = (const ir::TypeExpr &) _expr;
         assert(te.getContents()->getKind() == ir::Type::RANGE);
-        const ir::Range & range = * (ir::Range *) te.getContents();
+        const ir::Range & range = *te.getContents().as<ir::Range>();
 
         Operand opMin = translate(* range.getMin(), _instrs);
         Operand opMax = translate(* range.getMax(), _instrs);
@@ -1235,7 +1237,7 @@ void Translator::translateSwitchInt(const ir::Switch & _stmt,
                 if (pCase->body.empty())
                     pCase->body.push_back(new Instruction());
 
-                if (pCase->body.front()->getLabel().empty())
+                if (!pCase->body.front()->getLabel())
                     pCase->body.front()->setLabel(new Label());
 
                 Operand cond = translateSwitchCond(expr, _arg, _instrs);
@@ -1285,11 +1287,11 @@ void Translator::translateSwitchInt(const ir::Switch & _stmt,
 void Translator::translateSwitchUnion(const ir::Switch & _stmt,
         const Operand & _arg, Instructions & _instrs)
 {
-    const ir::Type * pParamType = resolveBaseType(_stmt.getArg()->getType());
+    ir::TypePtr pParamType = resolveBaseType(_stmt.getArg()->getType());
 
     assert(pParamType->getKind() == ir::Type::UNION);
 
-    const ir::UnionType * pUnion = (const ir::UnionType *) pParamType;
+    ir::UnionTypePtr pUnion = pParamType.as<ir::UnionType>();
     std::vector<SwitchCase *> cases;
 
     cases.assign(_stmt.size(), NULL);
@@ -1317,16 +1319,16 @@ void Translator::translateSwitchUnion(const ir::Switch & _stmt,
         const ir::Collection<ir::Expression> & exprs = _stmt.get(i)->getExpressions();
 
         for (size_t j = 0; j < exprs.size(); ++ j) {
-            const ir::Expression * pExpr = exprs.get(j);
+            ir::ExpressionPtr pExpr = exprs.get(j);
             bool bIsConstructor = false;
 
             if (pExpr->getKind() == ir::Expression::CONSTRUCTOR &&
-                    ((const ir::Constructor *) pExpr)->getConstructorKind() == ir::Constructor::UNION_CONSTRUCTOR)
+                    pExpr.as<ir::Constructor>()->getConstructorKind() == ir::Constructor::UNION_CONSTRUCTOR)
             {
-                const ir::UnionConstructor * pCons = (const ir::UnionConstructor *) pExpr;
+                ir::UnionConstructorPtr pCons = pExpr.as<ir::UnionConstructor>();
 
                 if (! pCons->isComplete() || pCons->size() == 0) {
-                    const ir::UnionConstructorDeclaration * pProto = pCons->getPrototype();
+                    ir::UnionConstructorDeclarationPtr pProto = pCons->getPrototype();
                     const size_t cOrd = pProto->getOrdinal();
 
                     if (caseIdx[cOrd] == NULL) {
@@ -1357,8 +1359,8 @@ void Translator::translateSwitchUnion(const ir::Switch & _stmt,
                 continue;
 
             // Got union constructor expression.
-            const ir::UnionConstructor * pCons = (const ir::UnionConstructor *) exprs.get(j);;
-            const ir::UnionConstructorDeclaration * pProto = pCons->getPrototype();
+            ir::UnionConstructorPtr pCons = exprs.get(j).as<ir::UnionConstructor>();
+            ir::UnionConstructorDeclarationPtr pProto = pCons->getPrototype().as<ir::UnionConstructorDeclaration>();
             SwitchCase * pCase = caseIdx[pCons->getPrototype()->getOrdinal()];
 
             assert(pCase != NULL);
@@ -1367,7 +1369,7 @@ void Translator::translateSwitchUnion(const ir::Switch & _stmt,
                 pMainCase = pCase;
 
             for (size_t k = 0; k < pCons->getDeclarations().size(); ++ k) {
-                const ir::VariableDeclaration * pDecl = pCons->getDeclarations().get(k);
+                ir::VariableDeclarationPtr pDecl = pCons->getDeclarations().get(k);
                 translate(* pDecl, pCase->body);
             }
 
@@ -1405,7 +1407,7 @@ void Translator::translateSwitchUnion(const ir::Switch & _stmt,
 
             if (bCompare) {
                 for (size_t k = 0; k < pCons->size(); ++ k) {
-                    const ir::StructFieldDefinition * pDef = pCons->get(k);
+                    ir::StructFieldDefinitionPtr pDef = pCons->get(k);
 
                     if (pDef->getValue()) {
                         // Compare and jump.
@@ -1434,7 +1436,7 @@ void Translator::translateSwitchUnion(const ir::Switch & _stmt,
             }
 
             for (size_t k = 0; k < pCons->size(); ++ k) {
-                const ir::StructFieldDefinition * pDef = pCons->get(k);
+                ir::StructFieldDefinitionPtr pDef = pCons->get(k);
 
                 if (! pDef->getValue()) {
                     // Initialize.
@@ -1453,7 +1455,7 @@ void Translator::translateSwitchUnion(const ir::Switch & _stmt,
                         body.push_back(new Binary(Binary::SET, pFieldVar, opValue));
                     }
 
-                    addVariable(pDef->getField(), pFieldVar, bStruct);
+                    addVariable(pDef->getField().ptr(), pFieldVar, bStruct);
                     m_pFunction->locals().push_back(pFieldVar);
                     opField = Operand(pFieldVar);
                     //pFieldVar->setTyoe(opField.getType());
@@ -1476,7 +1478,7 @@ void Translator::translateSwitchUnion(const ir::Switch & _stmt,
             if (isConstructor[cExprIdx])
                 continue;
 
-            ir::Expression * pCond = exprs.get(j);
+            ir::ExpressionPtr pCond = exprs.get(j);
 
             Operand rhs = translate(* pCond, * pInstrs);
 
@@ -1502,7 +1504,7 @@ void Translator::translateSwitchUnion(const ir::Switch & _stmt,
         }
 
         // Actual case body.
-        if (pMainCase == NULL || _stmt.get(i)->getBody() == NULL)
+        if (pMainCase == NULL || _stmt.get(i)->getBody())
             continue;
 
         Instructions & body = pMainCase->body;
@@ -1527,7 +1529,7 @@ void Translator::translate(const ir::Switch & _stmt, Instructions & _instrs) {
     if (_stmt.getParamDecl())
         translate(* _stmt.getParamDecl(), _instrs);
 
-    const ir::Type * pParamType = resolveBaseType(_stmt.getArg()->getType());
+    ir::TypePtr pParamType = resolveBaseType(_stmt.getArg()->getType());
     Operand arg = translate(* _stmt.getArg(), _instrs);
 
     if (arg.getType()->getKind() & Type::INTMASK) {
@@ -1593,7 +1595,7 @@ Auto<Function> Translator::translate(const ir::Predicate & _pred) {
     Translator * pTranslator = addChild();
     const size_t cBranches = _pred.getOutParams().size();
     Auto<Type> returnType;
-    ir::NamedValue * pResult = NULL;
+    ir::NamedValuePtr pResult = NULL;
 
     if (cBranches == 1 && _pred.getOutParams().get(0)->size() == 1) {
         // Trivial predicate: one branch, one output parameter.
@@ -1610,23 +1612,23 @@ Auto<Function> Translator::translate(const ir::Predicate & _pred) {
     Auto<Function> pFunction = new Function(_pred.getName(), returnType);
 
     for (size_t i = 0; i < _pred.getInParams().size(); ++ i) {
-        ir::NamedValue * pVar = _pred.getInParams().get(i);
+        ir::NamedValuePtr pVar = _pred.getInParams().get(i);
         Auto<Type> type = pTranslator->translate(* pVar->getType());
         pFunction->args().push_back(new Variable(type));
-        addVariable(pVar, pFunction->args().back());
+        addVariable(pVar.ptr(), pFunction->args().back());
     }
 
     if (pResult) {
-        pTranslator->addVariable(pResult, pFunction->getResult());
+        pTranslator->addVariable(pResult.ptr(), pFunction->getResult());
     } else {
         for (size_t i = 0; i < _pred.getOutParams().size(); ++ i) {
             ir::Branch & branch = * _pred.getOutParams().get(i);
             m_labels[branch.getLabel()] = i;
             for (size_t j = 0; j < branch.size(); ++ j) {
-                ir::NamedValue * pVar = branch.get(j);
+                ir::NamedValuePtr pVar = branch.get(j);
                 Auto<Type> argType = pTranslator->translate(* pVar->getType());
                 pFunction->args().push_back(new Variable(new PointerType(argType)));
-                addVariable(pVar, pFunction->args().back(), true);
+                addVariable(pVar.ptr(), pFunction->args().back(), true);
             }
         }
     }
@@ -1739,7 +1741,7 @@ void Translator::translate(const ir::Module & _module, Module & _dest) {
 
     for (size_t i = 0; i < _module.getPredicates().size(); ++ i) {
         const ir::Predicate & pred = * _module.getPredicates().get(i);
-        if (pred.getBlock() != NULL)
+        if (pred.getBlock())
             m_pModule->functions().push_back(translate(pred));
     }
 }
