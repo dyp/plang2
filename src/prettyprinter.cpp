@@ -356,9 +356,15 @@ public:
                 m_os << L" : ";
         }
 
-        traverseType(*_val.getType());
-        if (!_val.getName().empty() && getLoc().type != N_Param)
-            m_os << L" " << _val.getName();
+        if (getRole() != R_EnumValueDecl)
+            traverseType(*_val.getType());
+
+        if (!_val.getName().empty() && getLoc().type != N_Param) {
+            if (getRole() != R_EnumValueDecl)
+                m_os << L" ";
+            m_os << _val.getName();
+        }
+
         return false;
     }
 
@@ -444,9 +450,9 @@ public:
         return false;
     }
 
-    virtual bool traverseStructType(StructType &_type) {
+    virtual bool traverseEnumType(EnumType &_type) {
         m_os << L"(";
-        Visitor::traverseStructType(_type);
+        Visitor::traverseEnumType(_type);
         m_os << L")";
         return true;
     }
