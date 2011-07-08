@@ -54,6 +54,21 @@ static std::wstring fmtBinaryOp(int _kind) {
     }
 }
 
+static std::wstring fmtTypeFormulaOp(int _kind) {
+    switch (_kind) {
+        case tc::Formula::EQUALS:           return L"=";
+        case tc::Formula::SUBTYPE:          return L"<=";
+        case tc::Formula::SUBTYPE_STRICT:   return L"<";
+        case tc::Formula::COMPARABLE:       return L"~";
+        case tc::Formula::INCOMPARABLE:     return L"!~";
+        case tc::Formula::NO_JOIN:          return L"!\x2228";
+        case tc::Formula::HAS_JOIN:         return L"\x2228";
+        case tc::Formula::NO_MEET:          return L"!\x2227";
+        case tc::Formula::HAS_MEET:         return L"\x2227";
+        default:                            return L"";
+    }
+}
+
 static std::wstring fmtQuantifier(int _kind) {
     switch (_kind) {
         case Formula::UNIVERSAL:   return L"universal";
@@ -501,13 +516,15 @@ void prettyPrint(tc::Formulas & _constraints, std::wostream & _os) {
 
     _os << L"\n";
 
-    for (tc::Formulas::iterator i = _constraints.begin(); i != _constraints.end(); ++ i) {
+    size_t c = 0;
+
+    for (tc::Formulas::iterator i = _constraints.begin(); i != _constraints.end(); ++ i, ++c) {
         tc::Formula & f = ** i;
 
         if (! f.is(tc::Formula::COMPOUND)) {
+            _os << c << ":  ";
             pp.print(* f.getLhs());
-            _os << (f.is(tc::Formula::EQUALS) ? L" = " :
-                (f.is(tc::Formula::SUBTYPE) ? L" <= " : L" < "));
+            _os << L" " << fmtTypeFormulaOp(f.getKind()) << L" ";
             pp.print(* f.getRhs());
         } else {
             tc::CompoundFormula & cf = (tc::CompoundFormula &) f;
@@ -525,8 +542,7 @@ void prettyPrint(tc::Formulas & _constraints, std::wostream & _os) {
                     if (k != part.begin())
                         _os << L" and ";
                     pp.print(* g.getLhs());
-                    _os << (g.is(tc::Formula::EQUALS) ? L" = " :
-                        (g.is(tc::Formula::SUBTYPE) ? L" <= " : L" < "));
+                    _os << L" " << fmtTypeFormulaOp(g.getKind()) << L" ";
                     pp.print(* g.getRhs());
                 }
                 _os << L")";

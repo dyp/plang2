@@ -126,8 +126,10 @@ public:
         COMPARABLE      = 0x08,
         INCOMPARABLE    = 0x10,
         NO_JOIN         = 0x20,
-        NO_MEET         = 0x40,
-        COMPOUND        = 0x80,
+        HAS_JOIN        = 0x40,
+        NO_MEET         = 0x80,
+        HAS_MEET        = 0x100,
+        COMPOUND        = 0x200,
     };
 
     enum {

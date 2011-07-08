@@ -173,9 +173,21 @@ int Formula::eval() const {
         case INCOMPARABLE:
             return nCmp == ir::Type::ORD_NONE ? TRUE : FALSE;
         case NO_JOIN:
-            return getLhs()->getJoin(* getRhs()).second;
+        case HAS_JOIN: {
+            ir::Type *pJoin = getLhs()->getJoin(*getRhs());
+
+            if (pJoin)
+                return (pJoin->getKind() == ir::Type::TOP) == (getKind() == NO_JOIN) ? TRUE : FALSE;
+            break;
+        }
         case NO_MEET:
-            return getLhs()->getMeet(* getRhs()).second;
+        case HAS_MEET: {
+            ir::Type *pMeet = getLhs()->getMeet(*getRhs());
+
+            if (pMeet)
+                return (pMeet->getKind() == ir::Type::BOTTOM) == (getKind() == NO_MEET) ? TRUE : FALSE;
+            break;
+        }
     }
 
     return UNKNOWN;
