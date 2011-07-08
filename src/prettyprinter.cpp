@@ -174,17 +174,17 @@ std::wstring PrettyPrinterBase::fmtType(int _kind) {
     }
 }
 
-#define VISITOR(_NODE, ...)                             \
-        virtual bool visit##_NODE(_NODE &_node) {    \
-            m_os << fmtIndent(L" : " WIDEN(#_NODE) L"\n");      \
-            { __VA_ARGS__ }                             \
-            return true;                                \
+#define VISITOR(_NODE, ...)                                 \
+        virtual bool visit##_NODE(_NODE &_node) {           \
+            m_os << fmtIndent(L" : " WIDEN(#_NODE) L"\n");  \
+            { __VA_ARGS__ }                                 \
+            return true;                                    \
         }
 
-#define HANDLER(_ROLE)                          \
-    virtual int handle##_ROLE(Node &_node) {   \
+#define HANDLER(_ROLE)                                  \
+    virtual int handle##_ROLE(Node &_node) {            \
         m_os << fmtIndent(L"* " WIDEN(#_ROLE) L"\n");   \
-        return 0;                               \
+        return 0;                                       \
     }
 
 class PrettyPrinterAST: public PrettyPrinterBase {
@@ -211,13 +211,13 @@ public:
 
 protected:
 
-#define PROP(_FMT, _NAME)                                                                       \
-        do {                                                                                    \
+#define PROP(_FMT, _NAME)                                                                               \
+        do {                                                                                            \
             m_os << fmtIndent(L" `- " WIDEN(#_NAME) L" = ") + fmt##_FMT(_node.get##_NAME()) + L"\n";    \
         } while (0)
 
-#define PROP_IS(_NAME)                                                                      \
-        do {                                                                                \
+#define PROP_IS(_NAME)                                                                              \
+        do {                                                                                        \
             m_os << fmtIndent(L" `- " WIDEN(#_NAME) L" = ") + fmtBool(_node.is##_NAME()) + L"\n";   \
         } while (0)
 
