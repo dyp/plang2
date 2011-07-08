@@ -92,6 +92,29 @@ private:
     int m_flags;
 };
 
+class TupleType : public ir::Type {
+public:
+    /// Default constructor.
+    TupleType(const ir::NamedValues *_pFields) : m_fields(*_pFields) {}
+
+    /// Get type kind.
+    /// \returns #Tuple.
+    virtual int getKind() const { return TUPLE; }
+
+    /// Get list of struct fields.
+    /// \return List of fields.
+    ir::NamedValues &getFields() { return (ir::NamedValues &)m_fields; }
+    const ir::NamedValues &getFields() const { return m_fields; }
+
+    virtual int compare(const Type &_other) const;
+    virtual ir::Type *getMeet(ir::Type &_other);
+    virtual ir::Type *getJoin(ir::Type &_other);
+    virtual bool less(const Type &_other) const;
+
+private:
+    const ir::NamedValues &m_fields;
+};
+
 typedef std::multimap<FreshType *, TypeSetterBase *> FreshTypes;
 
 class Formula {

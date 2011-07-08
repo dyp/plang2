@@ -1299,24 +1299,10 @@ public:
     /// Default constructor.
     StructFieldDefinition() : m_pValue(NULL) {}
 
-    /// Initialize with struct and field references.
-    /// \param _pStructType Type of structure.
-    /// \param _pField Field.
-    StructFieldDefinition(const StructType * _pStructType, const NamedValue * _pField)
-        : m_pValue(NULL), m_pStructType(_pStructType), m_pField(_pField) {}
-
     /// Destructor.
     virtual ~StructFieldDefinition() { _delete(m_pValue); }
 
     virtual int getNodeKind() const { return Node::STRUCT_FIELD_DEFINITION; }
-
-    /// Get type of structure.
-    /// \return Type of structure.
-    const StructType * getStructType() const { return m_pStructType; }
-
-    /// Set type of structure.
-    /// \param _pStructType Type of structure.
-    void setStructType(const StructType * _pStructType) { m_pStructType = _pStructType; }
 
     /// Get field reference.
     /// \return Field reference.
@@ -1347,7 +1333,6 @@ public:
 
 private:
     Expression * m_pValue;
-    const StructType * m_pStructType;
     const NamedValue * m_pField;
     std::wstring m_strName;
 };
@@ -1406,7 +1391,7 @@ class UnionConstructorDeclaration;
 /// May contain not-fully defined fields (used in switch construct).
 class UnionConstructor : public StructConstructor {
 public:
-    UnionConstructor() : m_pProto(NULL) {}
+    UnionConstructor(const std::wstring &_strName) : m_strName(_strName), m_pProto(NULL) {}
 
     /// Get constructor kind.
     /// \return #UnionConstructor.
@@ -1419,10 +1404,15 @@ public:
 
     bool isComplete() const;
 
+    // Should be set after type checking is done.
     UnionConstructorDeclaration * getPrototype() const { return m_pProto; }
     void setPrototype(UnionConstructorDeclaration * _pProto) { m_pProto = _pProto; }
 
+    const std::wstring & getName() const { return m_strName; }
+    void setName(const std::wstring & _strName) { m_strName = _strName; }
+
 private:
+    std::wstring m_strName;
     Collection<VariableDeclaration> m_decls;
     UnionConstructorDeclaration * m_pProto;
 };

@@ -293,6 +293,13 @@ ir::UnionConstructorDeclaration * Context::getConstructor(const std::wstring & _
     return cons.size() == 1 ? cons.get(0) : NULL;
 }
 
+bool Context::isConstructor(const std::wstring & _strName) const {
+    ir::UnionConstructorDeclarations cons;
+    getConstructors(_strName, cons);
+
+    return !cons.empty();
+}
+
 void Context::addConstructor(ir::UnionConstructorDeclaration * _pCons) {
     if (! m_constructors)
         m_constructors = new ConsMap();

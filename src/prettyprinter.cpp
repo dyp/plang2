@@ -436,6 +436,33 @@ public:
         return true;
     }
 
+    virtual bool traverseStructType(StructType &_type) {
+        m_os << L"(";
+        VISITOR_ENTER(StructType, _type);
+        VISITOR_TRAVERSE_COL(NamedValue, StructFieldDecl, &_type.getNamesOrd());
+        if (!_type.getNamesOrd().empty() && !_type.getTypesOrd().empty())
+            m_os << L"; ";
+        VISITOR_TRAVERSE_COL(NamedValue, StructFieldDecl, &_type.getTypesOrd());
+
+        if (!_type.getNamesSet().empty()) {
+            // Ensure sorting for debug purposes (don't reorder source collection though).
+            std::map<std::wstring, NamedValue *> sortedFieldsMap;
+            NamedValues sortedFields;
+
+            for (size_t i = 0; i < _type.getNamesSet().size(); ++i)
+                sortedFieldsMap[_type.getNamesSet().get(i)->getName()] = _type.getNamesSet().get(i);
+
+            for (std::map<std::wstring, NamedValue *>::iterator i = sortedFieldsMap.begin();
+                    i != sortedFieldsMap.end(); ++i)
+                sortedFields.add(i->second, false);
+
+            m_os << L"; ";
+            VISITOR_TRAVERSE_COL(NamedValue, StructFieldDecl, &sortedFields);
+        }
+        m_os << L")";
+        VISITOR_EXIT();
+    }
+
     virtual bool traverseUnionType(UnionType &_type) {
         m_os << L"(";
         Visitor::traverseUnionType(_type);
@@ -447,9 +474,9 @@ public:
         if (&_cons != m_pRoot && getLoc().bPartOfCollection && !getLoc().bFirstInCollection)
             m_os << L", ";
 
-        m_os << _cons.getName();
-        if (!_cons.getStruct().getFields().empty())
-            traverseStructType(_cons.getStruct());
+        m_os << _cons.getName() << L"(";
+        VISITOR_TRAVERSE_COL(NamedValue, UnionConsField, &_cons.getFields());
+        m_os << L")";
         return false;
     }
 

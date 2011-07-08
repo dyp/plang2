@@ -283,6 +283,8 @@ public:
         PARAMETERIZED,
         /// User-defined type referenced by name. Can be cast to NamedReferenceType.
         NAMED_REFERENCE,
+        /// Tuple type (for typechecking purposes). Can be cast to tc::TupleType.
+        TUPLE,
     };
 
     /// Initialize with kind.
@@ -330,10 +332,8 @@ public:
         return n == OrdSub || n == OrdEquals;
     }*/
 
-    // .second  is true if extremum doesn't exist.
-    typedef std::pair<Type *, bool> Extremum;
-    virtual Extremum getJoin(ir::Type & _other); // Supremum.
-    virtual Extremum getMeet(ir::Type & _other); // Infinum.
+    virtual Type *getJoin(ir::Type & _other); // Supremum.
+    virtual Type *getMeet(ir::Type & _other); // Infinum.
 
     virtual ir::Type * clone() const;
     virtual bool hasFresh() const;

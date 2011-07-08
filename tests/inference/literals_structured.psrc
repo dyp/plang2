@@ -2,10 +2,10 @@
 
 <test>
 	s1/Type = (nat(1), nat(2))
-	s2/Type = (nat(1) a, nat(2) b)
+	s2/Type = (; nat(1) a, nat(2) b)
 	s3/Type = nil
 	s4/Type = nat(1)
-	s5/Type = (nat(1) a)
+	s5/Type = (; nat(1) a)
 
 	a1/Type = nat(2)[]
 	a2/Type = nat(2)[][]

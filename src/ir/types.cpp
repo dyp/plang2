@@ -115,7 +115,7 @@ bool Type::less(const Type & _other) const {
     assert(getKind() == _other.getKind());
 
     if (getKind() == FRESH)
-        return (this < & _other);
+        return (((const tc::FreshType *)this)->getOrdinal() < ((const tc::FreshType &)_other).getOrdinal());
 
     const int nOrder = Type::compare(_other);
 
@@ -153,66 +153,84 @@ int maxBitsIntNat(int _bitsInt, int _bitsNat) {
     return _bitsInt;
 }
 
-Type::Extremum Type::getJoin(ir::Type & _other) {
+Type *Type::getJoin(ir::Type &_other) {
+    if (getKind() == TOP || _other.getKind() == BOTTOM)
+        return this;
+
+    if (getKind() == BOTTOM || _other.getKind() == TOP)
+        return &_other;
+
     if (getKind() == FRESH || _other.getKind() == FRESH) {
         ir::Type &fresh = getKind() == FRESH ? *this : _other;
         ir::Type &other = getKind() == FRESH ? _other : *this;
 
         if (other.contains(&fresh))
-            return Extremum((Type *)NULL, true);
+            return new Type(TOP);
 
-        return Extremum((Type *)NULL, false);
+        return (Type *)NULL;
     }
 
     switch (compare(_other)) {
         case ORD_SUB:
-            return Extremum(& _other, false);
+            return &_other;
         case ORD_SUPER:
         case ORD_EQUALS:
-            return Extremum(this, false);
+            return this;
     }
 
     typedef std::pair<int, int> P;
     P kinds(getKind(), _other.getKind());
 
     if (kinds == P(NAT, INT))
-        return Extremum(new Type(INT, maxBitsIntNat(_other.getBits(), getBits())), false);
+        return new Type(INT, maxBitsIntNat(_other.getBits(), getBits()));
 
     if (kinds == P(INT, NAT))
-        return Extremum(new Type(INT, maxBitsIntNat(getBits(), _other.getBits())), false);
+        return new Type(INT, maxBitsIntNat(getBits(), _other.getBits()));
 
-    return Extremum((Type *)NULL, true);
+    if (getKind() != _other.getKind())
+        return new Type(TOP);
+
+    return (Type *)NULL;
 }
 
-Type::Extremum Type::getMeet(ir::Type & _other) {
+Type *Type::getMeet(ir::Type &_other) {
+    if (getKind() == TOP || _other.getKind() == BOTTOM)
+        return &_other;
+
+    if (getKind() == BOTTOM || _other.getKind() == TOP)
+        return this;
+
     if (getKind() == FRESH || _other.getKind() == FRESH) {
         ir::Type &fresh = getKind() == FRESH ? *this : _other;
         ir::Type &other = getKind() == FRESH ? _other : *this;
 
         if (other.contains(&fresh))
-            return Extremum((Type *)NULL, true);
+            return new Type(BOTTOM);
 
-        return Extremum((Type *)NULL, false);
+        return (Type *)NULL;
     }
 
     switch (compare(_other)) {
         case ORD_SUB:
         case ORD_EQUALS:
-            return Extremum(this, false);
+            return this;
         case ORD_SUPER:
-            return Extremum(& _other, false);
+            return &_other;
     }
 
     typedef std::pair<int, int> P;
     P kinds(getKind(), _other.getKind());
 
     if (kinds == P(NAT, INT))
-        return Extremum(new Type(NAT, minBitsIntNat(_other.getBits(), getBits())), false);
+        return new Type(NAT, minBitsIntNat(_other.getBits(), getBits()));
 
     if (kinds == P(INT, NAT))
-        return Extremum(new Type(NAT, minBitsIntNat(getBits(), _other.getBits())), false);
+        return new Type(NAT, minBitsIntNat(getBits(), _other.getBits()));
 
-    return Extremum((Type *)NULL, true);
+    if (getKind() != _other.getKind())
+        return new Type(BOTTOM);
+
+    return (Type *)NULL;
 }
 
 // 'type' type.

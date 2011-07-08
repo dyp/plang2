@@ -2,6 +2,7 @@
 ///
 
 #include <iostream>
+#include <stack>
 
 #include <assert.h>
 
@@ -26,11 +27,12 @@ public:
     virtual bool visitUnary(Unary &_unary);
     virtual bool visitBinary(Binary &_binary);
     virtual bool visitStructConstructor(StructConstructor &_cons);
+    virtual bool visitUnionConstructor(UnionConstructor &_cons);
     virtual bool visitListConstructor(ListConstructor &_cons);
     virtual bool visitSetConstructor(SetConstructor &_cons);
     virtual bool visitArrayConstructor(ArrayConstructor &_cons);
     virtual bool visitMapConstructor(MapConstructor &_cons);
-    virtual bool visitField(FieldExpr &_field);
+    virtual bool visitFieldExpr(FieldExpr &_field);
     virtual bool visitCastExpr(CastExpr &_cast);
     virtual bool visitAssignment(Assignment &_assignment);
     virtual bool visitVariableDeclaration(VariableDeclaration &_var);
@@ -44,6 +46,9 @@ public:
     virtual int handlePredicateOutParam(Node &_node);
     virtual int handleParameterizedTypeParam(Node &_node);
     virtual int handleVarDeclVar(Node &_node);
+    virtual int handleSwitchCaseValuePost(Node &_node);
+
+    virtual bool traverseSwitch(Switch &_stmt);
 
 protected:
     template<typename Node>
@@ -68,6 +73,7 @@ private:
     tc::Formulas & m_constraints;
     Context & m_ctx;
     tc::FreshTypes & m_types;
+    std::stack<Switch *> m_switches;
 };
 
 Collector::Collector(tc::Formulas & _constraints, Context & _ctx, tc::FreshTypes & _types)
@@ -555,13 +561,42 @@ bool Collector::visitStructConstructor(StructConstructor &_cons) {
         StructFieldDefinition *pDef = _cons.get(i);
         NamedValue *pField = new NamedValue(pDef->getName());
 
-        pDef->setStructType(pStruct);
         setFreshType(pField, pDef->getValue()->getType());
-        pStruct->getFields().add(pField);
+        if (pDef->getName().empty())
+            pStruct->getTypesOrd().add(pField);
+        else
+            pStruct->getNamesSet().add(pField);
         pDef->setField(pField);
     }
 
+    assert(pStruct->getNamesSet().empty() || pStruct->getTypesOrd().empty());
+
     _cons.setType(pStruct);
+
+    return true;
+}
+
+bool Collector::visitUnionConstructor(UnionConstructor &_cons) {
+    UnionType *pUnion = m_ctx.attach(new UnionType());
+    UnionConstructorDeclaration *pCons = m_ctx.attach(new UnionConstructorDeclaration(_cons.getName()));
+
+    pUnion->getConstructors().add(pCons);
+
+    for (size_t i = 0; i < _cons.size(); ++i) {
+        StructFieldDefinition *pDef = _cons.get(i);
+        NamedValue *pField = new NamedValue(pDef->getName());
+
+        setFreshType(pField, pDef->getValue()->getType());
+        pCons->getFields().add(pField);
+        pDef->setField(pField);
+    }
+
+    if (_cons.getType() != NULL) {
+        _cons.getType()->setParent(NULL); // Suppress delete.
+        m_constraints.insert(new tc::Formula(tc::Formula::EQUALS, pUnion, _cons.getType()));
+    }
+
+    _cons.setType(pUnion);
 
     return true;
 }
@@ -624,13 +659,13 @@ bool Collector::visitMapConstructor(MapConstructor &_cons) {
     return true;
 }
 
-bool Collector::visitField(FieldExpr &_field) {
+bool Collector::visitFieldExpr(FieldExpr &_field) {
     tc::FreshType *pFresh = createFresh(&_field);
     ir::StructType * pStruct = m_ctx.attach(new StructType());
     ir::NamedValue * pField = new NamedValue(_field.getFieldName(), pFresh, false);
 
     _field.setType(pFresh);
-    pStruct->getFields().add(pField);
+    pStruct->getNamesSet().add(pField);
 
     if (_field.getObject()->getType()->getKind() == Type::FRESH)
         pFresh->setFlags(((tc::FreshType *) _field.getObject()->getType())->getFlags());
@@ -659,17 +694,25 @@ bool Collector::visitCastExpr(CastExpr &_cast) {
         bool bSuccess = true;
 
         // TODO: maybe use default values for fields.
-        if (pStruct->getFields().size() == pFields->size()) {
+        if (pStruct->getNamesOrd().size() == pFields->size()) {
             for (size_t i = 0; i < pFields->size(); ++i) {
                 StructFieldDefinition *pDef = pFields->get(i);
-                size_t cOtherIdx = pDef->getName().empty() ? i : pStruct->getFields().findByNameIdx(pDef->getName());
+                size_t cOtherIdx = pDef->getName().empty() ? i : pStruct->getNamesOrd().findByNameIdx(pDef->getName());
 
                 if (cOtherIdx == (size_t)-1) {
                     bSuccess = false;
                     break;
                 }
 
-                NamedValue *pField = pStruct->getFields().get(cOtherIdx);
+                NamedValue *pField = pStruct->getNamesOrd().get(cOtherIdx);
+
+                m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                        pDef->getValue()->getType(), pField->getType()));
+            }
+        } else if (pStruct->getTypesOrd().size() == pFields->size()) {
+            for (size_t i = 0; i < pFields->size(); ++i) {
+                StructFieldDefinition *pDef = pFields->get(i);
+                NamedValue *pField = pStruct->getTypesOrd().get(i);
 
                 m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
                         pDef->getValue()->getType(), pField->getType()));
@@ -764,6 +807,26 @@ bool Collector::visitTypeExpr(TypeExpr &_expr) {
     pType->getDeclaration()->setType(_expr.getContents(), false);
     _expr.setType(pType);
     return true;
+}
+
+bool Collector::traverseSwitch(Switch &_stmt) {
+    m_switches.push(&_stmt);
+    const bool b = Visitor::traverseSwitch(_stmt);
+    m_switches.pop();
+    return b;
+}
+
+int Collector::handleSwitchCaseValuePost(Node &_node) {
+    Expression *pExpr = (Expression *)&_node;
+
+    if (m_switches.top()->getArg() != NULL)
+        m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+            pExpr->getType(), m_switches.top()->getArg()->getType()));
+    else if (m_switches.top()->getParamDecl())
+        m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+            pExpr->getType(), m_switches.top()->getParamDecl()->getVariable()->getType()));
+
+    return 0;
 }
 
 void tc::collect(Formulas & _constraints, Node &_node, Context & _ctx, FreshTypes & _types) {

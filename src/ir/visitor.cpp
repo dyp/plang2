@@ -150,7 +150,9 @@ bool Visitor::traverseEnumType(EnumType &_type) {
 
 bool Visitor::traverseStructType(StructType &_type) {
     ENTER(StructType, _type);
-    TRAVERSE_COL(NamedValue, StructFieldDecl, &_type.getFields());
+    TRAVERSE_COL(NamedValue, StructFieldDecl, &_type.getNamesOrd());
+    TRAVERSE_COL(NamedValue, StructFieldDecl, &_type.getTypesOrd());
+    TRAVERSE_COL(NamedValue, StructFieldDecl, &_type.getNamesSet());
     EXIT();
 }
 
@@ -732,7 +734,7 @@ bool Visitor::traversePredicate(Predicate &_stmt) {
 
 bool Visitor::traverseUnionConstructorDeclaration(UnionConstructorDeclaration &_cons) {
     ENTER(UnionConstructorDeclaration, _cons);
-    TRAVERSE_COL(NamedValue, UnionConsField, &_cons.getStruct().getFields());
+    TRAVERSE_COL(NamedValue, UnionConsField, &_cons.getFields());
     EXIT();
 }
 

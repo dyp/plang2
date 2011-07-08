@@ -29,7 +29,7 @@ public:
     void addVariable(const void * _pOrig, Auto<Variable> _pNew, bool _bReference = false);
 
     void addType(const ir::Type * _pIRType, const Auto<Type> & _pLLIRType);
-    Auto<Type> resolveType(const ir::Type * _pType);
+    Auto<Type> resolveType(const ir::Node * _pType);
 
     void addBuiltin(const std::wstring & _strName, const Auto<Function> & _pFunc);
     Auto<Function> resolveBuiltin(const std::wstring & _strName);
@@ -44,6 +44,7 @@ public:
     Auto<Type> translate(const ir::NamedReferenceType & _type);
     Auto<StructType> translate(const ir::StructType & _type);
     Auto<StructType> translate(const ir::UnionType & _type);
+    Auto<StructType> translate(const ir::UnionConstructorDeclaration &_cons);
     Auto<Function> translate(const ir::Predicate & _pred);
     void translate(const ir::Statement & _stmt, Instructions & _instrs);
     void translate(const ir::Block & _stmt, Instructions & _instrs);
@@ -72,9 +73,9 @@ public:
     Operand translate(const ir::Constructor & _expr, Instructions & _instrs);
     Operand translateEq(const ir::Type * _pType, const Operand & _lhs, const Operand & _rhs, Instructions & _instrs);
     Operand translateEqUnion(const ir::UnionType * _pType, const Operand & _lhs, const Operand & _rhs, Instructions & _instrs);
-    Operand translateEqStruct(const ir::StructType * _pType, const Operand & _lhs, const Operand & _rhs, Instructions & _instrs);
+    Operand translateEqStruct(const ir::NamedValues &_fields, const Operand & _lhs, const Operand & _rhs, Instructions & _instrs);
 
-    void initStruct(const ir::StructConstructor & _expr, Instructions & _instrs, const ir::Type * _pType, const Operand & _ptr);
+    void initStruct(const ir::StructConstructor & _expr, Instructions & _instrs, const ir::NamedValues &_fields, const Operand & _ptr);
 
     Operand translate(const ir::StructConstructor & _expr, Instructions & _instrs);
     Operand translate(const ir::UnionConstructor & _expr, Instructions & _instrs);
@@ -92,7 +93,7 @@ public:
 private:
     typedef std::map<const void *, std::pair<Auto<Variable>, bool> > variable_map_t;
     typedef std::map<const ir::Label *, int> label_numbers_t;
-    typedef std::map<const ir::Type *, Auto<Type> > type_map_t;
+    typedef std::map<const ir::Node *, Auto<Type> > type_map_t;
     typedef std::map<const ir::Type *, Auto<Function> > compare_map_t;
     typedef std::map<std::wstring, Auto<Function> > builtin_map_t;
 
@@ -142,7 +143,7 @@ void Translator::addType(const ir::Type * _pIRType, const Auto<Type> & _pLLIRTyp
         m_pParent->addType(_pIRType, _pLLIRType);
 }
 
-Auto<Type> Translator::resolveType(const ir::Type * _pType) {
+Auto<Type> Translator::resolveType(const ir::Node * _pType) {
     if (m_pParent)
         return m_pParent->resolveType(_pType);
 
@@ -247,9 +248,11 @@ Auto<StructType> Translator::translate(const ir::StructType & _type) {
 
     structType = new StructType();
 
-    for (size_t i = 0; i < _type.getFields().size(); ++ i) {
-        structType->fieldTypes().push_back(translate(* _type.getFields().get(i)->getType()));
-    }
+    assert(_type.getNamesSet().empty());
+
+    for (size_t j = 0; j < 2; ++j)
+        for (size_t i = 0; i < _type.getAllFields()[j].size(); ++ i)
+            structType->fieldTypes().push_back(translate(*_type.getAllFields()[j].get(i)->getType()));
 
     m_pModule->types().push_back(structType);
     addType(& _type, structType);
@@ -271,6 +274,24 @@ Auto<StructType> Translator::translate(const ir::UnionType & _type) {
     addType(& _type, m_unionType);
 
     return m_unionType;
+}
+
+Auto<StructType> Translator::translate(const ir::UnionConstructorDeclaration &_cons) {
+    Auto<StructType> structType = Auto<StructType> (resolveType(& _cons));
+
+/*    if (! structType.empty())
+        return structType;
+
+    structType = new StructType();
+
+    for (size_t i = 0; i < _type.getFields().size(); ++ i) {
+        structType->fieldTypes().push_back(translate(* _type.getFields().get(i)->getType()));
+    }
+
+    m_pModule->types().push_back(structType);
+    addType(& _type, structType);
+*/
+    return structType;
 }
 
 Auto<Type> Translator::translate(const ir::Type & _type) {
@@ -456,18 +477,19 @@ Operand Translator::translateEqUnion(const ir::UnionType * _pType, const Operand
             Instructions & body = swCase.body;
 
             const ir::UnionConstructorDeclaration * pCons = _pType->getConstructors().get(i);
-            const ir::StructType & dataType = pCons->getStruct();
+            const ir::NamedValues &fields = pCons->getFields();
+//            const ir::StructType & dataType = pCons->getStruct();
 
             swCase.values.push_back(i);
 
-            if (dataType.getFields().size() == 0) {
+            if (fields.size() == 0) {
                 body.push_back(new Binary(Binary::SET, varResult,
                         Operand(Literal(new Type(Type::BOOL), Number::makeInt(1)))));
                 continue;
             }
 
-            if (dataType.getFields().size() == 1) {
-                const ir::Type * pFieldType = resolveBaseType(dataType.getFields().get(0)->getType());
+            if (fields.size() == 1) {
+                const ir::Type * pFieldType = resolveBaseType(fields.get(0)->getType());
                 Auto<Type> fieldType = translate(* pFieldType);
                 Operand l = lPtr, r = rPtr;
 
@@ -491,7 +513,7 @@ Operand Translator::translateEqUnion(const ir::UnionType * _pType, const Operand
                 continue;
             }
 
-            Auto<StructType> st = translate(dataType);
+            Auto<StructType> st = translate(*pCons);
             Operand l = lPtr, r = rPtr;
 
             body.push_back(new Unary(Unary::LOAD, lPtr));
@@ -503,7 +525,7 @@ Operand Translator::translateEqUnion(const ir::UnionType * _pType, const Operand
             body.push_back(new Unary(Unary::LOAD, Operand(body.back()->getResult())));
             r = Operand(body.back()->getResult());
 
-            Operand eq = trans.translateEqStruct(& dataType, l, r, body);
+            Operand eq = trans.translateEqStruct(fields, l, r, body);
 
             body.push_back(new Binary(Binary::SET, varResult, eq));
         }
@@ -531,8 +553,8 @@ Operand Translator::translateEqUnion(const ir::UnionType * _pType, const Operand
     return Operand(call->getResult());
 }
 
-Operand Translator::translateEqStruct(const ir::StructType * _pType, const Operand & _lhs, const Operand & _rhs, Instructions & _instrs) {
-    if (_pType->getFields().empty())
+Operand Translator::translateEqStruct(const ir::NamedValues &_fields, const Operand & _lhs, const Operand & _rhs, Instructions & _instrs) {
+    if (_fields.empty())
         return Operand(Literal(new Type(Type::BOOL), Number::makeInt(1)));
 
     Auto<Label> labelEnd = new Label();
@@ -546,8 +568,8 @@ Operand Translator::translateEqStruct(const ir::StructType * _pType, const Opera
     _instrs.push_back(new Unary(Unary::PTR, _rhs));
     Operand rPtr = Operand(_instrs.back()->getResult());
 
-    for (size_t i = 0; i < _pType->getFields().size(); ++ i) {
-        const ir::Type * pFieldType = resolveBaseType(_pType->getFields().get(i)->getType());
+    for (size_t i = 0; i < _fields.size(); ++ i) {
+        const ir::Type * pFieldType = resolveBaseType(_fields.get(i)->getType());
 
         _instrs.push_back(new Field(lPtr, i));
         _instrs.push_back(new Unary(Unary::LOAD, Operand(_instrs.back()->getResult())));
@@ -572,8 +594,13 @@ Operand Translator::translateEq(const ir::Type * _pType, const Operand & _lhs, c
     switch (_pType->getKind()) {
         case ir::Type::UNION:
             return translateEqUnion((const ir::UnionType *) _pType, _lhs, _rhs, _instrs);
-        case ir::Type::STRUCT:
-            return translateEqStruct((const ir::StructType *) _pType, _lhs, _rhs, _instrs);
+        case ir::Type::STRUCT: {
+            const ir::StructType *pStruct = (const ir::StructType *)_pType;
+            if (!pStruct->getNamesOrd().empty())
+                return translateEqStruct(pStruct->getNamesOrd(), _lhs, _rhs, _instrs);
+            if (!pStruct->getTypesOrd().empty())
+                return translateEqStruct(pStruct->getTypesOrd(), _lhs, _rhs, _instrs);
+        }
     }
 
     const int nInstr = _selectInstr(_lhs.getType()->getKind(), Binary::EQ, Binary::FEQ, Binary::ZEQ, Binary::QEQ);
@@ -638,9 +665,9 @@ Operand Translator::translate(const ir::UnionAlternativeExpr & _expr, Instructio
     _instrs.push_back(new Unary(Unary::LOAD, Operand(_instrs.back()->getResult())));
 
     const ir::UnionConstructorDeclaration * pCons = _expr.getConstructor();
-    const ir::StructType & dataType = pCons->getStruct();
+//    const ir::StructType & dataType = pCons->getStruct();
 
-    if (dataType.getFields().size() > 1) {
+    if (pCons->getFields().size() > 1) {
         // Treat it as a struct.
         assert(false);
     } else {
@@ -763,12 +790,12 @@ Operand Translator::translate(const ir::Ternary & _expr, Instructions & _instrs)
     return Operand(var);
 }
 
-void Translator::initStruct(const ir::StructConstructor & _expr, Instructions & _instrs, const ir::Type * _pType, const Operand & _ptr) {
-    const ir::StructType * pStructType = (const ir::StructType *) _pType;
-
+void Translator::initStruct(const ir::StructConstructor & _expr, Instructions & _instrs,
+        const ir::NamedValues &_fields, const Operand & _ptr)
+{
     for (size_t i = 0; i < _expr.size(); ++ i) {
         ir::StructFieldDefinition * pFieldDef = _expr.get(i);
-        ir::Type * pFieldType = (ir::Type *) ir::resolveBaseType(pStructType->getFields().get(i)->getType());
+        ir::Type * pFieldType = (ir::Type *) ir::resolveBaseType(_fields.get(i)->getType());
 
         // FIXME: assumes constant order of constructor values.
 
@@ -795,7 +822,13 @@ Operand Translator::translate(const ir::StructConstructor & _expr, Instructions 
 
     m_pFunction->locals().push_back(var);
     _instrs.push_back(ptr);
-    initStruct(_expr, _instrs, _expr.getType(), Operand(ptr->getResult()));
+
+    const ir::StructType *pStruct = (const ir::StructType *)_expr.getType();
+
+    if (!pStruct->getNamesOrd().empty())
+        initStruct(_expr, _instrs, pStruct->getNamesOrd(), Operand(ptr->getResult()));
+    else if (!pStruct->getTypesOrd().empty())
+        initStruct(_expr, _instrs, pStruct->getTypesOrd(), Operand(ptr->getResult()));
 
     return Operand(var);
 }
@@ -816,10 +849,10 @@ Operand Translator::translate(const ir::UnionConstructor & _expr, Instructions &
             Operand(_instrs.back()->getResult()),
             Operand(Literal(new Type(Type::UINT32), Number::makeInt(pProto->getOrdinal())))));
 
-    const ir::StructType & dataType = pProto->getStruct();
+//    const ir::StructType & dataType = pProto->getStruct();
 
-    if (dataType.getFields().size() > 1) {
-        Auto<StructType> st = translate(dataType);
+    if (pProto->getFields().size() > 1) {
+        Auto<StructType> st = translate(*pProto);
 
         _instrs.push_back(new Unary(Unary::MALLOC,
                 Operand(Literal(new Type(Type::UINT64), Number::makeInt(st->sizeOf())))));
@@ -832,10 +865,10 @@ Operand Translator::translate(const ir::UnionConstructor & _expr, Instructions &
         _instrs.push_back(new Binary(Binary::STORE,
                 Operand(_instrs.back()->getResult()), opBuf));
 
-        initStruct(_expr, _instrs, & dataType, opBuf);
-    } else if (! dataType.getFields().empty()) {
+        initStruct(_expr, _instrs, pProto->getFields(), opBuf);
+    } else if (!pProto->getFields().empty()) {
         ir::StructFieldDefinition * pFieldDef = _expr.get(0);
-        ir::Type * pFieldType = (ir::Type *) ir::resolveBaseType(dataType.getFields().get(0)->getType());
+        ir::Type * pFieldType = (ir::Type *) ir::resolveBaseType(pProto->getFields().get(0)->getType());
         Auto<Type> ft = translate(* pFieldType);
 
         // Should be done by middle end.
@@ -1342,23 +1375,23 @@ void Translator::translateSwitchUnion(const ir::Switch & _stmt,
 
             Instructions & body = pCase->body;
             Operand opValue;
-            bool bStruct = pProto->getStruct().getFields().size() > 1;
-            bool bPointer = (pProto->getStruct().getFields().size() == 1);
+            bool bStruct = pProto->getFields().size() > 1;
+            bool bPointer = (pProto->getFields().size() == 1);
             const bool bCompare = pCons->getDeclarations().size() < pCons->size();
 
             if (bPointer) {
-                Auto<Type> fieldType = translate(* pProto->getStruct().getFields().get(0)->getType());
+                Auto<Type> fieldType = translate(* pProto->getFields().get(0)->getType());
                 bPointer = (fieldType->sizeOf() > Type::sizeOf(Type::POINTER));
             }
 
             if (bCompare || ! pCons->getDeclarations().empty()) {
                 if (bStruct) {
-                    Auto<StructType> st = translate(pProto->getStruct());
+                    Auto<StructType> st = translate(*pProto);
 
                     body.push_back(new Cast(opContents, new PointerType(st)));
                     opValue = Operand(body.back()->getResult());
                 } else {
-                    Auto<Type> fieldType = translate(* pProto->getStruct().getFields().get(0)->getType());
+                    Auto<Type> fieldType = translate(* pProto->getFields().get(0)->getType());
 
                     if (bPointer) {
                         body.push_back(new Cast(opContents, new PointerType(fieldType)));

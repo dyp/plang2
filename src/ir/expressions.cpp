@@ -22,7 +22,7 @@ const std::wstring &PredicateReference::getName() const {
 }
 
 bool UnionConstructor::isComplete() const {
-    return m_decls.empty() && m_pProto && size() == m_pProto->getStruct().getFields().size();
+    return m_decls.empty() && m_pProto && size() == m_pProto->getFields().size();
 }
 
 AnonymousPredicate::~AnonymousPredicate() {
@@ -50,7 +50,7 @@ std::wstring VariableDeclaration::getName() const {
 
 UnionFieldIdx UnionType::findField(const std::wstring & _strName) const {
     for (size_t i = 0; i < m_constructors.size(); ++ i) {
-        size_t cIdx = m_constructors.get(i)->getStruct().getFields().findByNameIdx(_strName);
+        size_t cIdx = m_constructors.get(i)->getFields().findByNameIdx(_strName);
         if (cIdx != (size_t) -1)
             return UnionFieldIdx(i, cIdx);
     }
@@ -59,7 +59,7 @@ UnionFieldIdx UnionType::findField(const std::wstring & _strName) const {
 }
 
 UnionAlternativeExpr::UnionAlternativeExpr(const UnionType * _pType, const UnionFieldIdx & _idx) :
-    m_strName(_pType->getConstructors().get(_idx.first)->getStruct().getFields().get(_idx.second)->getName()), m_pType(_pType), m_idx(_idx)
+    m_strName(_pType->getConstructors().get(_idx.first)->getFields().get(_idx.second)->getName()), m_pType(_pType), m_idx(_idx)
 {
 }
 
@@ -68,7 +68,7 @@ const UnionConstructorDeclaration * UnionAlternativeExpr::getConstructor() const
 }
 
 const NamedValue * UnionAlternativeExpr::getField() const {
-    return getConstructor()->getStruct().getFields().get(m_idx.second);
+    return getConstructor()->getFields().get(m_idx.second);
 }
 
 Type * FunctionCall::getType() const {
@@ -100,7 +100,7 @@ Type * FunctionCall::getType() const {
     } else {
         StructType * pReturnType = new StructType();
 
-        pReturnType->getFields().append(* pBranch, false);
+        pReturnType->getTypesOrd().append(* pBranch, false);
         pThis->setType(pReturnType);
     }
 

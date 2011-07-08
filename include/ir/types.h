@@ -122,6 +122,8 @@ public:
     virtual int compare(const Type & _other) const;
     virtual bool less(const Type & _other) const;
 
+    Type *clone() const;
+
 private:
     TypeDeclaration *m_pDecl;
 };
@@ -131,39 +133,43 @@ private:
 class StructType : public Type {
 public:
     /// Default constructor.
-    StructType() {}
+    StructType();
 
     /// Get type kind.
     /// \returns #Struct.
     virtual int getKind() const { return STRUCT; }
 
-    /// Get list of struct fields.
+    /// Ordered fields known by name.
     /// \return List of fields.
-    NamedValues & getFields() { return m_fields; }
-    const NamedValues & getFields() const { return m_fields; }
+    NamedValues &getNamesOrd() { return m_namesOrd; }
+    const NamedValues &getNamesOrd() const { return m_namesOrd; }
+
+    // Ordered fields known by type.
+    NamedValues &getTypesOrd() { return m_typesOrd; }
+    const NamedValues &getTypesOrd() const { return m_typesOrd; }
+
+    // Unordered fields known by name.
+    NamedValues &getNamesSet() { return m_namesSet; }
+    const NamedValues &getNamesSet() const { return m_namesSet; }
+
+    /// All fields. Guaranteed to have 3 elements.
+    /// \return List of fields.
+    NamedValues *getAllFields() { return m_fields; }
+    const NamedValues *getAllFields() const { return m_fields; }
 
     virtual bool hasFresh() const;
-    virtual bool rewrite(ir::Type * _pOld, ir::Type * _pNew);
-    virtual int compare(const Type & _other) const;
-    virtual Extremum getMeet(ir::Type & _other);
-    virtual Extremum getJoin(ir::Type & _other);
-    virtual bool less(const Type & _other) const;
+    virtual bool rewrite(ir::Type *_pOld, ir::Type *_pNew);
+    virtual int compare(const Type &_other) const;
+    virtual Type *getMeet(ir::Type &_other);
+    virtual Type *getJoin(ir::Type &_other);
+    virtual bool less(const Type &_other) const;
+    virtual bool contains(const ir::Type *_pType) const;
 
-    bool allFieldsNamed() const;
-    bool allFieldsUnnamed() const;
-
-    virtual bool contains(const ir::Type *_pType) const {
-        for (size_t i = 0; i < m_fields.size(); ++i)
-            if (*m_fields.get(i)->getType() == *_pType || m_fields.get(i)->getType()->contains(_pType))
-                return true;
-        return false;
-    }
+    bool empty() const;
 
 private:
-    NamedValues m_fields;
-    mutable std::map<std::wstring, size_t> m_mapNames;
-
-    void _fillNames() const;
+    NamedValues m_fields[3];
+    NamedValues &m_namesOrd, &m_typesOrd, &m_namesSet;
 };
 
 /// Identifier belonging to an enumeration.
@@ -227,8 +233,8 @@ public:
 
     /// Get list of constructor fields.
     /// \return List of fields.
-    StructType & getStruct() { return m_struct; }
-    const StructType & getStruct() const { return m_struct; }
+    NamedValues & getFields() { return m_fields; }
+    const NamedValues & getFields() const { return m_fields; }
 
     UnionType * getUnion() const { return m_pUnion; }
     void setUnion(UnionType * _pUnion) { m_pUnion = _pUnion; }
@@ -241,7 +247,7 @@ public:
 
 private:
     std::wstring m_strName;
-    StructType m_struct;
+    NamedValues m_fields;
     UnionType * m_pUnion;
     size_t m_ord;
 };
@@ -268,12 +274,13 @@ public:
 
     virtual int compare(const Type & _other) const;
 
-    virtual bool contains(const ir::Type *_pType) const {
-        for (size_t i = 0; i < m_constructors.size(); ++i)
-            if (!m_constructors.get(i)->getStruct().contains(_pType))
-                return false;
-        return !m_constructors.empty();
-    }
+    virtual bool hasFresh() const;
+    virtual bool rewrite(ir::Type * _pOld, ir::Type * _pNew);
+    virtual Type *getMeet(ir::Type & _other);
+    virtual Type *getJoin(ir::Type & _other);
+    virtual bool less(const Type & _other) const;
+
+    virtual bool contains(const ir::Type *_pType) const;
 
 private:
     UnionConstructorDeclarations m_constructors;
@@ -500,8 +507,8 @@ public:
     /// \returns #Set.
     virtual int getKind() const { return SET; }
 
-    virtual Extremum getMeet(Type & _other);
-    virtual Extremum getJoin(Type & _other);
+    virtual Type *getMeet(Type & _other);
+    virtual Type *getJoin(Type & _other);
 };
 
 /// Map type.
@@ -549,8 +556,8 @@ public:
     virtual bool rewrite(Type * _pOld, Type * _pNew);
     virtual int compare(const Type & _other) const;
     virtual bool less(const Type & _other) const;
-    virtual Extremum getJoin(ir::Type &_other);
-    virtual Extremum getMeet(ir::Type &_other);
+    virtual Type *getJoin(ir::Type &_other);
+    virtual Type *getMeet(ir::Type &_other);
 
 private:
     Type * m_pIndexType;
@@ -571,8 +578,8 @@ public:
     /// \returns #List.
     virtual int getKind() const { return LIST; }
 
-    virtual Extremum getJoin(ir::Type &_other);
-    virtual Extremum getMeet(ir::Type &_other);
+    virtual Type *getJoin(ir::Type &_other);
+    virtual Type *getMeet(ir::Type &_other);
 };
 
 /// Predicate type.

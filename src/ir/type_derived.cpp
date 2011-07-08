@@ -36,74 +36,50 @@ bool DerivedType::less(const Type & _other) const {
 
 // Sets.
 
-Type::Extremum SetType::getMeet(Type & _other) {
-    Extremum meet = Type::getMeet(_other);
+Type *SetType::getMeet(Type & _other) {
+    Type *pMeet = Type::getMeet(_other);
 
-    if (!meet.second)
-        return meet;
+    if (pMeet != NULL || _other.getKind() == FRESH)
+        return pMeet;
 
-    if (_other.getKind() != SET)
-        return meet;
+    pMeet = getBaseType()->getMeet(*((const SetType &)_other).getBaseType());
 
-    meet = getBaseType()->getMeet(*((const SetType &)_other).getBaseType());
-
-    if (meet.first != NULL)
-        meet.first = new SetType(meet.first);
-
-    return meet;
+    return pMeet ? new SetType(pMeet) : NULL;
 }
 
-Type::Extremum SetType::getJoin(Type & _other) {
-    Extremum join = Type::getJoin(_other);
+Type *SetType::getJoin(Type & _other) {
+    Type *pJoin = Type::getJoin(_other);
 
-    if (!join.second)
-        return join;
+    if (pJoin != NULL || _other.getKind() == FRESH)
+        return pJoin;
 
-    if (_other.getKind() != SET)
-        return join;
+    pJoin = getBaseType()->getJoin(*((const SetType &)_other).getBaseType());
 
-    join = getBaseType()->getJoin(*((const SetType &)_other).getBaseType());
-
-    if (join.first != NULL)
-        join.first = new SetType(join.first);
-
-    return join;
+    return pJoin ? new SetType(pJoin) : NULL;
 }
 
 // Lists.
 
-Type::Extremum ListType::getMeet(Type & _other) {
-    Extremum meet = Type::getMeet(_other);
+Type *ListType::getMeet(Type & _other) {
+    Type *pMeet = Type::getMeet(_other);
 
-    if (!meet.second)
-        return meet;
+    if (pMeet != NULL || _other.getKind() == FRESH)
+        return pMeet;
 
-    if (_other.getKind() != LIST)
-        return meet;
+    pMeet = getBaseType()->getMeet(*((const ListType &)_other).getBaseType());
 
-    meet = getBaseType()->getMeet(*((const ListType &)_other).getBaseType());
-
-    if (meet.first != NULL)
-        meet.first = new ListType(meet.first);
-
-    return meet;
+    return pMeet ? new ListType(pMeet) : NULL;
 }
 
-Type::Extremum ListType::getJoin(Type & _other) {
-    Extremum join = Type::getJoin(_other);
+Type *ListType::getJoin(Type & _other) {
+    Type *pJoin = Type::getJoin(_other);
 
-    if (!join.second)
-        return join;
+    if (pJoin != NULL || _other.getKind() == FRESH)
+        return pJoin;
 
-    if (_other.getKind() != LIST)
-        return join;
+    pJoin = getBaseType()->getJoin(*((const ListType &)_other).getBaseType());
 
-    join = getBaseType()->getJoin(*((const ListType &)_other).getBaseType());
-
-    if (join.first != NULL)
-        join.first = new ListType(join.first);
-
-    return join;
+    return pJoin ? new ListType(pJoin) : NULL;
 }
 
 // Maps.
@@ -116,6 +92,12 @@ bool MapType::rewrite(Type *_pOld, Type *_pNew) {
 int MapType::compare(const Type &_other) const {
     if (_other.getKind() == FRESH)
         return ORD_UNKNOWN;
+
+    if (_other.getKind() == TOP)
+        return ORD_SUB;
+
+    if (_other.getKind() == BOTTOM)
+        return ORD_SUPER;
 
     if (_other.getKind() != getKind())
         return ORD_NONE;
@@ -166,48 +148,26 @@ bool MapType::less(const Type & _other) const {
     return *getIndexType() < *other.getIndexType();
 }
 
-Type::Extremum MapType::getMeet(Type & _other) {
-    Extremum meet = Type::getMeet(_other);
+Type *MapType::getMeet(Type & _other) {
+    Type *pMeet = Type::getMeet(_other);
 
-    if (!meet.second)
-        return meet;
+    if (pMeet != NULL || _other.getKind() == FRESH)
+        return pMeet;
 
-    if (_other.getKind() != MAP)
-        return meet;
+    Type *pBaseJoin = getBaseType()->getJoin(*((const MapType &)_other).getBaseType());
+    Type *pIndexMeet = getIndexType()->getMeet(*((const MapType &)_other).getIndexType());
 
-    Extremum join = getBaseType()->getJoin(*((const MapType &)_other).getBaseType());
-
-    meet = getIndexType()->getMeet(*((const MapType &)_other).getIndexType());
-
-    if (meet.first == NULL || join.first == NULL) {
-        meet.second = meet.second || join.second;
-        return meet;
-    }
-
-    meet.first = new MapType(meet.first, join.first);
-
-    return meet;
+    return (pBaseJoin && pIndexMeet) ? new MapType(pIndexMeet, pBaseJoin) : NULL;
 }
 
-Type::Extremum MapType::getJoin(Type & _other) {
-    Extremum join = Type::getJoin(_other);
+Type *MapType::getJoin(Type & _other) {
+    Type *pJoin = Type::getJoin(_other);
 
-    if (!join.second)
-        return join;
+    if (pJoin != NULL || _other.getKind() == FRESH)
+        return pJoin;
 
-    if (_other.getKind() != MAP)
-        return join;
+    Type *pIndexJoin = getIndexType()->getJoin(*((const MapType &)_other).getIndexType());
+    Type *pBaseMeet = getBaseType()->getMeet(*((const MapType &)_other).getBaseType());
 
-    Extremum meet = getBaseType()->getMeet(*((const MapType &)_other).getBaseType());
-
-    join = getIndexType()->getJoin(*((const MapType &)_other).getIndexType());
-
-    if (meet.first == NULL || join.first == NULL) {
-        join.second = meet.second || join.second;
-        return join;
-    }
-
-    join.first = new MapType(join.first, meet.first);
-
-    return join;
+    return (pIndexJoin && pBaseMeet) ? new MapType(pIndexJoin, pBaseMeet) : NULL;
 }

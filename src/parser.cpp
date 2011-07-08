@@ -734,8 +734,12 @@ Expression * Parser::parseAtom(Context & _ctx, int _nFlags) {
         if (bLinkedIdentifier && ! pExpr)
             ERROR(ctx, NULL, L"Parameter with name %ls not found", str.c_str());
 
-        if (! pExpr && _ctx.getConstructor(str) != NULL)
-            pExpr = parseConstructor(ctx, NULL);
+        if (! pExpr && _ctx.getConstructor(str) != NULL) {
+            if (ctx.nextIs(QUESTION) && !ctx.nextLoc()->hasLeadingSpace()) {
+                // ParseRecognizer?
+            } else
+                pExpr = parseConstructor(ctx, NULL);
+        }
 
         const Predicate * pPred = NULL;
 
@@ -1347,11 +1351,15 @@ StructType * Parser::parseStructType(Context & _ctx) {
         UNEXPECTED(ctx, "(");
 
     StructType * pType = ctx.attach(new StructType());
+    NamedValues fields;
 
-    if (! parseParamList(ctx, pType->getFields(), & Parser::parseVariableName, ALLOW_EMPTY_NAMES))
+    if (!parseParamList(ctx, fields, &Parser::parseVariableName, ALLOW_EMPTY_NAMES))
         return NULL;
 
-    DEBUG(L"%d", pType->getFields().size());
+    if (!fields.empty() && !fields.get(0)->getName().empty())
+        pType->getNamesOrd().append(fields);
+    else
+        pType->getTypesOrd().append(fields);
 
     if (! ctx.consume(RPAREN))
         UNEXPECTED(ctx, ")");
@@ -1795,8 +1803,8 @@ StructFieldDefinition * Parser::parseConstructorField(Context & _ctx) {
         if (ctx.getCurrentConstructor())
             ctx.getCurrentConstructor()->getDeclarations().add(pDecl);
 
-        //pExpr = ctx.attach(new VariableReference(& pDecl->getVariable()));
-        pField->setField(pDecl->getVariable());
+        pExpr = ctx.attach(new VariableReference(pDecl->getVariable()));
+        pField->setValue(pExpr);
     } else
         pField->setValue(pExpr);
 
@@ -1810,19 +1818,12 @@ UnionConstructor * Parser::parseConstructor(Context & _ctx, UnionType * _pUnion)
         return NULL;
 
     Context & ctx = * _ctx.createChild(false);
-    UnionConstructor * pCons = ctx.attach(new UnionConstructor());
-    UnionConstructorDeclaration * pDef = NULL;
     const std::wstring & strName = ctx.scan();
+    UnionConstructor * pCons = ctx.attach(new UnionConstructor(strName));
 
-    if (_pUnion)
-        pDef = _pUnion->getConstructors().get(_pUnion->getConstructors().findByNameIdx(strName));
-    else
-        pDef = _ctx.getConstructor(strName);
-
-    if (! pDef)
-        ERROR(ctx, NULL, L"Unknown or ambiguous union constructor reference: %ls", strName.c_str());
-
-    pCons->setPrototype(pDef);
+    if ((_pUnion && _pUnion->getConstructors().findByNameIdx(strName) == (size_t)-1) ||
+            (!_pUnion && !_ctx.getConstructor(strName)))
+        ERROR(ctx, NULL, L"Unknown union constructor reference: %ls", strName.c_str());
 
     if (ctx.is(LPAREN)) {
         ctx.setCurrentConstructor(pCons);
@@ -1830,7 +1831,13 @@ UnionConstructor * Parser::parseConstructor(Context & _ctx, UnionType * _pUnion)
             ERROR(ctx, NULL, L"Union constructor parameters expected");
     }
 
-    pCons->setType(pDef->getUnion(), false);
+    if (_pUnion) {
+        UnionConstructorDeclaration *pDecl = _pUnion->getConstructors().get(_pUnion->getConstructors().findByNameIdx(strName));
+
+        if (pDecl->getFields().size() != pCons->size())
+            ERROR(ctx, NULL, L"Constructor %ls requires %u arguments, %u given.",
+                    strName.c_str(), pDecl->getFields().size(), pCons->size());
+    }
 
     _ctx.mergeChildren();
 
@@ -1846,7 +1853,7 @@ UnionConstructorDeclaration * Parser::parseConstructorDeclaration(Context & _ctx
     UnionConstructorDeclaration * pCons = ctx.attach(new UnionConstructorDeclaration(ctx.scan()));
 
     if (ctx.consume(LPAREN)) {
-        if (! parseParamList(ctx, pCons->getStruct().getFields(), & Parser::parseVariableName))
+        if (! parseParamList(ctx, pCons->getFields(), & Parser::parseVariableName))
             return NULL;
 
         if (! ctx.consume(RPAREN))

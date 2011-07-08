@@ -119,6 +119,7 @@ public:
     inline _Node * attach(_Node * _node);
 
     lexer::Loc & loc() { return m_loc; }
+    lexer::Loc nextLoc() { return next(m_loc); }
 
     const std::wstring & getValue() const { return m_loc->getValue(); }
 
@@ -173,6 +174,7 @@ public:
     bool getConstructors(const std::wstring & _strName, ir::UnionConstructorDeclarations & _cons) const;
     ir::UnionConstructorDeclaration * getConstructor(const std::wstring & _strName) const;
     void addConstructor(ir::UnionConstructorDeclaration * _pCons);
+    bool isConstructor(const std::wstring & _strName) const;
 
     // Constructor-parsing stuff.
     ir::UnionConstructor * getCurrentConstructor() const { return m_pCons ? m_pCons : (m_pParent ? m_pParent->getCurrentConstructor() : NULL); }
