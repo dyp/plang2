@@ -5,6 +5,8 @@
 #include "typecheck.h"
 #include "prettyprinter.h"
 
+#if 0
+
 using namespace ir;
 
 class Solver {
@@ -1027,3 +1029,10 @@ bool tc::solve(tc::Formulas & _formulas) {
     Solver solver(_formulas);
     return solver.run();
 }
+
+#endif
+
+bool tc::solve(tc::Formulas & _formulas) {
+    return false;
+}
+

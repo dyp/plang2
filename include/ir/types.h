@@ -122,7 +122,7 @@ public:
     virtual int compare(const Type & _other) const;
     virtual bool less(const Type & _other) const;
 
-    Type *clone() const;
+    Type *clone() const { return NULL; };
 
 private:
     TypeDeclaration *m_pDecl;
