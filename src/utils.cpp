@@ -52,8 +52,8 @@ std::string strNarrow(const std::wstring & _s) {
     memset((void *)mbcBuf, 0, sizeof(bufLen));
 
     result = facet.out(state,
-            _s.c_str(), _s.c_str() + _s.length() + 2, pNextIn,
-            (char *) mbcBuf, (char *) mbcBuf + bufLen, pNextOut);
+            _s.c_str(), _s.c_str() + _s.length() + 1, pNextIn,
+            (char *)mbcBuf, (char *)mbcBuf + bufLen, pNextOut);
 
     return mbcBuf;
 }
@@ -75,7 +75,7 @@ std::wstring strWiden(const std::string & _s) {
     memset((void *) wcBuf, 0, sizeof(wchar_t)*bufLen);
 
     result = facet.in(state,
-            _s.c_str(), _s.c_str() + _s.length() + 2, pNextOut,
+            _s.c_str(), _s.c_str() + _s.length() + 1, pNextOut,
             (wchar_t *) wcBuf, (wchar_t *) wcBuf + bufLen, pNextIn);
 
     return wcBuf;
