@@ -4,56 +4,10 @@
 
 using namespace ir;
 
-#define ENTER(_TYPE, _PARAM)                                        \
-    do {                                                            \
-        if (isStopped())                                            \
-            return false;                                           \
-        if (m_path.empty())                                         \
-            m_path.push_back(Loc(&_PARAM, N_##_TYPE, R_TopLevel));  \
-        if (m_order == PARENTS_FIRST) {                             \
-            callRoleHandler(true);                                  \
-            if (!walkUpFrom##_TYPE(_PARAM))                         \
-                return !isStopped();                                \
-            callRoleHandler(false);                                 \
-        } else                                                      \
-            getLoc().walkUp = &Visitor::walkUpFrom##_TYPE;          \
-    } while (0);
-
-#define EXIT()                              \
-    do {                                    \
-        if (m_order == CHILDREN_FIRST) {    \
-            callRoleHandler(true);          \
-            if (!callWalkUp())              \
-                return !isStopped();        \
-            callRoleHandler(false);         \
-        }                                   \
-        return true;                        \
-    } while (0)
-
-#define TRAVERSE(_TYPE, _ROLE, _PARAM, _PARENT, _PTYPE, _SETTER)                            \
-    do {                                                                                    \
-        if (isStopped())                                                                    \
-            return false;                                                                   \
-        if ((_PARAM) != NULL) {                                                             \
-            NodeSetterImpl< _PTYPE, _TYPE, &_PTYPE::_SETTER > setter(_PARENT);              \
-            Ctx ctx(this, _PARAM, N_##_TYPE, R_##_ROLE, &Visitor::handle##_ROLE,            \
-                &Visitor::handle##_ROLE##Post, &setter);                                    \
-            if (!traverse##_TYPE(*(_PARAM)))                                                \
-                return false;                                                               \
-        }                                                                                   \
-    } while (0)
-
-#define TRAVERSE_COL(_TYPE, _ROLE, _PARAM)                                              \
-    do {                                                                                \
-        if (isStopped())                                                                \
-            return false;                                                               \
-        if ((_PARAM) != NULL) {                                                         \
-            Ctx ctx(this, _PARAM, N_##_TYPE, R_##_ROLE, &Visitor::handle##_ROLE,        \
-                &Visitor::handle##_ROLE##Post, NULL);                                   \
-            if (!traverseCollection(*(_PARAM)))                                         \
-                return false;                                                           \
-        }                                                                               \
-    } while (0)
+#define ENTER VISITOR_ENTER
+#define EXIT VISITOR_EXIT
+#define TRAVERSE VISITOR_TRAVERSE
+#define TRAVERSE_COL VISITOR_TRAVERSE_COL
 
 bool Visitor::visitNode(Node &_node) {
     return true;

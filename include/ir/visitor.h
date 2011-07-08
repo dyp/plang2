@@ -159,6 +159,7 @@ protected:
     void stop() { m_bStopped = true; }
 
     void setOrder(int _order) { m_order = _order; }
+    int getOrder() const { return m_order; }
 
 private:
     bool m_bStopped;
@@ -195,6 +196,57 @@ bool Visitor::traverseCollection(Collection<_Node, _Base> &_nodes) {
 
     return true;
 }
+
+#define VISITOR_ENTER(_TYPE, _PARAM)                                \
+    do {                                                            \
+        if (isStopped())                                            \
+            return false;                                           \
+        if (m_path.empty())                                         \
+            m_path.push_back(Loc(&_PARAM, N_##_TYPE, R_TopLevel));  \
+        if (getOrder() == PARENTS_FIRST) {                          \
+            callRoleHandler(true);                                  \
+            if (!walkUpFrom##_TYPE(_PARAM))                         \
+                return !isStopped();                                \
+            callRoleHandler(false);                                 \
+        } else                                                      \
+            getLoc().walkUp = &Visitor::walkUpFrom##_TYPE;          \
+    } while (0)
+
+#define VISITOR_EXIT()                      \
+    do {                                    \
+        if (getOrder() == CHILDREN_FIRST) { \
+            callRoleHandler(true);          \
+            if (!callWalkUp())              \
+                return !isStopped();        \
+            callRoleHandler(false);         \
+        }                                   \
+        return true;                        \
+    } while (0)
+
+#define VISITOR_TRAVERSE(_TYPE, _ROLE, _PARAM, _PARENT, _PTYPE, _SETTER)            \
+    do {                                                                            \
+        if (isStopped())                                                            \
+            return false;                                                           \
+        if ((_PARAM) != NULL) {                                                     \
+            NodeSetterImpl< _PTYPE, _TYPE, &_PTYPE::_SETTER > setter(_PARENT);      \
+            Ctx ctx(this, _PARAM, N_##_TYPE, R_##_ROLE, &Visitor::handle##_ROLE,    \
+                &Visitor::handle##_ROLE##Post, &setter);                            \
+            if (!traverse##_TYPE(*(_PARAM)))                                        \
+                return false;                                                       \
+        }                                                                           \
+    } while (0)
+
+#define VISITOR_TRAVERSE_COL(_TYPE, _ROLE, _PARAM)                                  \
+    do {                                                                            \
+        if (isStopped())                                                            \
+            return false;                                                           \
+        if ((_PARAM) != NULL) {                                                     \
+            Ctx ctx(this, _PARAM, N_##_TYPE, R_##_ROLE, &Visitor::handle##_ROLE,    \
+                &Visitor::handle##_ROLE##Post, NULL);                               \
+            if (!traverseCollection(*(_PARAM)))                                     \
+                return false;                                                       \
+        }                                                                           \
+    } while (0)
 
 }
 
