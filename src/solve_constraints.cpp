@@ -643,7 +643,76 @@ bool Solver::expandPredicate(int _kind, const PredicateTypePtr &_pLhs,
 bool Solver::expandStruct(int _kind, const StructTypePtr &_pLhs, const StructTypePtr &_pRhs,
         tc::FormulaList & _formulas)
 {
-    return false;
+    size_t cSub = 0, cSuper = 0, cUnknown = 0;
+    const size_t cOrdFieldsL = _pLhs->getNamesOrd().size() + _pLhs->getTypesOrd().size();
+    const size_t cOrdFieldsR = _pRhs->getNamesOrd().size() + _pRhs->getTypesOrd().size();
+    tc::CompoundFormulaPtr pStrict = _kind == tc::Formula::SUBTYPE_STRICT ? new tc::CompoundFormula() : NULL;
+
+    for (size_t i = 0; i < cOrdFieldsL && i < cOrdFieldsR; ++i) {
+        NamedValuePtr pFieldL = i < _pLhs->getNamesOrd().size() ? _pLhs->getNamesOrd().get(i) :
+                _pLhs->getTypesOrd().get(i - _pLhs->getNamesOrd().size());
+        NamedValuePtr pFieldR = i < _pRhs->getNamesOrd().size() ? _pRhs->getNamesOrd().get(i) :
+                _pRhs->getTypesOrd().get(i - _pRhs->getNamesOrd().size());
+
+        _formulas.push_back(new tc::Formula(_kind, pFieldL->getType(), pFieldR->getType()));
+
+        if (pStrict)
+            pStrict->addPart().insert(new tc::Formula(tc::Formula::SUBTYPE_STRICT,
+                    pFieldL->getType(), pFieldR->getType()));
+    }
+
+    if (cOrdFieldsL < cOrdFieldsR)
+        return false;
+
+    typedef std::map<std::wstring, std::pair<NamedValuePtr, NamedValuePtr> > NameMap;
+    NameMap fields;
+
+    for (size_t i = 0; i < _pLhs->getNamesSet().size(); ++i)
+        fields[_pLhs->getNamesSet().get(i)->getName()].first = _pLhs->getNamesSet().get(i);
+
+    for (size_t i = 0; i < _pRhs->getNamesSet().size(); ++i)
+        fields[_pRhs->getNamesSet().get(i)->getName()].second = _pRhs->getNamesSet().get(i);
+
+    for (size_t i = 0; i < _pLhs->getNamesOrd().size(); ++i) {
+        NamedValuePtr pField = _pLhs->getNamesOrd().get(i);
+        NameMap::iterator j = fields.find(pField->getName());
+
+        if (j != fields.end() && j->second.second)
+            j->second.first = pField;
+    }
+
+    for (size_t i = 0; i < _pRhs->getNamesOrd().size(); ++i) {
+        NamedValuePtr pField = _pRhs->getNamesOrd().get(i);
+        NameMap::iterator j = fields.find(pField->getName());
+
+        if (j != fields.end() && j->second.first)
+            j->second.second = pField;
+    }
+
+    for (NameMap::iterator i = fields.begin(); i != fields.end(); ++i) {
+        NamedValuePtr pFieldL = i->second.first;
+        NamedValuePtr pFieldR = i->second.second;
+
+        if (!pFieldL)
+            return false;
+
+        if (pFieldR) {
+            _formulas.push_back(new tc::Formula(_kind, pFieldL->getType(), pFieldR->getType()));
+
+            if (pStrict)
+                pStrict->addPart().insert(new tc::Formula(tc::Formula::SUBTYPE_STRICT,
+                        pFieldL->getType(), pFieldR->getType()));
+        }
+    }
+
+    if (pStrict) {
+        if (pStrict->size() == 1)
+            _formulas.push_back(*pStrict->getPart(0).begin());
+        else if (pStrict->size() > 1)
+            _formulas.push_back(pStrict);
+    }
+
+    return true;
 }
 
 bool Solver::expandSet(int _kind, const SetTypePtr &_pLhs, const SetTypePtr &_pRhs,
