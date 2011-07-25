@@ -157,14 +157,14 @@ int StructType::compare(const Type & _other) const {
         fields[getNamesSet().get(i)->getName()].first = getNamesSet().get(i);
 
     for (size_t i = 0; i < other.getNamesSet().size(); ++i)
-       fields[other.getNamesSet().get(i)->getName()].second = other.getNamesSet().get(i);
+        fields[other.getNamesSet().get(i)->getName()].second = other.getNamesSet().get(i);
 
     for (size_t i = 0; i < getNamesOrd().size(); ++i) {
         NamedValuePtr pField = getNamesOrd().get(i);
         NameMap::iterator j = fields.find(pField->getName());
 
         if (j != fields.end() && j->second.second)
-            fields[pField->getName()].first = pField;
+            j->second.first = pField;
     }
 
     for (size_t i = 0; i < other.getNamesOrd().size(); ++i) {
@@ -172,7 +172,7 @@ int StructType::compare(const Type & _other) const {
         NameMap::iterator j = fields.find(pField->getName());
 
         if (j != fields.end() && j->second.first)
-            fields[pField->getName()].second = pField;
+            j->second.second = pField;
     }
 
     for (NameMap::iterator i = fields.begin(); i != fields.end(); ++i) {
