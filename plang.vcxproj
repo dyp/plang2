@@ -75,6 +75,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\autoptr.cpp" />
     <ClCompile Include="src\backend_c.cpp" />
     <ClCompile Include="src\backend_debug.cpp" />
     <ClCompile Include="src\collect_constraints.cpp" />
@@ -103,6 +104,7 @@
     <ClCompile Include="src\utils.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\autoptr.h" />
     <ClInclude Include="include\ir\base.h" />
     <ClInclude Include="include\ir\builtins.h" />
     <ClInclude Include="include\ir\declarations.h" />

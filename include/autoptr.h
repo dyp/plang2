@@ -182,7 +182,7 @@ public:
     void *allocate(size_t _cSize, const void *_pOriginal);
     void *allocate(size_t _cSize, const Counted *_pOriginal);
 
-    friend void *::operator new(size_t, Cloner &, const void *);
+    friend void *operator new(size_t, Cloner &, const void *);
 
 private:
     typedef std::map<const void *, const Counted *> Cache;

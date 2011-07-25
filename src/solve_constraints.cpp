@@ -101,14 +101,14 @@ bool _insertBounds(tc::Context &_formulas, const tc::TypeSets &_bounds, bool _bU
 
 bool Solver::infer() {
     bool bModified = false;
-    tc::Formulas::iterator iNext = context()->empty() ? context()->end() : next(context()->begin());
+    tc::Formulas::iterator iNext = context()->empty() ? context()->end() : ::next(context()->begin());
 
     context().pExtrema->invalidate();
 
     for (tc::Formulas::iterator i = context()->begin(); i != context()->end(); i = iNext) {
         tc::Formula &f = **i;
 
-        iNext = next(i);
+        iNext = ::next(i);
 
         if (!f.is(tc::Formula::SUBTYPE | tc::Formula::SUBTYPE_STRICT))
             continue;
@@ -267,7 +267,7 @@ bool Solver::guess() {
 
                 for (TypeMap::iterator l = sups.begin(); l != sups.end();) {
                     tc::FreshTypePtr pType = l->first;
-                    TypeMap::iterator lNext = next(l);
+                    TypeMap::iterator lNext = ::next(l);
 
                     if (*f.getLhs() == *pType || f.getLhs()->contains(pType) || f.getRhs()->contains(pType) ||
                             (f.is(tc::Formula::EQUALS) && *f.getRhs() == *pType))
@@ -278,7 +278,7 @@ bool Solver::guess() {
 
                 for (TypeMap::iterator l = infs.begin(); l != infs.end();) {
                     tc::FreshTypePtr pType = l->first;
-                    TypeMap::iterator lNext = next(l);
+                    TypeMap::iterator lNext = ::next(l);
 
                     if (*f.getRhs() == *pType || f.getLhs()->contains(pType) || f.getRhs()->contains(pType) ||
                             (f.is(tc::Formula::EQUALS) && *f.getLhs() == *pType))
@@ -1132,7 +1132,7 @@ bool Solver::run() {
     if (processed.empty())
         result = tc::Formula::FALSE;
     else {
-        if (next(processed.begin()) == processed.end()) {
+        if (::next(processed.begin()) == processed.end()) {
             CS::push(processed.front());
         } else {
             // Recombine all results into a compound formula and simplify it.

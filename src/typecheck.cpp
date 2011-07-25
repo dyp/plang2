@@ -290,8 +290,8 @@ bool rewrite(Formulas &_formulas, const ir::TypePtr &_pOld, const ir::TypePtr &_
     bool bModified = false;
 
     for (Formulas::iterator i = _formulas.begin(); i != _formulas.end();) {
-        Formulas::iterator j = next(i);
-        Formulas::iterator k = i != _formulas.begin() ? prev(i) : i;
+        Formulas::iterator j = ::next(i);
+        Formulas::iterator k = i != _formulas.begin() ? ::prev(i) : i;
         FormulaPtr pFormula = *i;
 
         bModified |= pFormula->rewrite(_pOld, _pNew);
@@ -323,7 +323,7 @@ bool Context::rewrite(const ir::TypePtr &_pOld, const ir::TypePtr &_pNew) {
     bModified |= substs->rewrite(_pOld, _pNew);
 
     for (Formulas::iterator i = fs->begin(); i != fs->end();) {
-        Formulas::iterator j = next(i);
+        Formulas::iterator j = ::next(i);
         FormulaPtr pFormula = *i;
 
         if (pFormula->rewrite(_pOld, _pNew)) {
