@@ -89,6 +89,7 @@ namespace ir {
 
 class Context {
 public:
+    typedef std::map<std::wstring, ir::ModulePtr> ModuleMap;
     typedef std::multimap<std::wstring, ir::PredicatePtr> PredicateMap;
     typedef std::map<std::wstring, ir::NamedValuePtr> VariableMap;
     typedef std::map<std::wstring, ir::TypeDeclarationPtr> TypeMap;
@@ -101,7 +102,7 @@ public:
 public:
     Context(lexer::Loc _loc, bool _bScope = false)
         : m_loc(_loc), m_bScope(_bScope), m_pChild(NULL), m_pParent(NULL), m_pFailed(NULL),
-          m_predicates(NULL), m_variables(NULL), m_types(NULL), m_labels(NULL),
+          m_modules(NULL), m_predicates(NULL), m_variables(NULL), m_types(NULL), m_labels(NULL),
           m_processes(NULL), m_formulas(NULL), m_constructors(NULL), m_bFailed(false), m_pCons(NULL)
     {}
 
@@ -151,6 +152,9 @@ public:
 
     const StatusMessages &getMessages() const { return m_messages; }
 
+    ir::ModulePtr getModule(const std::wstring &_strName) const;
+    void addModule(const ir::ModulePtr &_pModule);
+
     bool getPredicates(const std::wstring &_strName, ir::Predicates &_predicates) const;
     ir::PredicatePtr getPredicate(const std::wstring &_strName) const;
     void addPredicate(const ir::PredicatePtr &_pPred);
@@ -197,6 +201,7 @@ private:
     bool m_bScope;
     Context *m_pChild, *m_pParent, *m_pFailed;
     StatusMessages m_messages;
+    ModuleMap *m_modules;
     PredicateMap *m_predicates;
     VariableMap *m_variables;
     TypeMap *m_types;

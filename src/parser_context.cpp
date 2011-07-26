@@ -11,6 +11,7 @@ using namespace lexer;
 using namespace ir;
 
 Context::~Context() {
+    delete m_modules;
     delete m_predicates;
     delete m_variables;
     delete m_types;
@@ -38,6 +39,13 @@ void Context::mergeTo(Context *_pCtx, bool _bMergeFailed) {
 
     if (m_bScope)
         return;
+
+    if (m_modules) {
+        if (!_pCtx->m_modules)
+            std::swap(_pCtx->m_modules, m_modules);
+        else
+            _pCtx->m_modules->insert(m_modules->begin(), m_modules->end());
+    }
 
     if (m_predicates) {
         if (!_pCtx->m_predicates)
@@ -130,6 +138,22 @@ Context *Context::createChild(bool _bScope) {
     m_pChild->setParent(this);
 
     return m_pChild;
+}
+
+ir::ModulePtr Context::getModule(const std::wstring &_strName) const {
+    if (m_modules) {
+        ModuleMap::const_iterator i = m_modules->find(_strName);
+        if (i != m_modules->end())
+            return i->second;
+    }
+
+    return m_pParent ? m_pParent->getModule(_strName) : ir::ModulePtr();
+}
+
+void Context::addModule(const ir::ModulePtr &_pModule) {
+    if (m_modules == NULL)
+        m_modules = new ModuleMap();
+    (*m_modules)[_pModule->getName()] = _pModule;
 }
 
 bool Context::getPredicates(const std::wstring &_strName, ir::Predicates &_predicates) const {

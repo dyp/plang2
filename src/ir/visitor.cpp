@@ -762,6 +762,9 @@ bool Visitor::traverseDeclarationGroup(DeclarationGroup &_type) {
 bool Visitor::traverseModule(Module &_module) {
     ENTER(Module, _module);
 
+    TRAVERSE_COL(Param, ModuleParam, _module.getParams());
+    TRAVERSE_COL(Module, ModuleDecl, _module.getModules());
+
     if (!_traverseDeclarationGroup(_module))
         return false;
 

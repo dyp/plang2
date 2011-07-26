@@ -491,6 +491,11 @@ public:
     /// \param _strName Identifier.
     void setName(const std::wstring &_strName) { m_strName = _strName; }
 
+    /// Get list of formal parameters.
+    /// \return List of parameters.
+    NamedValues &getParams() { return m_params; }
+    const NamedValues &getParams() const { return m_params; }
+
     /// Get list of imported module names.
     /// \return List of imported module names.
     std::vector<std::wstring> &getImports() { return m_imports; }
@@ -501,17 +506,26 @@ public:
     Collection<Class> &getClasses() { return m_classes; }
     const Collection<Class> &getClasses() const { return m_classes; }
 
+    /// Get list of declared submodules.
+    /// \return List of declared submodules.
+    Collection<Module> &getModules() { return m_modules; }
+    const Collection<Module> &getModules() const { return m_modules; }
+
     virtual NodePtr clone(Cloner &_cloner) const {
         ModulePtr pCopy = NEW_CLONE(this, _cloner, Module(getName()));
         cloneTo(*pCopy, _cloner);
+        pCopy->getParams().appendClones(getParams(), _cloner);
         pCopy->getImports() = getImports();
         pCopy->getClasses().appendClones(getClasses(), _cloner);
+        pCopy->getModules().appendClones(getModules(), _cloner);
         return pCopy;
     }
 
 private:
+    NamedValues m_params;
     std::vector<std::wstring> m_imports;
     Collection<Class> m_classes;
+    Collection<Module> m_modules;
     std::wstring m_strName;
 };
 

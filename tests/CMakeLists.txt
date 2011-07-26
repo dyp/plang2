@@ -16,6 +16,7 @@ set(TESTS_PARSING
     parsing/logic_gcd.psrc
     parsing/formula_result.psrc
     parsing/field_expr.psrc
+    parsing/submodules.psrc
 )
 
 set(TESTS_INFERENCE
