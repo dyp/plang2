@@ -1525,7 +1525,7 @@ TypePtr Parser::parseType(Context &_ctx) {
         case BOOL_TYPE:   pType = new Type(Type::BOOL); ++ctx; break;
         case CHAR_TYPE:   pType = new Type(Type::CHAR); ++ctx; break;
         case STRING_TYPE: pType = new Type(Type::STRING); ++ctx; break;
-        case TYPE:        pType = new TypeType(); ++ctx; break;
+        case TYPE:        pType = new TypeType(new TypeDeclaration()); ++ctx; break;
         case VAR:         pType = new Type(Type::GENERIC); ++ctx; break;
 
         case STRUCT:
