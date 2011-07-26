@@ -279,7 +279,8 @@ void Context::addConstructor(const ir::UnionConstructorDeclarationPtr &_pCons) {
 
 bool Context::consume(int _token1, int _token2, int _token3, int _token4) {
     if (::in(m_loc, _token1, _token2, _token3, _token4)) {
-        ++m_loc;
+        if (m_loc->getKind() != END_OF_FILE)
+            ++m_loc;
         return true;
     }
 
