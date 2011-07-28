@@ -18,6 +18,7 @@ public:
     bool unify(bool _bCompound = false);
     bool lift();
     bool run();
+    bool sequence(int &_result);
     bool eval(int &_result);
     bool prune();
     bool refute(int &_result);
@@ -26,9 +27,10 @@ public:
     bool inferCompound();
     bool expand(int &_result);
     bool guess();
+    bool fork();
+
 
     tc::Context &context() { return *CS::top(); }
-
 protected:
     bool refute(tc::Formula &_f);
     bool expandPredicate(int _kind, const PredicateTypePtr &_pLhs,
@@ -45,6 +47,31 @@ protected:
 
     void collectLimits(tc::Formulas &_formulas, LimitMap &_limits);
 };
+
+bool Solver::fork() {
+    tc::Formulas::iterator iCF = context()->beginCompound();
+
+    if (iCF == context()->end())
+        return false;
+
+    tc::CompoundFormulaPtr pCF = iCF->as<tc::CompoundFormula>();
+
+    context()->erase(iCF);
+
+    tc::ContextPtr pCopy = clone(context());
+
+    context()->insert(pCF->getPart(0).begin(), pCF->getPart(0).end());
+
+    if (pCF->size() > 2) {
+        pCF->removePart(0);
+        (*pCopy)->insert(pCF);
+    } else
+        (*pCopy)->insert(pCF->getPart(1).begin(), pCF->getPart(1).end());
+
+    CS::push(pCopy);
+
+    return true;
+}
 
 static
 bool _insertBounds(tc::Context &_formulas, const tc::TypeSets &_bounds, bool _bUpper) {
@@ -639,7 +666,6 @@ bool Solver::expandPredicate(int _kind, const PredicateTypePtr &_pLhs,
     return true;
 }
 
-// TODO: implement.
 bool Solver::expandStruct(int _kind, const StructTypePtr &_pLhs, const StructTypePtr &_pRhs,
         tc::FormulaList & _formulas)
 {
@@ -959,13 +985,15 @@ bool Solver::eval(int & _result) {
     return bModified;
 }
 
-bool Solver::run() {
-    int result = tc::Formula::UNKNOWN;
-    bool bChanged;
+bool Solver::sequence(int &_result) {
+    bool bModified = false;
+    bool bIterationModified;
     size_t cStep = 0;
 
+    _result = tc::Formula::UNKNOWN;
+
     do {
-        bChanged = false;
+        bIterationModified = false;
 
         if (unify()) {
             if (Options::instance().bVerbose) {
@@ -973,7 +1001,7 @@ bool Solver::run() {
                 prettyPrint(context(), std::wcout);
             }
 
-            bChanged = true;
+            bIterationModified = true;
         }
 
         if (lift()) {
@@ -982,7 +1010,7 @@ bool Solver::run() {
                 prettyPrint(context(), std::wcout);
             }
 
-            bChanged = true;
+            bIterationModified = true;
         }
 
         if (prune()) {
@@ -991,7 +1019,7 @@ bool Solver::run() {
                 prettyPrint(context(), std::wcout);
             }
 
-            bChanged = true;
+            bIterationModified = true;
         }
 
         if (compact()) {
@@ -1000,88 +1028,151 @@ bool Solver::run() {
                 prettyPrint(context(), std::wcout);
             }
 
-            bChanged = true;
+            bIterationModified = true;
         }
 
-        if (eval(result)) {
+        if (eval(_result)) {
             if (Options::instance().bVerbose) {
                 std::wcout << std::endl << L"Eval [" << cStep << L"]:" << std::endl;
                 prettyPrint(context(), std::wcout);
             }
 
-            bChanged = true;
+            bIterationModified = true;
         }
 
-        if (result == tc::Formula::FALSE)
+        if (_result == tc::Formula::FALSE)
             break;
 
-        if (expand(result)) {
+        if (expand(_result)) {
             if (Options::instance().bVerbose) {
                 std::wcout << std::endl << L"Expand [" << cStep << L"]:" << std::endl;
                 prettyPrint(context(), std::wcout);
             }
 
-            bChanged = true;
+            bIterationModified = true;
         }
 
-        if (result == tc::Formula::FALSE)
+        if (_result == tc::Formula::FALSE)
             break;
 
-        if (!bChanged && refute(result)) {
+        if (!bIterationModified && refute(_result)) {
             if (Options::instance().bVerbose) {
                 std::wcout << std::endl << L"Refute [" << cStep << L"]:" << std::endl;
                 prettyPrint(context(), std::wcout);
             }
 
-            bChanged = true;
+            bIterationModified = true;
         }
 
-        if (result == tc::Formula::FALSE)
+        if (_result == tc::Formula::FALSE)
             break;
 
-        if (!bChanged && infer()) {
+        if (!bIterationModified && infer()) {
             if (Options::instance().bVerbose) {
                 std::wcout << std::endl << L"Infer [" << cStep << L"]:" << std::endl;
                 prettyPrint(context(), std::wcout);
             }
 
-            bChanged = true;
+            bIterationModified = true;
         }
 
-        if (!bChanged && inferCompound()) {
+        if (!bIterationModified && inferCompound()) {
             if (Options::instance().bVerbose) {
                 std::wcout << std::endl << L"Infer Compound [" << cStep << L"]:" << std::endl;
                 prettyPrint(context(), std::wcout);
             }
 
-            bChanged = true;
+            bIterationModified = true;
         }
 
-        if (!bChanged && guess()) {
+        if (!bIterationModified && guess()) {
             if (Options::instance().bVerbose) {
                 std::wcout << std::endl << L"Guess [" << cStep << L"]:" << std::endl;
                 prettyPrint(context(), std::wcout);
             }
 
-            bChanged = true;
+            bIterationModified = true;
         }
 
+        bModified |= bIterationModified;
         ++cStep;
-    } while (bChanged && result != tc::Formula::FALSE);
+    } while (bIterationModified && _result != tc::Formula::FALSE);
 
-    if (context()->empty())
-        result = tc::Formula::TRUE;
+    return bIterationModified || bModified;
+}
 
-    switch (result) {
-        case tc::Formula::UNKNOWN:
-            std::wcout << std::endl << L"Inference incomplete" << std::endl;
-            break;
-        case tc::Formula::TRUE:
-            std::wcout << std::endl << L"Inference successful" << std::endl;
-            break;
-        case tc::Formula::FALSE:
-            std::wcout << std::endl << L"Type error" << std::endl;
-            break;
+bool Solver::run() {
+    int result = tc::Formula::UNKNOWN;
+    bool bChanged;
+    std::list<tc::ContextPtr> processed;
+
+    do {
+        const bool bChanged = sequence(result);
+
+        if (!bChanged && result != tc::Formula::FALSE && fork()) {
+            if (Options::instance().bVerbose) {
+                std::wcout << std::endl << L"Fork:" << std::endl;
+                prettyPrint(context(), std::wcout);
+            }
+
+            continue;
+        }
+
+        if (bChanged && result != tc::Formula::FALSE)
+            continue;
+
+        if (result != tc::Formula::FALSE)
+            processed.push_back(CS::top());
+
+        if (result == tc::Formula::FALSE)
+            std::wcout << std::endl << L"Refuted" << std::endl;
+
+        CS::pop();
+    } while (!CS::empty());
+
+    if (processed.empty())
+        result = tc::Formula::FALSE;
+    else {
+        if (next(processed.begin()) == processed.end()) {
+            CS::push(processed.front());
+        } else {
+            // Recombine all results into a compound formula and simplify it.
+            tc::CompoundFormulaPtr pCF = new tc::CompoundFormula();
+
+            for (std::list<tc::ContextPtr>::iterator i = processed.begin(); i != processed.end(); ++i) {
+                tc::Context &ctx = **i;
+                tc::Formulas &part = pCF->addPart();
+
+                part.insert(ctx.fs->begin(), ctx.fs->end());
+                part.insert(ctx.substs->begin(), ctx.substs->end());
+            }
+
+            CS::push(ptr(new tc::Context()));
+            context()->insert(pCF);
+            sequence(result);
+            assert(result != tc::Formula::FALSE);
+        }
+
+        result = context()->empty() ? tc::Formula::TRUE : tc::Formula::UNKNOWN;
+
+        if (Options::instance().bVerbose) {
+            std::wcout << std::endl << L"Solution:" << std::endl;
+            prettyPrint(context(), std::wcout);
+        }
+    }
+
+    if (Options::instance().bVerbose) {
+        switch (result) {
+            case tc::Formula::UNKNOWN:
+                std::wcout << std::endl << L"Inference incomplete" << std::endl;
+                break;
+            case tc::Formula::TRUE:
+                std::wcout << std::endl << L"Inference successful" << std::endl;
+                break;
+            case tc::Formula::FALSE:
+                std::wcout << std::endl << L"Type error" << std::endl;
+                break;
+        }
     }
 
     return result != tc::Formula::FALSE;
