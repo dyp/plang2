@@ -15,7 +15,7 @@ typedef tc::ContextStack CS;
 
 class Solver {
 public:
-    bool unify();
+    bool unify(bool _bCompound = false);
     bool lift();
     bool run();
     bool eval(int &_result);
@@ -817,7 +817,7 @@ bool Solver::expand(int &_result) {
     return bModified;
 }
 
-bool Solver::unify() {
+bool Solver::unify(bool _bCompound) {
     bool bResult = false;
 
     while (!context()->empty()) {
@@ -847,11 +847,14 @@ bool Solver::unify() {
         if (!pOld->compare(*pNew, Type::ORD_EQUALS)) {
             if (context().rewrite(pOld, pNew))
                 bResult = true;
-            CS::top()->substs->insert(new tc::Formula(tc::Formula::EQUALS, pOld, pNew));
+            context().substs->insert(new tc::Formula(tc::Formula::EQUALS, pOld, pNew));
         }
 
-        bResult |= !context().pParent; // Subformulas of compound formulas don't store their substs separately.
+        bResult |= !_bCompound; // Subformulas of compound formulas don't store their substs separately.
     }
+
+    if (_bCompound)
+        context()->insert(context().substs->begin(), context().substs->end());
 
     tc::FormulaList formulas;
 
@@ -865,8 +868,7 @@ bool Solver::unify() {
             Auto<tc::Formulas> pPart = cf.getPartPtr(j);
 
             CS::push(pPart);
-            bFormulaModified |= unify();
-            pPart->insert(CS::top()->substs->begin(), CS::top()->substs->end());
+            bFormulaModified |= unify(true);
             CS::pop();
         }
 
