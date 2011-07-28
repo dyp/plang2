@@ -172,8 +172,10 @@ public:
 
     virtual FormulaPtr clone(Cloner &_cloner) const;
 
-    bool operator ==(const Formula &_other) const {
-        return m_kind == _other.m_kind && *m_pLhs == *_other.m_pLhs && *m_pRhs == *_other.m_pRhs;
+    virtual bool operator ==(const Formula &_other) const {
+        return m_kind == _other.m_kind &&
+                (m_pLhs == _other.m_pLhs || *m_pLhs == *_other.m_pLhs) &&
+                (m_pRhs == _other.m_pRhs || *m_pRhs == *_other.m_pRhs);
     }
 
     bool operator !=(const Formula &_other) const {
@@ -304,6 +306,8 @@ public:
     virtual FormulaPtr clone(Cloner &_cloner) const;
 
     virtual bool contains(const ir::TypePtr &_pType) const;
+
+    virtual bool operator ==(const Formula &_other) const;
 
 private:
     std::vector<Auto<Formulas> > m_parts;

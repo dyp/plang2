@@ -231,6 +231,33 @@ Formulas &CompoundFormula::addPart() {
     return *m_parts.back();
 }
 
+bool CompoundFormula::operator ==(const Formula &_other) const {
+    if (_other.getKind() != COMPOUND)
+        return false;
+
+    CompoundFormula &other = (CompoundFormula &)_other;
+
+    if (size() != other.size())
+        return false;
+
+    for (size_t i = 0; i < size(); ++i) {
+        const Formulas &l = getPart(i);
+        const Formulas &r = other.getPart(i);
+
+        if (l.size() != r.size())
+            return false;
+
+        Formulas::const_iterator jl = l.begin();
+        Formulas::const_iterator jr = r.begin();
+
+        for (; jl != l.end(); ++jl, ++jr)
+            if (**jl != **jr)
+                return false;
+    }
+
+    return true;
+}
+
 static
 void _check(Context &_fs) {
     if (_fs->size() > 1) {
