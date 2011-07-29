@@ -88,8 +88,9 @@ bool _insertBounds(tc::Context &_formulas, const tc::TypeSets &_bounds, bool _bU
         for (tc::TypeSet::const_iterator j = types.begin(); j != types.end(); ++j) {
             assert(pType->hasFresh() || (*j)->hasFresh());
 
-            tc::FormulaPtr pFormula = _bUpper ? new tc::Formula(tc::Formula::SUBTYPE, pType, *j) :
-                    new tc::Formula(tc::Formula::SUBTYPE, *j, pType);
+            const int kind = j->bStrict ? tc::Formula::SUBTYPE_STRICT : tc::Formula::SUBTYPE;
+            tc::FormulaPtr pFormula = _bUpper ? new tc::Formula(kind, pType, *j) :
+                    new tc::Formula(kind, *j, pType);
 
             bModified |= _formulas.add(pFormula);
         }
@@ -231,11 +232,10 @@ bool Solver::guess() {
         if (types.size() != 1)
             continue;
 
-        // TODO: Remember strictness of relations in extrema.
-        if (context()->find(new tc::Formula(tc::Formula::SUBTYPE_STRICT, pType, *types.begin())) != context()->end())
-            continue;
+        const tc::Extremum &sup = *types.begin();
 
-        sups[pType] = *types.begin();
+        if (!sup.bStrict)
+            sups[pType] = sup.pType;
     }
 
     for (tc::TypeSets::const_iterator i = context().pExtrema->infs().begin();
@@ -250,11 +250,10 @@ bool Solver::guess() {
         if (types.size() != 1)
             continue;
 
-        // TODO: Remember strictness of relations in extrema.
-        if (context()->find(new tc::Formula(tc::Formula::SUBTYPE_STRICT, *types.begin(), pType)) != context()->end())
-            continue;
+        const tc::Extremum &inf = *types.begin();
 
-        infs[pType] = *types.begin();
+        if (!inf.bStrict)
+            infs[pType] = inf.pType;
     }
 
     for (tc::Formulas::iterator i = context()->beginCompound(); i != context()->end(); ++i) {

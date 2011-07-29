@@ -698,7 +698,7 @@ const TypeSet &Extrema::sup(const ir::TypePtr &_pType) {
 typedef std::multimap<ir::TypePtr, FormulaPtr, TypePtrCmp> FormulaMap;
 
 static
-void _updateBounds(std::vector<ir::TypePtr> &_bounds, const ir::TypePtr &_pType,
+void _updateBounds(std::vector<Extremum> &_bounds, const ir::TypePtr &_pType, bool _bStrict,
         ir::TypePtr (ir::Type::*_merge)(ir::Type &))
 {
     std::list<ir::TypePtr> types;
@@ -712,17 +712,22 @@ void _updateBounds(std::vector<ir::TypePtr> &_bounds, const ir::TypePtr &_pType,
         types.pop_back();
 
         for (size_t i = 0; i != _bounds.size();) {
-            ir::TypePtr pOld = _bounds[i];
+            Extremum &old = _bounds[i];
 
-            if (ir::TypePtr pNew = (pOld.ptr()->*_merge)(*pType)) {
-                bMerged |= *pNew != *pType;
+            if (ir::TypePtr pNew = (old.pType.ptr()->*_merge)(*pType)) {
+                const bool bCurrentMerged = *pNew != *pType;
+
+                bMerged |= bCurrentMerged;
 
                 // Put modified bounds to the processing queue.
-                if (*pNew != *pOld) {
+                if (*pNew != *old.pType) {
                     std::swap(_bounds[i], _bounds.back());
                     _bounds.pop_back();
                     types.push_back(pNew);
                     continue;
+                } else if (!bCurrentMerged) {
+                    old.bStrict |= _bStrict;
+                    bMerged = true;
                 }
             }
 
@@ -730,7 +735,7 @@ void _updateBounds(std::vector<ir::TypePtr> &_bounds, const ir::TypePtr &_pType,
         }
 
         if (!bMerged)
-            _bounds.push_back(pType);
+            _bounds.push_back(Extremum(pType, _bStrict));
     }
 }
 
@@ -815,18 +820,19 @@ void Extrema::update() {
 
     for (bounds.first = order.begin(); bounds.first != order.end(); bounds.first = bounds.second) {
         ir::TypePtr pType = bounds.first->first;
-        std::vector<ir::TypePtr> uppers, lowers;
+        std::vector<Extremum> uppers, lowers;
 
         bounds.second = order.upper_bound(pType);
         assert(pType->hasFresh());
 
         for (FormulaMap::iterator i = bounds.first; i != bounds.second; ++i) {
             Formula &f = *i->second;
+            const bool bStrict = f.getKind() == Formula::SUBTYPE_STRICT;
 
             if (f.getLhs() == pType) // A <= ...
-                _updateBounds(uppers, f.getRhs(), &ir::Type::getMeet);
+                _updateBounds(uppers, f.getRhs(), bStrict, &ir::Type::getMeet);
             else // ... <= A
-                _updateBounds(lowers, f.getLhs(), &ir::Type::getJoin);
+                _updateBounds(lowers, f.getLhs(), bStrict, &ir::Type::getJoin);
         }
 
         // Takes care of removing duplicates.

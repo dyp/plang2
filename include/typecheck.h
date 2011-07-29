@@ -234,11 +234,24 @@ struct Context : public Counted {
 
 typedef Auto<Context> ContextPtr;
 
+struct Extremum {
+    ir::TypePtr pType;
+    bool bStrict;
+
+    Extremum(const ir::TypePtr &_pType = NULL, bool _bStrict = false) :
+        pType(_pType), bStrict(_bStrict) {}
+
+    bool operator<(const Extremum &_other) const { return *pType < *_other.pType; }
+    operator const ir::TypePtr &() const { return pType; }
+    ir::Type &operator *() const { return *pType; }
+    ir::Type *operator ->() const { return pType.ptr(); }
+};
+
 struct TypePtrCmp {
     bool operator()(const ir::TypePtr &_lhs, const ir::TypePtr &_rhs) const { return *_lhs < *_rhs; }
 };
 
-typedef std::set<ir::TypePtr, TypePtrCmp> TypeSet;
+typedef std::set<Extremum, TypePtrCmp> TypeSet;
 typedef std::map<ir::TypePtr, TypeSet> TypeSets;
 
 class Extrema : public Counted {
