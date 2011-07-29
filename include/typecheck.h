@@ -289,6 +289,7 @@ struct ContextStack {
     static void push(const Auto<Formulas> &_fs);
     static void pop();
     static bool empty();
+    static void clear();
 };
 
 class CompoundFormula : public Formula {

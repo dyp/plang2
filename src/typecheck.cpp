@@ -518,6 +518,10 @@ bool ContextStack::empty() {
     return g_ctxs.empty();
 }
 
+void ContextStack::clear() {
+    g_ctxs.clear();
+}
+
 Formulas::iterator Formulas::beginCompound() {
     CompoundFormulaPtr pEmpty = new CompoundFormula();
     return lower_bound(pEmpty);

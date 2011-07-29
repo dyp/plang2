@@ -1179,6 +1179,7 @@ bool Solver::run() {
 }
 
 bool tc::solve(tc::Formulas &_formulas, tc::Formulas &_result) {
+    CS::clear();
     CS::push(ContextPtr(new Context(ref(&_formulas), ref(&_result))));
 
     if (Options::instance().bVerbose) {
