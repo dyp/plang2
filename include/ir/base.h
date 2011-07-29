@@ -200,7 +200,7 @@ public:
     /// Type kind.
     enum {
         /// Fresh type (for typechecking purposes).
-        FRESH,
+        FRESH = 1,
         /// Bottom type (subtype of any type).
         BOTTOM,
         /// Top type (supertype of any type).
@@ -258,6 +258,10 @@ public:
     /// Initialize with kind.
     /// \param _kind One of built-in types (#Unit, #Int, #Nat, #Real, #Bool, #Char, #String, #Type or #Generic).
     Type(int _kind, int _bits = 0) : m_kind(_kind), m_nBits(_bits) {}
+
+    Type(const Type &_other) : m_kind(_other.m_kind), m_nBits(_other.m_nBits) {
+        assert(m_kind > 0);
+    }
 
     /// Destructor.
     virtual ~Type() {}

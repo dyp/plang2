@@ -61,6 +61,9 @@ public:
         m_cOrd = ++g_cOrdMax;
     }
 
+    FreshType(const FreshType &_other) : m_cOrd(_other.m_cOrd), m_flags(_other.m_flags) {
+    }
+
     enum {
         NONE      = 0x00,
         PARAM_IN  = 0x01,
