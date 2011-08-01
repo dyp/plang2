@@ -20,6 +20,13 @@ bool FreshType::less(const Type &_other) const {
     return m_cOrd < ((const FreshType &)_other).m_cOrd;
 }
 
+int FreshType::compare(const ir::Type &_other) const {
+    if (_other.getKind() == FRESH && getOrdinal() == ((const FreshType &)_other).getOrdinal())
+        return ORD_EQUALS;
+
+    return ORD_UNKNOWN;
+}
+
 bool FormulaCmp::operator()(const FormulaPtr &_lhs, const FormulaPtr &_rhs) const {
     if (_lhs->getKind() < _rhs->getKind())
         return true;

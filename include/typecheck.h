@@ -55,6 +55,7 @@ public:
     virtual int getKind() const { return FRESH; }
 
     virtual bool less(const ir::Type & _other) const;
+    int compare(const ir::Type &_other) const;
 
     virtual ir::NodePtr clone(Cloner &_cloner) const;
 
