@@ -2723,12 +2723,11 @@ void Parser::typecheck(Context &_ctx, Node &_node) {
         return;
 
     tc::Formulas constraints, substs;
-    tc::FreshTypes freshTypes;
 
-    tc::collect(constraints, _node, _ctx, freshTypes);
+    tc::collect(constraints, _node, _ctx);
 
     if (tc::solve(constraints, substs))
-        tc::apply(substs, freshTypes);
+        tc::apply(substs, _node);
 }
 
 bool Parser::parseDeclarations(Context &_ctx, Module &_module) {

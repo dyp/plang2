@@ -16,7 +16,7 @@ using namespace ir;
 
 class Collector : public Visitor {
 public:
-    Collector(tc::Formulas & _constraints, ir::Context & _ctx, tc::FreshTypes & _types);
+    Collector(tc::Formulas & _constraints, ir::Context & _ctx);
     virtual ~Collector() {}
 
     virtual bool visitVariableReference(VariableReference &_var);
@@ -51,41 +51,19 @@ public:
     virtual bool traverseSwitch(Switch &_stmt);
 
 protected:
-    template<typename _Node>
-    tc::FreshTypePtr createFreshGeneric(const _Node *_pParam);
-
-    // Need these wrappers since e.g. Binary::setType() is actually Expression::setType() but
-    // _pParam won't be implicitly downcast to Expression*.
-    tc::FreshTypePtr createFresh(const Expression *_pParam) { return createFreshGeneric(_pParam); }
-    tc::FreshTypePtr createFresh(const NamedValue *_pParam) { return createFreshGeneric(_pParam); }
-    tc::FreshTypePtr createFresh(const DerivedType *_pParam);
-    tc::FreshTypePtr createFresh(const DerivedTypePtr &_pParam) { return createFresh(_pParam.ptr()); }
-    tc::FreshTypePtr createFreshIndex(const MapTypePtr &_pParam);
-
-    template<typename _Node>
-    void setFreshType(const Auto<_Node> &_pParam, const TypePtr &_pType);
-
+    tc::FreshTypePtr createFresh(const TypePtr &_pCurrent = NULL);
     tc::FreshTypePtr getKnownType(const TypePtr &_pType);
-
     void collectParam(const NamedValuePtr &_pParam, int _nFlags);
 
 private:
     tc::Formulas & m_constraints;
     ir::Context & m_ctx;
-    tc::FreshTypes & m_types;
     std::stack<SwitchPtr> m_switches;
 };
 
-Collector::Collector(tc::Formulas & _constraints, ir::Context & _ctx, tc::FreshTypes & _types)
-    : Visitor(CHILDREN_FIRST), m_constraints(_constraints), m_ctx(_ctx), m_types(_types)
+Collector::Collector(tc::Formulas & _constraints, ir::Context & _ctx)
+    : Visitor(CHILDREN_FIRST), m_constraints(_constraints), m_ctx(_ctx)
 {
-}
-
-template<typename _Node>
-void Collector::setFreshType(const Auto<_Node> &_pParam, const TypePtr &_pType) {
-    _pParam->setType(_pType);
-    if (_pType->getKind() == Type::FRESH)
-        m_types.insert(std::make_pair(_pType.as<tc::FreshType>(), tc::createTypeSetter<_Node>(_pParam)));
 }
 
 tc::FreshTypePtr Collector::getKnownType(const TypePtr &_pType) {
@@ -97,28 +75,11 @@ tc::FreshTypePtr Collector::getKnownType(const TypePtr &_pType) {
     return NULL;
 }
 
-template<typename _Node>
-tc::FreshTypePtr Collector::createFreshGeneric(const _Node *_pParam) {
-    tc::FreshTypePtr pFresh = getKnownType(_pParam->getType());
+tc::FreshTypePtr Collector::createFresh(const TypePtr &_pCurrent) {
+    if (tc::FreshTypePtr pFresh = getKnownType(_pCurrent))
+        return pFresh;
 
-    if (!pFresh)
-        pFresh = new tc::FreshType();
-
-    m_types.insert(std::make_pair(pFresh, tc::createTypeSetter(ref(_pParam))));
-
-    return pFresh;
-}
-
-tc::FreshTypePtr Collector::createFresh(const DerivedType *_pParam) {
-    tc::FreshTypePtr pType = new tc::FreshType();
-    m_types.insert(std::make_pair(pType, tc::createBaseTypeSetter(ref(_pParam))));
-    return pType;
-}
-
-tc::FreshTypePtr Collector::createFreshIndex(const MapTypePtr &_pParam) {
-    tc::FreshTypePtr pType = new tc::FreshType();
-    m_types.insert(std::make_pair(pType, tc::createIndexTypeSetter(_pParam)));
-    return pType;
+    return new tc::FreshType();
 }
 
 void Collector::collectParam(const NamedValuePtr &_pParam, int _nFlags) {
@@ -130,7 +91,7 @@ void Collector::collectParam(const NamedValuePtr &_pParam, int _nFlags) {
         return;
     }
 
-    tc::FreshTypePtr pFresh = createFresh(_pParam.ptr());
+    tc::FreshTypePtr pFresh = createFresh(pType);
 
     assert(pType);
 
@@ -142,7 +103,7 @@ void Collector::collectParam(const NamedValuePtr &_pParam, int _nFlags) {
 }
 
 bool Collector::visitVariableReference(VariableReference &_var) {
-    setFreshType<Expression>(&_var, _var.getTarget()->getType());
+    _var.setType(_var.getTarget()->getType());
     return true;
 }
 
@@ -152,7 +113,7 @@ bool Collector::visitPredicateReference(PredicateReference &_ref) {
     if (! m_ctx.getPredicates(_ref.getName(), funcs))
         assert(false);
 
-    _ref.setType(createFresh(&_ref));
+    _ref.setType(createFresh(_ref.getType()));
 
     if (funcs.size() > 1) {
         tc::CompoundFormulaPtr pConstraint = new tc::CompoundFormula();
@@ -175,7 +136,7 @@ bool Collector::visitPredicateReference(PredicateReference &_ref) {
 bool Collector::visitFunctionCall(FunctionCall &_call) {
     PredicateTypePtr pType = new PredicateType();
 
-    _call.setType(createFresh(&_call));
+    _call.setType(createFresh(_call.getType()));
     pType->getOutParams().add(new Branch());
     pType->getOutParams().get(0)->add(new Param(L"", _call.getType()));
 
@@ -243,7 +204,7 @@ bool Collector::visitLiteral(Literal &_lit) {
 }
 
 bool Collector::visitUnary(Unary &_unary) {
-    _unary.setType(createFresh(&_unary));
+    _unary.setType(createFresh(_unary.getType()));
 
     switch (_unary.getOperator()) {
         case Unary::PLUS:
@@ -274,7 +235,7 @@ bool Collector::visitUnary(Unary &_unary) {
                 tc::Formulas &part2 = p->addPart();
                 SetTypePtr pSet = new SetType(NULL);
 
-                pSet->setBaseType(createFresh(pSet.as<DerivedType>()));
+                pSet->setBaseType(createFresh());
                 part2.insert(new tc::Formula(tc::Formula::EQUALS,
                         _unary.getExpression()->getType(), pSet));
                 part2.insert(new tc::Formula(tc::Formula::EQUALS,
@@ -295,7 +256,7 @@ bool Collector::visitUnary(Unary &_unary) {
 }
 
 bool Collector::visitBinary(Binary &_binary) {
-    _binary.setType(createFresh(&_binary));
+    _binary.setType(createFresh(_binary.getType()));
 
     switch (_binary.getOperator()) {
         case Binary::ADD:
@@ -347,7 +308,7 @@ bool Collector::visitBinary(Binary &_binary) {
                 tc::Formulas & part3 = p->addPart();
                 SetTypePtr pSet = new SetType(NULL);
 
-                pSet->setBaseType(createFresh(pSet.as<DerivedType>()));
+                pSet->setBaseType(createFresh());
 
                 part3.insert(new tc::Formula(tc::Formula::SUBTYPE,
                         _binary.getLeftSide()->getType(),
@@ -362,7 +323,7 @@ bool Collector::visitBinary(Binary &_binary) {
                     tc::Formulas & part = p->addPart();
                     ListTypePtr pList = new ListType(NULL);
 
-                    pList->setBaseType(createFresh(pList.as<DerivedType>()));
+                    pList->setBaseType(createFresh());
 
                     part.insert(new tc::Formula(tc::Formula::SUBTYPE,
                             _binary.getLeftSide()->getType(),
@@ -506,7 +467,7 @@ bool Collector::visitBinary(Binary &_binary) {
                 tc::Formulas & part4 = p->addPart();
                 SetTypePtr pSet = new SetType(NULL);
 
-                pSet->setBaseType(createFresh(pSet.as<DerivedType>()));
+                pSet->setBaseType(createFresh());
 
                 part4.insert(new tc::Formula(tc::Formula::SUBTYPE,
                         _binary.getLeftSide()->getType(),
@@ -535,7 +496,7 @@ bool Collector::visitBinary(Binary &_binary) {
             {
                 SetTypePtr pSet = new SetType(NULL);
 
-                pSet->setBaseType(createFresh(pSet.as<DerivedType>()));
+                pSet->setBaseType(createFresh());
                 m_constraints.insert(new tc::Formula(tc::Formula::EQUALS,
                         _binary.getRightSide()->getType(), pSet));
                 m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
@@ -556,7 +517,8 @@ bool Collector::visitStructConstructor(StructConstructor &_cons) {
         StructFieldDefinitionPtr pDef = _cons.get(i);
         NamedValuePtr pField = new NamedValue(pDef->getName());
 
-        setFreshType(pField, pDef->getValue()->getType());
+        pField->setType(pDef->getValue()->getType());
+
         if (pDef->getName().empty())
             pStruct->getTypesOrd().add(pField);
         else
@@ -581,7 +543,7 @@ bool Collector::visitUnionConstructor(UnionConstructor &_cons) {
         StructFieldDefinitionPtr pDef = _cons.get(i);
         NamedValuePtr pField = new NamedValue(pDef->getName());
 
-        setFreshType(pField, pDef->getValue()->getType());
+        pField->setType(pDef->getValue()->getType());
         pCons->getFields().add(pField);
         pDef->setField(pField);
     }
@@ -597,7 +559,7 @@ bool Collector::visitUnionConstructor(UnionConstructor &_cons) {
 bool Collector::visitSetConstructor(SetConstructor &_cons) {
     SetTypePtr pSet = new SetType(NULL);
 
-    pSet->setBaseType(createFresh(pSet.as<DerivedType>()));
+    pSet->setBaseType(createFresh());
     pSet->getBaseType().as<tc::FreshType>()->setFlags(tc::FreshType::PARAM_OUT);
     _cons.setType(pSet);
 
@@ -611,7 +573,7 @@ bool Collector::visitSetConstructor(SetConstructor &_cons) {
 bool Collector::visitListConstructor(ListConstructor &_cons) {
     ListTypePtr pList = new ListType(NULL);
 
-    pList->setBaseType(createFresh(pList.as<DerivedType>()));
+    pList->setBaseType(createFresh());
     pList->getBaseType().as<tc::FreshType>()->setFlags(tc::FreshType::PARAM_OUT);
     _cons.setType(pList);
 
@@ -625,7 +587,7 @@ bool Collector::visitListConstructor(ListConstructor &_cons) {
 bool Collector::visitArrayConstructor(ArrayConstructor &_cons) {
     ArrayTypePtr pArray = new ArrayType(NULL);
 
-    pArray->setBaseType(createFresh(pArray.as<DerivedType>()));
+    pArray->setBaseType(createFresh());
     pArray->getBaseType().as<tc::FreshType>()->setFlags(tc::FreshType::PARAM_OUT);
     _cons.setType(pArray);
 
@@ -639,8 +601,8 @@ bool Collector::visitArrayConstructor(ArrayConstructor &_cons) {
 bool Collector::visitMapConstructor(MapConstructor &_cons) {
     MapTypePtr pMap = new MapType(NULL, NULL);
 
-    pMap->setBaseType(createFresh(pMap.as<DerivedType>()));
-    pMap->setIndexType(createFreshIndex(pMap));
+    pMap->setBaseType(createFresh());
+    pMap->setIndexType(createFresh());
     pMap->getBaseType().as<tc::FreshType>()->setFlags(tc::FreshType::PARAM_OUT);
     pMap->getIndexType().as<tc::FreshType>()->setFlags(tc::FreshType::PARAM_OUT);
     _cons.setType(pMap);
@@ -658,7 +620,7 @@ bool Collector::visitMapConstructor(MapConstructor &_cons) {
 }
 
 bool Collector::visitFieldExpr(FieldExpr &_field) {
-    tc::FreshTypePtr pFresh = createFresh(&_field);
+    tc::FreshTypePtr pFresh = createFresh(_field.getType());
     ir::StructTypePtr pStruct = new StructType();
     ir::NamedValuePtr pField = new NamedValue(_field.getFieldName(), pFresh);
 
@@ -827,7 +789,7 @@ int Collector::handleSwitchCaseValuePost(Node &_node) {
     return 0;
 }
 
-void tc::collect(tc::Formulas &_constraints, Node &_node, ir::Context &_ctx, FreshTypes &_types) {
-    Collector collector(_constraints, _ctx, _types);
+void tc::collect(tc::Formulas &_constraints, Node &_node, ir::Context &_ctx) {
+    Collector collector(_constraints, _ctx);
     collector.traverseNode(_node);
 }

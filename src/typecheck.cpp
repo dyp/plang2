@@ -6,6 +6,7 @@
 #include "utils.h"
 #include "typecheck.h"
 #include "prettyprinter.h"
+#include "ir/visitor.h"
 
 using namespace tc;
 
@@ -447,19 +448,28 @@ bool Context::add(int _kind, const ir::TypePtr &_pLhs, const ir::TypePtr &_pRhs)
     return add(new Formula(_kind, _pLhs, _pRhs));
 }
 
-void tc::apply(tc::Formulas &_constraints, tc::FreshTypes &_types) {
-    for (Formulas::iterator i = _constraints.begin(); i != _constraints.end(); ++i) {
-        Formula &f = **i;
+class FreshTypeRewriter : public ir::Visitor {
+public:
+    FreshTypeRewriter(const Formulas &_substs) : Visitor(CHILDREN_FIRST), m_substs(_substs) {}
 
-        assert(f.is(Formula::EQUALS));
-        assert(f.getLhs()->getKind() == ir::Type::FRESH);
+    virtual bool visitType(ir::Type &_type) {
+        if (_type.getKind() == ir::Type::FRESH) {
+            Formulas::const_iterator iSubst = m_substs.findSubst(&_type);
 
-        typedef tc::FreshTypes::iterator I;
-        std::pair<I, I> bounds = _types.equal_range(f.getLhs().as<FreshType>());
+            if (iSubst != m_substs.end())
+                callSetter((*iSubst)->getRhs());
+        }
 
-        for (I j = bounds.first; j != bounds.second; ++j)
-            j->second->setType(f.getRhs());
+        return true;
     }
+
+private:
+    const Formulas &m_substs;
+};
+
+void tc::apply(tc::Formulas &_constraints, ir::Node &_node) {
+    FreshTypeRewriter ftr(_constraints);
+    ftr.traverseNode(_node);
 }
 
 Context::Context() :
@@ -526,9 +536,9 @@ Formulas::iterator Formulas::beginCompound() {
     return lower_bound(pEmpty);
 }
 
-Formulas::iterator Formulas::findSubst(const ir::TypePtr &_pType) {
+Formulas::iterator Formulas::findSubst(const ir::TypePtr &_pType) const {
     FormulaPtr pEmpty = new Formula(Formula::EQUALS, _pType, new ir::Type(ir::Type::BOTTOM));
-    Formulas::iterator i = lower_bound(pEmpty);
+    Formulas::const_iterator i = lower_bound(pEmpty);
 
     if (i == end() || !(*i)->is(Formula::EQUALS) || *(*i)->getLhs() != *_pType)
         return end();

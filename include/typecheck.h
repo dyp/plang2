@@ -21,40 +21,6 @@ typedef Auto<Formula> FormulaPtr;
 class CompoundFormula;
 typedef Auto<CompoundFormula> CompoundFormulaPtr;
 
-class TypeSetterBase {
-public:
-    virtual ~TypeSetterBase() {}
-    virtual void setType(const ir::TypePtr &_pType) = 0;
-};
-
-typedef Auto<TypeSetterBase> TypeSetterBasePtr;
-
-template <typename _Node, void (_Node::*_Method)(const ir::TypePtr &)>
-class TypeSetter : public TypeSetterBase {
-public:
-    TypeSetter(const Auto<_Node> &_pNode) : m_pNode(_pNode) {}
-
-    virtual void setType(const ir::TypePtr &_pType) { ((*m_pNode).*(_Method))(_pType); }
-
-protected:
-    Auto<_Node> m_pNode;
-};
-
-template <typename _Node>
-inline TypeSetterBasePtr createTypeSetter(const Auto<_Node> &_pNode) {
-    return ptr(new TypeSetter<_Node, &_Node::setType>(_pNode));
-}
-
-template <typename _Node>
-inline TypeSetterBasePtr createBaseTypeSetter(const Auto<_Node> &_pNode) {
-    return ptr(new TypeSetter<_Node, &_Node::setBaseType>(_pNode));
-}
-
-template <typename _Node>
-inline TypeSetterBasePtr createIndexTypeSetter(const Auto<_Node> &_pNode) {
-    return ptr(new TypeSetter<_Node, &_Node::setIndexType>(_pNode));
-}
-
 class FreshType : public ir::Type {
 public:
     FreshType() : m_flags(0) {
@@ -126,8 +92,6 @@ private:
 };
 
 typedef Auto<TupleType> TupleTypePtr;
-
-typedef std::multimap<FreshTypePtr, TypeSetterBasePtr> FreshTypes;
 
 class Formula : public Counted {
 public:
@@ -206,7 +170,7 @@ struct Formulas : public std::set<FormulaPtr, FormulaCmp> {
     bool rewrite(const ir::TypePtr &_pOld, const ir::TypePtr &_pNew);
     bool implies(Formula &_f) const;
     iterator beginCompound();
-    iterator findSubst(const ir::TypePtr &_pType);
+    iterator findSubst(const ir::TypePtr &_pType) const;
 };
 
 class Extrema;
@@ -334,9 +298,9 @@ bool rewriteType(ir::TypePtr &_pType, const ir::TypePtr &_pOld, const ir::TypePt
 
 bool solve(Formulas &_formulas, Formulas &_substs);
 
-void collect(Formulas &_constraints, ir::Node &_node, ir::Context &_ctx, FreshTypes &_types);
+void collect(Formulas &_constraints, ir::Node &_node, ir::Context &_ctx);
 
-void apply(Formulas &_constraints, tc::FreshTypes &_types);
+void apply(Formulas &_constraints, ir::Node &_node);
 
 }; // namespace tc
 
