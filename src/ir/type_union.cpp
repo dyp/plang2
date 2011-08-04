@@ -71,10 +71,10 @@ int UnionType::compare(const Type &_other) const {
     }
 
     if (cUnmatched > 0)
-        return cSuper > 0 ? ORD_NONE : ORD_SUB;
+        return cSub > 0 ? ORD_NONE : ORD_SUPER;
 
     // cOtherUnmatched > 0
-    return cSub > 0 ? ORD_NONE : ORD_SUPER;
+    return cSuper > 0 ? ORD_NONE : ORD_SUB;
 }
 
 bool UnionType::hasFresh() const {
