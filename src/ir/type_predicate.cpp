@@ -48,8 +48,11 @@ bool PredicateType::less(const Type &_other) const {
         const Param &p = *getInParams().get(i);
         const Param &q = *other.getInParams().get(i);
 
-        if (p.getType() != q.getType())
-            return *p.getType() < *q.getType();
+        if (*p.getType() < *q.getType())
+            return true;
+
+        if (*q.getType() < *p.getType())
+            return false;
     }
 
     for (size_t i = 0; i < getOutParams().size(); ++i) {
@@ -60,8 +63,11 @@ bool PredicateType::less(const Type &_other) const {
             const Param &p = *branch.get(j);
             const Param &q = *branchOther.get(j);
 
-            if (p.getType() != q.getType())
-                return *p.getType() < *q.getType();
+            if (*p.getType() < *q.getType())
+                return true;
+
+            if (*q.getType() < *p.getType())
+                return false;
         }
     }
 
