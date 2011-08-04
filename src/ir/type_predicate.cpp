@@ -25,6 +25,21 @@ bool PredicateType::hasFresh() const {
     return false;
 }
 
+bool PredicateType::contains(const TypePtr &_pType) const {
+    for (size_t i = 0; i < m_paramsIn.size(); ++i)
+        if (*m_paramsIn.get(i)->getType() == *_pType || m_paramsIn.get(i)->getType()->contains(_pType))
+            return true;
+
+    for (size_t j = 0; j < m_paramsOut.size(); ++j) {
+        Branch & branch = *m_paramsOut.get(j);
+        for (size_t i = 0; i < branch.size(); ++i)
+            if (*branch.get(i)->getType() == *_pType || branch.get(i)->getType()->contains(_pType))
+                return true;
+    }
+
+    return false;
+}
+
 bool PredicateType::less(const Type &_other) const {
     assert(_other.getKind() == PREDICATE);
 
@@ -176,4 +191,148 @@ int PredicateType::compare(const Type &_other) const {
     }
 
     return bSub ? ORD_SUB : (bSuper ? ORD_SUPER : ORD_EQUALS);
+}
+
+TypePtr PredicateType::getMeet(ir::Type &_other) {
+    if (TypePtr pMeet = Type::getMeet(_other))
+        return pMeet;
+
+    if (_other.getKind() == FRESH)
+        return NULL;
+
+    const PredicateType &other = (const PredicateType &)_other;
+
+    if (getInParams().size() != other.getInParams().size())
+        return new Type(BOTTOM);
+
+    if (getOutParams().size() != other.getOutParams().size())
+        return new Type(BOTTOM);
+
+    for (size_t j = 0; j < getOutParams().size(); ++j) {
+        const Branch &b = *getOutParams().get(j);
+        const Branch &c = *other.getOutParams().get(j);
+
+        if (b.size() != c.size())
+            return new Type(BOTTOM);
+    }
+
+    PredicateTypePtr pType = new PredicateType();
+
+    for (size_t i = 0; i < getInParams().size(); ++i) {
+        const Param &p = *getInParams().get(i);
+        const Param &q = *other.getInParams().get(i);
+
+        if (TypePtr pJoin = p.getType()->getJoin(*q.getType()))
+            pType->getInParams().add(new Param(L"", pJoin, false));
+        else
+            return NULL;
+    }
+
+    for (size_t j = 0; j < getOutParams().size(); ++j) {
+        const Branch &b = *getOutParams().get(j);
+        const Branch &c = *other.getOutParams().get(j);
+        Branch *pBranch = new Branch();
+
+        pType->getOutParams().add(pBranch);
+
+        for (size_t i = 0; i < b.size(); ++ i) {
+            const Param &p = *b.get(i);
+            const Param &q = *c.get(i);
+
+            if (TypePtr pMeet = p.getType()->getMeet(*q.getType()))
+                pBranch->add(new Param(L"", pMeet, true));
+            else
+                return NULL;
+        }
+    }
+
+    return pType;
+}
+
+TypePtr PredicateType::getJoin(ir::Type &_other) {
+    if (TypePtr pJoin = Type::getJoin(_other))
+        return pJoin;
+
+    if (_other.getKind() == FRESH)
+        return NULL;
+
+    const PredicateType &other = (const PredicateType &)_other;
+
+    if (getInParams().size() != other.getInParams().size())
+        return new Type(TOP);
+
+    if (getOutParams().size() != other.getOutParams().size())
+        return new Type(TOP);
+
+    for (size_t j = 0; j < getOutParams().size(); ++j) {
+        const Branch &b = *getOutParams().get(j);
+        const Branch &c = *other.getOutParams().get(j);
+
+        if (b.size() != c.size())
+            return new Type(TOP);
+    }
+
+    PredicateTypePtr pType = new PredicateType();
+
+    for (size_t i = 0; i < getInParams().size(); ++i) {
+        const Param &p = *getInParams().get(i);
+        const Param &q = *other.getInParams().get(i);
+
+        if (TypePtr pMeet = p.getType()->getMeet(*q.getType()))
+            pType->getInParams().add(new Param(L"", pMeet, false));
+        else
+            return NULL;
+    }
+
+    for (size_t j = 0; j < getOutParams().size(); ++j) {
+        const Branch &b = *getOutParams().get(j);
+        const Branch &c = *other.getOutParams().get(j);
+        Branch *pBranch = new Branch();
+
+        pType->getOutParams().add(pBranch);
+
+        for (size_t i = 0; i < b.size(); ++ i) {
+            const Param &p = *b.get(i);
+            const Param &q = *c.get(i);
+
+            if (TypePtr pJoin = p.getType()->getJoin(*q.getType()))
+                pBranch->add(new Param(L"", pJoin, true));
+            else
+                return NULL;
+        }
+    }
+
+    return pType;
+}
+
+int PredicateType::getMonotonicity(const Type &_var) const {
+    bool bMonotone = false, bAntitone = false;
+
+    for (size_t i = 0; i <  getInParams().size(); ++i) {
+        TypePtr pType = getInParams().get(i)->getType();
+        const int mt = pType->getMonotonicity(_var);
+
+        // Reversed.
+        bMonotone |= mt == MT_ANTITONE;
+        bAntitone |= mt == MT_MONOTONE;
+
+        if ((bMonotone && bAntitone) || mt == MT_NONE)
+            return MT_NONE;
+    }
+
+    for (size_t j = 0; j < m_paramsOut.size(); ++j) {
+        Branch &branch = *m_paramsOut.get(j);
+        for (size_t i = 0; i < branch.size(); ++i) {
+            TypePtr pType = branch.get(i)->getType();
+            const int mt = pType->getMonotonicity(_var);
+
+            bMonotone |= mt == MT_MONOTONE;
+            bAntitone |= mt == MT_ANTITONE;
+
+            if ((bMonotone && bAntitone) || mt == MT_NONE)
+                return MT_NONE;
+        }
+    }
+
+    return bMonotone ? MT_MONOTONE : (bAntitone ? MT_ANTITONE : MT_CONST);
 }

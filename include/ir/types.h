@@ -628,15 +628,13 @@ public:
 
     virtual bool hasParameters() const { return true; }
 
-    virtual bool contains(const TypePtr &_pType) const {
-        // TODO: implement.
-        return false;
-    }
+    virtual bool contains(const TypePtr &_pType) const;
 
     virtual int compare(const Type &_other) const;
     virtual bool less(const Type &_other) const;
-
-    // TODO implement join/meet/less/etc.
+    virtual TypePtr getJoin(Type &_other);
+    virtual TypePtr getMeet(Type &_other);
+    virtual int getMonotonicity(const Type &_var) const;
 
     virtual NodePtr clone(Cloner &_cloner) const {
         PredicateTypePtr pCopy = NEW_CLONE(this, _cloner, PredicateType(_cloner.get(getPreCondition()), _cloner.get(getPostCondition())));
