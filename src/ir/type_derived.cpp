@@ -158,10 +158,10 @@ TypePtr MapType::getMeet(Type &_other) {
     if (pMeet || _other.getKind() == FRESH)
         return pMeet;
 
-    TypePtr pBaseJoin = getBaseType()->getJoin(*((const MapType &)_other).getBaseType());
-    TypePtr pIndexMeet = getIndexType()->getMeet(*((const MapType &)_other).getIndexType().as<Type>());
+    TypePtr pIndexJoin = getIndexType()->getJoin(*((const MapType &)_other).getIndexType().as<Type>());
+    TypePtr pBaseMeet = getBaseType()->getMeet(*((const MapType &)_other).getBaseType());
 
-    return (pBaseJoin && pIndexMeet) ? new MapType(pIndexMeet, pBaseJoin) : NULL;
+    return (pIndexJoin && pBaseMeet) ? new MapType(pIndexJoin, pBaseMeet) : NULL;
 }
 
 TypePtr MapType::getJoin(Type &_other) {
@@ -170,10 +170,11 @@ TypePtr MapType::getJoin(Type &_other) {
     if (pJoin || _other.getKind() == FRESH)
         return pJoin;
 
-    TypePtr pIndexJoin = getIndexType()->getJoin(*((const MapType &)_other).getIndexType().as<Type>());
-    TypePtr pBaseMeet = getBaseType()->getMeet(*((const MapType &)_other).getBaseType());
+    TypePtr pBaseJoin = getBaseType()->getJoin(*((const MapType &)_other).getBaseType());
+    TypePtr pIndexMeet = getIndexType()->getMeet(*((const MapType &)_other).getIndexType().as<Type>());
 
-    return (pIndexJoin && pBaseMeet) ? new MapType(pIndexJoin, pBaseMeet) : NULL;
+    return (pBaseJoin && pIndexMeet) ? new MapType(pIndexMeet, pBaseJoin) : NULL;
+}
 
 int MapType::getMonotonicity(const Type &_var) const {
     const int mtb = getBaseType()->getMonotonicity(_var);
