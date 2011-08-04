@@ -92,6 +92,9 @@
     <ClCompile Include="src\backend_c.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="src\generate_semantics.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\backend_c.h">
@@ -156,6 +159,9 @@
     </ClInclude>
     <ClInclude Include="include\utils.h">
       <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="src\generate_semantics.h">
+      <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

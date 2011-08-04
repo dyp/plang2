@@ -29,6 +29,7 @@ set(SOURCES
     prettyprinter.cpp
     solve_constraints.cpp
     typecheck.cpp
+    generate_semantics.cpp
 )
 
 add_definitions(

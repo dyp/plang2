@@ -72,19 +72,21 @@ void _printUsage() {
         << "    -t, --typecheck=TYPE          Do typecheck, where TYPE is 'none' (0), 'on' (1)\n"
         << "    -o, --output=FILE             Output file name\n"
         << "    -v, --verbose                 Print debug info\n"
+        << "    -s, --check-semantics         Generate logical conditions for proving semantic correctness\n"
         << "        --help                    Show this message\n";
 }
 
 bool Options::init(size_t _cArgs, const char **_pArgs) {
     bool bHelp = false;
     Option options[] = {
-        { "prettyprint", 'p', _handlePrettyPrint, NULL,                   NULL,                          true  },
-        { "backend",     'b', _handleBackEnd,     NULL,                   NULL,                          true  },
-        { "typecheck",   't', _handleTypeCheck,   NULL,                   NULL,                          false },
-        { "output",      'o', NULL,               NULL,                   &instance().strOutputFilename, false },
-        { "verbose",     'v', NULL,               &instance().bVerbose,   NULL,                          false },
-        { "help",        'h', NULL,               &bHelp,                 NULL,                          false },
-        { NULL,           0,  NULL,               NULL,                   NULL,                          false }
+        { "prettyprint",     'p', _handlePrettyPrint, NULL,                        NULL,                          true  },
+        { "backend",         'b', _handleBackEnd,     NULL,                        NULL,                          true  },
+        { "typecheck",       't', _handleTypeCheck,   NULL,                        NULL,                          false },
+        { "output",          'o', NULL,               NULL,                        &instance().strOutputFilename, false },
+        { "verbose",         'v', NULL,               &instance().bVerbose,        NULL,                          false },
+        { "help",            'h', NULL,               &bHelp,                      NULL,                          false },
+        { "check-semantics", 's', NULL,               &instance().bCheckSemantics, NULL,                          false },
+        { NULL,               0,  NULL,               NULL,                        NULL,                          false }
     };
 
     if (parseOptions(_cArgs, _pArgs, options, &instance(), _handleNotAnOption)) {
@@ -104,6 +106,7 @@ Options::Options() :
     prettyPrint(PP_NONE),
     typeCheck(TC_ON),
     backEnd(BE_NONE),
+    bCheckSemantics(false),
     bVerbose(false)
 {
 }

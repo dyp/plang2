@@ -23,6 +23,7 @@
 #include "parser_context.h"
 #include "pp_flat_tree.h"
 #include "options.h"
+#include "generate_semantics.h"
 
 using namespace lexer;
 
@@ -55,6 +56,9 @@ int main(int _argc, const char ** _argv) {
     }
 
     if (ir::ModulePtr pModule = parse(tokens)) {
+        if (Options::instance().bCheckSemantics)
+            pModule = processPreConditions(*pModule);
+
         if (Options::instance().prettyPrint & PP_FLAT)
             prettyPrintFlatTree(*pModule);
 

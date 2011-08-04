@@ -37,6 +37,7 @@ struct Options {
     std::string strInputFilename;
     std::string strOutputFilename;
     Args args;
+    bool bCheckSemantics;
     bool bVerbose;
 
     Options();
