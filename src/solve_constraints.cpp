@@ -798,6 +798,8 @@ bool Solver::expand(int &_result) {
                 bResult = expandSet(f.getKind(), pLhs.as<SetType>(), pRhs.as<SetType>(), formulas);
             else if (pLhs->getKind() == Type::LIST && pRhs->getKind() == Type::LIST)
                 bResult = expandList(f.getKind(), pLhs.as<ListType>(), pRhs.as<ListType>(), formulas);
+            else if (pLhs->getKind() == Type::MAP && pRhs->getKind() == Type::MAP)
+                bResult = expandMap(f.getKind(), pLhs.as<MapType>(), pRhs.as<MapType>(), formulas);
             else if (pLhs->getKind() == Type::TYPE && pRhs->getKind() == Type::TYPE)
                 bResult = expandType(f.getKind(), pLhs.as<TypeType>(), pRhs.as<TypeType>(), formulas);
             else
