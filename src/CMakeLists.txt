@@ -30,6 +30,7 @@ set(SOURCES
     solve_constraints.cpp
     typecheck.cpp
     generate_semantics.cpp
+    generate_name.cpp
 )
 
 add_definitions(

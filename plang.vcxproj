@@ -79,6 +79,7 @@
     <ClCompile Include="src\backend_c.cpp" />
     <ClCompile Include="src\backend_debug.cpp" />
     <ClCompile Include="src\collect_constraints.cpp" />
+    <ClCompile Include="src\generate_name.cpp" />
     <ClCompile Include="src\generate_semantics.cpp" />
     <ClCompile Include="src\ir\base.cpp" />
     <ClCompile Include="src\ir\builtins.cpp" />
@@ -121,6 +122,7 @@
     <ClInclude Include="src\backend_c.h" />
     <ClInclude Include="src\backend_debug.h" />
     <ClInclude Include="src\collect_constraints.h" />
+    <ClInclude Include="src\generate_name.h" />
     <ClInclude Include="src\generate_semantics.h" />
     <ClInclude Include="src\llir_process.h" />
     <ClInclude Include="src\options.h" />
