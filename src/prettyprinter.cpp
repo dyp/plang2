@@ -352,9 +352,9 @@ public:
 
     virtual bool visitNamedValue(NamedValue &_val) {
         if (&_val != m_pRoot.ptr()) {
-            if (getLoc().bPartOfCollection && !getLoc().bFirstInCollection)
+            if (getLoc().bPartOfCollection && getLoc().cPosInCollection != 0)
                 m_os << L", ";
-            else if (getLoc().role == R_PredicateTypeOutParam && getLoc().bFirstInCollection)
+            else if (getLoc().role == R_PredicateTypeOutParam && getLoc().cPosInCollection == 0)
                 m_os << L" : ";
         }
 
@@ -494,7 +494,7 @@ public:
     }
 
     virtual bool visitUnionConstructorDeclaration(UnionConstructorDeclaration &_cons) {
-        if (&_cons != m_pRoot.ptr() && getLoc().bPartOfCollection && !getLoc().bFirstInCollection)
+        if (&_cons != m_pRoot.ptr() && getLoc().bPartOfCollection && getLoc().cPosInCollection != 0)
             m_os << L", ";
 
         m_os << _cons.getName() << L"(";

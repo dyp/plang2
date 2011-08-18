@@ -77,12 +77,12 @@ public:
         NodeSetter *pSetter;
         NodeWalkUp walkUp;
         bool bPartOfCollection;
-        bool bFirstInCollection;
+        size_t cPosInCollection;
 
         Loc(Node &_node, NodeType _type, NodeRole _role, RoleHandler _roleHandler = NULL,
                 RoleHandler _roleHandlerPost = NULL, NodeSetter *_pSetter = NULL, NodeWalkUp _walkUp = NULL) :
             pNode(&_node), type(_type), role(_role), roleHandler(_roleHandler), roleHandlerPost(_roleHandlerPost),
-            pSetter(_pSetter), walkUp(_walkUp), bPartOfCollection(false), bFirstInCollection(false)
+            pSetter(_pSetter), walkUp(_walkUp), bPartOfCollection(false), cPosInCollection(0)
         {
         }
     };
@@ -171,7 +171,6 @@ private:
 
 template<class _Node, class _Base>
 bool Visitor::traverseCollection(Collection<_Node, _Base> &_nodes) {
-    bool bFirst = true;
 
     for (size_t i = 0; i < _nodes.size(); ++i) {
         if (_nodes.get(i)) {
@@ -180,9 +179,8 @@ bool Visitor::traverseCollection(Collection<_Node, _Base> &_nodes) {
 
             loc = Loc(*_nodes.get(i), loc.type, loc.role, loc.roleHandler, loc.roleHandlerPost,
                     &setter, loc.walkUp);
-            loc.bFirstInCollection = bFirst;
+            loc.cPosInCollection = i;
             loc.bPartOfCollection = true;
-            bFirst = false;
 
             if (!traverseNode(*_nodes.get(i)))
                 return false;
