@@ -26,6 +26,7 @@ set(SOURCES
     parser.cpp
     plang.cpp
     pp_flat_tree.cpp
+    pp_syntax.cpp
     prettyprinter.cpp
     solve_constraints.cpp
     typecheck.cpp

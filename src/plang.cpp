@@ -22,6 +22,7 @@
 #include "typecheck.h"
 #include "parser_context.h"
 #include "pp_flat_tree.h"
+#include "pp_syntax.h"
 #include "options.h"
 #include "generate_semantics.h"
 
@@ -64,6 +65,9 @@ int main(int _argc, const char ** _argv) {
 
         if (Options::instance().prettyPrint & PP_AST)
             prettyPrint(*pModule, std::wcout);
+
+        if (Options::instance().prettyPrint & PP_SYNTAX)
+            prettyPrintSyntax(*pModule, std::wcout);
 
         if (Options::instance().backEnd == BE_NONE)
             return EXIT_SUCCESS;

@@ -17,8 +17,10 @@ bool _handlePrettyPrint(const std::string &_val, void *_p) {
         opts.prettyPrint |= PP_FLAT;
     else if (_val == "ast" || _val == "2")
         opts.prettyPrint |= PP_AST;
-    else if (_val == "lex" || _val == "4")
+    else if (_val == "lex" || _val == "3")
         opts.prettyPrint |= PP_LEX;
+    else if (_val == "p" || _val == "4")
+        opts.prettyPrint |= PP_SYNTAX;
     else
         return false;
 
@@ -67,7 +69,7 @@ void _printUsage() {
     std::cerr << "Usage:\n\n"
         << "    plang [OPTIONS] FILE\n\n"
         << "Options\n\n"
-        << "    -p, --prettyprint=TYPE        Pretty-printer mode, where TYPE is 'none' (0), 'flat' (1), 'ast' (2)\n"
+        << "    -p, --prettyprint=TYPE        Pretty-printer mode, where TYPE is 'none' (0), 'flat' (1), 'ast' (2), 'lex' (3), 'p' (4)\n"
         << "    -b, --backend=TYPE            Use backend, where TYPE is 'none' (0), 'pp' (1), 'c' (2)\n"
         << "    -t, --typecheck=TYPE          Do typecheck, where TYPE is 'none' (0), 'on' (1)\n"
         << "    -o, --output=FILE             Output file name\n"

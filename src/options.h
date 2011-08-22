@@ -9,10 +9,11 @@
 
 // Pretty print.
 enum {
-    PP_NONE = 0,
-    PP_FLAT = 1,
-    PP_AST  = 2,
-    PP_LEX  = 4,
+    PP_NONE       = 0,
+    PP_FLAT       = 1,
+    PP_AST        = 2,
+    PP_LEX        = 4,
+    PP_SYNTAX     = 8,
 };
 
 // Type check.

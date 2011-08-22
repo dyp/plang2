@@ -99,6 +99,7 @@
     <ClCompile Include="src\parser_context.cpp" />
     <ClCompile Include="src\plang.cpp" />
     <ClCompile Include="src\pp_flat_tree.cpp" />
+    <ClCompile Include="src\pp_syntax.cpp" />
     <ClCompile Include="src\prettyprinter.cpp" />
     <ClCompile Include="src\solve_constraints.cpp" />
     <ClCompile Include="src\typecheck.cpp" />
@@ -128,6 +129,7 @@
     <ClInclude Include="src\options.h" />
     <ClInclude Include="src\parser.h" />
     <ClInclude Include="src\pp_flat_tree.h" />
+    <ClInclude Include="src\pp_syntax.h" />
     <ClInclude Include="src\prettyprinter.h" />
   </ItemGroup>
   <ItemGroup>
