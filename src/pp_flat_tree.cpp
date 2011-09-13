@@ -86,6 +86,25 @@ public:
     NAMED(UnionAlternativeExpr, Name);
     NAMED(StructFieldDefinition, Name);
     NAMED(UnionConstructorDeclaration, Name);
+
+    virtual bool visitFormula(ir::Formula &_node) {
+        PrettyPrinterFlatBase::visitFormula(_node);
+        printQuantifier(_node.getQuantifier());
+        return true;
+    }
+
+protected:
+    const void printQuantifier(int _quantifier) {
+        for (std::list<std::wstring>::iterator i = m_path.begin(); i != m_path.end(); ++i)
+            std::wcout << L"/" << *i;
+        std::wcout << "/Quantifier = ";
+        switch (_quantifier) {
+            case ir::Formula::NONE:          std::wcout << L"none\n";    break;
+            case ir::Formula::UNIVERSAL:     std::wcout << L"forall\n";  break;
+            case ir::Formula::EXISTENTIAL:   std::wcout << L"exists\n";  break;
+        }
+    }
+
 };
 
 void prettyPrintFlatTree(ir::Node &_node, std::wostream &_os) {
