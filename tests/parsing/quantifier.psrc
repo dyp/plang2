@@ -1,0 +1,36 @@
+/*
+
+<test>
+        //isprime///Quantifier = forall
+        //sqrt//Quantifier = exists
+        //p3//Quantifier = forall
+        //p2//Quantifier = exists
+        //p1//Quantifier = forall
+        //f3//Quantifier = forall
+        //f2//Quantifier = exists
+        //f1//Quantifier = forall
+</test>
+
+*/
+
+formula isprime(nat p) = forall nat a. p % a != 0;
+
+//Tail recursion, just for testing
+formula sqr(real x: real) = x*x;
+formula sqrt(nat a, t: nat) = (exists nat x. (x > t) & (sqr(t) < a)) ? sqrt(a, t + 1) : t ;
+
+//The existence of a limit for a natural sequence
+type SEQ(nat k) = array (real, 1 .. k);
+formula abs(real x : real) = x > 0 ? x : -x;
+
+formula p4(real e, nat n, k1, k2, SEQ(n) s: bool)  = abs(s[k1] - s[k2]) < e;
+formula p3(real e, nat n, m, SEQ(n) s: bool)       = forall nat k1, k2. (k1 > m) & (k2 > m) & (k1 < n) & (k2 < n) & p4(e, n, k1, k2, s);
+formula p2(real e, nat n, SEQ(n) s: bool)          = exists nat m. (m > 0) & (m < n) & p3(e, n, m, s);
+formula p1(nat n, SEQ(n) s: bool)                  = forall real e. (e > 0) & p2(e, n, s);
+formula islimited(nat n, SEQ(n) s : bool)          = p1(n, s);
+
+//This is same problem, but now for "sqr" function
+formula f3(real e, d, x : bool)   = forall real x1. ((abs(x - x1) < d) => (abs(0) < e)); // abs(sqr(x) - sqr(x1)) - not parsing now
+formula f2(real e, x : bool)      = exists real d. (d > 0) & p3(e, d, x) ;
+formula f1(real x : bool)         = forall real e. (e > 0) & p2(e, x) ;
+formula islimit(real x: bool)     = f1(x);
