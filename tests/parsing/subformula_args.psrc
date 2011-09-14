@@ -1,0 +1,14 @@
+/*
+
+<test>
+        //implication//Quantifier = forall
+</test>
+
+*/
+
+formula sqr(real x: real) = x*x;
+formula sqrt(nat a, t: nat) = (exists nat x. (x > t) & (sqr(t) < a)) ? sqrt(a, t + 1) : t ;
+formula abs(real x : real) = x > 0 ? x : -x;
+
+formula simple(real x, x1: real) = abs(sqr(x) - sqr(x1));
+formula implication(real e, d, x : bool)   = forall real x1. ((abs(x - x1) < d) => (abs(sqr(x) - sqr(x1)) < e));
