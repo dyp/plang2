@@ -101,6 +101,9 @@ public:
             case ir::Binary::GREATER_OR_EQUALS:
                 m_os << L">=";
                 break;
+            case ir::Binary::IMPLIES:
+                m_os << L"=>";
+                break;
         }
     }
 
@@ -134,6 +137,8 @@ public:
         const int nChildKind = ((ir::Expression*)i->pNode)->getKind();
 
         switch (nChildKind) {
+            case ir::Expression::FORMULA_CALL:
+            case ir::Expression::FUNCTION_CALL:
             case ir::Expression::LITERAL:
             case ir::Expression::VAR:
                 return false;
@@ -182,11 +187,6 @@ public:
 
     virtual bool visitPredicateReference(ir::PredicateReference &_node) {
         m_os << _node.getName();
-        return true;
-    }
-
-    virtual bool visitType(ir::Type &_node) {
-        callPrettyPrintCompact(_node);
         return true;
     }
 
@@ -246,6 +246,7 @@ public:
 
         if (nQuantifier != ir::Formula::NONE) {
             printQuantifier(nQuantifier);
+            m_os << " ";
             VISITOR_TRAVERSE_COL(NamedValue, FormulaBoundVariable, _node.getBoundVariables());
             m_os << ". ";
         }
@@ -303,6 +304,17 @@ public:
 
         VISITOR_EXIT();
 
+    }
+
+    virtual bool traverseLemmaDeclaration(ir::LemmaDeclaration &_stmt) {
+        VISITOR_ENTER(LemmaDeclaration, _stmt);
+        VISITOR_TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
+
+        m_os << "lemma ";
+        VISITOR_TRAVERSE(Expression, LemmaDeclBody, _stmt.getProposition(), _stmt, LemmaDeclaration, setProposition);
+        m_os << " ;\n";
+
+        VISITOR_EXIT();
     }
 
     virtual bool traverseArrayPartExpr(ir::ArrayPartExpr &_node) {
@@ -378,7 +390,7 @@ public:
         VISITOR_EXIT();
     }
 
-    //TODO: MAP_ELEMENT, REPLACEMENT, LAMBDA, CONSTRUCTOR
+    //TODO: MAP_ELEMENT, REPLACEMENT, LAMBDA, CONSTRUCTOR, TYPE
 
     void run() {
         traverseNode( *m_pNode );
