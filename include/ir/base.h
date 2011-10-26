@@ -152,6 +152,14 @@ public:
             add(_cloner.get(_other.get(i)));
     }
 
+    /// Assign elements from another collection.
+    /// \param _other Other collection.
+    template<typename _OtherNode, typename _OtherBase>
+    void assign(const Collection<_OtherNode, _OtherBase> &_other) {
+        m_nodes.clear();
+        append(_other);
+    }
+
     /// Replace element by index.
     /// \param _c Index of element (zero-based).
     /// \param _pNode Pointer to new element.
