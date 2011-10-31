@@ -246,3 +246,21 @@ bool UnionType::less(const Type &_other) const {
 
     return false;
 }
+
+int UnionType::getMonotonicity(const Type &_var) const {
+    bool bMonotone = false, bAntitone = false;
+
+    for (size_t i = 0; i < getConstructors().size(); ++i)
+        for (size_t j = 0; j < getConstructors().get(i)->getFields().size(); ++j) {
+            TypePtr pType = getConstructors().get(i)->getFields().get(j)->getType();
+            const int mt = pType->getMonotonicity(_var);
+
+            bMonotone |= mt == MT_MONOTONE;
+            bAntitone |= mt == MT_ANTITONE;
+
+            if ((bMonotone && bAntitone) || mt == MT_NONE)
+                return MT_NONE;
+        }
+
+    return bMonotone ? MT_MONOTONE : (bAntitone ? MT_ANTITONE : MT_CONST);
+}

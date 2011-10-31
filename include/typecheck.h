@@ -87,6 +87,7 @@ public:
     virtual ir::TypePtr getMeet(ir::Type &_other);
     virtual ir::TypePtr getJoin(ir::Type &_other);
     virtual bool less(const Type &_other) const;
+    virtual int getMonotonicity(const Type &_var) const;
 
 private:
     ir::NamedValuesPtr m_pFields;
@@ -117,6 +118,9 @@ public:
 
     Formula(int _kind, const ir::TypePtr &_pLhs = NULL, const ir::TypePtr &_pRhs = NULL) :
         m_kind(_kind), m_pLhs(_pLhs), m_pRhs(_pRhs) {}
+
+    Formula(const Formula &_other) :
+        m_kind(_other.m_kind), m_pLhs(_other.m_pLhs), m_pRhs(_other.m_pRhs) {}
 
     bool is(int _kind) const { return (m_kind & _kind) != 0; }
 

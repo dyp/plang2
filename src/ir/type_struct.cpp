@@ -392,6 +392,24 @@ TypePtr StructType::getJoin(ir::Type &_other) {
     return pStruct;
 }
 
+int StructType::getMonotonicity(const Type &_var) const {
+    bool bMonotone = false, bAntitone = false;
+
+    for (size_t j = 0; j < 3; ++j)
+        for (size_t i = 0; i < m_fields[j].size(); ++i) {
+            TypePtr pType = m_fields[j].get(i)->getType();
+            const int mt = pType->getMonotonicity(_var);
+
+            bMonotone |= mt == MT_MONOTONE;
+            bAntitone |= mt == MT_ANTITONE;
+
+            if ((bMonotone && bAntitone) || mt == MT_NONE)
+                return MT_NONE;
+        }
+
+    return bMonotone ? MT_MONOTONE : (bAntitone ? MT_ANTITONE : MT_CONST);
+}
+
 // Tuples.
 
 bool tc::TupleType::less(const Type &_other) const {
@@ -518,4 +536,21 @@ TypePtr tc::TupleType::getJoin(ir::Type &_other) {
         return new Type(TOP);
 
     return pTuple;
+}
+
+int tc::TupleType::getMonotonicity(const Type &_var) const {
+    bool bMonotone = false, bAntitone = false;
+
+    for (size_t i = 0; i < getFields().size(); ++i) {
+        TypePtr pType = getFields().get(i)->getType();
+        const int mt = pType->getMonotonicity(_var);
+
+        bMonotone |= mt == MT_MONOTONE;
+        bAntitone |= mt == MT_ANTITONE;
+
+        if ((bMonotone && bAntitone) || mt == MT_NONE)
+            return MT_NONE;
+    }
+
+    return bMonotone ? MT_MONOTONE : (bAntitone ? MT_ANTITONE : MT_CONST);
 }

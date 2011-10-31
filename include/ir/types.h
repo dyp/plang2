@@ -48,6 +48,8 @@ public:
         return pCopy;
     }
 
+    virtual int getMonotonicity(const Type &_var) const;
+
 private:
     NamedValues m_params;
     TypePtr m_pActualType;
@@ -155,6 +157,7 @@ public:
     virtual TypePtr getJoin(Type &_other);
     virtual bool less(const Type &_other) const;
     virtual bool contains(const TypePtr &_pType) const;
+    virtual int getMonotonicity(const Type &_var) const;
 
     bool empty() const;
 
@@ -297,6 +300,7 @@ public:
     virtual TypePtr getMeet(Type &_other);
     virtual TypePtr getJoin(Type &_other);
     virtual bool less(const Type &_other) const;
+    virtual int getMonotonicity(const Type &_var) const;
 
     virtual bool contains(const TypePtr &_pType) const;
 
@@ -332,6 +336,7 @@ public:
     virtual int compare(const Type &_other) const;
     virtual bool less(const Type &_other) const;
     virtual bool rewriteFlags(int _flags) { return m_pBaseType->rewriteFlags(_flags); }
+    virtual int getMonotonicity(const Type &_var) const;
 
     virtual bool contains(const TypePtr &_pType) const {
         return *m_pBaseType == *_pType || m_pBaseType->contains(_pType);
@@ -538,6 +543,7 @@ public:
     virtual bool less(const Type &_other) const;
     virtual TypePtr getJoin(Type &_other);
     virtual TypePtr getMeet(Type &_other);
+    virtual int getMonotonicity(const Type &_var) const;
 
     virtual NodePtr clone(Cloner &_cloner) const {
         return NEW_CLONE(this, _cloner, MapType(_cloner.get(getIndexType()), _cloner.get(getBaseType())));

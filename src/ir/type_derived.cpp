@@ -34,6 +34,10 @@ bool DerivedType::less(const Type &_other) const {
     return *getBaseType() < *((const DerivedType &)_other).getBaseType();
 }
 
+int DerivedType::getMonotonicity(const Type &_var) const {
+    return getBaseType()->getMonotonicity(_var);
+}
+
 // Sets.
 
 TypePtr SetType::getMeet(Type &_other) {
@@ -170,4 +174,15 @@ TypePtr MapType::getJoin(Type &_other) {
     TypePtr pBaseMeet = getBaseType()->getMeet(*((const MapType &)_other).getBaseType());
 
     return (pIndexJoin && pBaseMeet) ? new MapType(pIndexJoin, pBaseMeet) : NULL;
+
+int MapType::getMonotonicity(const Type &_var) const {
+    const int mtb = getBaseType()->getMonotonicity(_var);
+    const int mti = getIndexType()->getMonotonicity(_var);
+    const bool bMonotone = mtb == MT_MONOTONE || mti == MT_ANTITONE;
+    const bool bAntitone = mtb == MT_ANTITONE || mti == MT_MONOTONE;
+
+    if ((bMonotone && bAntitone) || mtb == MT_NONE || mti == MT_NONE)
+        return MT_NONE;
+
+    return bMonotone ? MT_MONOTONE : (bAntitone ? MT_ANTITONE : MT_CONST);
 }

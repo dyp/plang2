@@ -305,6 +305,17 @@ public:
     virtual TypePtr getJoin(Type &_other); // Supremum.
     virtual TypePtr getMeet(Type &_other); // Infinum.
 
+    enum {
+        MT_NONE     = 0x01,
+        MT_CONST    = 0x02,
+        MT_MONOTONE = 0x04,
+        MT_ANTITONE = 0x08,
+    };
+
+    virtual int getMonotonicity(const Type &_var) const;
+    bool isMonotone(const Type &_var, bool _bStrict = true) const;
+    bool isAntitone(const Type &_var, bool _bStrict = true) const;
+
     // For comparison/sorting only, no subtyping relation is implied.
     bool operator <(const Type &_other) const;
     bool operator ==(const Type &_other) const;

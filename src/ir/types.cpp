@@ -227,6 +227,18 @@ TypePtr Type::getMeet(ir::Type &_other) {
     return (Type *)NULL;
 }
 
+bool Type::isMonotone(const Type &_var, bool _bStrict) const {
+    return getMonotonicity(_var) & (MT_MONOTONE | (_bStrict ? 0 : MT_CONST));
+}
+
+bool Type::isAntitone(const Type &_var, bool _bStrict) const {
+    return getMonotonicity(_var) & (MT_ANTITONE | (_bStrict ? 0 : MT_CONST));
+}
+
+int Type::getMonotonicity(const Type &_var) const {
+    return compare(_var) == ORD_EQUALS ? MT_MONOTONE : MT_CONST;
+}
+
 // 'type' type.
 
 TypeType::TypeType(const TypeDeclarationPtr &_pDeclaration) : m_pDecl(_pDeclaration) {
@@ -282,4 +294,14 @@ bool TypeType::less(const Type &_other) const {
     }
 
     return other.m_pDecl && other.m_pDecl->getType();
+}
+
+// Parameterized type.
+
+int ParameterizedType::getMonotonicity(const Type &_var) const {
+    if (!getActualType())
+        return MT_CONST;
+
+    // TODO: consider parameters after other operators of parameterized types get implemented.
+    return getActualType()->getMonotonicity(_var);
 }
