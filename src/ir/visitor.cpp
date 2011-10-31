@@ -20,7 +20,8 @@ bool Visitor::walkUpFromNode(Node &_node) {
 bool Visitor::traverseNode(Node &_node) {
     switch (_node.getNodeKind()) {
         case Node::COLLECTION:
-            return traverseCollection((Collection<Node> &)_node);
+            TRAVERSE_COL(Node, TopLevel, (Collection<Node> &)_node);
+            return true;
         case Node::TYPE:
             return traverseType((Type &)_node);
         case Node::NAMED_VALUE:

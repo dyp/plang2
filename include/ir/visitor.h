@@ -13,6 +13,7 @@
 namespace ir {
 
 enum NodeType {
+    N_Node,
 #define NODE(_Node, ...) N_##_Node,
 #include "nodes.inl"
 #undef NODE
