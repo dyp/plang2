@@ -115,12 +115,21 @@ public:
         return (void *)ptr() == (void *)_other.ptr();
     }
 
+    template<typename _Other>
+    bool operator !=(const Auto<_Other> &_other) const {
+        return (void *)ptr() != (void *)_other.ptr();
+    }
+
     bool operator !() const {
         return ptr() == NULL;
     }
 
     operator bool() const {
         return ptr() != NULL;
+    }
+
+    void swap(Auto &_other) {
+        std::swap(m_pObj, _other.m_pObj);
     }
 
     template<class>
@@ -152,6 +161,11 @@ template<typename _Obj>
 inline Auto<_Obj> ref(const _Obj *_pObj) {
     return Auto<_Obj>(Counted::createCountedWrapper(_pObj, false));
 }
+
+template<class _Comparable>
+struct PtrLess {
+    bool operator()(const Auto<_Comparable> &_pLhs, const Auto<_Comparable> &_pRhs) const { return *_pLhs < *_pRhs; }
+};
 
 // Cloner.
 
