@@ -537,7 +537,7 @@ void prettyPrint(tc::Context &_constraints, std::wostream &_os) {
 
     _os << L"----------\n";
 
-    for (tc::Formulas::iterator i = _constraints.substs->begin(); i != _constraints.substs->end(); ++i) {
+    for (tc::Formulas::iterator i = _constraints.pSubsts->begin(); i != _constraints.pSubsts->end(); ++i) {
         tc::Formula &f = **i;
 
         assert(f.getLhs());

@@ -84,8 +84,8 @@ bool _insertBounds(tc::Context &_formulas, const tc::TypeSets &_bounds, bool _bU
         TypePtr pType = i->first;
         const tc::TypeSet &types = i->second;
 
-        if (_formulas.substs->findSubst(pType) != _formulas.substs->end() ||
-                _formulas.fs->findSubst(pType) != _formulas.fs->end())
+        if (_formulas.pSubsts->findSubst(pType) != _formulas.pSubsts->end() ||
+                _formulas.pFormulas->findSubst(pType) != _formulas.pFormulas->end())
             continue;
 
         for (tc::TypeSet::const_iterator j = types.begin(); j != types.end(); ++j) {
@@ -188,14 +188,14 @@ bool Solver::inferCompound() {
                 }
 
                 if (unify()) {
-                    context()->insert(context().substs->begin(), context().substs->end());
-                    context().substs->clear();
+                    context()->insert(context().pSubsts->begin(), context().pSubsts->end());
+                    context().pSubsts->clear();
                 }
 
                 if (context()->size() != part.size() ||
                         !std::equal(context()->begin(), context()->end(), part.begin(), tc::FormulaEquals()))
                 {
-                    part.swap(*context().fs);
+                    part.swap(*context().pFormulas);
                     bFormulaModified = true;
                 }
             }
@@ -878,14 +878,14 @@ bool Solver::unify(bool _bCompound) {
         if (!pOld->compare(*pNew, Type::ORD_EQUALS)) {
             if (context().rewrite(pOld, pNew))
                 bResult = true;
-            context().substs->insert(new tc::Formula(tc::Formula::EQUALS, pOld, pNew));
+            context().pSubsts->insert(new tc::Formula(tc::Formula::EQUALS, pOld, pNew));
         }
 
         bResult |= !_bCompound; // Subformulas of compound formulas don't store their substs separately.
     }
 
     if (_bCompound)
-        context()->insert(context().substs->begin(), context().substs->end());
+        context()->insert(context().pSubsts->begin(), context().pSubsts->end());
 
     tc::FormulaList formulas;
 
@@ -1148,9 +1148,9 @@ bool Solver::run() {
                 tc::Context &ctx = **i;
                 tc::Formulas &part = pCF->addPart();
 
-                part.insert(ctx.fs->begin(), ctx.fs->end());
-                part.insert(ctx.substs->begin(), ctx.substs->end());
-                part.pFlags = ctx.fs->pFlags;
+                part.insert(ctx.pFormulas->begin(), ctx.pFormulas->end());
+                part.insert(ctx.pSubsts->begin(), ctx.pSubsts->end());
+                part.pFlags = ctx.pFormulas->pFlags;
             }
 
             CS::push(ptr(new tc::Context()));

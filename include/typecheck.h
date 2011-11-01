@@ -197,14 +197,14 @@ struct Formulas : public std::set<FormulaPtr, FormulaCmp> {
 class Extrema;
 
 struct Context : public Counted {
-    Auto<Formulas> fs;
-    Auto<Formulas> substs;
+    Auto<Formulas> pFormulas;
+    Auto<Formulas> pSubsts;
     Auto<Context> pParent;
     Auto<Extrema> pExtrema;
 
     Context();
-    Context(const Auto<Formulas> &_fs, const Auto<Formulas> &_substs);
-    Context(const Auto<Formulas> &_fs, const Auto<Context> &_pParent = NULL);
+    Context(const Auto<Formulas> &_pFormulas, const Auto<Formulas> &_pSubsts);
+    Context(const Auto<Formulas> &_pFormulas, const Auto<Context> &_pParent = NULL);
 
     ir::TypePtr lookup(const tc::Formula &_f, const tc::Formula &_cond);
     bool rewrite(const ir::TypePtr &_pOld, const ir::TypePtr &_pNew, bool _bRewriteFlags = true);
@@ -212,10 +212,10 @@ struct Context : public Counted {
     virtual Auto<Context> clone(Cloner &_cloner) const;
     bool add(const FormulaPtr &_pFormula);
     bool add(int _kind, const ir::TypePtr &_pLhs, const ir::TypePtr &_pRhs);
-    Flags &flags() { return *fs->pFlags; }
+    Flags &flags() { return *pFormulas->pFlags; }
 
-    Formulas &operator *() const { return *fs; }
-    Formulas *operator ->() const { return fs.ptr(); }
+    Formulas &operator *() const { return *pFormulas; }
+    Formulas *operator ->() const { return pFormulas.ptr(); }
 };
 
 typedef Auto<Context> ContextPtr;

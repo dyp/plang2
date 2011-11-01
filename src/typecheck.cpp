@@ -181,13 +181,13 @@ FormulaPtr Formula::clone(Cloner &_cloner) const {
 Auto<Context> Context::clone(Cloner &_cloner) const {
     Auto<Context> pNew = ptr(NEW_CLONE(this, _cloner, Context()));
 
-    for (Formulas::const_iterator i = fs->begin(); i != fs->end(); ++i)
-        pNew->fs->insert(_cloner.get(i->ptr()));
+    for (Formulas::const_iterator i = pFormulas->begin(); i != pFormulas->end(); ++i)
+        pNew->pFormulas->insert(_cloner.get(i->ptr()));
 
-    pNew->fs->pFlags = new Flags(*fs->pFlags);
+    pNew->pFormulas->pFlags = new Flags(*pFormulas->pFlags);
 
-    for (Formulas::const_iterator i = substs->begin(); i != substs->end(); ++i)
-        pNew->substs->insert(_cloner.get(i->ptr()));
+    for (Formulas::const_iterator i = pSubsts->begin(); i != pSubsts->end(); ++i)
+        pNew->pSubsts->insert(_cloner.get(i->ptr()));
 
     pNew->pParent = pParent; // No clone().
 
@@ -409,14 +409,14 @@ bool Context::rewrite(const ir::TypePtr &_pOld, const ir::TypePtr &_pNew, bool _
     bool bModified = false;
     Formulas reorder;
 
-    bModified |= substs->rewrite(_pOld, _pNew, _bRewriteFlags);
+    bModified |= pSubsts->rewrite(_pOld, _pNew, _bRewriteFlags);
 
-    for (Formulas::iterator i = fs->begin(); i != fs->end();) {
+    for (Formulas::iterator i = pFormulas->begin(); i != pFormulas->end();) {
         Formulas::iterator j = ::next(i);
         FormulaPtr pFormula = *i;
 
         if (pFormula->rewrite(_pOld, _pNew, _bRewriteFlags)) {
-            fs->erase(i);
+            pFormulas->erase(i);
             reorder.insert(pFormula);
         }
 
@@ -493,7 +493,7 @@ bool Formulas::implies(Formula &_f) const {
 }
 
 bool Context::implies(Formula &_f) {
-    if (fs->implies(_f) || substs->implies(_f))
+    if (pFormulas->implies(_f) || pSubsts->implies(_f))
         return true;
 
     if (pParent && pParent->implies(_f))
@@ -534,7 +534,7 @@ bool Context::add(const FormulaPtr &_pFormula) {
     if (implies(*_pFormula))
         return false;
 
-    return fs->insert(_pFormula).second;
+    return pFormulas->insert(_pFormula).second;
 }
 
 bool Context::add(int _kind, const ir::TypePtr &_pLhs, const ir::TypePtr &_pRhs) {
@@ -566,22 +566,22 @@ void tc::apply(tc::Formulas &_constraints, ir::Node &_node) {
 }
 
 Context::Context() :
-        fs(ptr(new Formulas())),
-        substs(ptr(new Formulas())),
+        pFormulas(ptr(new Formulas())),
+        pSubsts(ptr(new Formulas())),
         pExtrema(new Extrema(this))
 {
 }
 
-Context::Context(const Auto<Formulas> &_fs, const Auto<Formulas> &_substs) :
-        fs(_fs),
-        substs(_substs),
+Context::Context(const Auto<Formulas> &_pFormulas, const Auto<Formulas> &_pSubsts) :
+        pFormulas(_pFormulas),
+        pSubsts(_pSubsts),
         pExtrema(new Extrema(this))
 {
 }
 
-Context::Context(const Auto<Formulas> &_fs, const Auto<Context> &_pParent) :
-    fs(_fs),
-    substs(ptr(new Formulas())),
+Context::Context(const Auto<Formulas> &_pFormulas, const Auto<Context> &_pParent) :
+    pFormulas(_pFormulas),
+    pSubsts(ptr(new Formulas())),
     pParent(_pParent),
     pExtrema(new Extrema(this))
 {
@@ -706,10 +706,10 @@ ContextIterator::ContextIterator(const ContextIterator &_other) :
 ContextIterator::ContextIterator(Context *_pCtx, bool _bSkipCompound, bool _bSkipTopSubsts) :
         m_pCtx(_pCtx),
         m_pCurrent(_pCtx),
-        m_pFormulas(_pCtx->fs),
+        m_pFormulas(_pCtx->pFormulas),
         m_bSkipCompound(_bSkipCompound),
         m_bSkipTopSubsts(_bSkipTopSubsts),
-        m_iter(_pCtx->fs->begin())
+        m_iter(_pCtx->pFormulas->begin())
 {
     if (eof())
         next();
@@ -722,19 +722,22 @@ bool ContextIterator::eof() {
 
 bool ContextIterator::start() {
     m_pCurrent = m_pCtx;
-    m_pFormulas = m_pCtx->fs;
-    m_iter = m_pCtx->fs->begin();
+    m_pFormulas = m_pCtx->pFormulas;
+    m_iter = m_pCtx->pFormulas->begin();
 
     return eof() ? !next() : true;
 }
 
 bool ContextIterator::next() {
+    if (!eof())
+        ++m_iter;
+
     if (eof()) {
-        if (m_pFormulas == m_pCurrent->fs && (!m_bSkipTopSubsts || m_pCurrent->pParent))
-            m_pFormulas = m_pCurrent->substs;
+        if (m_pFormulas == m_pCurrent->pFormulas && (!m_bSkipTopSubsts || m_pCurrent->pParent))
+            m_pFormulas = m_pCurrent->pSubsts;
         else if (m_pCurrent->pParent) {
             m_pCurrent = m_pCurrent->pParent.ptr();
-            m_pFormulas = m_pCurrent->fs;
+            m_pFormulas = m_pCurrent->pFormulas;
         } else
             return false;
 
@@ -742,8 +745,6 @@ bool ContextIterator::next() {
 
         return eof() ? !next() : true;
     }
-
-    ++m_iter;
 
     return !eof();
 }
