@@ -577,11 +577,10 @@ LambdaPtr Parser::parseLambda(Context &_ctx) {
 FormulaPtr Parser::parseFormula(Context &_ctx) {
     Context &ctx = *_ctx.createChild(true);
 
-    if (!ctx.in(BANG, QUESTION, FORALL, EXISTS))
+    if (!ctx.in(FORALL, EXISTS))
         ERROR(ctx, NULL, L"Quantifier expected");
 
-    FormulaPtr pFormula = new Formula(ctx.in(BANG, FORALL ?
-            Formula::UNIVERSAL : Formula::EXISTENTIAL));
+    FormulaPtr pFormula = new Formula(ctx.in(FORALL) ? Formula::UNIVERSAL : Formula::EXISTENTIAL);
 
     ++ctx;
 
@@ -703,8 +702,6 @@ ExpressionPtr Parser::parseAtom(Context &_ctx, int _nFlags) {
                     ERROR(ctx, NULL, L"Type reference expected");
             }
             break;
-        case BANG:
-        case QUESTION:
         case FORALL:
         case EXISTS:
             if (_nFlags & ALLOW_FORMULAS)
@@ -823,18 +820,11 @@ ExpressionPtr Parser::parseSubexpression(Context &_ctx, const ExpressionPtr &_pL
         ExpressionPtr pRhs;
         int nPrec = std::max(_minPrec, getPrecedence(op, bParseElse));
 
-        if ((_nFlags & ALLOW_FORMULAS) && !pLhs && ctx.in(BANG, QUESTION)) {
-            // Try to parse as a quantified formula first.
-            pLhs = parseFormula(ctx);
-            if (pLhs)
-                break;
-        }
-
         ++ctx;
 
         const int tokRHS = ctx.getToken();
 
-        if (getUnaryOp(ctx.getToken()) >= 0) {
+        if (getUnaryOp(tokRHS) >= 0) {
             pRhs = parseSubexpression(ctx, NULL, nPrec + 1, _nFlags);
         } else {
             pRhs = parseAtom(ctx, _nFlags);
