@@ -306,7 +306,7 @@ TypePtr StructType::getMeet(ir::Type &_other) {
 }
 
 TypePtr StructType::getJoin(ir::Type &_other) {
-    TypePtr pJoin = Type::getMeet(_other);
+    TypePtr pJoin = Type::getJoin(_other);
 
     if (pJoin || _other.getKind() == FRESH)
         return pJoin;
