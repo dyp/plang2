@@ -133,8 +133,9 @@ public:
 
     /// Add element to the collection.
     /// \param _pNode Pointer to node to add.
-    void add(const Auto<_Node> &_pNode) {
+    Auto<_Node> add(const Auto<_Node> &_pNode) {
         m_nodes.push_back(_pNode);
+        return m_nodes.back();
     }
 
     /// Append elements from another collection.

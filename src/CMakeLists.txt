@@ -32,6 +32,7 @@ set(SOURCES
     typecheck.cpp
     generate_semantics.cpp
     generate_name.cpp
+    type_lattice.cpp
 )
 
 add_definitions(

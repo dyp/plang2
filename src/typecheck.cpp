@@ -7,6 +7,7 @@
 #include "typecheck.h"
 #include "prettyprinter.h"
 #include "ir/visitor.h"
+#include "type_lattice.h"
 
 using namespace tc;
 
@@ -449,7 +450,7 @@ int CompoundFormula::eval() const {
         const Formulas &part = getPart(i);
         int r = TRUE;
 
-        for (Formulas::iterator j = part.begin(); j != part.end(); ++j) {
+        for (Formulas::const_iterator j = part.begin(); j != part.end(); ++j) {
             switch (const int cmp = (*j)->eval()) {
                 case UNKNOWN:
                     if (r == FALSE)
@@ -578,14 +579,14 @@ void tc::apply(tc::Formulas &_constraints, ir::Node &_node) {
 Context::Context() :
         pFormulas(ptr(new Formulas())),
         pSubsts(ptr(new Formulas())),
-        pExtrema(new Extrema(this))
+        pTypes(new Lattice(this))
 {
 }
 
 Context::Context(const Auto<Formulas> &_pFormulas, const Auto<Formulas> &_pSubsts) :
         pFormulas(_pFormulas),
         pSubsts(_pSubsts),
-        pExtrema(new Extrema(this))
+        pTypes(new Lattice(this))
 {
 }
 
@@ -593,7 +594,7 @@ Context::Context(const Auto<Formulas> &_pFormulas, const Auto<Context> &_pParent
     pFormulas(_pFormulas),
     pSubsts(ptr(new Formulas())),
     pParent(_pParent),
-    pExtrema(new Extrema(this))
+    pTypes(new Lattice(this))
 {
 }
 
@@ -772,188 +773,6 @@ ContextIterator ContextIterator::find(const FormulaPtr &_f) {
     }
 
     return it;
-}
-
-static const TypeSet g_emptyTypeSet;
-
-const TypeSets &Extrema::infs() {
-    if (!m_bValid)
-        update();
-
-    return m_lowers;
-}
-
-const TypeSets &Extrema::sups() {
-    if (!m_bValid)
-        update();
-
-    return m_uppers;
-}
-
-const TypeSet &Extrema::inf(const ir::TypePtr &_pType) {
-    if (!m_bValid)
-        update();
-
-    TypeSets::const_iterator iTypes = m_lowers.find(_pType);
-
-    return iTypes == m_lowers.end() ? g_emptyTypeSet : iTypes->second;
-}
-
-const TypeSet &Extrema::sup(const ir::TypePtr &_pType) {
-    if (!m_bValid)
-        update();
-
-    TypeSets::const_iterator iTypes = m_uppers.find(_pType);
-
-    return iTypes == m_lowers.end() ? g_emptyTypeSet : iTypes->second;
-}
-
-typedef std::multimap<ir::TypePtr, FormulaPtr, TypePtrCmp> FormulaMap;
-
-static
-void _updateBounds(std::vector<Extremum> &_bounds, const ir::TypePtr &_pType, bool _bStrict,
-        ir::TypePtr (ir::Type::*_merge)(ir::Type &))
-{
-    std::list<ir::TypePtr> types;
-
-    types.push_back(_pType);
-
-    while (!types.empty()) {
-        ir::TypePtr pType = types.back();
-        bool bMerged = false;
-
-        types.pop_back();
-
-        for (size_t i = 0; i != _bounds.size();) {
-            Extremum &old = _bounds[i];
-
-            if (ir::TypePtr pNew = (old.pType.ptr()->*_merge)(*pType)) {
-                const bool bCurrentMerged = *pNew != *pType;
-
-                bMerged |= bCurrentMerged;
-
-                // Put modified bounds to the processing queue.
-                if (*pNew != *old.pType) {
-                    std::swap(_bounds[i], _bounds.back());
-                    _bounds.pop_back();
-                    types.push_back(pNew);
-                    continue;
-                } else if (!bCurrentMerged) {
-                    old.bStrict |= _bStrict;
-                    bMerged = true;
-                }
-            }
-
-            ++i;
-        }
-
-        if (!bMerged)
-            _bounds.push_back(Extremum(pType, _bStrict));
-    }
-}
-
-void Extrema::update() {
-    FormulaMap order;
-    std::pair<FormulaMap::iterator, FormulaMap::iterator> bounds;
-    FormulaList relations;
-    bool bModified = false;
-
-    m_lowers.clear();
-    m_uppers.clear();
-
-    for (ContextIterator it(m_pCtx, true, true); !it.eof(); it.next()) {
-        Formula &f = *it.get();
-
-        if (!f.is(Formula::SUBTYPE | Formula::SUBTYPE_STRICT | Formula::EQUALS))
-            continue;
-
-        if (!f.getLhs()->hasFresh() && !f.getRhs()->hasFresh())
-            continue;
-
-        if (f.is(Formula::EQUALS)) {
-            relations.push_back(new Formula(Formula::SUBTYPE, f.getLhs(), f.getRhs()));
-            relations.push_back(new Formula(Formula::SUBTYPE, f.getRhs(), f.getLhs()));
-        } else
-            relations.push_back(it.get());
-    }
-
-    // Generate lattice based on constraints.
-    for (FormulaList::iterator i = relations.begin(); i != relations.end(); ++i) {
-        Formula &f = **i;
-        FormulaMap added;
-
-        // A <= ...
-        bounds = order.equal_range(f.getLhs());
-
-        for (FormulaMap::iterator j = bounds.first; j != bounds.second; ++j) {
-            Formula &g = *j->second;
-
-            // ... <= A
-            if (*f.getLhs() == *g.getRhs()) {
-                const int k = f.is(Formula::SUBTYPE_STRICT) || g.is(Formula::SUBTYPE_STRICT) ?
-                        Formula::SUBTYPE_STRICT : Formula::SUBTYPE;
-                FormulaPtr p = new Formula(k, g.getLhs(), f.getRhs());
-
-                if (p->getLhs()->hasFresh())
-                    added.insert(std::make_pair(p->getLhs(), p));
-
-                if (p->getRhs()->hasFresh())
-                    added.insert(std::make_pair(p->getRhs(), p));
-            }
-        }
-
-        // ... <= B
-        bounds = order.equal_range(f.getRhs());
-
-        for (FormulaMap::iterator j = bounds.first; j != bounds.second; ++j) {
-            Formula &g = *j->second;
-
-            // B <= ...
-            if (*f.getRhs() == *g.getLhs()) {
-                const int k = f.is(Formula::SUBTYPE_STRICT) || g.is(Formula::SUBTYPE_STRICT) ?
-                        Formula::SUBTYPE_STRICT : Formula::SUBTYPE;
-                Formula *p = new Formula(k, f.getLhs(), g.getRhs());
-
-                if (p->getLhs()->hasFresh())
-                    added.insert(std::make_pair(p->getLhs(), p));
-
-                if (p->getRhs()->hasFresh())
-                    added.insert(std::make_pair(p->getRhs(), p));
-            }
-        }
-
-        order.insert(added.begin(), added.end());
-
-        if (f.getLhs()->hasFresh())
-            order.insert(std::make_pair(f.getLhs(), &f));
-
-        if (f.getRhs()->hasFresh())
-            order.insert(std::make_pair(f.getRhs(), &f));
-    }
-
-    for (bounds.first = order.begin(); bounds.first != order.end(); bounds.first = bounds.second) {
-        ir::TypePtr pType = bounds.first->first;
-        std::vector<Extremum> uppers, lowers;
-
-        bounds.second = order.upper_bound(pType);
-        assert(pType->hasFresh());
-
-        for (FormulaMap::iterator i = bounds.first; i != bounds.second; ++i) {
-            Formula &f = *i->second;
-            const bool bStrict = f.getKind() == Formula::SUBTYPE_STRICT;
-
-            if (f.getLhs() == pType) // A <= ...
-                _updateBounds(uppers, f.getRhs(), bStrict, &ir::Type::getMeet);
-            else // ... <= A
-                _updateBounds(lowers, f.getLhs(), bStrict, &ir::Type::getJoin);
-        }
-
-        // Takes care of removing duplicates.
-        m_lowers[pType].insert(lowers.begin(), lowers.end());
-        m_uppers[pType].insert(uppers.begin(), uppers.end());
-    }
-
-    m_bValid = true;
 }
 
 bool Formula::contains(const ir::TypePtr &_pType) const {

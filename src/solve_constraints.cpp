@@ -6,33 +6,37 @@
 #include "prettyprinter.h"
 #include "utils.h"
 #include "options.h"
+#include "type_lattice.h"
 
 using namespace ir;
 
-typedef std::map<tc::FreshTypePtr, TypePtr> TypeMap;
-typedef std::multimap<tc::FreshTypePtr, TypePtr> TypeMultiMap;
+typedef std::set<tc::FreshTypePtr, PtrLess<tc::FreshType> > FreshTypeSet;
 typedef tc::ContextStack CS;
 
 class Solver {
 public:
-    bool unify(bool _bCompound = false);
-    bool lift();
+    typedef bool (Solver::*Operation)(int & /* _result */);
+
+    Solver() : m_nCurrentCFPart(-1) {}
+
     bool run();
     bool sequence(int &_result);
-    bool eval(int &_result);
-    bool prune();
-    bool refute(int &_result);
-    bool compact();
-    bool infer();
-    bool inferCompound();
-    bool expand(int &_result);
-    bool guess();
     bool fork();
-
-
     tc::Context &context() { return *CS::top(); }
+
+    // Operations.
+    bool unify(int & /* _result */);
+    bool lift(int & /* _result */);
+    bool eval(int &_result);
+    bool prune(int & /* _result */);
+    bool refute(int &_result);
+    bool compact(int & /* _result */);
+    bool infer(int &_result);
+    bool expand(int &_result);
+    bool explode(int & /* _result */);
+    bool guess(int & /* _result */);
+
 protected:
-    bool refute(tc::Formula &_f);
     bool expandPredicate(int _kind, const PredicateTypePtr &_pLhs,
             const PredicateTypePtr &_pRhs, tc::FormulaList &_formulas);
     bool expandStruct(int _kind, const StructTypePtr &_pLhs, const StructTypePtr &_pRhs, tc::FormulaList &_formulas, bool _bAllowCompound);
@@ -40,12 +44,12 @@ protected:
     bool expandList(int _kind, const ListTypePtr &_pLhs, const ListTypePtr &_pRhs, tc::FormulaList &_formulas);
     bool expandMap(int _kind, const MapTypePtr &_pLhs, const MapTypePtr &_pRhs, tc::FormulaList &_formulas);
     bool expandType(int _kind, const TypeTypePtr &_pLhs, const TypeTypePtr &_pRhs, tc::FormulaList &_formulas);
+    bool runCompound(Operation _op, int &_result);
 
-    // .first is X < A (lower limit), .second is  A < X (upper limit).
-    typedef std::pair<tc::Formula, tc::Formula> Limits;
-    typedef std::map<size_t, Limits> LimitMap;
-
-    void collectLimits(tc::Formulas &_formulas, LimitMap &_limits);
+private:
+    tc::Formulas::iterator m_iCurrentCF, m_iLastCF;
+    int m_nCurrentCFPart;
+    FreshTypeSet m_guessIgnored;
 };
 
 bool Solver::fork() {
@@ -77,37 +81,63 @@ bool Solver::fork() {
 }
 
 static
-bool _insertBounds(tc::Context &_formulas, const tc::TypeSets &_bounds, bool _bUpper) {
-    bool bModified = false;
+bool _validateRelation(const tc::RelationPtr &_pRelation, tc::Lattice &_lattice, void *_pParam) {
+    const int lk = _pRelation->getLhs()->getKind();
+    const int rk = _pRelation->getRhs()->getKind();
 
-    for (tc::TypeSets::const_iterator i = _bounds.begin(); i != _bounds.end(); ++i) {
-        TypePtr pType = i->first;
-        const tc::TypeSet &types = i->second;
+    // No strict supertypes of TOP exist.
+    if (lk == ir::Type::TOP && rk != ir::Type::TOP && _pRelation->isStrict())
+        return false;
 
-        if (_formulas.pSubsts->findSubst(pType) != _formulas.pSubsts->end() ||
-                _formulas.pFormulas->findSubst(pType) != _formulas.pFormulas->end())
-            continue;
+    // No strict subtypes of BOTTOM exist.
+    if (lk != ir::Type::BOTTOM && rk == ir::Type::BOTTOM && _pRelation->isStrict())
+        return false;
 
-        for (tc::TypeSet::const_iterator j = types.begin(); j != types.end(); ++j) {
-            assert(pType->hasFresh() || (*j)->hasFresh());
+    if (_pRelation->eval() == tc::Formula::FALSE)
+        return false;
 
-            const int kind = j->bStrict ? tc::Formula::SUBTYPE_STRICT : tc::Formula::SUBTYPE;
-            tc::FormulaPtr pFormula = _bUpper ? new tc::Formula(kind, pType, *j) :
-                    new tc::Formula(kind, *j, pType);
+    // Check occurrences of A <= B < A (or A < B < A).
+    if (_lattice.relations().find(new tc::Relation(_pRelation->getRhs(), _pRelation->getLhs(), true)) != _lattice.relations().end())
+        return false;
 
-            bModified |= _formulas.add(pFormula);
-        }
+    // Check occurrences of A <= B <= A (or A < B <= A).
+    if (_lattice.relations().find(new tc::Relation(_pRelation->getRhs(), _pRelation->getLhs(), false)) != _lattice.relations().end()) {
+        if (_pRelation->isStrict())
+            return false;
+
+        if (tc::FormulaList *pSubsts = (tc::FormulaList *)_pParam)
+            pSubsts->push_back(new tc::Formula(tc::Formula::EQUALS, _pRelation->getLhs(), _pRelation->getRhs()));
     }
 
-    return bModified;
+    return true;
 }
 
-bool Solver::infer() {
+bool Solver::infer(int & _result) {
     bool bModified = false;
     tc::Formulas::iterator iNext = context()->empty() ? context()->end() : ::next(context()->begin());
+    tc::FormulaList substs;
 
-    context().pExtrema->invalidate();
+    context().pTypes->update(&_validateRelation, &substs);
 
+    if (!context().pTypes->isValid()) {
+        _result = tc::Formula::FALSE;
+        return true;
+    }
+
+    // Substs were added, need to run unify.
+    if (!substs.empty()) {
+        for (tc::FormulaList::iterator i = substs.begin(); i != substs.end(); ++i)
+            bModified |= context().add(*i);
+
+        assert(bModified);
+        return bModified;
+    }
+
+    context().pTypes->reduce();
+
+    const tc::Relations &relations = context().pTypes->relations();
+
+    // Remove formulas that are no longer used.
     for (tc::Formulas::iterator i = context()->begin(); i != context()->end(); i = iNext) {
         tc::Formula &f = **i;
 
@@ -116,517 +146,446 @@ bool Solver::infer() {
         if (!f.is(tc::Formula::SUBTYPE | tc::Formula::SUBTYPE_STRICT))
             continue;
 
-        // Check if formula f is required for bounding it's left or right operand,
-        // Given f is A <= B only check for upper bound if A contains fresh (similarly for lower bound).
-        if (f.getLhs()->hasFresh()) {
-            const tc::TypeSet &bounds = context().pExtrema->sup(f.getLhs());
+        tc::Relations::iterator j = relations.find(new tc::Relation(f));
 
-            if (bounds.find(f.getRhs()) != bounds.end())
-                continue;
+        assert(j != relations.end());
+
+        if (!(*j)->bUsed) {
+            context()->erase(i);
+            bModified = true;
         }
-
-        if (f.getRhs()->hasFresh()) {
-            const tc::TypeSet &bounds = context().pExtrema->inf(f.getRhs());
-
-            if (bounds.find(f.getLhs()) != bounds.end())
-                continue;
-        }
-
-        context()->erase(i);
-        bModified = true;
     }
 
-    bModified |= _insertBounds(context(), context().pExtrema->infs(), false);
-    bModified |= _insertBounds(context(), context().pExtrema->sups(), true);
+    // Add infered formulas.
+    for (tc::Relations::iterator i = relations.begin(); i != relations.end(); ++i) {
+        tc::Relation &f = **i;
+
+        if (f.bUsed)
+            bModified |= context().add(new tc::Formula(f));
+    }
+
+    bModified |= runCompound(&Solver::infer, _result);
+
+    // Check if simple top-level formula is implied by some compound formula.
+    tc::Formulas::iterator iCF = context()->beginCompound();
+
+    if (iCF == context()->end())
+        return bModified;
+
+    for (tc::Formulas::iterator i = context()->begin(); i != iCF; i = iNext) {
+        tc::FormulaPtr pTest = *i;
+        bool bIsImplied = false;
+
+        prettyPrint(*pTest, std::wcerr);
+
+        iNext = next(i);
+        context()->erase(i);
+
+        for (tc::Formulas::iterator j = iCF; j != context()->end(); ++j) {
+            tc::CompoundFormula &cf = (tc::CompoundFormula &)**j;
+
+            bIsImplied = true;
+
+            for (size_t k = 0; bIsImplied && k < cf.size(); ++k) {
+                CS::push(cf.getPartPtr(k));
+                bIsImplied &= context().implies(*pTest);
+                CS::pop();
+            }
+
+            if (bIsImplied)
+                break;
+        }
+
+        if (bIsImplied)
+            bModified = true;
+        else
+            context()->insert(pTest);
+    }
 
     return bModified;
 }
 
-bool Solver::inferCompound() {
+bool Solver::runCompound(Operation _operation, int &_result) {
     // We assume that unify() and infer() were already run.
     tc::FormulaList formulas;
+    tc::Flags flags = context().flags();
     tc::Formulas::iterator iCF = context()->beginCompound();
+    std::list<tc::Formulas::iterator> replaced;
     bool bModified = false;
 
     if (iCF == context()->end())
         return false;
 
-    Cloner cloner;
-    tc::ContextPtr pCtxBase = new tc::Context();
-
-    for (tc::Formulas::iterator i = context()->begin(); i != iCF; ++i)
-        (*pCtxBase)->insert(cloner.get(i->ptr()));
-
-    for (tc::Formulas::iterator i = iCF; i != context()->end();) {
+    for (tc::Formulas::iterator i = iCF; i != context()->end(); ++i) {
         tc::CompoundFormula &cf = (tc::CompoundFormula &)**i;
         bool bFormulaModified = false;
 
-        for (size_t j = 0; j < cf.size(); ++j) {
-            Cloner cloner;
-            tc::ContextPtr pCtx = cloner.get(pCtxBase.ptr());
-            tc::Formulas &part = cf.getPart(j);
-
-            for (tc::Formulas::iterator k = part.begin(); k != part.end(); ++k)
-                (*pCtx)->insert(cloner.get(k->ptr()));
-
-            // Got cloned context, use it.
-            pCtx->pParent = CS::top();
-            CS::push(pCtx);
-
-            if (infer()) {
-                CS::pop();
-                CS::push(tc::ContextPtr(new tc::Context()));
-                context().pParent = pCtxBase;
-
-                while (!(*pCtx)->empty()) {
-                    tc::FormulaPtr pFormula = *(*pCtx)->begin();
-
-                    (*pCtx)->erase((*pCtx)->begin());
-
-                    if (!context()->implies(*pFormula) && !pCtxBase->implies(*pFormula))
-                        context()->insert(pFormula);
-                }
-
-                if (unify()) {
-                    context()->insert(context().pSubsts->begin(), context().pSubsts->end());
-                    context().pSubsts->clear();
-                }
-
-                if (context()->size() != part.size() ||
-                        !std::equal(context()->begin(), context()->end(), part.begin(), tc::FormulaEquals()))
-                {
-                    part.swap(*context().pFormulas);
-                    bFormulaModified = true;
-                }
-            }
-
-            CS::pop();
-        }
-
-        if (bFormulaModified) {
-            formulas.push_back(&cf);
-            context()->erase(i++);
-            bModified = true;
-        } else
-            ++i;
-    }
-
-    if (bModified)
-        context()->insert(formulas.begin(), formulas.end());
-
-    return bModified;
-}
-
-bool Solver::guess() {
-    bool bModified = false;
-    TypeMap sups, infs;
-
-    context().pExtrema->invalidate();
-
-    for (tc::TypeSets::const_iterator i = context().pExtrema->sups().begin();
-            i != context().pExtrema->sups().end(); ++i)
-    {
-        tc::FreshTypePtr pType = i->first.as<tc::FreshType>();
-        const tc::TypeSet &types = i->second;
-
-        if (pType->getFlags() != tc::FreshType::PARAM_IN)
-            continue;
-
-        if (types.size() != 1)
-            continue;
-
-        const tc::Extremum &sup = *types.begin();
-
-        if (!sup.bStrict)
-            sups[pType] = sup.pType;
-    }
-
-    for (tc::TypeSets::const_iterator i = context().pExtrema->infs().begin();
-            i != context().pExtrema->infs().end(); ++i)
-    {
-        tc::FreshTypePtr pType = i->first.as<tc::FreshType>();
-        const tc::TypeSet &types = i->second;
-
-        if ((pType->getFlags() & tc::FreshType::PARAM_OUT) == 0)
-            continue;
-
-        if (types.size() != 1)
-            continue;
-
-        const tc::Extremum &inf = *types.begin();
-
-        if (!inf.bStrict)
-            infs[pType] = inf.pType;
-    }
-
-    for (tc::Formulas::iterator i = context()->beginCompound(); i != context()->end(); ++i) {
-        tc::CompoundFormula &cf = *i->as<tc::CompoundFormula>();
-
-        for (size_t j = 0; j < cf.size(); ++j) {
-            tc::Formulas &part = cf.getPart(j);
-
-            for (tc::Formulas::iterator k = part.begin(); k != part.end(); ++k) {
-                tc::Formula &f = **k;
-
-                for (TypeMap::iterator l = sups.begin(); l != sups.end();) {
-                    tc::FreshTypePtr pType = l->first;
-                    TypeMap::iterator lNext = ::next(l);
-
-                    if (*f.getLhs() == *pType || f.getLhs()->contains(pType) || f.getRhs()->contains(pType) ||
-                            (f.is(tc::Formula::EQUALS) && *f.getRhs() == *pType))
-                        sups.erase(l);
-
-                    l = lNext;
-                }
-
-                for (TypeMap::iterator l = infs.begin(); l != infs.end();) {
-                    tc::FreshTypePtr pType = l->first;
-                    TypeMap::iterator lNext = ::next(l);
-
-                    if (*f.getRhs() == *pType || f.getLhs()->contains(pType) || f.getRhs()->contains(pType) ||
-                            (f.is(tc::Formula::EQUALS) && *f.getLhs() == *pType))
-                        infs.erase(l);
-
-                    l = lNext;
-                }
-            }
-        }
-    }
-
-    for (TypeMap::const_iterator j = sups.begin(); j != sups.end(); ++j)
-        bModified |= context().add(new tc::Formula(tc::Formula::EQUALS, j->first, j->second));
-
-    for (TypeMap::const_iterator j = infs.begin(); j != infs.end(); ++j)
-        bModified |= context().add(new tc::Formula(tc::Formula::EQUALS, j->first, j->second));
-
-    return bModified;
-}
-
-bool Solver::compact() {
-    tc::FormulaList formulas;
-    tc::Formulas::iterator iCF = context()->beginCompound();
-    bool bModified = false;
-
-    if (iCF == context()->end())
-        return false;
-
-    for (tc::Formulas::iterator i = iCF; i != context()->end();) {
-        tc::CompoundFormula &cf = (tc::CompoundFormula &)**i;
-        bool bFormulaModified = false;
-
-        for (size_t j = 0; j < cf.size(); ++j) {
-            tc::Formulas &part = cf.getPart(j);
-
-            assert(!part.empty());
-
-            for (size_t k = 0; k < cf.size(); ++k) {
-                if (k == j)
-                    continue;
-
-                tc::Formulas &other = cf.getPart(k);
-
-                if (other.size() != part.size())
-                    continue;
-
-                typedef std::vector<tc::FormulaPtr> FormulaVec;
-                FormulaVec diff(part.size() + other.size());
-                tc::FormulaCmp cmp;
-                FormulaVec::iterator iEnd = std::set_symmetric_difference(part.begin(), part.end(),
-                        other.begin(), other.end(), diff.begin(), cmp);
-
-                if (std::distance(diff.begin(), iEnd) != 2)
-                    continue;
-
-                tc::Formulas::iterator iFormula = std::find(part.begin(), part.end(), diff[0]);
-
-                if (iFormula == part.end()) {
-                    iFormula = std::find(part.begin(), part.end(), diff[1]);
-                    std::swap(diff[0], diff[1]);
-                }
-
-                tc::Formula &f = *diff[0], &g = *diff[1];
-
-                assert((iFormula != part.end()));
-
-                if (f.is(tc::Formula::SUBTYPE | tc::Formula::SUBTYPE_STRICT) &&
-                        g.is(tc::Formula::SUBTYPE | tc::Formula::SUBTYPE_STRICT) &&
-                        *f.getRhs() == *g.getLhs())
-                {
-                    const int ord = f.is(tc::Formula::SUBTYPE) || g.is(tc::Formula::SUBTYPE) ?
-                            tc::Formula::SUBTYPE : tc::Formula::SUBTYPE_STRICT;
-                    TypePtr pType;
-
-                    if (!context().lookup(tc::Formula(ord, f.getLhs(), pType),
-                            tc::Formula(tc::Formula::SUBTYPE, pType, f.getRhs())))
-                        continue;
-
-                    part.erase(iFormula);
-                } else if (f.is(tc::Formula::SUBTYPE_STRICT) && g.is(tc::Formula::EQUALS) && (
-                        (*f.getLhs() == *g.getLhs() && *f.getRhs() == *g.getRhs()) ||
-                        (*f.getLhs() == *g.getRhs() && *f.getRhs() == *g.getLhs())))
-                {
-                    part.erase(iFormula);
-                    part.insert(new tc::Formula(tc::Formula::SUBTYPE, f.getLhs(), f.getRhs()));
-                } else
-                    continue;
-
-                bFormulaModified = true;
-                cf.removePart(k);
-
-                if (k < j)
-                    --j;
-
-                if (k > 0)
-                    --k;
-            }
-        }
-
-        if (bFormulaModified) {
-            assert(cf.size() > 0);
-
-            if (cf.size() == 1)
-                formulas.insert(formulas.end(), cf.getPart(0).begin(), cf.getPart(0).end());
-            else
-                formulas.push_back(&cf);
-
-            context()->erase(i++);
-            bModified = true;
-        } else
-            ++i;
-    }
-
-    if (bModified)
-        context()->insert(formulas.begin(), formulas.end());
-
-    return bModified;
-}
-
-bool Solver::prune() {
-    tc::Formulas::iterator iCF = context()->beginCompound();
-    tc::FormulaList formulas;
-    bool bModified = false;
-
-    for (tc::Formulas::iterator i = iCF; i != context()->end();) {
-        tc::CompoundFormula &cf = *i->as<tc::CompoundFormula>();
-        bool bFormulaModified = false;
-
-        assert(cf.is(tc::Formula::COMPOUND));
+        m_iCurrentCF = i;
 
         for (size_t j = 0; j < cf.size();) {
-            tc::Formulas &part = cf.getPart(j);
-            bool bImplies = false;
-
-            for (size_t k = 0; k < cf.size() && !bImplies; ++k) {
-                if (k == j)
-                    continue;
-
-                tc::Formulas &other = cf.getPart(k);
-
-                bImplies = true;
-
-                for (tc::Formulas::iterator l = other.begin(); l != other.end(); ++l) {
-                    tc::Formula &f = **l;
-
-                    if (!part.implies(f) && !context().implies(f)) {
-                        bImplies = false;
-                        break;
-                    }
-                }
-            }
-
-            if (bImplies) {
-                cf.removePart(j);
-                bFormulaModified = true;
-            } else
-                ++j;
-        }
-
-        if (bFormulaModified) {
-            if (cf.size() == 1)
-                formulas.insert(formulas.end(), cf.getPart(0).begin(), cf.getPart(0).end());
-            else if (cf.size() > 0)
-                formulas.push_back(&cf);
-
-            context()->erase(i++);
-            bModified = true;
-        } else
-            ++i;
-    }
-
-    if (bModified)
-        context()->insert(formulas.begin(), formulas.end());
-
-    return bModified;
-}
-
-bool Solver::refute(tc::Formula &_f) {
-    TypePtr a = _f.getLhs();
-    TypePtr b = _f.getRhs();
-    TypePtr c;
-
-    if (_f.eval() == tc::Formula::FALSE)
-        return true;
-
-    // Check if there exists such c for which the relations P and Q hold.
-#define CHECK(P,PL,PR,Q,QL,QR) \
-        if (context().lookup(tc::Formula(tc::Formula::P, PL, PR), \
-                tc::Formula(tc::Formula::Q, QL, QR))) \
-            return true
-
-    switch (_f.getKind()) {
-        case tc::Formula::EQUALS:
-            CHECK(COMPARABLE, a, c,    INCOMPARABLE, c, b);
-            CHECK(COMPARABLE, b, c,    INCOMPARABLE, c, a);
-            CHECK(SUBTYPE_STRICT, a, c, SUBTYPE, c, b);
-            CHECK(SUBTYPE, a, c,       SUBTYPE_STRICT, c, b);
-            CHECK(SUBTYPE_STRICT, c, a, SUBTYPE, b, c);
-            CHECK(SUBTYPE, c, a,       SUBTYPE_STRICT, b, c);
-            CHECK(SUBTYPE_STRICT, b, c, SUBTYPE, c, a);
-            CHECK(SUBTYPE, b, c,       SUBTYPE_STRICT, c, a);
-            CHECK(SUBTYPE_STRICT, c, b, SUBTYPE, a, c);
-            CHECK(SUBTYPE, c, b,       SUBTYPE_STRICT, a, c);
-            break;
-        case tc::Formula::SUBTYPE_STRICT:
-            CHECK(COMPARABLE, a, c,    NO_MEET, c, b);
-            CHECK(COMPARABLE, b, c,    NO_JOIN, c, a);
-            CHECK(SUBTYPE, c, a,       SUBTYPE_STRICT, b, c);
-            CHECK(SUBTYPE_STRICT, c, a, SUBTYPE, b, c);
-            CHECK(SUBTYPE_STRICT, c, a, INCOMPARABLE, b, c);  // C < A && B !~ C
-            CHECK(SUBTYPE,        c, a, INCOMPARABLE, b, c);  // C <= A && B !~ C
-            break;
-        case tc::Formula::SUBTYPE:                           // A <= B
-            CHECK(COMPARABLE, a, c,    NO_MEET, c, b);
-            CHECK(COMPARABLE, b, c,    NO_JOIN, c, a);
-            CHECK(SUBTYPE, c, a,       SUBTYPE_STRICT, b, c); // B < C <= A
-            CHECK(SUBTYPE_STRICT, c, a, SUBTYPE, b, c);       // B <= C < A
-            CHECK(SUBTYPE_STRICT, c, a, INCOMPARABLE, b, c);  // C < A && B !~ C
-            CHECK(SUBTYPE,       c, a, INCOMPARABLE, b, c);  // C <= A && B !~ C
-
-            CHECK(SUBTYPE, b, c,       SUBTYPE_STRICT, c, a); // B <= C < A
-            CHECK(SUBTYPE_STRICT, b, c, SUBTYPE, c, a);       // B < C <= A
-            break;
-    }
-
-#undef CHECK
-
-    return false;
-}
-
-bool Solver::refute(int &_result) {
-    tc::Formulas::iterator iBegin = context()->begin();
-    tc::Formulas::iterator iCF = context()->beginCompound();
-
-    _result = tc::Formula::UNKNOWN;
-
-    for (tc::Formulas::iterator i = iBegin; i != iCF; ++i) {
-        tc::Formula &f = **i;
-
-        if (!refute(f))
-            continue;
-
-        _result = tc::Formula::FALSE;
-        return true;
-    }
-
-    bool bModified = false;
-    tc::FormulaList formulas;
-
-    for (tc::Formulas::iterator i = iCF; i != context()->end();) {
-        tc::CompoundFormula &cf = *i->as<tc::CompoundFormula>();
-        bool bFormulaModified = false;
-
-        assert(cf.is(tc::Formula::COMPOUND));
-
-        for (size_t j = 0; j < cf.size();) {
+            Auto<tc::Formulas> pPart = cf.getPartPtr(j);
             int result = tc::Formula::UNKNOWN;
 
-            CS::push(cf.getPartPtr(j));
+            CS::push(pPart);
+            m_nCurrentCFPart = j;
 
-            if (refute(result)) {
-                assert(result == tc::Formula::FALSE);
-                cf.removePart(j);
+            if ((this->*_operation)(result)) {
+                if (result == tc::Formula::FALSE) {
+                    cf.removePart(j);
+                } else {
+                    pPart->swap(*context().pFormulas);
+                    ++j;
+                }
+
                 bFormulaModified = true;
             } else
                 ++j;
 
+            m_nCurrentCFPart = -1;
             CS::pop();
         }
 
         if (bFormulaModified) {
             if (cf.size() == 0)
                 _result = tc::Formula::FALSE;
-            else if (cf.size() == 1)
+            else if (cf.size() == 1) {
                 formulas.insert(formulas.end(), cf.getPart(0).begin(), cf.getPart(0).end());
-            else if (cf.size() > 0)
+                cf.getPart(0).pFlags->filterTo(flags, cf.getPart(0));
+            } else if (cf.size() > 0)
                 formulas.push_back(&cf);
 
-            context()->erase(i++);
+            replaced.push_back(i);
             bModified = true;
-        } else
-            ++i;
+        }
     }
 
-    if (bModified)
+    for (std::list<tc::Formulas::iterator>::iterator i = replaced.begin(); i != replaced.end(); ++i)
+        context()->erase(*i);
+
+    if (bModified) {
         context()->insert(formulas.begin(), formulas.end());
+        flags.mergeTo(context().flags());
+    }
 
     return bModified;
 }
 
-bool Solver::lift() {
-    bool bModified = false;
-    tc::FormulaList formulas;
+typedef std::map<tc::FreshTypePtr, std::pair<size_t, size_t>, PtrLess<tc::FreshType> > ExtraBoundsCount;
 
-    for (tc::Formulas::iterator i = context()->beginCompound(); i != context()->end();) {
+class FreshTypeEnumerator : public ir::Visitor {
+public:
+    FreshTypeEnumerator(FreshTypeSet &_types, const TypePtr &_pRoot = NULL,
+            const tc::TypeNode *_pCurrentBounds = NULL, ExtraBoundsCount *_pExtraBounds = NULL) :
+        m_types(_types), m_pRoot(_pRoot), m_pCurrentBounds(_pCurrentBounds), m_pExtraBounds(_pExtraBounds) {}
+
+    virtual bool visitType(ir::Type &_type) {
+        if (_type.getKind() == Type::FRESH) {
+            if (m_pRoot) {
+                const int mt = m_pRoot->getMonotonicity(_type);
+
+                assert(m_pCurrentBounds != NULL);
+                assert(m_pExtraBounds != NULL);
+
+                if (mt == Type::MT_NONE)
+                    m_types.insert(ptr(&(tc::FreshType &)_type));
+                else if (mt != Type::MT_CONST) {
+                    const tc::Relations *pLowers = &m_pCurrentBounds->lowers;
+                    const tc::Relations *pUppers = &m_pCurrentBounds->uppers;
+
+                    if (mt == Type::MT_ANTITONE)
+                        std::swap(pLowers, pUppers);
+
+                    (*m_pExtraBounds)[&_type].first += pLowers ? pLowers->size() : 0;
+                    (*m_pExtraBounds)[&_type].second += pUppers ? pUppers->size() : 0;
+                }
+            } else
+                m_types.insert(ptr(&(tc::FreshType &)_type));
+        }
+
+        return true;
+    }
+
+private:
+    FreshTypeSet &m_types;
+    TypePtr m_pRoot;
+    const tc::TypeNode *m_pCurrentBounds;
+    ExtraBoundsCount *m_pExtraBounds;
+};
+
+bool Solver::guess(int & _result) {
+    bool bModified = false;
+    const bool bCompound = m_nCurrentCFPart >= 0;
+    tc::Formulas::iterator iBegin, iEnd;
+
+    if (m_nCurrentCFPart <= 0)
+        m_guessIgnored.clear();
+
+    if (!bCompound) {
+        m_iLastCF = context()->end();
+        iBegin = context()->beginCompound();
+        iEnd = context()->end();
+    } else {
+        iBegin = ::next(m_iCurrentCF);
+        iEnd = context().pParent->pFormulas->end();
+    }
+
+    // Compound formula changed: update saved ignored fresh types with ones from the _previous_ compound formula.
+    if (bCompound && m_iCurrentCF != m_iLastCF && m_iLastCF != context().pParent->pFormulas->end()) {
+        tc::CompoundFormula &cf = *m_iLastCF->as<tc::CompoundFormula>();
+
+        for (size_t j = 0; j < cf.size(); ++j) {
+            tc::Formulas &part = cf.getPart(j);
+
+            for (tc::Formulas::iterator k = part.begin(); k != part.end(); ++k) {
+                FreshTypeEnumerator(m_guessIgnored).traverseNode(*(*k)->getLhs());
+                FreshTypeEnumerator(m_guessIgnored).traverseNode(*(*k)->getRhs());
+            }
+        }
+    }
+
+    FreshTypeSet ignored = m_guessIgnored;
+
+    // Ignore all fresh types used in compound formulas _after_current_ one.
+    for (tc::Formulas::iterator i = iBegin; i != iEnd; ++i) {
         tc::CompoundFormula &cf = *i->as<tc::CompoundFormula>();
 
-        assert(cf.is(tc::Formula::COMPOUND));
-        assert(cf.size() > 1);
+        for (size_t j = 0; j < cf.size(); ++j) {
+            tc::Formulas &part = cf.getPart(j);
 
-        tc::Formulas &base = cf.getPart(0);
+            for (tc::Formulas::iterator k = part.begin(); k != part.end(); ++k) {
+                FreshTypeEnumerator(ignored).traverseNode(*(*k)->getLhs());
+                FreshTypeEnumerator(ignored).traverseNode(*(*k)->getRhs());
+            }
+        }
+    }
+
+    if (bCompound)
+        m_iLastCF = m_iCurrentCF; // Track change of compound formulas.
+    else
+        m_guessIgnored = ignored; // Remember for use inside of compound formulas.
+
+    context().pTypes->update();
+    context().pTypes->reduce();
+
+    const tc::TypeNodes &types = context().pTypes->nodes();
+    ExtraBoundsCount extraBounds; // For cases like A <= [ B ] (A is actually bounded above).
+
+    // Mark all non-monotonically contained types as ignored.
+    for (tc::TypeNodes::const_iterator i = types.begin(); i != types.end(); ++i)
+        if (i->pType->getKind() != Type::FRESH)
+            FreshTypeEnumerator(ignored, i->pType, &*i, &extraBounds).traverseNode(*i->pType);
+
+    for (tc::TypeNodes::const_iterator i = types.begin(); i != types.end(); ++i) {
+        if (i->pType->getKind() != Type::FRESH)
+            continue;
+
+        tc::FreshTypePtr pType = i->pType.as<tc::FreshType>();
+
+        if (ignored.find(pType) != ignored.end())
+            continue;
+
+        const tc::Relations &infs = i->lowers;
+        const tc::Relations &sups = i->uppers;
+        const std::pair<size_t, size_t> &ebCount = extraBounds[pType];
+        // Need to preserve zero count to ensure that calling e.g. sups.begin() is valid if count == 1.
+        const size_t infCount = infs.size() > 0 ? ebCount.first + infs.size() : 0;
+        const size_t supCount = sups.size() > 0 ? ebCount.second + sups.size() : 0;
+
+        // Matching the following patterns:
+        //    A1,k(IN) <= *n,m   ->  A*n,m+k(IN)
+        //    Bp,k(IN) <= An,1   ->  BAn+p,k(IN)
+        //    *p,k <= An,1(OUT)  ->  *An+p,k(OUT)
+        //    A1,k <= Bn,m(OUT)  ->  ABn,m+k(OUT)
+        // where A, B are fresh types; 1, k, m, n, p are infs/sups count; * is any type.
+        TypePtr pUpper, pLower;
+
+        if ((pType->getFlags() & tc::FreshType::PARAM_IN) != 0 && supCount == 1 && !(*sups.begin())->isStrict())
+            pUpper = sups.getType(sups.begin());
+        else if (supCount == 1 && !(*sups.begin())->isStrict() && sups.getType(sups.begin())->getKind() == Type::FRESH &&
+                (sups.getType(sups.begin()).as<tc::FreshType>()->getFlags() & tc::FreshType::PARAM_OUT) != 0)
+            pUpper = sups.getType(sups.begin());
+
+        if (infCount == 1 && !(*infs.begin())->isStrict() && infs.getType(infs.begin())->getKind() == Type::FRESH &&
+                (infs.getType(infs.begin()).as<tc::FreshType>()->getFlags() & tc::FreshType::PARAM_IN) != 0)
+            pLower = infs.getType(infs.begin());
+        else if ((pType->getFlags() & tc::FreshType::PARAM_OUT) != 0 && infCount == 1 && !(*infs.begin())->isStrict())
+            pLower = infs.getType(infs.begin());
+
+        // Types with both flags set cannot choose between non-fresh bounds.
+        if (pType->getFlags() == (tc::FreshType::PARAM_IN | tc::FreshType::PARAM_OUT)) {
+            if (pUpper && pUpper->getKind() != Type::FRESH && infCount > 0)
+                pUpper = NULL;
+
+            if (pLower && pLower->getKind() != Type::FRESH && supCount > 0)
+                pLower = NULL;
+        }
+
+        if (TypePtr pOther = pUpper ? pUpper : pLower)
+            bModified |= context().add(new tc::Formula(tc::Formula::EQUALS, pType, pOther));
+    }
+
+    // We need other strategies to run first if base context was modified.
+    return bModified || runCompound(&Solver::guess, _result);
+}
+
+bool Solver::compact(int &_result) {
+    bool bModified = false;
+
+    if (m_nCurrentCFPart < 0)
+        return runCompound(&Solver::compact, _result);
+
+    tc::CompoundFormula &cf = (tc::CompoundFormula &)**m_iCurrentCF;
+
+    if (context()->size() != 1)
+        return false;
+
+    for (size_t k = m_nCurrentCFPart + 1; k < cf.size(); ++k) {
+        tc::Formulas &other = cf.getPart(k);
+
+        if (other.size() != 1 || context()->size() != 1)
+            continue;
+
+        tc::FormulaPtr pSub = *context()->begin(), pEq = *other.begin();
+
+        if (!pEq->is(tc::Formula::EQUALS))
+            std::swap(pSub, pEq);
+
+        if (pSub->is(tc::Formula::SUBTYPE_STRICT | tc::Formula::SUBTYPE) && pEq->is(tc::Formula::EQUALS) && (
+                (*pSub->getLhs() == *pEq->getLhs() && *pSub->getRhs() == *pEq->getRhs()) ||
+                (*pSub->getLhs() == *pEq->getRhs() && *pSub->getRhs() == *pEq->getLhs())))
+        {
+            context()->clear();
+            context()->insert(new tc::Formula(tc::Formula::SUBTYPE, pSub->getLhs(), pSub->getRhs()));
+            other.pFlags->filterTo(*context()->pFlags, *pSub);
+            bModified = true;
+            cf.removePart(k);
+            --k;
+        }
+    }
+
+    return bModified;
+}
+
+// lift() has to be run before prune().
+bool Solver::prune(int &_result) {
+    if (m_nCurrentCFPart < 0)
+        return runCompound(&Solver::prune, _result);
+
+    tc::CompoundFormula &cf = (tc::CompoundFormula &)**m_iCurrentCF;
+
+    for (size_t k = 0; k < cf.size(); ++k) {
+        if (k != m_nCurrentCFPart) {
+            tc::Formulas &other = cf.getPart(k);
+
+            for (tc::Formulas::iterator l = other.begin(); l != other.end(); ++l)
+                if (!context().implies(**l))
+                    return false;
+        }
+    }
+
+    _result = tc::Formula::FALSE; // Causes runCompound() to delete current part.
+
+    return true;
+}
+
+bool Solver::refute(int &_result) {
+    tc::Formulas::iterator iCF = context()->beginCompound();
+
+    _result = tc::Formula::UNKNOWN;
+
+    for (tc::Formulas::iterator i = context()->begin(); i != iCF; ++i) {
+        TypePtr a = (*i)->getLhs();
+        TypePtr b = (*i)->getRhs();
+        TypePtr c;
+
+        // Check if there exists such c for which the relations P and Q hold.
+#define CHECK(P,PL,PR,Q,QL,QR) \
+        if (context().lookup(tc::Formula(tc::Formula::P, PL, PR),   \
+                tc::Formula(tc::Formula::Q, QL, QR))) {             \
+            _result = tc::Formula::FALSE;                           \
+            return true;                                            \
+        }
+
+        if ((*i)->getKind() == tc::Formula::EQUALS) {
+            CHECK(COMPARABLE, a, c, INCOMPARABLE, c, b);
+            CHECK(COMPARABLE, b, c, INCOMPARABLE, c, a);
+        } else {
+            CHECK(COMPARABLE, a, c, NO_MEET, c, b);
+            CHECK(COMPARABLE, b, c, NO_JOIN, c, a);
+        }
+#undef CHECK
+    }
+
+    return runCompound(&Solver::refute, _result);
+}
+
+bool Solver::lift(int &_result) {
+    bool bModified = false;
+    tc::FormulaList formulas;
+    tc::Flags flags;
+
+    for (tc::Formulas::iterator iCF = context()->beginCompound(); iCF != context()->end();) {
+        tc::CompoundFormula &cf = *iCF->as<tc::CompoundFormula>();
         bool bFormulaModified = false;
 
-        for (tc::Formulas::iterator j = base.begin(); j != base.end();) {
-            tc::FormulaPtr pFormula = *j;
-            bool bFound = true;
+        assert(cf.size() > 1);
 
-            for (size_t k = 1; bFound && k < cf.size(); ++k) {
-                tc::Formulas &part = cf.getPart(k);
-                bFound = (part.find(pFormula) != part.end());
-            }
+        for (size_t cTestPart = 0; cTestPart < cf.size(); ++cTestPart) {
+            tc::Formulas &part = cf.getPart(cTestPart);
 
-            if (bFound) {
-                formulas.push_back(pFormula);
-                base.erase(j++);
-                bFormulaModified = true;
+            for (tc::Formulas::iterator iTest = part.begin(); iTest != part.end();) {
+                bool bLift = true;
+                tc::Formulas::iterator iNext = ::next(iTest);
+                tc::FormulaPtr pTest = *iTest;
 
-                for (size_t k = 1; k < cf.size();) {
-                    cf.getPart(k).erase(pFormula);
-                    if (cf.getPart(k).size() == 0)
-                        cf.removePart(k);
-                    else
-                        ++k;
+                // Test whether pTest can be lifted.
+                for (size_t i = 0; bLift && i < cf.size(); ++i) {
+                    if (i == cTestPart)
+                        continue;
+
+                    CS::push(cf.getPartPtr(i));
+                    bLift &= context()->implies(*pTest);
+                    CS::pop();
                 }
 
-                if (cf.size() == 1)
+                if (bLift) {
+                    part.pFlags->filterTo(flags, *pTest);
+                    formulas.push_back(pTest);
+                    bFormulaModified = true;
+
+                    // Iterate over all parts and erase the lifted formula.
+                    for (size_t i = 0; i < cf.size(); ++i) {
+                        if (i == cTestPart)
+                            part.erase(iTest);
+                        else
+                            cf.getPart(i).erase(pTest);
+
+                        if (cf.getPart(i).size() == 0)
+                            cf = tc::CompoundFormula(); // Clear formula, no need for other parts anymore.
+                    }
+                }
+
+                if (cf.size() == 0)
                     break;
-            } else
-                ++j;
+
+                iTest = iNext;
+            }
         }
 
         if (bFormulaModified) {
-            if (cf.size() == 1)
-                formulas.insert(formulas.end(), cf.getPart(0).begin(), cf.getPart(0).end());
-            else if (cf.size() > 0)
+            if (cf.size() > 0)
                 formulas.push_back(&cf);
 
-            context()->erase(i++);
+            context()->erase(iCF++);
             bModified = true;
         } else
-            ++i;
+            ++iCF;
     }
 
-    if (bModified)
+    if (bModified) {
         context()->insert(formulas.begin(), formulas.end());
+        flags.mergeTo(*context()->pFlags);
+    }
 
     return bModified;
 }
@@ -776,14 +735,14 @@ bool Solver::expandType(int _kind, const TypeTypePtr &_pLhs, const TypeTypePtr &
     return true;
 }
 
-// TODO: check if SUBTYPE_STRICT can be handled likewise.
 bool Solver::expand(int &_result) {
     tc::FormulaList formulas;
     bool bModified = false;
+    tc::Formulas::iterator iCF = context()->beginCompound();
 
     _result = tc::Formula::UNKNOWN;
 
-    for (tc::Formulas::iterator i = context()->begin(); i != context()->end();) {
+    for (tc::Formulas::iterator i = context()->begin(); i != iCF;) {
         tc::Formula &f = **i;
         TypePtr pLhs = f.getLhs(), pRhs = f.getRhs();
         bool bFormulaModified = false;
@@ -815,41 +774,95 @@ bool Solver::expand(int &_result) {
             } else
                 ++i;
 
-            if (!bResult)
+            if (!bResult) {
                 _result = tc::Formula::FALSE;
-        } else if (f.is(tc::Formula::COMPOUND)) {
-            tc::CompoundFormula &cf = (tc::CompoundFormula &)f;
-
-            for (size_t j = 0; j != cf.size(); ++j) {
-                CS::push(cf.getPartPtr(j));
-                bFormulaModified |= expand(_result);
-                CS::pop();
-
-                if (_result == tc::Formula::FALSE)
-                    break;
+                return true;
             }
-
-            if (bFormulaModified) {
-                formulas.push_back(&cf);
-                context()->erase(i++);
-                bModified = true;
-            } else
-                ++i;
         } else
             ++i;
-
-        if (_result == tc::Formula::FALSE)
-            return true;
     }
 
     if (bModified)
         context()->insert(formulas.begin(), formulas.end());
 
-    return bModified;
+    return runCompound(&Solver::expand, _result) || bModified;
 }
 
-bool Solver::unify(bool _bCompound) {
-    bool bResult = false;
+bool Solver::explode(int & /* _result */) {
+    tc::FormulaList formulas;
+    tc::Formulas::iterator iCF = context()->beginCompound();
+    std::set<TypePtr, PtrLess<Type> > processed;
+
+    for (tc::Formulas::iterator iFormula = context()->begin(); iFormula != iCF; ++iFormula) {
+        tc::Formula &f = **iFormula;
+        TypePtr pLhs = f.getLhs(), pRhs = f.getRhs();
+        bool bSwapped = false;
+        bool bFormulaModified = false;
+        TypePtr pType;
+
+        if (pLhs->getKind() != Type::FRESH) {
+            if (pRhs->getKind() != Type::FRESH)
+                continue;
+
+            std::swap(pLhs, pRhs);
+            bSwapped = true;
+        }
+
+        if (processed.find(pLhs) != processed.end())
+            continue;
+
+        tc::FreshTypePtr pFresh = pLhs.as<tc::FreshType>();
+        const int nFlags = pFresh->getFlags();
+        const int nReversed = ((nFlags & tc::FreshType::PARAM_IN) ? tc::FreshType::PARAM_OUT : 0) |
+                ((nFlags & tc::FreshType::PARAM_OUT) ? tc::FreshType::PARAM_IN : 0);
+
+        switch (pRhs->getKind()) {
+            case Type::PREDICATE: {
+                PredicateTypePtr pOld = pRhs.as<PredicateType>();
+                PredicateTypePtr pNew = new PredicateType(pOld->getPreCondition(), pOld->getPostCondition());
+
+                for (size_t i = 0; i < pOld->getInParams().size(); ++i)
+                    pNew->getInParams().add(new Param(L"", new tc::FreshType(nReversed)));
+
+                for (size_t j = 0; j < pOld->getOutParams().size(); ++j) {
+                    Branch &b = *pOld->getOutParams().get(j);
+                    Branch &c = *pNew->getOutParams().add(new Branch(
+                            b.getLabel(), b.getPreCondition(), b.getPostCondition()));
+
+                    for (size_t i = 0; i < b.size(); ++i)
+                        c.add(new Param(L"", new tc::FreshType(nFlags)));
+                }
+
+                pType = pNew;
+                break;
+            }
+
+            case Type::SET:
+                pType = new SetType(new tc::FreshType(nFlags));
+                break;
+            case Type::LIST:
+                pType = new ListType(new tc::FreshType(nFlags));
+                break;
+            case Type::MAP:
+                pType = new MapType(new tc::FreshType(nReversed), new tc::FreshType(nFlags));
+                break;
+        }
+
+        if (pType) {
+            processed.insert(pLhs);
+            formulas.push_back(new tc::Formula(tc::Formula::EQUALS, pLhs, pType));
+        }
+    }
+
+    context()->insert(formulas.begin(), formulas.end());
+
+    // Don't process compound formulas to limit excessive introduction of new fresh types.
+    return !formulas.empty();
+}
+
+bool Solver::unify(int &_result) {
+    bool bModified = false;
+    const bool bCompound = m_nCurrentCFPart >= 0;
 
     while (!context()->empty()) {
         tc::Formula &f = **context()->begin();
@@ -870,51 +883,27 @@ bool Solver::unify(bool _bCompound) {
         if (pOld->getKind() != Type::FRESH && pNew->getKind() != Type::FRESH)
             continue;
 
-        if (!pOld->getKind() == Type::FRESH)
+        // Normalize: ensure that lhs is fresh / reorder fresh type rewrite to propagate types with lower ordinals.
+        if (pOld->getKind() != Type::FRESH || (pNew->getKind() == Type::FRESH && *pOld < *pNew)) {
             std::swap(pOld, pNew);
+            bModified = true;
+        }
 
         context()->erase(context()->begin());
 
         if (!pOld->compare(*pNew, Type::ORD_EQUALS)) {
             if (context().rewrite(pOld, pNew))
-                bResult = true;
-            context().pSubsts->insert(new tc::Formula(tc::Formula::EQUALS, pOld, pNew));
-        }
+                bModified = true;
 
-        bResult |= !_bCompound; // Subformulas of compound formulas don't store their substs separately.
+            context().pSubsts->insert(new tc::Formula(tc::Formula::EQUALS, pOld, pNew));
+            bModified |= !bCompound; // Subformulas of compound formulas don't store their substs separately.
+        }
     }
 
-    if (_bCompound)
+    if (bCompound)
         context()->insert(context().pSubsts->begin(), context().pSubsts->end());
 
-    tc::FormulaList formulas;
-
-    for (tc::Formulas::iterator i = context()->beginCompound(); i != context()->end();) {
-        tc::CompoundFormula &cf = *i->as<tc::CompoundFormula>();
-        bool bFormulaModified = false;
-
-        assert(cf.is(tc::Formula::COMPOUND));
-
-        for (size_t j = 0; j < cf.size(); ++j) {
-            Auto<tc::Formulas> pPart = cf.getPartPtr(j);
-
-            CS::push(pPart);
-            bFormulaModified |= unify(true);
-            CS::pop();
-        }
-
-        if (bFormulaModified) {
-            formulas.push_back(&cf);
-            context()->erase(i++);
-            bResult = true;
-        } else
-            ++i;
-    }
-
-    if (bResult)
-        context()->insert(formulas.begin(), formulas.end());
-
-    return bResult;
+    return runCompound(&Solver::unify, _result) || bModified;
 }
 
 bool Solver::eval(int & _result) {
@@ -929,6 +918,7 @@ bool Solver::eval(int & _result) {
 
         if (r == tc::Formula::FALSE) {
             _result = tc::Formula::FALSE;
+            bModified = true;
             break;
         }
 
@@ -943,167 +933,51 @@ bool Solver::eval(int & _result) {
         bModified = true;
     }
 
-    tc::FormulaList formulas;
-
-    for (tc::Formulas::iterator i = iCF; i != context()->end();) {
-        tc::CompoundFormula &cf = *i->as<tc::CompoundFormula>();
-        bool bFormulaModified = false;
-        int r = tc::Formula::UNKNOWN;
-
-        for (size_t j = 0; j < cf.size();) {
-            int result = tc::Formula::UNKNOWN;
-
-            CS::push(cf.getPartPtr(j));
-            bFormulaModified |= eval(result);
-            CS::pop();
-
-            if (result == tc::Formula::FALSE || cf.getPart(j).empty()) {
-                bFormulaModified = true;
-                cf.removePart(j);
-            } else
-                ++j;
-
-            if (result == tc::Formula::TRUE)
-                r = tc::Formula::TRUE;
-        }
-
-        if (r == tc::Formula::UNKNOWN && _result == tc::Formula::TRUE)
-            _result = tc::Formula::UNKNOWN;
-
-        if (bFormulaModified) {
-            if (cf.size() == 0)
-                _result = tc::Formula::FALSE;
-            else if (cf.size() == 1)
-                formulas.insert(formulas.end(), cf.getPart(0).begin(), cf.getPart(0).end());
-            else if (cf.size() > 0)
-                formulas.push_back(&cf);
-
-            context()->erase(i++);
-            bModified = true;
-        } else
-            ++i;
-    }
-
-    if (bModified)
-        context()->insert(formulas.begin(), formulas.end());
-
-    return bModified;
+    return runCompound(&Solver::eval, _result) || bModified;
 }
 
 bool Solver::sequence(int &_result) {
     bool bModified = false;
     bool bIterationModified;
     size_t cStep = 0;
+    struct { Operation op; bool bNextIteration; std::wstring title; } ops[] = {
+            &Solver::unify,     false, L"Unify",
+            &Solver::lift,      false, L"Lift",
+            &Solver::prune,     false, L"Prune",
+            &Solver::compact,   false, L"Compact",
+            &Solver::eval,      false, L"Eval",
+            &Solver::expand,    true,  L"Expand",
+            &Solver::refute,    true,  L"Refute",
+            &Solver::infer,     true,  L"Infer",
+            &Solver::explode,   true,  L"Explode",
+            &Solver::guess,     true,  L"Guess",
+            NULL,               false, L""
+    };
 
     _result = tc::Formula::UNKNOWN;
 
     do {
         bIterationModified = false;
 
-        if (unify()) {
-            if (Options::instance().bVerbose) {
-                std::wcout << std::endl << L"Unify [" << cStep << L"]:" << std::endl;
-                prettyPrint(context(), std::wcout);
+        for (size_t i = 0; ops[i].op; ++i) {
+            if ((this->*ops[i].op)(_result)) {
+                if (Options::instance().bVerbose) {
+                    std::wcout << std::endl << ops[i].title << L" [" << cStep << L"]:" << std::endl;
+                    prettyPrint(context(), std::wcout);
+                }
+
+                bIterationModified = true;
+
+                if (_result == tc::Formula::FALSE || ops[i].bNextIteration)
+                    break;
             }
-
-            bIterationModified = true;
-        }
-
-        if (lift()) {
-            if (Options::instance().bVerbose) {
-                std::wcout << std::endl << L"Lift [" << cStep << L"]:" << std::endl;
-                prettyPrint(context(), std::wcout);
-            }
-
-            bIterationModified = true;
-        }
-
-        if (prune()) {
-            if (Options::instance().bVerbose) {
-                std::wcout << std::endl << L"Prune [" << cStep << L"]:" << std::endl;
-                prettyPrint(context(), std::wcout);
-            }
-
-            bIterationModified = true;
-        }
-
-        if (compact()) {
-            if (Options::instance().bVerbose) {
-                std::wcout << std::endl << L"Compact [" << cStep << L"]:" << std::endl;
-                prettyPrint(context(), std::wcout);
-            }
-
-            bIterationModified = true;
-        }
-
-        if (eval(_result)) {
-            if (Options::instance().bVerbose) {
-                std::wcout << std::endl << L"Eval [" << cStep << L"]:" << std::endl;
-                prettyPrint(context(), std::wcout);
-            }
-
-            bIterationModified = true;
-        }
-
-        if (_result == tc::Formula::FALSE)
-            break;
-
-        if (expand(_result)) {
-            if (Options::instance().bVerbose) {
-                std::wcout << std::endl << L"Expand [" << cStep << L"]:" << std::endl;
-                prettyPrint(context(), std::wcout);
-            }
-
-            bIterationModified = true;
-        }
-
-        if (_result == tc::Formula::FALSE)
-            break;
-
-        if (!bIterationModified && refute(_result)) {
-            if (Options::instance().bVerbose) {
-                std::wcout << std::endl << L"Refute [" << cStep << L"]:" << std::endl;
-                prettyPrint(context(), std::wcout);
-            }
-
-            bIterationModified = true;
-        }
-
-        if (_result == tc::Formula::FALSE)
-            break;
-
-        if (!bIterationModified && infer()) {
-            if (Options::instance().bVerbose) {
-                std::wcout << std::endl << L"Infer [" << cStep << L"]:" << std::endl;
-                prettyPrint(context(), std::wcout);
-            }
-
-            bIterationModified = true;
-        }
-
-        if (!bIterationModified && inferCompound()) {
-            if (Options::instance().bVerbose) {
-                std::wcout << std::endl << L"Infer Compound [" << cStep << L"]:" << std::endl;
-                prettyPrint(context(), std::wcout);
-            }
-
-            bIterationModified = true;
-        }
-
-        if (!bIterationModified && guess()) {
-            if (Options::instance().bVerbose) {
-                std::wcout << std::endl << L"Guess [" << cStep << L"]:" << std::endl;
-                prettyPrint(context(), std::wcout);
-            }
-
-            bIterationModified = true;
         }
 
         bModified |= bIterationModified;
         ++cStep;
     } while (bIterationModified && _result != tc::Formula::FALSE);
 
-    return bIterationModified || bModified;
+    return bModified;
 }
 
 bool Solver::run() {
