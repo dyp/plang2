@@ -568,6 +568,8 @@ void prettyPrint(const tc::Formula &_formula, std::wostream &_os, bool _bNewLine
 
             tc::Formulas &part = cf.getPart(j);
 
+            tc::ContextStack::push(cf.getPartPtr(j));
+
             for (tc::Formulas::iterator k = part.begin(); k != part.end(); ++k) {
                 tc::Formula &g = **k;
 
@@ -581,6 +583,7 @@ void prettyPrint(const tc::Formula &_formula, std::wostream &_os, bool _bNewLine
                 pp.print(*g.getRhs());
             }
 
+            tc::ContextStack::pop();
             _os << L")";
         }
     }

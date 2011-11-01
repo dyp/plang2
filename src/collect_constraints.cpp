@@ -801,5 +801,8 @@ int Collector::handleSwitchCaseValuePost(Node &_node) {
 
 void tc::collect(tc::Formulas &_constraints, Node &_node, ir::Context &_ctx) {
     Collector collector(_constraints, _ctx);
+
+    tc::ContextStack::push(ref(&_constraints));
     collector.traverseNode(_node);
+    tc::ContextStack::pop();
 }
