@@ -26,6 +26,7 @@ public:
     virtual bool visitLiteral(Literal &_lit);
     virtual bool visitUnary(Unary &_unary);
     virtual bool visitBinary(Binary &_binary);
+    virtual bool visitTernary(Ternary &_ternary);
     virtual bool visitStructConstructor(StructConstructor &_cons);
     virtual bool visitUnionConstructor(UnionConstructor &_cons);
     virtual bool visitListConstructor(ListConstructor &_cons);
@@ -506,6 +507,15 @@ bool Collector::visitBinary(Binary &_binary) {
             }
             break;
     }
+
+    return true;
+}
+
+bool Collector::visitTernary(Ternary &_ternary) {
+    _ternary.setType(createFresh(_ternary.getType()));
+    m_constraints.insert(new tc::Formula(tc::Formula::EQUALS, _ternary.getIf()->getType(), new Type(Type::BOOL)));
+    m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE, _ternary.getThen()->getType(), _ternary.getType()));
+    m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE, _ternary.getElse()->getType(), _ternary.getType()));
 
     return true;
 }
