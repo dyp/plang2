@@ -11,6 +11,86 @@
 using namespace tc;
 
 size_t FreshType::g_cOrdMax = 0;
+std::vector<int> FreshType::m_flags;
+
+int Flags::get(size_t _cIdx) const {
+    return _cIdx < m_flags.size() ? m_flags[_cIdx] : 0;
+}
+
+void Flags::set(size_t _cIdx, int _flags) {
+    if (_flags != get(_cIdx)) {
+        if (_cIdx >= m_flags.size())
+            m_flags.resize(_cIdx + 1);
+        m_flags[_cIdx] = _flags;
+    }
+}
+
+int Flags::add(size_t _cIdx, int _flags) {
+    const int flags = get(_cIdx) | _flags;
+
+    set(_cIdx, flags);
+
+    return flags;
+}
+
+void Flags::mergeTo(Flags &_to) {
+    for (size_t i = 0; i < m_flags.size(); ++i)
+        _to.add(i, m_flags[i]);
+}
+
+class FlagsCollector : public ir::Visitor {
+public:
+    FlagsCollector(Flags &_to, Flags &_from) : m_to(_to), m_from(_from) {}
+
+    virtual bool visitType(ir::Type &_type) {
+        if (_type.getKind() == ir::Type::FRESH) {
+            const size_t cOrd = ((FreshType &)_type).getOrdinal();
+            m_to.set(cOrd, m_from.get(cOrd));
+        }
+
+        return true;
+    }
+
+private:
+    Flags &m_to;
+    Flags &m_from;
+};
+
+void Flags::filterTo(Flags &_to, const class Formula &_from) {
+    if (_from.is(Formula::COMPOUND)) {
+        CompoundFormula &cf = (CompoundFormula &)_from;
+
+        for (size_t i = 0; i < cf.size(); ++i)
+            for (Formulas::iterator j = cf.getPart(i).begin(); j != cf.getPart(i).end(); ++j)
+                filterTo(_to, **j);
+    } else {
+        FlagsCollector(_to, *this).traverseNode(*_from.getLhs());
+        FlagsCollector(_to, *this).traverseNode(*_from.getRhs());
+    }
+}
+
+void Flags::filterTo(Flags &_to, const class Formulas &_from) {
+    for (Formulas::iterator j = _from.begin(); j != _from.end(); ++j)
+        filterTo(_to, **j);
+}
+
+int FreshType::getFlags() const {
+    if (ContextStack::empty())
+        return 0;
+
+    return ContextStack::top()->flags().get(m_cOrd) |
+            (ContextStack::top()->pParent ? ContextStack::top()->pParent->flags().get(m_cOrd) : 0);
+}
+
+void FreshType::setFlags(int _flags) {
+    assert(!ContextStack::empty());
+    ContextStack::top()->flags().set(m_cOrd, _flags);
+}
+
+int FreshType::addFlags(int _flags) {
+    assert(!ContextStack::empty());
+    return ContextStack::top()->flags().add(m_cOrd, _flags);
+}
 
 ir::NodePtr FreshType::clone(Cloner &_cloner) const {
     return NEW_CLONE(this, _cloner, FreshType(*this));
@@ -103,6 +183,8 @@ Auto<Context> Context::clone(Cloner &_cloner) const {
 
     for (Formulas::const_iterator i = fs->begin(); i != fs->end(); ++i)
         pNew->fs->insert(_cloner.get(i->ptr()));
+
+    pNew->fs->pFlags = new Flags(*fs->pFlags);
 
     for (Formulas::const_iterator i = substs->begin(); i != substs->end(); ++i)
         pNew->substs->insert(_cloner.get(i->ptr()));
@@ -395,6 +477,11 @@ size_t CompoundFormula::count() const {
         result += m_parts[i]->size();
 
     return result;
+}
+
+void Formulas::swap(Formulas &_other) {
+    std::set<FormulaPtr, FormulaCmp>::swap(_other);
+    pFlags.swap(_other.pFlags);
 }
 
 bool Formulas::implies(Formula &_f) const {

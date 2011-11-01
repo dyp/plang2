@@ -16,18 +16,32 @@
 
 namespace tc {
 
-class Formula;
-typedef Auto<Formula> FormulaPtr;
-class CompoundFormula;
-typedef Auto<CompoundFormula> CompoundFormulaPtr;
+typedef Auto<class Formula> FormulaPtr;
+typedef Auto<class CompoundFormula> CompoundFormulaPtr;
+typedef Auto<class Flags> FlagsPtr;
+
+class Flags : public Counted {
+public:
+    int get(size_t _cIdx) const;
+    void set(size_t _cIdx, int _flags);
+    int add(size_t _cIdx, int _flags);
+    void mergeTo(Flags &_to);
+    void filterTo(Flags &_to, const class Formula &_from);
+    void filterTo(Flags &_to, const class Formulas &_from);
+
+private:
+    std::vector<int> m_flags;
+};
 
 class FreshType : public ir::Type {
 public:
-    FreshType() : m_flags(0) {
-        m_cOrd = ++g_cOrdMax;
+    FreshType(int _flags = 0) {
+        m_cOrd = g_cOrdMax++;
+        addFlags(_flags);
     }
 
-    FreshType(const FreshType &_other) : m_cOrd(_other.m_cOrd), m_flags(_other.m_flags) {
+    FreshType(const FreshType &_other) : m_cOrd(_other.m_cOrd) {
+        addFlags(_other.getFlags());
     }
 
     enum {
@@ -36,14 +50,11 @@ public:
         PARAM_OUT = 0x02,
     };
 
-    int getFlags() const { return m_flags; }
+    int getFlags() const;
 
-    void setFlags(int _flags) { m_flags = _flags; }
+    void setFlags(int _flags);
 
-    int addFlags(int _flags) {
-        m_flags |= _flags;
-        return m_flags;
-    }
+    int addFlags(int _flags);
 
     virtual bool rewriteFlags(int _flags) {
         addFlags(_flags);
@@ -64,7 +75,7 @@ public:
 private:
     size_t m_cOrd;
     static size_t g_cOrdMax;
-    int m_flags;
+    static std::vector<int> m_flags;
 };
 
 typedef Auto<FreshType> FreshTypePtr;
@@ -172,6 +183,11 @@ struct FormulaEquals {
 typedef std::list<FormulaPtr> FormulaList;
 
 struct Formulas : public std::set<FormulaPtr, FormulaCmp> {
+    FlagsPtr pFlags;
+
+    Formulas() : pFlags(new Flags()) {}
+
+    void swap(Formulas &_other);
     bool rewrite(const ir::TypePtr &_pOld, const ir::TypePtr &_pNew, bool _bRewriteFlags = true);
     bool implies(Formula &_f) const;
     iterator beginCompound();
@@ -196,6 +212,7 @@ struct Context : public Counted {
     virtual Auto<Context> clone(Cloner &_cloner) const;
     bool add(const FormulaPtr &_pFormula);
     bool add(int _kind, const ir::TypePtr &_pLhs, const ir::TypePtr &_pRhs);
+    Flags &flags() { return *fs->pFlags; }
 
     Formulas &operator *() const { return *fs; }
     Formulas *operator ->() const { return fs.ptr(); }

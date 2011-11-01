@@ -61,12 +61,15 @@ bool Solver::fork() {
     tc::ContextPtr pCopy = clone(context());
 
     context()->insert(pCF->getPart(0).begin(), pCF->getPart(0).end());
+    pCF->getPart(0).pFlags->mergeTo(context().flags());
 
     if (pCF->size() > 2) {
         pCF->removePart(0);
         (*pCopy)->insert(pCF);
-    } else
+    } else {
         (*pCopy)->insert(pCF->getPart(1).begin(), pCF->getPart(1).end());
+        pCF->getPart(1).pFlags->mergeTo(pCopy->flags());
+    }
 
     CS::push(pCopy);
 
@@ -1147,6 +1150,7 @@ bool Solver::run() {
 
                 part.insert(ctx.fs->begin(), ctx.fs->end());
                 part.insert(ctx.substs->begin(), ctx.substs->end());
+                part.pFlags = ctx.fs->pFlags;
             }
 
             CS::push(ptr(new tc::Context()));
@@ -1189,5 +1193,9 @@ bool tc::solve(tc::Formulas &_formulas, tc::Formulas &_result) {
         prettyPrint(*CS::top(), std::wcout);
     }
 
-    return Solver().run();
+    const bool bResult = Solver().run();
+
+    CS::pop();
+
+    return bResult;
 }
