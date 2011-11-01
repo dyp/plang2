@@ -204,6 +204,8 @@ bool Visitor::traverseCollection(Collection<_Node, _Base> &_nodes) {
             return false;                                           \
         if (m_path.empty())                                         \
             m_path.push_back(Loc(_PARAM, N_##_TYPE, R_TopLevel));   \
+        else                                                        \
+            getLoc().type = N_##_TYPE;                              \
         if (getOrder() == PARENTS_FIRST) {                          \
             callRoleHandler(true);                                  \
             if (!walkUpFrom##_TYPE(_PARAM))                         \
