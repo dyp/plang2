@@ -509,18 +509,28 @@ bool Context::implies(Formula &_f) {
 
     switch (_f.getKind()) {
         case Formula::EQUALS:
+            CHECK(EQUALS, a, c, EQUALS, c, b);    // A = C && C = B  |-  A = B
+            CHECK(EQUALS, b, c, EQUALS, c, a);    // B = C && C = A  |-  A = B
             break;
+
         case Formula::SUBTYPE_STRICT:
-            CHECK(SUBTYPE, a, c, SUBTYPE_STRICT, c, b);
-            CHECK(SUBTYPE_STRICT, a, c, SUBTYPE, c, b);
-            CHECK(SUBTYPE_STRICT, a, c, EQUALS, c, b);
-            CHECK(EQUALS, a, c, SUBTYPE_STRICT, c, b);
+            CHECK(SUBTYPE_STRICT, c, b, SUBTYPE, a, c);    // C < B && A <= C  |-  A < B
+            CHECK(SUBTYPE_STRICT, a, c, SUBTYPE, c, b);    // A < C && C <= B  |-  A < B
+            CHECK(SUBTYPE, c, b, SUBTYPE_STRICT, a, c);    // C <= B && A < C  |-  A < B
+            CHECK(SUBTYPE, a, c, SUBTYPE_STRICT, c, b);    // A <= C && C < B  |-  A < B
+            CHECK(SUBTYPE_STRICT, c, b, EQUALS, a, c);     // C < B && A = C   |-  A < B
+            CHECK(SUBTYPE_STRICT, a, c, EQUALS, c, b);     // A < C && B = C   |-  A < B
+            CHECK(EQUALS, a, c, SUBTYPE_STRICT, c, b);     // A = C && C < B   |-  A < B
+            CHECK(EQUALS, b, c, SUBTYPE_STRICT, a, c);     // B = C && A < C   |-  A < B
             break;
+
         case Formula::SUBTYPE:
-            CHECK(SUBTYPE, a, c, SUBTYPE, c, b);
-            CHECK(SUBTYPE, a, c, EQUALS, c, b);
-            CHECK(EQUALS, a, c, SUBTYPE, c, b);
-            CHECK(EQUALS, c, a, SUBTYPE, c, b);
+            CHECK(SUBTYPE, c, b, SUBTYPE, a, c);    // C <= B && A <= C  |-  A <= B
+            CHECK(SUBTYPE, a, c, SUBTYPE, c, b);    // A <= C && C <= B  |-  A <= B
+            CHECK(SUBTYPE, c, b, EQUALS, a, c);     // C <= B && A = C   |-  A <= B
+            CHECK(SUBTYPE, a, c, EQUALS, c, b);     // A <= C && B = C   |-  A <= B
+            CHECK(EQUALS, a, c, SUBTYPE, c, b);     // A = C && C <= B   |-  A <= B
+            CHECK(EQUALS, b, c, SUBTYPE, a, c);     // B = C && A <= C   |-  A <= B
             break;
     }
 
