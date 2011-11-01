@@ -25,7 +25,7 @@ protected:
 
 void prettyPrint(ir::Module &_module, std::wostream &_os);
 void prettyPrint(tc::Context &_constraints, std::wostream &_os);
-void prettyPrint(tc::Formula &_formula, std::wostream &_os);
+void prettyPrint(const tc::Formula &_formula, std::wostream &_os, bool _bNewLine = true);
 
 // Compact pretty-printer flags.
 enum {

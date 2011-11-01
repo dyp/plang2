@@ -550,8 +550,8 @@ void prettyPrint(tc::Context &_constraints, std::wostream &_os) {
     }
 }
 
-void prettyPrint(tc::Formula &_formula, std::wostream &_os) {
-    static PrettyPrinterCompact pp(_os, NULL, 0);
+void prettyPrint(const tc::Formula &_formula, std::wostream &_os, bool _bNewLine) {
+    PrettyPrinterCompact pp(_os, NULL, 0);
 
     if (!_formula.is(tc::Formula::COMPOUND)) {
         pp.print(*_formula.getLhs());
@@ -585,7 +585,8 @@ void prettyPrint(tc::Formula &_formula, std::wostream &_os) {
         }
     }
 
-    _os << L"\n";
+    if (_bNewLine)
+        _os << L"\n";
 }
 
 void prettyPrintCompact(Node &_node, std::wostream &_os, int _nFlags) {
