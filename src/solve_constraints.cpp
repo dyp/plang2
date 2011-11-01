@@ -1108,7 +1108,6 @@ bool Solver::sequence(int &_result) {
 
 bool Solver::run() {
     int result = tc::Formula::UNKNOWN;
-    bool bChanged;
     std::list<tc::ContextPtr> processed;
 
     do {
@@ -1129,8 +1128,8 @@ bool Solver::run() {
         if (result != tc::Formula::FALSE)
             processed.push_back(CS::top());
 
-        if (result == tc::Formula::FALSE)
-            std::wcout << std::endl << L"Refuted" << std::endl;
+        if (Options::instance().bVerbose)
+            std::wcout << std::endl << (result == tc::Formula::FALSE ? L"Refuted" : L"Affirmed") << std::endl;
 
         CS::pop();
     } while (!CS::empty());
@@ -1138,9 +1137,9 @@ bool Solver::run() {
     if (processed.empty())
         result = tc::Formula::FALSE;
     else {
-        if (::next(processed.begin()) == processed.end()) {
+        if (::next(processed.begin()) == processed.end())
             CS::push(processed.front());
-        } else {
+        else {
             // Recombine all results into a compound formula and simplify it.
             tc::CompoundFormulaPtr pCF = new tc::CompoundFormula();
 
@@ -1148,13 +1147,32 @@ bool Solver::run() {
                 tc::Context &ctx = **i;
                 tc::Formulas &part = pCF->addPart();
 
+                CS::push(*i);
                 part.insert(ctx.pFormulas->begin(), ctx.pFormulas->end());
-                part.insert(ctx.pSubsts->begin(), ctx.pSubsts->end());
+
+                for (tc::Formulas::iterator j = ctx.pSubsts->begin(); j != ctx.pSubsts->end(); ++j) {
+                    tc::FormulaPtr pSubst = *j;
+
+                    if (pSubst->getLhs().as<tc::FreshType>()->getFlags() == tc::FreshType::PARAM_IN)
+                        part.insert(new tc::Formula(tc::Formula::SUBTYPE, pSubst->getLhs(), pSubst->getRhs()));
+                    else if (pSubst->getLhs().as<tc::FreshType>()->getFlags() == tc::FreshType::PARAM_OUT)
+                        part.insert(new tc::Formula(tc::Formula::SUBTYPE, pSubst->getRhs(), pSubst->getLhs()));
+                    else
+                        part.insert(pSubst);
+                }
+
                 part.pFlags = ctx.pFormulas->pFlags;
+                CS::pop();
             }
 
             CS::push(ptr(new tc::Context()));
             context()->insert(pCF);
+
+            if (Options::instance().bVerbose) {
+                std::wcout << std::endl << L"Recombine:" << std::endl;
+                prettyPrint(context(), std::wcout);
+            }
+
             sequence(result);
             assert(result != tc::Formula::FALSE);
         }
