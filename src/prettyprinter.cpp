@@ -131,7 +131,7 @@ static std::wstring fmtFreshType(tc::FreshType &_type) {
     std::wstring strName = g_freshTypes[_type.getOrdinal()];
 
     if (strName.empty()) {
-        const size_t nType = g_freshTypes.size() - 1;
+        const size_t nType = _type.getOrdinal();
         const int nChar = nType%26;
         const int nNum = nType/26;
 
@@ -141,11 +141,11 @@ static std::wstring fmtFreshType(tc::FreshType &_type) {
         if (nNum > 0)
             strName += fmtInt(nNum);
 
-        if (_type.getFlags())
-            strName += std::wstring(L":") + fmtInt(_type.getFlags());
-
         g_freshTypes[_type.getOrdinal()] = strName;
     }
+
+    if (_type.getFlags())
+        strName += L" \x02C4\x02C5\x02DF"[_type.getFlags()];
 
     return strName;
 }
