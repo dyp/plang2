@@ -504,10 +504,15 @@ public:
     }
 
     virtual bool traversePredicateType(PredicateType &_type) {
+        VISITOR_ENTER(PredicateType, _type);
         m_os << L"predicate(";
-        Visitor::traversePredicateType(_type);
+        VISITOR_TRAVERSE_COL(Param, PredicateTypeInParam, _type.getInParams());
+
+        for (size_t i = 0; i < _type.getOutParams().size(); ++i)
+            VISITOR_TRAVERSE_COL(Param, PredicateTypeOutParam, *_type.getOutParams().get(i));
+
         m_os << L")";
-        return true;
+        VISITOR_EXIT();
     }
 
     virtual bool visitStatement(Statement &_node) {
