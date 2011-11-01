@@ -109,7 +109,7 @@ public:
 
     void setDeclaration(const TypeDeclarationPtr &_pDecl) { m_pDecl = _pDecl; }
 
-    virtual bool rewrite(const TypePtr &_pOld, const TypePtr &_pNew);
+    virtual bool rewrite(const TypePtr &_pOld, const TypePtr &_pNew, bool _bRewriteFlags = true);
     virtual int compare(const Type &_other) const;
     virtual bool less(const Type &_other) const;
 
@@ -151,7 +151,7 @@ public:
     const NamedValues *getAllFields() const { return m_fields; }
 
     virtual bool hasFresh() const;
-    virtual bool rewrite(const TypePtr &_pOld, const TypePtr &_pNew);
+    virtual bool rewrite(const TypePtr &_pOld, const TypePtr &_pNew, bool _bRewriteFlags = true);
     virtual int compare(const Type &_other) const;
     virtual TypePtr getMeet(Type &_other);
     virtual TypePtr getJoin(Type &_other);
@@ -296,7 +296,7 @@ public:
     virtual int compare(const Type &_other) const;
 
     virtual bool hasFresh() const;
-    virtual bool rewrite(const TypePtr &_pOld, const TypePtr &_pNew);
+    virtual bool rewrite(const TypePtr &_pOld, const TypePtr &_pNew, bool _bRewriteFlags = true);
     virtual TypePtr getMeet(Type &_other);
     virtual TypePtr getJoin(Type &_other);
     virtual bool less(const Type &_other) const;
@@ -332,7 +332,7 @@ public:
     virtual bool hasParameters() const { return true; }
 
     virtual bool hasFresh() const { return m_pBaseType->hasFresh(); }
-    virtual bool rewrite(const TypePtr &_pOld, const TypePtr &_pNew);
+    virtual bool rewrite(const TypePtr &_pOld, const TypePtr &_pNew, bool _bRewriteFlags = true);
     virtual int compare(const Type &_other) const;
     virtual bool less(const Type &_other) const;
     virtual bool rewriteFlags(int _flags) { return m_pBaseType->rewriteFlags(_flags); }
@@ -538,7 +538,7 @@ public:
     }
 
     virtual bool hasFresh() const { return DerivedType::hasFresh() || m_pIndexType->hasFresh(); }
-    virtual bool rewrite(const TypePtr &_pOld, const TypePtr &_pNew);
+    virtual bool rewrite(const TypePtr &_pOld, const TypePtr &_pNew, bool _bRewriteFlags = true);
     virtual int compare(const Type &_other) const;
     virtual bool less(const Type &_other) const;
     virtual TypePtr getJoin(Type &_other);
@@ -624,7 +624,7 @@ public:
     }
 
     virtual bool hasFresh() const;
-    virtual bool rewrite(const TypePtr &_pOld, const TypePtr &_pNew);
+    virtual bool rewrite(const TypePtr &_pOld, const TypePtr &_pNew, bool _bRewriteFlags = true);
 
     virtual bool hasParameters() const { return true; }
 

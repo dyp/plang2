@@ -97,7 +97,7 @@ bool UnionType::contains(const TypePtr &_pType) const {
     return false;
 }
 
-bool UnionType::rewrite(const TypePtr &_pOld, const TypePtr &_pNew) {
+bool UnionType::rewrite(const TypePtr &_pOld, const TypePtr &_pNew, bool _bRewriteFlags) {
     bool bResult = false;
 
     for (size_t i = 0; i < m_constructors.size(); ++i)
@@ -105,7 +105,7 @@ bool UnionType::rewrite(const TypePtr &_pOld, const TypePtr &_pNew) {
             NamedValue &field = *m_constructors.get(i)->getFields().get(j);
             Auto<ir::Type> pType = field.getType();
 
-            if (tc::rewriteType(pType, _pOld, _pNew)) {
+            if (tc::rewriteType(pType, _pOld, _pNew, _bRewriteFlags)) {
                 bResult = true;
                 field.setType(pType);
             }

@@ -244,13 +244,13 @@ int Type::getMonotonicity(const Type &_var) const {
 TypeType::TypeType(const TypeDeclarationPtr &_pDeclaration) : m_pDecl(_pDeclaration) {
 }
 
-bool TypeType::rewrite(const TypePtr &_pOld, const TypePtr &_pNew) {
+bool TypeType::rewrite(const TypePtr &_pOld, const TypePtr &_pNew, bool _bRewriteFlags) {
     if (!m_pDecl || !m_pDecl->getType())
         return false;
 
     TypePtr p = m_pDecl->getType();
 
-    if (tc::rewriteType(p, _pOld, _pNew)) {
+    if (tc::rewriteType(p, _pOld, _pNew, _bRewriteFlags)) {
         m_pDecl->setType(p);
         return true;
     }

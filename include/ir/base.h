@@ -328,7 +328,7 @@ public:
     }
 
     virtual bool hasFresh() const;
-    virtual bool rewrite(const TypePtr &_pOld, const TypePtr &_pNew) { return false; }
+    virtual bool rewrite(const TypePtr &_pOld, const TypePtr &_pNew, bool _bRewriteFlags = true) { return false; }
     virtual bool rewriteFlags(int _flags) { return false; }
 
     // Check if _pType is structurally contained (strict relation).

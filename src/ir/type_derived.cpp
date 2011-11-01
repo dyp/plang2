@@ -10,8 +10,8 @@ using namespace ir;
 
 // Derived types.
 
-bool DerivedType::rewrite(const TypePtr &_pOld, const TypePtr &_pNew) {
-    return tc::rewriteType(m_pBaseType, _pOld, _pNew);
+bool DerivedType::rewrite(const TypePtr &_pOld, const TypePtr &_pNew, bool _bRewriteFlags) {
+    return tc::rewriteType(m_pBaseType, _pOld, _pNew, _bRewriteFlags);
 }
 
 int DerivedType::compare(const Type &_other) const {
@@ -88,9 +88,9 @@ TypePtr ListType::getJoin(Type &_other) {
 
 // Maps.
 
-bool MapType::rewrite(const TypePtr &_pOld, const TypePtr &_pNew) {
-    const bool b = DerivedType::rewrite(_pOld, _pNew);
-    return tc::rewriteType(m_pIndexType, _pOld, _pNew) || b;
+bool MapType::rewrite(const TypePtr &_pOld, const TypePtr &_pNew, bool _bRewriteFlags) {
+    const bool b = DerivedType::rewrite(_pOld, _pNew, _bRewriteFlags);
+    return tc::rewriteType(m_pIndexType, _pOld, _pNew, _bRewriteFlags) || b;
 }
 
 int MapType::compare(const Type &_other) const {

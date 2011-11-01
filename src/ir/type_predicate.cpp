@@ -89,12 +89,12 @@ bool PredicateType::less(const Type &_other) const {
     return false;
 }
 
-bool PredicateType::rewrite(const TypePtr &_pOld, const TypePtr &_pNew) {
+bool PredicateType::rewrite(const TypePtr &_pOld, const TypePtr &_pNew, bool _bRewriteFlags) {
     bool bResult = false;
 
     for (size_t i = 0; i < m_paramsIn.size(); ++i) {
         TypePtr p = m_paramsIn.get(i)->getType();
-        if (tc::rewriteType(p, _pOld, _pNew)) {
+        if (tc::rewriteType(p, _pOld, _pNew, _bRewriteFlags)) {
             bResult = true;
             m_paramsIn.get(i)->setType(p);
         }
@@ -104,7 +104,7 @@ bool PredicateType::rewrite(const TypePtr &_pOld, const TypePtr &_pNew) {
         Branch &branch = *m_paramsOut.get(j);
         for (size_t i = 0; i < branch.size(); ++i) {
             TypePtr p = branch.get(i)->getType();
-            if (tc::rewriteType(p, _pOld, _pNew)) {
+            if (tc::rewriteType(p, _pOld, _pNew, _bRewriteFlags)) {
                 bResult = true;
                 branch.get(i)->setType(p);
             }

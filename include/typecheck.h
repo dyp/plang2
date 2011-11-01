@@ -134,7 +134,7 @@ public:
 
     bool hasFresh() const;
 
-    virtual bool rewrite(const ir::TypePtr &_pOld, const ir::TypePtr &_pNew);
+    virtual bool rewrite(const ir::TypePtr &_pOld, const ir::TypePtr &_pNew, bool _bRewriteFlags = true);
 
     virtual int eval() const;
 
@@ -172,7 +172,7 @@ struct FormulaEquals {
 typedef std::list<FormulaPtr> FormulaList;
 
 struct Formulas : public std::set<FormulaPtr, FormulaCmp> {
-    bool rewrite(const ir::TypePtr &_pOld, const ir::TypePtr &_pNew);
+    bool rewrite(const ir::TypePtr &_pOld, const ir::TypePtr &_pNew, bool _bRewriteFlags = true);
     bool implies(Formula &_f) const;
     iterator beginCompound();
     iterator findSubst(const ir::TypePtr &_pType) const;
@@ -191,7 +191,7 @@ struct Context : public Counted {
     Context(const Auto<Formulas> &_fs, const Auto<Context> &_pParent = NULL);
 
     ir::TypePtr lookup(const tc::Formula &_f, const tc::Formula &_cond);
-    bool rewrite(const ir::TypePtr &_pOld, const ir::TypePtr &_pNew);
+    bool rewrite(const ir::TypePtr &_pOld, const ir::TypePtr &_pNew, bool _bRewriteFlags = true);
     bool implies(Formula &_f);
     virtual Auto<Context> clone(Cloner &_cloner) const;
     bool add(const FormulaPtr &_pFormula);
@@ -286,7 +286,7 @@ public:
     void addPart(const Auto<Formulas> &_pFormulas);
     void removePart(size_t _i) { m_parts.erase(m_parts.begin() + _i); }
 
-    virtual bool rewrite(const ir::TypePtr &_pOld, const ir::TypePtr &_pNew);
+    virtual bool rewrite(const ir::TypePtr &_pOld, const ir::TypePtr &_pNew, bool _bRewriteFlags = true);
     virtual int eval() const;
     size_t count() const;
     virtual FormulaPtr clone(Cloner &_cloner) const;
@@ -299,7 +299,7 @@ private:
     std::vector<Auto<Formulas> > m_parts;
 };
 
-bool rewriteType(ir::TypePtr &_pType, const ir::TypePtr &_pOld, const ir::TypePtr &_pNew);
+bool rewriteType(ir::TypePtr &_pType, const ir::TypePtr &_pOld, const ir::TypePtr &_pNew, bool _bRewriteFlags = true);
 
 bool solve(Formulas &_formulas, Formulas &_substs);
 

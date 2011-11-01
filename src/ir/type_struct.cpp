@@ -28,13 +28,13 @@ bool StructType::hasFresh() const {
     return false;
 }
 
-bool StructType::rewrite(const TypePtr &_pOld, const TypePtr &_pNew) {
+bool StructType::rewrite(const TypePtr &_pOld, const TypePtr &_pNew, bool _bRewriteFlags) {
     bool bResult = false;
 
     for (size_t j = 0; j < 3; ++j)
         for (size_t i = 0; i < m_fields[j].size(); ++i) {
             TypePtr p = m_fields[j].get(i)->getType();
-            if (tc::rewriteType(p, _pOld, _pNew)) {
+            if (tc::rewriteType(p, _pOld, _pNew, _bRewriteFlags)) {
                 bResult = true;
                 m_fields[j].get(i)->setType(p);
             }

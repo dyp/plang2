@@ -125,13 +125,12 @@ FormulaPtr CompoundFormula::clone(Cloner &_cloner) const {
     return pCF;
 }
 
-// Use clone() here in future.
-bool tc::rewriteType(ir::TypePtr &_pType, const ir::TypePtr &_pOld, const ir::TypePtr &_pNew) {
+bool tc::rewriteType(ir::TypePtr &_pType, const ir::TypePtr &_pOld, const ir::TypePtr &_pNew, bool _bRewriteFlags) {
     if (*_pOld == *_pNew)
         return false;
 
     if (*_pType == *_pOld) {
-        if (_pOld->getKind() == ir::Type::FRESH)
+        if (_pOld->getKind() == ir::Type::FRESH && _bRewriteFlags)
             _pNew->rewriteFlags(_pOld.as<FreshType>()->getFlags());
         _pType = _pNew;
         return true;
@@ -139,14 +138,14 @@ bool tc::rewriteType(ir::TypePtr &_pType, const ir::TypePtr &_pOld, const ir::Ty
 
     _pType = clone(*_pType);
 
-    return _pType->rewrite(_pOld, _pNew);
+    return _pType->rewrite(_pOld, _pNew, _bRewriteFlags);
 }
 
-bool Formula::rewrite(const ir::TypePtr &_pOld, const ir::TypePtr &_pNew) {
+bool Formula::rewrite(const ir::TypePtr &_pOld, const ir::TypePtr &_pNew, bool _bRewriteFlags) {
     bool bResult = false;
 
-    bResult |= rewriteType(m_pLhs, _pOld, _pNew);
-    bResult |= rewriteType(m_pRhs, _pOld, _pNew);
+    bResult |= rewriteType(m_pLhs, _pOld, _pNew, _bRewriteFlags);
+    bResult |= rewriteType(m_pRhs, _pOld, _pNew, _bRewriteFlags);
 
     return bResult;
 }
@@ -293,7 +292,7 @@ void _check(Context &_fs) {
 }
 
 static
-bool rewrite(Formulas &_formulas, const ir::TypePtr &_pOld, const ir::TypePtr &_pNew) {
+bool rewrite(Formulas &_formulas, const ir::TypePtr &_pOld, const ir::TypePtr &_pNew, bool _bRewriteFlags = true) {
     Formulas reorder;
     bool bModified = false;
 
@@ -302,7 +301,7 @@ bool rewrite(Formulas &_formulas, const ir::TypePtr &_pOld, const ir::TypePtr &_
         Formulas::iterator k = i != _formulas.begin() ? ::prev(i) : i;
         FormulaPtr pFormula = *i;
 
-        bModified |= pFormula->rewrite(_pOld, _pNew);
+        bModified |= pFormula->rewrite(_pOld, _pNew, _bRewriteFlags);
 
         if ((i != _formulas.begin() && !FormulaCmp()(*k, pFormula)) ||
                 (j != _formulas.end() && !FormulaCmp()(pFormula, *j)))
@@ -320,21 +319,21 @@ bool rewrite(Formulas &_formulas, const ir::TypePtr &_pOld, const ir::TypePtr &_
     return bModified;
 }
 
-bool Formulas::rewrite(const ir::TypePtr &_pOld, const ir::TypePtr &_pNew) {
-    return ::rewrite(*this, _pOld, _pNew);
+bool Formulas::rewrite(const ir::TypePtr &_pOld, const ir::TypePtr &_pNew, bool _bRewriteFlags) {
+    return ::rewrite(*this, _pOld, _pNew, _bRewriteFlags);
 }
 
-bool Context::rewrite(const ir::TypePtr &_pOld, const ir::TypePtr &_pNew) {
+bool Context::rewrite(const ir::TypePtr &_pOld, const ir::TypePtr &_pNew, bool _bRewriteFlags) {
     bool bModified = false;
     Formulas reorder;
 
-    bModified |= substs->rewrite(_pOld, _pNew);
+    bModified |= substs->rewrite(_pOld, _pNew, _bRewriteFlags);
 
     for (Formulas::iterator i = fs->begin(); i != fs->end();) {
         Formulas::iterator j = ::next(i);
         FormulaPtr pFormula = *i;
 
-        if (pFormula->rewrite(_pOld, _pNew)) {
+        if (pFormula->rewrite(_pOld, _pNew, _bRewriteFlags)) {
             fs->erase(i);
             reorder.insert(pFormula);
         }
@@ -352,11 +351,11 @@ bool Context::rewrite(const ir::TypePtr &_pOld, const ir::TypePtr &_pNew) {
     return bModified;
 }
 
-bool CompoundFormula::rewrite(const ir::TypePtr &_pOld, const ir::TypePtr &_pNew) {
+bool CompoundFormula::rewrite(const ir::TypePtr &_pOld, const ir::TypePtr &_pNew, bool _bRewriteFlags) {
     bool bResult = false;
 
     for (size_t i = 0; i < size(); ++ i)
-        bResult |= ::rewrite(getPart(i), _pOld, _pNew);
+        bResult |= ::rewrite(getPart(i), _pOld, _pNew, _bRewriteFlags);
 
     return bResult;
 }
