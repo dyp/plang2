@@ -520,7 +520,7 @@ private:
 };
 
 void prettyPrint(tc::Context &_constraints, std::wostream &_os) {
-    static PrettyPrinterCompact pp(_os, NULL, 0);
+    PrettyPrinterCompact pp(_os, NULL, 0);
 
     _os << L"\n";
 
