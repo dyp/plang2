@@ -130,11 +130,11 @@ void Context::fmtError(const wchar_t *_strFmt, ...) {
     m_messages.push_back(StatusMessage(StatusMessage::Error, *m_loc, buf));
 }
 
-Context *Context::createChild(bool _bScope) {
+Context *Context::createChild(bool _bScope, int _flags) {
     if (m_pChild)
         delete m_pChild;
 
-    m_pChild = new Context(m_loc, _bScope);
+    m_pChild = new Context(m_loc, _bScope, _flags);
     m_pChild->setParent(this);
 
     return m_pChild;
@@ -345,6 +345,14 @@ const ir::Overflow &Context::getOverflow() const {
         return m_pragma.overflow();
 
     return getParent()->getOverflow();
+}
+
+int Context::getFlags() const {
+    return m_flags;
+}
+
+void Context::setFlags(int _flags) {
+    m_flags = _flags;
 }
 
 std::wostream &operator << (std::wostream &_os, const StatusMessage &_msg) {

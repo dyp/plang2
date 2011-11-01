@@ -112,11 +112,10 @@ public:
     TypeDeclarationPtr parseTypeDeclaration(Context &_ctx);
     VariableDeclarationPtr parseVariableDeclaration(Context &_ctx, int _nFlags);
     FormulaDeclarationPtr parseFormulaDeclaration(Context &_ctx);
-    ExpressionPtr parseExpression(Context &_ctx, int _nFlags);
-    ExpressionPtr parseExpression(Context &_ctx) { return parseExpression(_ctx, 0); }
-    ExpressionPtr parseSubexpression(Context &_ctx, const ExpressionPtr &_lhs, int _minPrec, int _nFlags = 0);
-    ExpressionPtr parseAtom(Context &_ctx, int _nFlags);
-    ExpressionPtr parseAtom(Context &_ctx) { return parseAtom(_ctx, 0); }
+    LemmaDeclarationPtr parseLemmaDeclaration(Context &_ctx);
+    ExpressionPtr parseExpression(Context &_ctx);
+    ExpressionPtr parseSubexpression(Context &_ctx, const ExpressionPtr &_lhs, int _minPrec);
+    ExpressionPtr parseAtom(Context &_ctx);
     ExpressionPtr parseComponent(Context &_ctx, Expression &_base);
     FormulaPtr parseFormula(Context &_ctx);
     ArrayIterationPtr parseArrayIteration(Context &_ctx);
@@ -174,10 +173,10 @@ public:
 
     template<class _Node, class _Base>
     bool parseList(Context &_ctx, Collection<_Node, _Base> &_list, PARSER_FN(_Node,_parser),
-            int _startMarker, int _endMarker, int _delimiter);
+            int _startMarker, int _endMarker, int _delimiter, bool _bPreserveContextFlags = false);
 
     bool parseActualParameterList(Context &_ctx, Collection<Expression> &_exprs) {
-        return parseList(_ctx, _exprs, &Parser::parseExpression, LPAREN, RPAREN, COMMA);
+        return parseList(_ctx, _exprs, &Parser::parseExpression, LPAREN, RPAREN, COMMA, true);
     }
 
     bool parseArrayIndices(Context &_ctx, Collection<Expression> &_exprs) {
@@ -229,9 +228,9 @@ private:
 
 template<class _Node, class _Base>
 bool Parser::parseList(Context &_ctx, Collection<_Node,_Base> &_list, PARSER_FN(_Node,_parser),
-        int _startMarker, int _endMarker, int _delimiter)
+        int _startMarker, int _endMarker, int _delimiter, bool _bPreserveContextFlags)
 {
-    Context &ctx = *_ctx.createChild(false);
+    Context &ctx = *_ctx.createChild(false, _bPreserveContextFlags ? _ctx.getFlags() : 0);
 
     if (_startMarker >= 0 && !ctx.consume(_startMarker))
         return false;
@@ -529,7 +528,7 @@ void Parser::initOps() {
 
 ExpressionPtr Parser::parseCastOrTypeReference(Context &_ctx, const TypePtr &_pType) {
     ExpressionPtr pExpr;
-    Context &ctx = *_ctx.createChild(false);
+    Context &ctx = *_ctx.createChild(false, RESTRICT_TYPES);
 
     if (ctx.in(LPAREN, LBRACKET, MAP_LBRACKET, LBRACE, LIST_LBRACKET)) {
         switch (_pType->getKind()) {
@@ -541,7 +540,7 @@ ExpressionPtr Parser::parseCastOrTypeReference(Context &_ctx, const TypePtr &_pT
             //case Type::Optional:
             //case Type::Parameterized:
             //case Type::NamedReference:
-                pExpr = parseAtom(ctx, RESTRICT_TYPES);
+                pExpr = parseAtom(ctx);
                 if (pExpr)
                     pExpr->setType(_pType);
         }
@@ -575,7 +574,7 @@ LambdaPtr Parser::parseLambda(Context &_ctx) {
 }
 
 FormulaPtr Parser::parseFormula(Context &_ctx) {
-    Context &ctx = *_ctx.createChild(true);
+    Context &ctx = *_ctx.createChild(true, ALLOW_FORMULAS);
 
     if (!ctx.in(FORALL, EXISTS))
         ERROR(ctx, NULL, L"Quantifier expected");
@@ -592,7 +591,7 @@ FormulaPtr Parser::parseFormula(Context &_ctx) {
 
     // OK to use parseExpression instead of parseSubexpression
     // since quantifiers are lowest priority right-associative operators.
-    ExpressionPtr pSub = parseExpression(ctx, ALLOW_FORMULAS);
+    ExpressionPtr pSub = parseExpression(ctx);
 
     if (!pSub)
         ERROR(ctx, NULL, L"Failed parsing subformula");
@@ -603,13 +602,13 @@ FormulaPtr Parser::parseFormula(Context &_ctx) {
     return pFormula;
 }
 
-ExpressionPtr Parser::parseAtom(Context &_ctx, int _nFlags) {
-    Context &ctx = *_ctx.createChild(false);
+ExpressionPtr Parser::parseAtom(Context &_ctx) {
+    Context &ctx = *_ctx.createChild(false, _ctx.getFlags());
     ExpressionPtr pExpr;
-    const bool bAllowTypes = !(_nFlags &RESTRICT_TYPES);
+    const bool bAllowTypes = !(ctx.getFlags() & RESTRICT_TYPES);
     int token = ctx.getToken();
 
-    _nFlags &= ~RESTRICT_TYPES;
+    ctx.setFlags(ctx.getFlags() & ~RESTRICT_TYPES);
 
     if (ctx.is(LPAREN, RPAREN) || ctx.is(LBRACKET, RBRACKET) || ctx.is(LBRACE, RBRACE) ||
             ctx.is(LIST_LBRACKET, LIST_RBRACKET) || ctx.is(MAP_LBRACKET, MAP_RBRACKET))
@@ -648,9 +647,9 @@ ExpressionPtr Parser::parseAtom(Context &_ctx, int _nFlags) {
             pExpr = new Literal();
             break;
         case LPAREN: {
-            Context *pCtx = ctx.createChild(false);
+            Context *pCtx = ctx.createChild(false, ctx.getFlags());
             ++(*pCtx);
-            pExpr = parseExpression(*pCtx, _nFlags);
+            pExpr = parseExpression(*pCtx);
             if (!pExpr || !pCtx->consume(RPAREN)) {
                 // Try to parse as a struct literal.
                 pCtx = ctx.createChild(false);
@@ -704,7 +703,7 @@ ExpressionPtr Parser::parseAtom(Context &_ctx, int _nFlags) {
             break;
         case FORALL:
         case EXISTS:
-            if (_nFlags & ALLOW_FORMULAS)
+            if (ctx.getFlags() & ALLOW_FORMULAS)
                 pExpr = parseFormula(ctx);
             break;
     }
@@ -744,7 +743,7 @@ ExpressionPtr Parser::parseAtom(Context &_ctx, int _nFlags) {
 
         FormulaDeclarationPtr pFormula;
 
-        if (!pExpr && (_nFlags & ALLOW_FORMULAS) && (pFormula = ctx.getFormula(str))) {
+        if (!pExpr && (ctx.getFlags() & ALLOW_FORMULAS) && (pFormula = ctx.getFormula(str))) {
             FormulaCallPtr pCall = new FormulaCall();
 
             ++ctx;
@@ -793,7 +792,7 @@ ExpressionPtr Parser::parseAtom(Context &_ctx, int _nFlags) {
 
     if (pExpr && bAllowTypes && ctx.consume(DOUBLE_DOT)) {
         // Can be a range.
-        ExpressionPtr pMax = parseExpression(ctx, _nFlags);
+        ExpressionPtr pMax = parseExpression(ctx);
 
         if (!pMax)
             return NULL;
@@ -809,9 +808,9 @@ ExpressionPtr Parser::parseAtom(Context &_ctx, int _nFlags) {
     return pExpr;
 }
 
-ExpressionPtr Parser::parseSubexpression(Context &_ctx, const ExpressionPtr &_pLhs, int _minPrec, int _nFlags)
+ExpressionPtr Parser::parseSubexpression(Context &_ctx, const ExpressionPtr &_pLhs, int _minPrec)
 {
-    Context &ctx = *_ctx.createChild(false);
+    Context &ctx = *_ctx.createChild(false, _ctx.getFlags());
     bool bParseElse = false;
     ExpressionPtr pLhs = _pLhs;
 
@@ -825,9 +824,9 @@ ExpressionPtr Parser::parseSubexpression(Context &_ctx, const ExpressionPtr &_pL
         const int tokRHS = ctx.getToken();
 
         if (getUnaryOp(tokRHS) >= 0) {
-            pRhs = parseSubexpression(ctx, NULL, nPrec + 1, _nFlags);
+            pRhs = parseSubexpression(ctx, NULL, nPrec + 1);
         } else {
-            pRhs = parseAtom(ctx, _nFlags);
+            pRhs = parseAtom(ctx);
         }
 
         if (!pRhs)
@@ -835,7 +834,7 @@ ExpressionPtr Parser::parseSubexpression(Context &_ctx, const ExpressionPtr &_pL
 
         while (getPrecedence(ctx.getToken(), bParseElse) > nPrec) {
             if (ExpressionPtr rhsNew =
-                    parseSubexpression(ctx, pRhs, getPrecedence(ctx.getToken(), bParseElse), _nFlags))
+                    parseSubexpression(ctx, pRhs, getPrecedence(ctx.getToken(), bParseElse)))
                 pRhs = rhsNew;
             else
                 return NULL;
@@ -891,14 +890,14 @@ ExpressionPtr Parser::parseSubexpression(Context &_ctx, const ExpressionPtr &_pL
     return pLhs;
 }
 
-ExpressionPtr Parser::parseExpression(Context &_ctx, int _nFlags) {
-    ExpressionPtr pExpr = parseAtom(_ctx, _nFlags);
+ExpressionPtr Parser::parseExpression(Context &_ctx) {
+    ExpressionPtr pExpr = parseAtom(_ctx);
 
     if (!pExpr) {
         Context * pCtx = _ctx.getChild();
 
         _ctx.setChild(NULL);
-        pExpr = parseSubexpression(_ctx, pExpr, 0, _nFlags);
+        pExpr = parseSubexpression(_ctx, pExpr, 0);
 
         // Restore context if parsing failed.
         if (!pExpr && pCtx != NULL && !pCtx->getMessages().empty())
@@ -909,7 +908,7 @@ ExpressionPtr Parser::parseExpression(Context &_ctx, int _nFlags) {
         return pExpr;
     }
 
-    return parseSubexpression(_ctx, pExpr, 0, _nFlags);
+    return parseSubexpression(_ctx, pExpr, 0);
 }
 
 template<class _Pred>
@@ -917,48 +916,52 @@ bool Parser::parsePreconditions(Context &_ctx, _Pred &_pred, branch_map_t &_bran
     if (!_ctx.consume(PRE))
         return false;
 
+    Context &ctx = *_ctx.createChild(false, ALLOW_FORMULAS);
+
     branch_map_t::iterator iBranch = _branches.end();
 
-    if (_ctx.in(LABEL, IDENTIFIER, INTEGER) && _ctx.nextIs(COLON))
-        iBranch = _branches.find(_ctx.getValue());
+    if (ctx.in(LABEL, IDENTIFIER, INTEGER) && ctx.nextIs(COLON))
+        iBranch = _branches.find(ctx.getValue());
 
     if (iBranch != _branches.end()) {
         BranchPtr pBranch = iBranch->second;
 
-        _ctx.skip(2);
+        ctx.skip(2);
 
-        if (ExpressionPtr pFormula = parseExpression(_ctx, ALLOW_FORMULAS)) {
+        if (ExpressionPtr pFormula = parseExpression(ctx)) {
             if (pFormula->getKind() == Expression::FORMULA)
                 pBranch->setPreCondition(pFormula.as<Formula>());
             else
                 pBranch->setPreCondition(new Formula(Formula::NONE, pFormula));
         } else
-            ERROR(_ctx, false, L"Formula expected");
+            ERROR(ctx, false, L"Formula expected");
     } else {
-        if (ExpressionPtr pFormula = parseExpression(_ctx, ALLOW_FORMULAS)) {
+        if (ExpressionPtr pFormula = parseExpression(ctx)) {
             if (pFormula->getKind() == Expression::FORMULA)
                 _pred.setPreCondition(pFormula.as<Formula>());
             else
                 _pred.setPreCondition(new Formula(Formula::NONE, pFormula));
         } else
-            ERROR(_ctx, false, L"Formula expected");
+            ERROR(ctx, false, L"Formula expected");
     }
 
-    while (_ctx.consume(PRE)) {
-        BranchPtr pBranch = _branches[_ctx.getValue()];
+    while (ctx.consume(PRE)) {
+        BranchPtr pBranch = _branches[ctx.getValue()];
 
-        if (!_ctx.in(LABEL, IDENTIFIER, INTEGER) || !_ctx.nextIs(COLON) || !pBranch)
-            ERROR(_ctx, false, L"Branch name expected");
+        if (!ctx.in(LABEL, IDENTIFIER, INTEGER) || !ctx.nextIs(COLON) || !pBranch)
+            ERROR(ctx, false, L"Branch name expected");
 
-        _ctx.skip(2);
+        ctx.skip(2);
 
-        if (ExpressionPtr pFormula = parseExpression(_ctx, ALLOW_FORMULAS)) {
+        if (ExpressionPtr pFormula = parseExpression(ctx)) {
             if (pFormula->getKind() != Expression::FORMULA)
                 pFormula = new Formula(Formula::NONE, pFormula);
             pBranch->setPreCondition(pFormula.as<Formula>());
         } else
-            ERROR(_ctx, NULL, L"Formula expected");
+            ERROR(ctx, NULL, L"Formula expected");
     }
+
+    _ctx.mergeChildren();
 
     return true;
 }
@@ -968,30 +971,34 @@ bool Parser::parsePostconditions(Context &_ctx, _Pred &_pred, branch_map_t &_bra
     if (!_ctx.is(POST))
         return false;
 
+    Context &ctx = *_ctx.createChild(false, ALLOW_FORMULAS);
+
     if (_pred.isHyperFunction()) {
-        while (_ctx.consume(POST)) {
-            BranchPtr pBranch = _branches[_ctx.getValue()];
+        while (ctx.consume(POST)) {
+            BranchPtr pBranch = _branches[ctx.getValue()];
 
-            if (!_ctx.in(LABEL, IDENTIFIER, INTEGER) || !_ctx.nextIs(COLON) || !pBranch)
-                ERROR(_ctx, false, L"Branch name expected");
+            if (!ctx.in(LABEL, IDENTIFIER, INTEGER) || !ctx.nextIs(COLON) || !pBranch)
+                ERROR(ctx, false, L"Branch name expected");
 
-            _ctx.skip(2);
+            ctx.skip(2);
 
-            if (ExpressionPtr pFormula = parseExpression(_ctx, ALLOW_FORMULAS)) {
+            if (ExpressionPtr pFormula = parseExpression(ctx)) {
                 if (pFormula->getKind() != Expression::FORMULA)
                     pFormula = new Formula(Formula::NONE, pFormula);
                 pBranch->setPostCondition(pFormula.as<Formula>());
             } else
-                ERROR(_ctx, NULL, L"Formula expected");
+                ERROR(ctx, NULL, L"Formula expected");
         }
-    } else if (_ctx.consume(POST)) {
-        if (ExpressionPtr pFormula = parseExpression(_ctx, ALLOW_FORMULAS)) {
+    } else if (ctx.consume(POST)) {
+        if (ExpressionPtr pFormula = parseExpression(ctx)) {
             if (pFormula->getKind() != Expression::FORMULA)
                 pFormula = new Formula(Formula::NONE, pFormula);
             _pred.setPostCondition(pFormula.as<Formula>());
         } else
-            ERROR(_ctx, false, L"Formula expected");
+            ERROR(ctx, false, L"Formula expected");
     }
+
+    _ctx.mergeChildren();
 
     return true;
 }
@@ -1308,8 +1315,8 @@ NamedReferenceTypePtr Parser::parseTypeReference(Context &_ctx) {
 }
 
 RangePtr Parser::parseRange(Context &_ctx) {
-    Context &ctx = *_ctx.createChild(false);
-    ExpressionPtr pMin = parseSubexpression(ctx, parseAtom(ctx, RESTRICT_TYPES), 0);
+    Context &ctx = *_ctx.createChild(false, RESTRICT_TYPES);
+    ExpressionPtr pMin = parseSubexpression(ctx, parseAtom(ctx), 0);
 
     if (!pMin)
         return NULL;
@@ -1759,14 +1766,14 @@ StructFieldDefinitionPtr Parser::parseFieldDefinition(Context &_ctx) {
 }
 
 StructFieldDefinitionPtr Parser::parseConstructorField(Context &_ctx) {
-    Context &ctx = *_ctx.createChild(false);
+    Context &ctx = *_ctx.createChild(false, RESTRICT_TYPES);
     StructFieldDefinitionPtr pField = new StructFieldDefinition();
     std::wstring strIdent;
 
     if (ctx.is(IDENTIFIER))
         strIdent = ctx.getValue();
 
-    if (ExpressionPtr pExpr = parseExpression(ctx, RESTRICT_TYPES)) {
+    if (ExpressionPtr pExpr = parseExpression(ctx)) {
         pField->setValue(pExpr);
     } else {
         VariableDeclarationPtr pDecl = parseVariableDeclaration(ctx, LOCAL_VARIABLE);
@@ -2573,17 +2580,17 @@ FormulaDeclarationPtr Parser::parseFormulaDeclaration(Context &_ctx) {
     if (!_ctx.is(FORMULA, IDENTIFIER))
         return NULL;
 
-    Context *pCtx = _ctx.createChild(false);
+    Context *pCtx = _ctx.createChild(false, ALLOW_FORMULAS);
     FormulaDeclarationPtr pDecl = new FormulaDeclaration(pCtx->scan(2, 1));
 
     pCtx->addFormula(pDecl);
-    pCtx = pCtx->createChild(true);
+    pCtx = pCtx->createChild(true, ALLOW_FORMULAS);
 
     if (!pCtx->consume(LPAREN))
         UNEXPECTED(*pCtx, "(");
 
     if (!pCtx->consume(RPAREN)) {
-        pCtx = pCtx->createChild(true);
+        pCtx = pCtx->createChild(true, ALLOW_FORMULAS);
 
         if (!parseParamList(*pCtx, pDecl->getParams(), &Parser::parseVariableName))
             return NULL;
@@ -2600,7 +2607,7 @@ FormulaDeclarationPtr Parser::parseFormulaDeclaration(Context &_ctx) {
     }
 
     if (pCtx->consume(EQ)) {
-        if (ExpressionPtr pFormula = parseExpression(* pCtx, ALLOW_FORMULAS))
+        if (ExpressionPtr pFormula = parseExpression(*pCtx))
             pDecl->setFormula(pFormula);
         else
             return NULL;
@@ -2610,6 +2617,25 @@ FormulaDeclarationPtr Parser::parseFormulaDeclaration(Context &_ctx) {
     _ctx.addFormula(pDecl);
 
     return pDecl;
+}
+
+LemmaDeclarationPtr Parser::parseLemmaDeclaration(Context &_ctx) {
+    if (!_ctx.is(LEMMA))
+        return NULL;
+
+    Context &ctx = *_ctx.createChild(false, ALLOW_FORMULAS);
+    LemmaDeclarationPtr pLemma = new LemmaDeclaration();
+
+    ++ctx;
+
+    if (ExpressionPtr pProposition = parseExpression(ctx))
+        pLemma->setProposition(pProposition);
+    else
+        ERROR(ctx, NULL, L"Failed parsing lemma proposition");
+
+    _ctx.mergeChildren();
+
+    return pLemma;
 }
 
 Context *Parser::parsePragma(Context &_ctx) {
@@ -2772,13 +2798,9 @@ bool Parser::parseDeclarations(Context &_ctx, Module &_module) {
                     ERROR(* pCtx, false, L"Failed parsing formula declaration");
                 break;
             case LEMMA:
-                ++*pCtx;
-                if (ExpressionPtr pProposition = parseExpression(*pCtx, ALLOW_FORMULAS)) {
-                    LemmaDeclarationPtr pLemma = new LemmaDeclaration();
-
-                    pLemma->setProposition(pProposition);
+                if (LemmaDeclarationPtr pLemma = parseLemmaDeclaration(*pCtx))
                     _module.getLemmas().add(pLemma);
-                } else
+                else
                     ERROR(*pCtx, false, L"Failed parsing lemma declaration");
                 break;
             case PRAGMA:

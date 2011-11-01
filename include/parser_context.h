@@ -100,10 +100,11 @@ public:
     typedef std::list<ir::NodePtr> Nodes;
 
 public:
-    Context(lexer::Loc _loc, bool _bScope = false)
+    Context(lexer::Loc _loc, bool _bScope = false, int _flags = 0)
         : m_loc(_loc), m_bScope(_bScope), m_pChild(NULL), m_pParent(NULL), m_pFailed(NULL),
           m_modules(NULL), m_predicates(NULL), m_variables(NULL), m_types(NULL), m_labels(NULL),
-          m_processes(NULL), m_formulas(NULL), m_constructors(NULL), m_bFailed(false), m_pCons(NULL)
+          m_processes(NULL), m_formulas(NULL), m_constructors(NULL), m_bFailed(false), m_pCons(NULL),
+          m_flags(_flags)
     {}
 
     ~Context();
@@ -114,7 +115,7 @@ public:
     Context *getChild() const { return m_pChild; }
     void setChild(Context *_pChild) { m_pChild = _pChild; }
 
-    Context *createChild(bool _bScope = false);
+    Context *createChild(bool _bScope = false, int _flags = 0);
 
     void mergeChildren(bool _bMergeFailed = false);
 
@@ -196,6 +197,9 @@ public:
     int getRealBits() const;
     const ir::Overflow &getOverflow() const;
 
+    int getFlags() const;
+    void setFlags(int _flags);
+
 private:
     lexer::Loc m_loc;
     bool m_bScope;
@@ -212,6 +216,7 @@ private:
     bool m_bFailed;
     Pragma m_pragma;
     ir::UnionConstructorPtr m_pCons;
+    int m_flags;
 
     void mergeTo(Context *_pCtx, bool _bMergeFailed);
 };
