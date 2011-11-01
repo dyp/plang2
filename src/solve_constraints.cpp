@@ -35,7 +35,7 @@ protected:
     bool refute(tc::Formula &_f);
     bool expandPredicate(int _kind, const PredicateTypePtr &_pLhs,
             const PredicateTypePtr &_pRhs, tc::FormulaList &_formulas);
-    bool expandStruct(int _kind, const StructTypePtr &_pLhs, const StructTypePtr &_pRhs, tc::FormulaList &_formulas);
+    bool expandStruct(int _kind, const StructTypePtr &_pLhs, const StructTypePtr &_pRhs, tc::FormulaList &_formulas, bool _bAllowCompound);
     bool expandSet(int _kind, const SetTypePtr &_pLhs, const SetTypePtr &_pRhs, tc::FormulaList &_formulas);
     bool expandList(int _kind, const ListTypePtr &_pLhs, const ListTypePtr &_pRhs, tc::FormulaList &_formulas);
     bool expandMap(int _kind, const MapTypePtr &_pLhs, const MapTypePtr &_pRhs, tc::FormulaList &_formulas);
@@ -666,7 +666,7 @@ bool Solver::expandPredicate(int _kind, const PredicateTypePtr &_pLhs,
 }
 
 bool Solver::expandStruct(int _kind, const StructTypePtr &_pLhs, const StructTypePtr &_pRhs,
-        tc::FormulaList & _formulas)
+        tc::FormulaList & _formulas, bool _bAllowCompound)
 {
     size_t cSub = 0, cSuper = 0, cUnknown = 0;
     const size_t cOrdFieldsL = _pLhs->getNamesOrd().size() + _pLhs->getTypesOrd().size();
@@ -733,7 +733,7 @@ bool Solver::expandStruct(int _kind, const StructTypePtr &_pLhs, const StructTyp
     if (pStrict) {
         if (pStrict->size() == 1)
             _formulas.push_back(*pStrict->getPart(0).begin());
-        else if (pStrict->size() > 1)
+        else if (_bAllowCompound && pStrict->size() > 1)
             _formulas.push_back(pStrict);
     }
 
@@ -793,7 +793,8 @@ bool Solver::expand(int &_result) {
             if (pLhs->getKind() == Type::PREDICATE && pRhs->getKind() == Type::PREDICATE)
                 bResult = expandPredicate(f.getKind(), pLhs.as<PredicateType>(), pRhs.as<PredicateType>(), formulas);
             else if (pLhs->getKind() == Type::STRUCT && pRhs->getKind() == Type::STRUCT)
-                bResult = expandStruct(f.getKind(), pLhs.as<StructType>(), pRhs.as<StructType>(), formulas);
+                bResult = expandStruct(f.getKind(), pLhs.as<StructType>(), pRhs.as<StructType>(),
+                        formulas, !context().pParent);
             else if (pLhs->getKind() == Type::SET && pRhs->getKind() == Type::SET)
                 bResult = expandSet(f.getKind(), pLhs.as<SetType>(), pRhs.as<SetType>(), formulas);
             else if (pLhs->getKind() == Type::LIST && pRhs->getKind() == Type::LIST)
