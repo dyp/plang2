@@ -9,6 +9,7 @@
 	/Foo/Baz/ModuleParam = j
 	/Foo/Baz/VarDecl/VarDeclVar = q
 	/Foo/Baz/VarDecl/VarDeclVar/Type = Quux
+	/Foo/Bar/VarDecl/VarDeclVar = k
 </test>
 
 */
@@ -21,4 +22,5 @@ module Bar {
 
 module Baz(type Quux, int j) {
 	Quux q;
+	int k = Bar.i;
 }
