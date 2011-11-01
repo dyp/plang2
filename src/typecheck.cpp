@@ -361,8 +361,8 @@ void _check(Context &_fs) {
             bool b2 = cmp(p2, p1);
 
             if (!b1 || b2) {
-                std::wcout << std::endl << L"Inconsistency at " << c << ":" << std::endl;
-                prettyPrint(_fs, std::wcout);
+                std::wcerr << std::endl << L"Inconsistency at " << c << ":" << std::endl;
+                prettyPrint(_fs, std::wcerr);
                 b1 = cmp(p1, p2);
                 b2 = cmp(p2, p1);
             }
