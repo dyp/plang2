@@ -84,13 +84,14 @@ int FreshType::getFlags() const {
 }
 
 void FreshType::setFlags(int _flags) {
-    assert(!ContextStack::empty());
-    ContextStack::top()->flags().set(m_cOrd, _flags);
+    assert(_flags == 0 || !ContextStack::empty());
+    if (!ContextStack::empty())
+        ContextStack::top()->flags().set(m_cOrd, _flags);
 }
 
 int FreshType::addFlags(int _flags) {
-    assert(!ContextStack::empty());
-    return ContextStack::top()->flags().add(m_cOrd, _flags);
+    assert(_flags == 0 || !ContextStack::empty());
+    return ContextStack::empty() ? 0 : ContextStack::top()->flags().add(m_cOrd, _flags);
 }
 
 ir::NodePtr FreshType::clone(Cloner &_cloner) const {
