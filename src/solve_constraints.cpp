@@ -148,9 +148,8 @@ bool Solver::infer(int & _result) {
 
         tc::Relations::iterator j = relations.find(new tc::Relation(f));
 
-        assert(j != relations.end());
-
-        if (!(*j)->bUsed) {
+        // Missing formula could have been replaced by Lattice::update() as a result of applying substs.
+        if (j == relations.end() || !(*j)->bUsed) {
             context()->erase(i);
             bModified = true;
         }
@@ -940,7 +939,7 @@ bool Solver::sequence(int &_result) {
     bool bModified = false;
     bool bIterationModified;
     size_t cStep = 0;
-    struct { Operation op; bool bNextIteration; std::wstring title; } ops[] = {
+    struct { Operation op; bool bFreshIteration; std::wstring title; } ops[] = {
             &Solver::unify,     false, L"Unify",
             &Solver::lift,      false, L"Lift",
             &Solver::prune,     false, L"Prune",
@@ -960,6 +959,9 @@ bool Solver::sequence(int &_result) {
         bIterationModified = false;
 
         for (size_t i = 0; ops[i].op; ++i) {
+            if (bIterationModified && ops[i].bFreshIteration)
+                break;
+
             if ((this->*ops[i].op)(_result)) {
                 if (Options::instance().bVerbose) {
                     std::wcout << std::endl << ops[i].title << L" [" << cStep << L"]:" << std::endl;
@@ -968,7 +970,7 @@ bool Solver::sequence(int &_result) {
 
                 bIterationModified = true;
 
-                if (_result == tc::Formula::FALSE || ops[i].bNextIteration)
+                if (_result == tc::Formula::FALSE)
                     break;
             }
         }
