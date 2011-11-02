@@ -29,4 +29,4 @@ set(TESTS_INFERENCE
 )
 
 run_tests("-t0" "${TESTS_PARSING}")
-run_tests("-t1" "${TESTS_INFERENCE}")
+run_tests("-t2" "${TESTS_INFERENCE}")

@@ -223,7 +223,7 @@ private:
     bool isTypeName(Context &_ctx, const std::wstring &_name) const;
     bool fixupAsteriskedParameters(Context &_ctx, Params &_in, Params &_out);
 
-    void typecheck(Context &_ctx, Node &_node);
+    bool typecheck(Context &_ctx, Node &_node);
 };
 
 template<class _Node, class _Base>
@@ -2734,9 +2734,9 @@ Context *Parser::parsePragma(Context &_ctx) {
     return &ctx;
 }
 
-void Parser::typecheck(Context &_ctx, Node &_node) {
+bool Parser::typecheck(Context &_ctx, Node &_node) {
     if (Options::instance().typeCheck == TC_NONE)
-        return;
+        return true;
 
     tc::Formulas constraints, substs;
 
@@ -2744,6 +2744,10 @@ void Parser::typecheck(Context &_ctx, Node &_node) {
 
     if (tc::solve(constraints, substs))
         tc::apply(substs, _node);
+    else if (Options::instance().typeCheck != TC_SOFT)
+        ERROR(_ctx, false, L"Type error");
+
+    return true;
 }
 
 bool Parser::parseDeclarations(Context &_ctx, Module &_module) {
@@ -2761,7 +2765,8 @@ bool Parser::parseDeclarations(Context &_ctx, Module &_module) {
                 if (! pCtx->getType(pCtx->getValue())) {
                     if (PredicatePtr pPred = parsePredicate(*pCtx)) {
                         _module.getPredicates().add(pPred);
-                        typecheck(*pCtx, *pPred);
+                        if (!typecheck(*pCtx, *pPred))
+                            return false;
                     } else
                         ERROR(*pCtx, false, L"Failed parsing predicate");
                     break;
@@ -2773,7 +2778,8 @@ bool Parser::parseDeclarations(Context &_ctx, Module &_module) {
                     if (!pCtx->consume(SEMICOLON))
                         ERROR(*pCtx, false, L"Semicolon expected");
                     _module.getVariables().add(pDecl);
-                    typecheck(*pCtx, *pDecl);
+                    if (!typecheck(*pCtx, *pDecl))
+                        return false;
                 } else
                     ERROR(* pCtx, false, L"Failed parsing variable declaration");
                 break;

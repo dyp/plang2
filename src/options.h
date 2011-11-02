@@ -20,6 +20,7 @@ enum {
 enum {
     TC_NONE = 0,
     TC_ON   = 1,
+    TC_SOFT = 2,
 };
 
 // Back end.

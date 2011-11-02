@@ -51,6 +51,8 @@ bool _handleTypeCheck(const std::string &_val, void *_p) {
         opts.typeCheck = TC_NONE;
     else if (_val == "on" || _val == "1")
         opts.typeCheck = TC_ON;
+    else if (_val == "soft" || _val == "2")
+        opts.typeCheck = TC_SOFT;
     else
         return false;
 
@@ -71,7 +73,7 @@ void _printUsage() {
         << "Options\n\n"
         << "    -p, --prettyprint=TYPE        Pretty-printer mode, where TYPE is 'none' (0), 'flat' (1), 'ast' (2), 'lex' (3), 'p' (4)\n"
         << "    -b, --backend=TYPE            Use backend, where TYPE is 'none' (0), 'pp' (1), 'c' (2)\n"
-        << "    -t, --typecheck=TYPE          Do typecheck, where TYPE is 'none' (0), 'on' (1)\n"
+        << "    -t, --typecheck=TYPE          Do typecheck, where TYPE is 'none' (0), 'on' (1), 'soft' (2)\n"
         << "    -o, --output=FILE             Output file name\n"
         << "    -v, --verbose                 Print debug info\n"
         << "    -s, --check-semantics         Generate logical conditions for proving semantic correctness\n"
