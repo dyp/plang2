@@ -167,7 +167,7 @@ bool Number::isInt() const {
 }
 
 bool Number::isNat() const {
-    return m_fSpecial == 0 && m_qValue.get_den() == 1 && m_qValue > 0;
+    return m_fSpecial == 0 && m_qValue.get_den() == 1 && m_qValue >= 0;
 }
 
 bool Number::isNeg() const {
@@ -272,9 +272,10 @@ int Number::countBits(bool _bSigned) const {
     mpz_class zValue = m_qValue.get_num();
 
     if (zValue < 0)
-        zValue = (-zValue - 1)*2;
-    else if (_bSigned)
-        zValue *= 2;
+        zValue = -zValue - 1;
+
+    if (_bSigned)
+        zValue = std::max(mpz_class(zValue*2), mpz_class(2));
 
     const int nBits = mpz_sizeinbase(zValue.get_mpz_t(), 2);
 
