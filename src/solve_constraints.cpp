@@ -177,7 +177,7 @@ bool Solver::infer(int & _result) {
 
         prettyPrint(*pTest, std::wcerr);
 
-        iNext = next(i);
+        iNext = ::next(i);
         context()->erase(i);
 
         for (tc::Formulas::iterator j = iCF; j != context()->end(); ++j) {

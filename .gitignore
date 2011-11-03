@@ -1,6 +1,9 @@
 # Confilcts.
 *.orig
 
+# MSVS files.
+*.filters
+
 # Eclipse project files.
 .settings
 .project

@@ -103,6 +103,7 @@
     <ClCompile Include="src\prettyprinter.cpp" />
     <ClCompile Include="src\solve_constraints.cpp" />
     <ClCompile Include="src\typecheck.cpp" />
+    <ClCompile Include="src\type_lattice.cpp" />
     <ClCompile Include="src\utils.cpp" />
   </ItemGroup>
   <ItemGroup>

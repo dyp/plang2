@@ -129,7 +129,7 @@ public:
     //FIXME
     bool needsParen() {
 
-        std::list<Visitor::Loc>::iterator i = prev(m_path.end());
+        std::list<Visitor::Loc>::iterator i = ::prev(m_path.end());
 
         //if child NODE is not expresssion return false
         if (i->pNode->getNodeKind() != ir::Node::EXPRESSION)
