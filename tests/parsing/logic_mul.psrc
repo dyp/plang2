@@ -27,10 +27,13 @@ formula P(nat a, b) = a >= 0 & b >= 0;
 lemma forall nat a, b . P(a, b) & a != 0 => a - 1 >= 0;
 
 // Verification:
-formula Q(nat a, b, c) = c = a*b;
-formula m(nat a: nat) = a;
-lemma forall nat a, b . P(a, b) & a != 0 => a - 1 >= 0;
-lemma forall nat a, b . P(a, b) => exists nat c . Q(a, b, c);
-lemma forall nat a, b, c . P(a, b) & Q(a, b, c) & a != 0 => m(a - 1) < m(a) & P(a - 1, b);
-lemma forall nat a, b, c, x . P(a, b) & Q(a, b, c) & a != 0 & Q(a - 1, b, x) => c = a * x;
+formula P(nat a, b) = a >= 0 & b >= 0;
+formula Q(nat a, b, c) = c = (a * b);
+formula m(nat a : nat) = a;
+lemma forall nat a, b. P(a, b) & a = 0 => exists nat c. c = 0;
+lemma forall nat a, b, c. P(a, b) & a = 0 & c = 0 => Q(a, b, c);
+lemma forall nat a, b. P(a, b) & a != 0 => m(a - 1) < m(a) & P(a - 1, b);
+lemma forall nat a, b, d. P(a, b) & a != 0 & Q(a - 1, b, d) => exists nat c. c = b + d;
+lemma forall nat a, b, d, c. P(a, b) & a != 0 & Q(a - 1, b, d) & c = (b + d) => Q(a, b, c);
+
 
