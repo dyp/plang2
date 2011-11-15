@@ -109,6 +109,8 @@ public:
     /// \returns Expression kind.
     virtual int getKind() const = 0;
 
+    virtual bool matches(const Expression& _other) const { return (getKind() == WILD) || (_other.getKind() == WILD) || (_other.getKind() == getKind()); }
+
     /// Get type of the expression.
     /// \returns Type associated with expression.
     virtual TypePtr getType() const { return m_pType; }
@@ -383,6 +385,10 @@ public:
     /// \return #Unary.
     virtual int getKind() const { return UNARY; }
 
+    virtual bool matches(const Expression& _other) const {
+        return Expression::matches(_other) && (_other.getKind() == getKind() ? ((const Unary &)_other).getOperator() == getOperator() : true);
+    }
+
     /// Get operator.
     /// \return Operator (one of #Minus, #BoolNegate and #BitwiseNegate).
     int getOperator() const { return m_operator; }
@@ -505,6 +511,10 @@ public:
     /// Get expression kind.
     /// \return #Binary.
     virtual int getKind() const { return BINARY; }
+
+    virtual bool matches(const Expression& _other) const {
+        return Expression::matches(_other) && (_other.getKind() == getKind() ? ((const Binary &)_other).getOperator() == getOperator() : true);
+    }
 
     /// Get operator.
     /// \return Operator (#Add, #Subtract, etc.)

@@ -39,6 +39,14 @@ NODE(CallBranch)
 NODE(NamedValues)
 #undef NODE
 
+class Node;
+
+template<class _Node, class _Base = Node>
+class Collection;
+
+typedef Collection<Node> Nodes;
+typedef Auto<Nodes> NodesPtr;
+
 /// Base class for all internal representation objects.
 ///
 /// Purpose of Node class is to provide management of deallocation of IR objects
@@ -88,8 +96,11 @@ public:
 
     virtual int getNodeKind() const { return NONE; }
 
+    virtual NodesPtr getChildren() const;
+
     // \returns Deep copy of the node.
     virtual NodePtr clone(Cloner &_cloner) const { return NULL; }
+
 };
 
 /// Collection of homogeneous nodes.
@@ -101,7 +112,7 @@ public:
 ///
 /// The elements are stored in separate list than children and are not required
 /// to be the children of the collection.
-template<class _Node, class _Base = Node>
+template<class _Node, class _Base>
 class Collection : public _Base {
 public:
     /// Default constructor.
