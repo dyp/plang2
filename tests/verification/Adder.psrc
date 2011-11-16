@@ -1,0 +1,50 @@
+module CумматорПоследовательногоПереноса;
+
+type bit = bool;
+
+formula b2n(bit x: nat) = x ? 1 : 0;
+formula fullAdder1(bit x, y, cin, z, cout) =
+    b2n(x) + b2n(y) + b2n(cin) = b2n(z) + 2*b2n(cout);
+
+fullAdder(bit a, b, cin: bit s, cout)
+pre true
+{
+    bit t = a ^ b;
+    {
+        s = t ^ cin ||
+        cout = a & b or cin & t
+    }
+}
+post fullAdder1(a, b, cin, s, cout);
+
+type below(nat n) = 0 .. n-1;
+type bvec(nat n) = array(bit, 0 .. n-1);
+
+formula recVal(nat n, i, bvec(n) a: nat) = i = 0 ? a[0] : recVal(n, i-1, a) + a[i] * 2^i;
+formula val(nat n, bvec(n) a: nat) = recVal(n, n-1, a);
+
+formula adder(nat n, bvec(n) a, b, bit cin, bvec(n) s, bit cout) =
+    val(n, a) + val(n, b) + b2n(cin) = val(n, s) + b2n(cout) * 2^n;
+
+formula adderRip(nat n, bvec(n) a, b, bit cin, bvec(n) s, bvec(n+1) c) =
+    c[0] = cin & forall below(n) j. fullAdder1(a[j], b[j], c[j], s[j], c[j+1]);
+
+ripple1(nat n, bvec(n) a, bvec(n) b, bit cin: bvec(n) s, bvec(n+1) c)
+pre true
+{
+    c = for (var i) {
+        case 0: cin
+        default: 0
+    };
+    s = for (var i)
+        fullAdder(a[i], b[i], c[i], s[i], c[i+1])
+}
+post adderRip(n, a, b, cin, s, c);
+
+сумматорПоследовательногоПереноса(nat n, bvec(n) a, b, bit cin: bvec(n) s, bit cout)
+pre true
+{
+    ripple1(n, a, b, cin: s, bvec(n+1) c);
+    cout = c[n];
+}
+post adder(n, a, b, cin, s, cout);
