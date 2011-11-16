@@ -1,4 +1,6 @@
 \documentclass[10pt,a4paper]{article}
+\usepackage[a4paper]{geometry}
+\geometry{verbose,tmargin=3cm,bmargin=3cm,lmargin=3cm,rmargin=3cm,headheight=1cm,headsep=1cm,footskip=1cm}
 \usepackage[utf8x]{inputenc}
 \usepackage[russian]{babel}
 \usepackage{amsmath}
@@ -181,7 +183,7 @@ formula spec_A(x, y, z) = P_A(x) & (P1_A(x) => Q1_A(x, y));
 
 Образ генератора предиката, конструкции \underline{\textbf{predicate}} <определение предиката>, такой же, как и для определения предиката, что описано выше. При этом образ генератора предиката помещается в ту же теорию, что и образ определения предиката, содержащего генератор. Генератор предиката либо является аргументом некоторого вызова предиката, либо является результатом предиката, в теле которого находится. Привязка генератора к аргументу вызова или к результату предиката может проводиться также через локальную переменную предикактного типа. Таким образом, генератор ассоциирован с аргументом или результатом предикатного типа. Предусловие и постусловие предикатного типа используются в качестве предусловия и постусловия генератора при получении образа предиката. Здесь должно проводиться доказательство по системе правил общего вида с возможно неоднозначной спецификацией, поскольку программы с параметрами предикатного типа как правило имеют неоднозначную спецификацию.
 
-\section{Правила декомпозиции доказательства корректности в случае однозначной спецификации}
+\section{Правила декомпозиции доказательства корректности в случае произвольной спецификации}
 
 Предположим, что наборы x, y и z – не пересекаются, а набор x может быть пустым.
 
@@ -199,14 +201,13 @@ formula spec_A(x, y, z) = P_A(x) & (P1_A(x) => Q1_A(x, y));
 {Corr(A,~t, ~\mathbf{if}~(E)~B(x:~y)~\mathbf{else}~C(x:~y),~P(x),~Q(x, y))}
 
 \ruleII{QS}
-{P(x) \vdash \exists z.~L(B(x:~z));~~L(B(x: z)) \vdash \exists y.~L(C(z:~y));}
-{\exists z.~L(B(x:~z)) \land L(C(z:~y)) \vdash Q(x,~y)}
+{P(x) \vdash \exists z.~L(B(x:~z));}
+{Corr(A,~t,~C(z:~y),~P(x) \land L(B(x:~z)),~Q(x,~y))}
 {Corr(A,~t,~B(x:~z);~C(z:~y),~P(x),~Q(x,~y))}
 
-\ruleIII{QS1}
-{Corr(A,~t,~B,~P_B,~Q_B);}
-{P(x) \vdash P_B(x) \land \forall z.~(Q_B(x,~z) \Rightarrow \exists y.~L(C(z:~y)));}
-{P(x) \land \exists z.~Q_B(x,~z) \land L(C(z:~y)) \vdash Q(x,~y)}
+\ruleII{QSB}
+{Corr(A,~t,~B,~P_B,~Q_B);~~P(x) \vdash P_B(x)}
+{Corr(A,~t,~C(z:~y),~P(x) \land Q_B(x,~z),~Q(x,~y))}
 {Corr(A,~t,~B(x:~z);C(z:~y),~P(x),~Q(x,~y))}
 
 \subsection{Операторы суперпозиции, параллельный и условный операторы с корректными подоператорами.}
@@ -503,19 +504,113 @@ $ A(x:~y) \equiv P(x)~\{ \ldots B(u,~A(u):~z) \ldots \}~Q(x,~y) $
 {R(u,~x,~z) \land Q(u,~y) \vdash L(B(u,~y:~z))}
 {Induct(x) \land R(u,~x,~z) \vdash L(B(u,~A(u):~z))}
 
-
 \section{Алгоритм генерации формул корректности на примере}
 
 Дадим иллюстацию работы алгоритма на примере программы умножения натуральных чисел через сложение:
 
 \begin{lstlisting}
-mult(nat a, b: nat c) =
-    pre a >= 0 & b >= 0
-    { if (a = 0) c = 0 else c = b + mult(a – 1, b) }
-    post c = a * b
-    measure a;
+mult(nat a, b: nat c)
+pre a >= 0 & b >= 0
+{
+    if (a = 0)
+        c = 0
+    else
+        c = b + mult(a – 1, b);
+}
+post c = a * b
+measure a;
 \end{lstlisting}
 
-Представим начальную часть теории для определения предиката mult.
+Представим начальную часть теории для определения предиката mult:
+
+\begin{lstlisting}
+module mult;
+formula P(nat a, b) = a >= 0 & b >= 0;
+formula Q(nat a, b, c) = c = a*b;
+formula m(nat a: nat) = a;
+\end{lstlisting}
+
+Тело предиката Умн представлено условным оператором, соответственно, цель доказать следующее утверждение:
+
+\begin{center}
+$ Corr(mult,~t,~If~(a=0)~c=0~else~c=b+mult(a-1,~b),~P(a,~b),~Q(a,~b,~c)) $
+\end{center}
+
+В соответстви с правилом \textbf{QC}, доказательство данного утверждения разбивается на 2 ветки:
+
+\numformula{branch1}
+{Corr(mult,~t,~c=0,~P(a,~b) \land a=0,~Q(a,~b,~c))}
+\numformula{branch2}
+{Corr(mult,~t,~c=b+mult(a-1,~b),~P(a,~b) \land a\ne0,~Q(a,~b,~c))}
+
+Ветка \lnkformula{branch1} представляет собой утверждение о корректности оператора, не содержащего рекурсивного вызова. Ввиду этого, утверждение заменяется на более простое:
+
+\begin{center}
+$ Corr(c=0,~P(a,~b) \land a=0,~Q(a,~b,~c)) $
+\end{center}
+
+По данному утверждению формируются две леммы, которые добавляются к основной теории:
+
+\begin{lstlisting}
+lemma forall nat a, b. P(a, b) & a = 0 => exists nat c. c = 0;
+lemma forall nat a, b, c. P(a, b) & a = 0 & c = 0 => Q(a, b, c);
+\end{lstlisting}
+
+Здесь первая лемма - суть тотальности оператора, а вторая - его корректности. В данном случае, лемму тотальности можно было не добавлять к теории, ибо для оператора присваивания она тождественно истина.
+
+Оператор ветки \lnkformula{branch2} содержит рекурсивный вызов предиката mult, поэтому исходный оператор представляется оператором суперпозиции, с целью изъять оператор вызова предиката:
+
+\begin{lstlisting}
+mult(a-1, b, nat d);
+c = b + d;
+\end{lstlisting}
+
+Теперь утверждение корректности выглядит так:
+
+\begin{center}
+$ Corr(mult,~t,~mult(a-1,~b,~d);~c=b+d,~P(a,~b) \land a\ne0,~c=a*b) $
+\end{center}
+
+Доказательство данного утверждения ведется по правилу \textbf{QSB}, ввиду наличия спецификации у оператора вызова. По данному правилу сразу формируется лемма, истинность которой гарантирует выполнение предусловия оператора mult, по мере углубление рекурсии:
+
+\begin{lstlisting}
+lemma forall nat a, b. P(a, b) & a != 0
+                       => m(a - 1) < m(a) & P(a - 1, b);
+\end{lstlisting}
+
+Так же, данное парвило требует провести следующие доказательства:
+
+\numformula{branch3}
+{Corr(mult,~t,~mult(a-1,~b,~d),~P(a-1,~b),~Q(a-1,~b,~d))}
+\numformula{branch4}
+{Corr(mult,~t,~c=b+d,~P(a,~b) \land a\ne0 \land ~Q(a-1,~b,~d),~Q(a,~b,~c))}
+
+В данном случае, проводить доказательство корректности оператора вызова \lnkformula{branch3} не имеет смысла, т.к. вызов рекурсивен. Корректность оператора присваивания \lnkformula{branch4} выражается в виде двух, уже знакомых нам лемм:
+
+\begin{lstlisting}
+lemma forall nat a, b, d. P(a, b) & a != 0 & Q(a - 1, b, d)
+                          => exists nat c. c = b + d;
+lemma forall nat a, b, d, c. P(a, b) & a != 0 & Q(a - 1, b, d)
+                             & c = (b + d) => Q(a, b, c);
+\end{lstlisting}
+
+Итоговый вариант теории:
+
+\begin{lstlisting}
+module mult;
+formula P(nat a, b) = a >= 0 & b >= 0;
+formula Q(nat a, b, c) = c = (a * b);
+formula m(nat a : nat) = a;
+lemma forall nat a, b. P(a, b) & a = 0
+                       => exists nat c. c = 0;
+lemma forall nat a, b, c. P(a, b) & a = 0 & c = 0
+                          => Q(a, b, c);
+lemma forall nat a, b. P(a, b) & a != 0
+                       => m(a - 1) < m(a) & P(a - 1, b);
+lemma forall nat a, b, d. P(a, b) & a != 0 & Q(a - 1, b, d)
+                          => exists nat c. c = b + d;
+lemma forall nat a, b, d, c. P(a, b) & a != 0 & Q(a - 1, b, d)
+                             & c = (b + d) => Q(a, b, c);
+\end{lstlisting}
 
 \end{document}
