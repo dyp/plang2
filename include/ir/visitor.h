@@ -203,9 +203,9 @@ bool Visitor::traverseCollection(Collection<_Node, _Base> &_nodes) {
         if (isStopped())                                            \
             return false;                                           \
         if (m_path.empty())                                         \
-            m_path.push_back(Loc(_PARAM, N_##_TYPE, R_TopLevel));   \
+            m_path.push_back(Loc(_PARAM, ir::N_##_TYPE, ir::R_TopLevel));   \
         else                                                        \
-            getLoc().type = N_##_TYPE;                              \
+            getLoc().type = ir::N_##_TYPE;                              \
         if (getOrder() == PARENTS_FIRST) {                          \
             callRoleHandler(true);                                  \
             if (!walkUpFrom##_TYPE(_PARAM))                         \
@@ -231,8 +231,8 @@ bool Visitor::traverseCollection(Collection<_Node, _Base> &_nodes) {
         if (isStopped())                                                            \
             return false;                                                           \
         if (_PARAM) {                                                    \
-            NodeSetterImpl< _PTYPE, _TYPE, &_PTYPE::_SETTER > setter(_PARENT);      \
-            Ctx ctx(this, *(_PARAM), N_##_TYPE, R_##_ROLE, &Visitor::handle##_ROLE, \
+            ir::NodeSetterImpl< ir::_PTYPE, ir::_TYPE, &ir::_PTYPE::_SETTER > setter(_PARENT);      \
+            Ctx ctx(this, *(_PARAM), ir::N_##_TYPE, ir::R_##_ROLE, &Visitor::handle##_ROLE, \
                 &Visitor::handle##_ROLE##Post, &setter);                            \
             if (!traverse##_TYPE(*(_PARAM)))                                        \
                 return false;                                                       \
@@ -244,7 +244,7 @@ bool Visitor::traverseCollection(Collection<_Node, _Base> &_nodes) {
         if (isStopped())                                                            \
             return false;                                                           \
         if (!(_PARAM).empty()) {                                                    \
-            Ctx ctx(this, _PARAM, N_##_TYPE, R_##_ROLE, &Visitor::handle##_ROLE,    \
+            Ctx ctx(this, _PARAM, ir::N_##_TYPE, ir::R_##_ROLE, &Visitor::handle##_ROLE,    \
                 &Visitor::handle##_ROLE##Post, NULL);                               \
             if (!traverseCollection(_PARAM))                                        \
                 return false;                                                       \
