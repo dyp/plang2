@@ -557,6 +557,11 @@ class FreshTypeRewriter : public ir::Visitor {
 public:
     FreshTypeRewriter(const Formulas &_substs) : Visitor(CHILDREN_FIRST), m_substs(_substs) {}
 
+    virtual bool visitExpression(ir::Expression &_expr) {
+        VISITOR_TRAVERSE(Type, ExprType, _expr.getType(), _expr, Expression, setType);
+        return true;
+    }
+
     virtual bool visitType(ir::Type &_type) {
         if (_type.getKind() == ir::Type::FRESH) {
             Formulas::const_iterator iSubst = m_substs.findSubst(&_type);
@@ -564,7 +569,6 @@ public:
             if (iSubst != m_substs.end())
                 callSetter((*iSubst)->getRhs());
         }
-
         return true;
     }
 
