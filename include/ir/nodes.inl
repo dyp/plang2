@@ -27,6 +27,7 @@ NODE(Variable, NamedValue)
 
 // Expression.
 NODE(Expression, Node)
+NODE(Wild, Expression)
 NODE(Literal, Expression)
 NODE(VariableReference, Expression)
 NODE(PredicateReference, Expression)

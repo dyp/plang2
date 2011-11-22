@@ -51,6 +51,8 @@ class Expression : public Node {
 public:
     /// Kind of the expression.
     enum {
+        /// Wild expression
+        WILD,
         /// Numeric, character, string or unit literal.
         /// The object can be cast to Literal.
         LITERAL,
@@ -117,6 +119,25 @@ public:
 
 private:
     TypePtr m_pType;
+};
+
+// Wild expression
+class Wild : public Expression {
+public:
+    Wild(const std::wstring &_name) : m_strName(_name) {}
+
+    virtual int getKind() const { return WILD; }
+
+    const std::wstring &getName() const { return m_strName; }
+
+    void setName(const std::wstring &_strName) { m_strName = _strName; }
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, Wild(m_strName));
+    }
+
+private:
+    std::wstring m_strName;
 };
 
 /// Representation of nil and numeric, character and string literals.

@@ -233,6 +233,8 @@ bool Visitor::traverseVariable(Variable &_val) {
 
 bool Visitor::traverseExpression(Expression &_expr) {
     switch (_expr.getKind()) {
+        case Expression::WILD:
+            return traverseWild((Wild &)_expr);
         case Expression::LITERAL:
             return traverseLiteral((Literal &)_expr);
         case Expression::VAR:
@@ -266,6 +268,11 @@ bool Visitor::traverseExpression(Expression &_expr) {
     }
 
     return true;
+}
+
+bool Visitor::traverseWild(Wild &_expr) {
+    ENTER(Wild, _expr);
+    EXIT();
 }
 
 bool Visitor::traverseLiteral(Literal &_expr) {
