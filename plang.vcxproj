@@ -98,6 +98,7 @@
     <ClCompile Include="src\parser.cpp" />
     <ClCompile Include="src\parser_context.cpp" />
     <ClCompile Include="src\plang.cpp" />
+    <ClCompile Include="src\reduce_expression.cpp" />
     <ClCompile Include="src\pp_flat_tree.cpp" />
     <ClCompile Include="src\pp_syntax.cpp" />
     <ClCompile Include="src\prettyprinter.cpp" />
@@ -126,6 +127,7 @@
     <ClInclude Include="src\collect_constraints.h" />
     <ClInclude Include="src\generate_name.h" />
     <ClInclude Include="src\generate_semantics.h" />
+    <ClInclude Include="src\verification.h" />
     <ClInclude Include="src\llir_process.h" />
     <ClInclude Include="src\options.h" />
     <ClInclude Include="src\parser.h" />

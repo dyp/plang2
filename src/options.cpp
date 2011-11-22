@@ -76,6 +76,7 @@ void _printUsage() {
         << "    -t, --typecheck=TYPE          Do typecheck, where TYPE is 'none' (0), 'on' (1), 'soft' (2)\n"
         << "    -o, --output=FILE             Output file name\n"
         << "    -v, --verbose                 Print debug info\n"
+        << "    -O, --optimize                Optimize logical expressions\n"
         << "    -s, --check-semantics         Generate logical conditions for proving semantic correctness\n"
         << "        --help                    Show this message\n";
 }
@@ -89,6 +90,7 @@ bool Options::init(size_t _cArgs, const char **_pArgs) {
         { "output",          'o', NULL,               NULL,                        &instance().strOutputFilename, false },
         { "verbose",         'v', NULL,               &instance().bVerbose,        NULL,                          false },
         { "help",            'h', NULL,               &bHelp,                      NULL,                          false },
+        { "optimize",        'O', NULL,               &instance().bOptimize,       NULL,                          false },
         { "check-semantics", 's', NULL,               &instance().bCheckSemantics, NULL,                          false },
         { NULL,               0,  NULL,               NULL,                        NULL,                          false }
     };
@@ -110,6 +112,7 @@ Options::Options() :
     prettyPrint(PP_NONE),
     typeCheck(TC_ON),
     backEnd(BE_NONE),
+    bOptimize(false),
     bCheckSemantics(false),
     bVerbose(false)
 {

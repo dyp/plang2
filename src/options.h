@@ -39,6 +39,7 @@ struct Options {
     std::string strInputFilename;
     std::string strOutputFilename;
     Args args;
+    bool bOptimize;
     bool bCheckSemantics;
     bool bVerbose;
 

@@ -21,6 +21,7 @@
 #include "backend_c.h"
 #include "typecheck.h"
 #include "parser_context.h"
+#include "reduce_expression.h"
 #include "pp_flat_tree.h"
 #include "pp_syntax.h"
 #include "options.h"
@@ -59,6 +60,9 @@ int main(int _argc, const char ** _argv) {
     if (ir::ModulePtr pModule = parse(tokens)) {
         if (Options::instance().bCheckSemantics)
             pModule = processPreConditions(*pModule);
+
+        if (Options::instance().bOptimize)
+            reduceExpression(*pModule);
 
         if (Options::instance().prettyPrint & PP_FLAT)
             prettyPrintFlatTree(*pModule);
