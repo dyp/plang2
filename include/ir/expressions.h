@@ -294,8 +294,11 @@ public:
     /// Initialize using name.
     /// \param _strName Identifier.
     /// \param _pTarget Referenced variable.
-    PredicateReference(const std::wstring &_strName, const PredicatePtr &_pTarget = NULL) :
-        m_pTarget(_pTarget), m_strName(_strName) {}
+    PredicateReference(const std::wstring &_strName, const PredicatePtr &_pTarget = NULL, const TypePtr &_pType = NULL) :
+        m_pTarget(_pTarget), m_strName(_strName)
+    {
+        setType(_pType);
+    }
 
     /// Initialize using referenced predicate.
     /// \param _pTarget Referenced variable.
@@ -322,7 +325,7 @@ public:
     void setTarget(const PredicatePtr &_pTarget) { m_pTarget = _pTarget; }
 
     virtual NodePtr clone(Cloner &_cloner) const {
-        return NEW_CLONE(this, _cloner, PredicateReference(m_strName, _cloner.get(m_pTarget)));
+        return NEW_CLONE(this, _cloner, PredicateReference(m_strName, _cloner.get(m_pTarget), _cloner.get(getType())));
     }
 
 private:
