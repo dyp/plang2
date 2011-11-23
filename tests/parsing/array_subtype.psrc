@@ -1,0 +1,10 @@
+/*
+
+<test>
+        bvec//NamedReferenceType = below
+</test>
+
+*/
+
+type below(nat n) = 0 .. n-1;
+type bvec(nat n) = array(bool, below(n));

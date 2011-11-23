@@ -18,6 +18,7 @@ set(TESTS_PARSING
     parsing/field_expr.psrc
     parsing/submodules.psrc
     parsing/subformula_args.psrc
+    parsing/array_subtype.psrc
     parsing/quantifier.psrc
 )
 
