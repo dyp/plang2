@@ -11,6 +11,28 @@ public:
         m_pNode = &_node;
     }
 
+    // NODE / MODULE
+    bool visitModule(ir::Module &_module) {
+        if (_module.getName().length() != 0)
+            m_os << L"module " << _module.getName() << L";\n";
+        return true;
+    }
+
+    // NODE / STATEMENT
+    bool visitPredicate(ir::Predicate &_node) {
+        // TODO Predicate
+        return false;
+    }
+
+    // NODE / NAMED_VALUE
+    virtual bool visitNamedValue(ir::NamedValue &_node) {
+        printComma();
+        VISITOR_TRAVERSE(Type, NamedValueType, _node.getType(), _node, NamedValue, setType);
+        m_os << L" " << _node.getName();
+        return false;
+    }
+
+    // NODE / EXPRESSION
     void printLiteralKind(ir::Literal &_node) {
         switch (_node.getLiteralKind()) {
             case ir::Literal::UNIT:
@@ -107,11 +129,6 @@ public:
         }
     }
 
-    inline void printComma() {
-        if (getLoc().bPartOfCollection && getLoc().cPosInCollection > 0)
-            m_os << ", ";
-    }
-
     void printQuantifier(int _quantifier) {
         switch (_quantifier) {
             case ir::Formula::NONE:
@@ -126,15 +143,54 @@ public:
         }
     }
 
-    //FIXME
+    void printComma() {
+        if (m_path.empty())
+            return;
+        if (getLoc().bPartOfCollection && getLoc().cPosInCollection > 0)
+            m_os << ", ";
+    }
+
+    ir::ExpressionPtr getChild() {
+        std::list<Visitor::Loc>::iterator i = ::prev(m_path.end());
+        if (i->pNode->getNodeKind() != ir::Node::EXPRESSION)
+            return NULL;
+        return i->pNode;
+    }
+
+    ir::ExpressionPtr getParent() {
+        std::list<Visitor::Loc>::iterator i = ::prev(m_path.end());
+        if (i->pNode->getNodeKind() != ir::Node::EXPRESSION)
+            return NULL;
+        if (i == m_path.begin())
+            return NULL;
+        else
+            --i;
+        if (i->pNode->getNodeKind() != ir::Node::EXPRESSION)
+            return NULL;
+        return i->pNode;
+    }
+
+    int getParentKind() {
+        const ir::ExpressionPtr pParent = getParent();
+        if (pParent)
+            return pParent->getKind();
+        else
+            return -1;
+    }
+
+    int getChildKind() {
+        const ir::ExpressionPtr pChild = getChild();
+        if (pChild)
+            return pChild->getKind();
+        else
+            return -1;
+    }
+
     bool needsParen() {
 
-        std::list<Visitor::Loc>::iterator i = ::prev(m_path.end());
-
-        //if child NODE is not expresssion return false
-        if (i->pNode->getNodeKind() != ir::Node::EXPRESSION)
+        const int nChildKind = getChildKind();
+        if (nChildKind == -1)
             return false;
-        const int nChildKind = ((ir::Expression*)i->pNode)->getKind();
 
         switch (nChildKind) {
             case ir::Expression::FORMULA_CALL:
@@ -146,19 +202,19 @@ public:
                 break;
         }
 
-        if (i == m_path.begin())
+        const int nParentKind = getParentKind();
+        if (nParentKind == -1)
             return false;
-        else
-            --i;
 
-        //if parent NODE is not expression return false
-        if (i->pNode->getNodeKind() != ir::Node::EXPRESSION)
-            return false;
-        const int nParentKind = ((ir::Expression*)i->pNode)->getKind();
-
-        //if child expression have a same kind, that parent expression have, return true
-        if (nParentKind == nChildKind)
+        if (nParentKind == nChildKind) {
+            if (nParentKind == ir::Expression::BINARY) {
+                const ir::BinaryPtr pChild = getChild().as<Binary>();
+                const ir::BinaryPtr pParent = getParent().as<Binary>();
+                if (pChild->getOperator() >= pParent->getOperator())
+                    return false;
+            }
             return true;
+        }
 
         switch (nParentKind) {
             case ir::Expression::UNARY:
@@ -170,8 +226,27 @@ public:
                 return false;
         }
 
-        //if parent expression have UNARY, BINARY or TERNARY kind, return true
         return true;
+
+    }
+
+    virtual bool traverseExpression(ir::Expression &_node) {
+
+        printComma();
+
+        bool bParen;
+        if (m_path.empty())
+            bParen = false;
+        else
+            bParen = needsParen();
+
+        if (bParen)
+            m_os << "(";
+        const bool result = Visitor::traverseExpression(_node);
+        if (bParen)
+            m_os << ")";
+
+        return result;
 
     }
 
@@ -182,7 +257,7 @@ public:
 
     virtual bool visitVariableReference(ir::VariableReference &_node) {
         m_os << _node.getName();
-        return true;
+        return false;
     }
 
     virtual bool visitPredicateReference(ir::PredicateReference &_node) {
@@ -190,20 +265,11 @@ public:
         return true;
     }
 
-    virtual bool traverseExpression(ir::Expression &_node) {
-
-        printComma();
-
-        const bool bParen = needsParen();
-        if (bParen)
-            m_os << "(";
-        const bool result = Visitor::traverseExpression(_node);
-        if (bParen)
-            m_os << ")";
-
-        return result;
-
+    virtual bool visitType(ir::Type &_type) {
+        callPrettyPrintCompact(_type);
+        return false;
     }
+
 
     virtual bool visitUnary(ir::Unary &_node) {
         printUnaryOperator(_node);
@@ -268,33 +334,24 @@ public:
 
     }
 
-    virtual bool visitNamedValue(ir::NamedValue &_node) {
-        printComma();
-        callPrettyPrintCompact(_node);
-        return true;
-    }
-
-    bool printParams(ir::FormulaDeclaration &_node) {
-
-        if (_formulaParamExists(_node))
-            VISITOR_TRAVERSE_COL(NamedValue, FormulaDeclParams, _node.getParams());
-
-        if (_formulaResultTypeExists(_node)) {
-            m_os << " : ";
-            callPrettyPrintCompact(*(_node.getResultType()));
-        }
-
-    }
-
+    // NODE / STATEMENT
     virtual bool traverseFormulaDeclaration(ir::FormulaDeclaration &_node) {
 
         VISITOR_ENTER(FormulaDeclaration, _node);
 
         m_os << "formula " << _node.getName();
 
-        if (_formulaParamExists(_node) || _formulaResultTypeExists(_node)) {
+        if (!_node.getParams().empty() || _node.getResultType()) {
             m_os << " ( ";
-            printParams(_node);
+
+            if (!_node.getParams().empty())
+                VISITOR_TRAVERSE_COL(NamedValue, FormulaDeclParams, _node.getParams());
+
+            if (_node.getResultType()) {
+                m_os << " : ";
+                callPrettyPrintCompact(*(_node.getResultType()));
+            }
+
             m_os << " )";
         }
 
@@ -308,89 +365,15 @@ public:
 
     virtual bool traverseLemmaDeclaration(ir::LemmaDeclaration &_stmt) {
         VISITOR_ENTER(LemmaDeclaration, _stmt);
-        VISITOR_TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
 
         m_os << "lemma ";
+        VISITOR_TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
+        m_os << " ";
         VISITOR_TRAVERSE(Expression, LemmaDeclBody, _stmt.getProposition(), _stmt, LemmaDeclaration, setProposition);
         m_os << " ;\n";
 
         VISITOR_EXIT();
     }
-
-    virtual bool traverseArrayPartExpr(ir::ArrayPartExpr &_node) {
-        VISITOR_ENTER(ArrayPartExpr, _node);
-
-        VISITOR_TRAVERSE(Expression, ArrayPartObject, _node.getObject(), _node, Component, setObject);
-        m_os << "[";
-        VISITOR_TRAVERSE_COL(Expression, ArrayPartIndex, _node.getIndices());
-        m_os << "]";
-
-        VISITOR_EXIT();
-    }
-
-    virtual bool traverseFieldExpr(ir::FieldExpr &_node) {
-        VISITOR_ENTER(FieldExpr, _node);
-
-        m_os << _node.getFieldName() << ".";
-        VISITOR_TRAVERSE(Expression, FieldObject, _node.getObject(), _node, Component, setObject);
-
-        VISITOR_EXIT();
-    }
-
-    virtual bool traverseUnionAlternativeExpr(ir::UnionAlternativeExpr &_node) {
-        VISITOR_ENTER(UnionAlternativeExpr, _node);
-
-        m_os << _node.getName() << ".";
-        VISITOR_TRAVERSE(Expression, UnionAlternativeObject, _node.getObject(), _node, Component, setObject);
-
-        VISITOR_EXIT();
-    }
-
-    virtual bool traverseListElementExpr(ir::ListElementExpr &_node) {
-        VISITOR_ENTER(ListElementExpr, _node);
-
-        VISITOR_TRAVERSE(Expression, ListElementObject, _node.getObject(), _node, Component, setObject);
-        m_os << "[";
-        VISITOR_TRAVERSE(Expression, ListElementIndex, _node.getIndex(), _node, ListElementExpr, setIndex);
-        m_os << "]";
-
-        VISITOR_EXIT();
-    }
-
-    virtual bool traverseFunctionCall(ir::FunctionCall &_node) {
-        VISITOR_ENTER(FunctionCall, _node);
-
-        VISITOR_TRAVERSE(Expression, FunctionCallee, _node.getPredicate(), _node, FunctionCall, setPredicate);
-        m_os << "(";
-        VISITOR_TRAVERSE_COL(Expression, FunctionCallArgs, _node.getArgs());
-        m_os << ")";
-
-        VISITOR_EXIT();
-    }
-
-    virtual bool traverseBinder(ir::Binder &_node) {
-        VISITOR_ENTER(Binder, _node);
-
-        VISITOR_TRAVERSE(Expression, BinderCallee, _node.getPredicate(), _node, Binder, setPredicate);
-        m_os << "(";
-        VISITOR_TRAVERSE_COL(Expression, BinderArgs, _node.getArgs());
-        m_os << ")";
-
-        VISITOR_EXIT();
-    }
-
-    virtual bool traverseCastExpr(ir::CastExpr &_node) {
-        VISITOR_ENTER(CastExpr, _node);
-
-        m_os << "(";
-        VISITOR_TRAVERSE(TypeExpr, CastToType, _node.getToType(), _node, CastExpr, setToType);
-        m_os << ")";
-        VISITOR_TRAVERSE(Expression, CastParam, _node.getExpression(), _node, CastExpr, setExpression);
-
-        VISITOR_EXIT();
-    }
-
-    //TODO: MAP_ELEMENT, REPLACEMENT, LAMBDA, CONSTRUCTOR, TYPE
 
     void run() {
         traverseNode( *m_pNode );
@@ -401,19 +384,10 @@ private:
        prettyPrintCompact(_node, m_os, PPC_NO_INCOMPLETE_TYPES);
     }
 
-    static bool _formulaParamExists(ir::FormulaDeclaration &_formula) {
-        return !(_formula.getParams().empty());
-    }
-
-    static bool _formulaResultTypeExists(ir::FormulaDeclaration &_formula) {
-        return (bool)_formula.getResultType();
-    }
-
     ir::NodePtr m_pNode;
 
 };
 
 void prettyPrintSyntax(ir::Node &_node, std::wostream & _os) {
-    PrettyPrinterSyntax pp(_node, _os);
-    pp.run();
+    PrettyPrinterSyntax(_node, _os).run();
 }
