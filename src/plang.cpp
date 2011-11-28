@@ -26,6 +26,7 @@
 #include "pp_syntax.h"
 #include "options.h"
 #include "generate_semantics.h"
+#include "verification.h"
 
 using namespace lexer;
 
@@ -60,6 +61,9 @@ int main(int _argc, const char ** _argv) {
     if (ir::ModulePtr pModule = parse(tokens)) {
         if (Options::instance().bCheckSemantics)
             pModule = processPreConditions(*pModule);
+
+        if (Options::instance().bVerify)
+            pModule = verify(*pModule);
 
         if (Options::instance().bOptimize)
             reduceExpression(*pModule);

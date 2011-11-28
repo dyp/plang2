@@ -41,6 +41,7 @@ struct Options {
     Args args;
     bool bOptimize;
     bool bCheckSemantics;
+    bool bVerify;
     bool bVerbose;
 
     Options();

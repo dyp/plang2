@@ -81,6 +81,7 @@
     <ClCompile Include="src\collect_constraints.cpp" />
     <ClCompile Include="src\generate_name.cpp" />
     <ClCompile Include="src\generate_semantics.cpp" />
+    <ClCompile Include="src\verification.cpp" />
     <ClCompile Include="src\ir\base.cpp" />
     <ClCompile Include="src\ir\builtins.cpp" />
     <ClCompile Include="src\ir\expressions.cpp" />

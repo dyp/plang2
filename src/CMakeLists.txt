@@ -32,6 +32,7 @@ set(SOURCES
     solve_constraints.cpp
     typecheck.cpp
     generate_semantics.cpp
+    verification.cpp
     generate_name.cpp
     type_lattice.cpp
 )

@@ -78,6 +78,7 @@ void _printUsage() {
         << "    -v, --verbose                 Print debug info\n"
         << "    -O, --optimize                Optimize logical expressions\n"
         << "    -s, --check-semantics         Generate logical conditions for proving semantic correctness\n"
+        << "    -e, --verify                  Generate logical conditions for proving programm correctness\n"
         << "        --help                    Show this message\n";
 }
 
@@ -92,10 +93,16 @@ bool Options::init(size_t _cArgs, const char **_pArgs) {
         { "help",            'h', NULL,               &bHelp,                      NULL,                          false },
         { "optimize",        'O', NULL,               &instance().bOptimize,       NULL,                          false },
         { "check-semantics", 's', NULL,               &instance().bCheckSemantics, NULL,                          false },
+        { "verify",          'e', NULL,               &instance().bVerify,         NULL,                          false },
         { NULL,               0,  NULL,               NULL,                        NULL,                          false }
     };
 
     if (parseOptions(_cArgs, _pArgs, options, &instance(), _handleNotAnOption)) {
+        if (instance().bVerify && instance().bCheckSemantics) {
+            std::cerr << "--check-semantics and --verify are mutually exclusive" << std::endl;
+            return false;
+        }
+
         if (!instance().args.empty()) {
             instance().strInputFilename = instance().args.front();
             return true;
@@ -114,6 +121,7 @@ Options::Options() :
     backEnd(BE_NONE),
     bOptimize(false),
     bCheckSemantics(false),
+    bVerify(false),
     bVerbose(false)
 {
 }
