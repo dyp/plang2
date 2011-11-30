@@ -18,10 +18,28 @@ public:
         return true;
     }
 
+    // NODE / LABEL
+    bool visitLabel(ir::Label &_label) {
+        m_os << _label.getName() << ": ";
+        return true;
+    }
+
     // NODE / STATEMENT
     bool visitPredicate(ir::Predicate &_node) {
         // TODO Predicate
         return false;
+    }
+
+    bool traverseAssignment(ir::Assignment &_stmt) {
+        VISITOR_ENTER(Assignment, _stmt);
+
+        VISITOR_TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
+        VISITOR_TRAVERSE(Expression, LValue, _stmt.getLValue(), _stmt, Assignment, setLValue);
+        m_os << " = ";
+        VISITOR_TRAVERSE(Expression, RValue, _stmt.getExpression(), _stmt, Assignment, setExpression);
+        m_os << ";\n";
+
+        VISITOR_EXIT();
     }
 
     // NODE / NAMED_VALUE
@@ -366,11 +384,10 @@ public:
     virtual bool traverseLemmaDeclaration(ir::LemmaDeclaration &_stmt) {
         VISITOR_ENTER(LemmaDeclaration, _stmt);
 
-        m_os << "lemma ";
         VISITOR_TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
-        m_os << " ";
+        m_os << "lemma ";
         VISITOR_TRAVERSE(Expression, LemmaDeclBody, _stmt.getProposition(), _stmt, LemmaDeclaration, setProposition);
-        m_os << " ;\n";
+        m_os << ";\n";
 
         VISITOR_EXIT();
     }
