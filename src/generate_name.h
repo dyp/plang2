@@ -24,6 +24,8 @@ public:
     NameGenerator() : m_typeNumber(0), m_lambdaNumber(0) {}
 
     std::wstring makeNamePredicatePrecondition(ir::Predicate &_predicate);
+    std::wstring makeNamePredicatePostcondition(ir::Predicate &_predicate);
+    std::wstring makeNamePredicateMeasure(ir::Predicate &_predicate);
     std::wstring makeNamePredicateBranchPrecondition(ir::Predicate &_predicate, size_t _branchNumber);
     std::wstring makeNameTypePreCondition();
     std::wstring makeNameTypeBranchPreCondition(size_t _branchNumber);

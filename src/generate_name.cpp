@@ -17,6 +17,14 @@ std::wstring NameGenerator::makeNamePredicatePrecondition(ir::Predicate &_predic
     return _predicate.getName() + L"Precondition";
 }
 
+std::wstring NameGenerator::makeNamePredicatePostcondition(ir::Predicate &_predicate){
+    return _predicate.getName() + L"Postcondition";
+}
+
+std::wstring NameGenerator::makeNamePredicateMeasure(ir::Predicate &_predicate){
+    return _predicate.getName() + L"Measure";
+}
+
 std::wstring NameGenerator::makeNamePredicateBranchPrecondition(ir::Predicate &_predicate, size_t _branchNumber){
     return _predicate.getName() + fmtInt(_branchNumber, L"Precondition%u");
 }
