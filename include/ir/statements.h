@@ -114,7 +114,7 @@ public:
     /// \param _pPredicate Expression of predicate type.
     /// \param _pLabel Statement label.
     Call(const ExpressionPtr &_pPredicate = NULL, const LabelPtr &_pLabel = NULL) :
-        Statement(_pLabel), m_pPredicate(NULL) {}
+        Statement(_pLabel), m_pPredicate(_pPredicate) {}
 
     /// Get statement kind.
     /// \returns #Call.
