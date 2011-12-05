@@ -160,7 +160,7 @@ std::wstring fmtInt(const int _n) {
     return result;
 }
 
-ir::NamedValuePtr generateNewVariable(ir::NodePtr _pNode, ir::Type &_type) {
+ir::NamedValuePtr generateNewVariable(const ir::NodePtr _pNode, const ir::TypePtr _pType) {
     ir::NamedValuesPtr pVars = varCollector(_pNode);
 
     int i = 1;
@@ -171,7 +171,7 @@ ir::NamedValuePtr generateNewVariable(ir::NodePtr _pNode, ir::Type &_type) {
             ++i;
     }
 
-    return new ir::NamedValue(fmtInt(i), clone(_type));
+    return new ir::NamedValue(fmtInt(i), _pType);
 }
 
 // Class of factual and formal params.
@@ -204,20 +204,29 @@ typedef Auto<Parameters> ParametersPtr;
 // Class for extracting params.
 class GenerateParameters : public Visitor {
 public:
-    GenerateParameters(const ir::FunctionCall &_call, const Parameters &_params) :
-        m_pNode(&_call), m_pParameters(&_params), m_bRoot(false), m_nInd(0)
+    GenerateParameters(const ir::FormulaCall &_call, const Parameters &_params) :
+        m_pNode(&_call), m_pParameters(&_params), m_pStandart(new NamedValues()), m_bRoot(false), m_nInd(0)
     {
-        m_pStandart = new NamedValues();
+        m_pStandart->assign(_call.getTarget()->getParams());
+    }
+
+    GenerateParameters(const ir::FunctionCall &_call, const Parameters &_params) :
+        m_pNode(&_call), m_pParameters(&_params), m_pStandart(new NamedValues()), m_bRoot(false), m_nInd(0)
+    {
         m_pStandart->assign(predicateType(&_call)->getInParams());
         m_pStandart->append(*varCollector(&predicateType(_call)->getOutParams()));
     }
 
     GenerateParameters(const ir::Call &_call, const Parameters &_params) :
-        m_pNode(&_call), m_pParameters(&_params), m_bRoot(false), m_nInd(0)
+        m_pNode(&_call), m_pParameters(&_params), m_pStandart(new NamedValues()), m_bRoot(false), m_nInd(0)
     {
-        m_pStandart = new NamedValues();
         m_pStandart->assign(predicateType(_call)->getInParams());
         m_pStandart->append(*varCollector(&predicateType(_call)->getOutParams()));
+    }
+
+    virtual bool visitFormulaCall(ir::FormulaCall &_expr) {
+        m_bRoot = true;
+        return true;
     }
 
     virtual bool traverseFunctionCall(ir::FunctionCall &_expr) {
@@ -262,6 +271,11 @@ private:
     int m_nInd;
 
 };
+
+ParametersPtr generateParams(const ir::FormulaCall &_call) {
+    ParametersPtr pParameters = new Parameters();
+    return GenerateParameters(_call,  *pParameters).run();
+}
 
 ParametersPtr generateParams(const ir::FunctionCall &_call) {
     ParametersPtr pParameters = new Parameters();
@@ -308,6 +322,10 @@ ir::ExpressionPtr addCallArgs(const ir::ExpressionPtr _pExpr, const ParametersPt
 
 ir::ExpressionPtr addSimpleArgs(const ir::ExpressionPtr _pExpr) {
     return addCallArgs(_pExpr);
+}
+
+ir::ExpressionPtr copyCallArgs(const ir::ExpressionPtr _pExpr, const ir::FormulaCall &_call) {
+    return addCallArgs(_pExpr, generateParams(_call));
 }
 
 // Class for extracting call from statements, and its modifing.
@@ -360,7 +378,8 @@ void generateSuperpositionFromAssignment(ir::Assignment &_assignment, ir::CallPt
     if(!pCall)
         return;
 
-    _pVar = generateNewVariable(&_assignment, *clone(*pCall->getType()));
+    // FIXME Variable type.
+    _pVar = generateNewVariable(&_assignment, new ir::Type(ir::Type::NAT, -1));
     _pCall = generatePredicateCallFromFunctionCall(*pCall, *new ir::VariableReference(_pVar));
     _pTail = clone(_assignment);
 
@@ -385,6 +404,9 @@ ir::FormulaDeclarationPtr declareFormula(const std::wstring &_sName, const ir::E
                                          const ir::NamedValuesPtr _pParams = NULL, const ir::TypePtr _pType = NULL)
 {
     ir::FormulaDeclarationPtr pFormulaDecl = new ir::FormulaDeclaration(_sName, _pType , &_expr);
+    if (_expr.getKind() == ir::Expression::FORMULA)
+        if (((ir::Formula&)_expr).getQuantifier() == ir::Formula::NONE)
+            pFormulaDecl->setFormula(((ir::Formula&)_expr).getSubformula());
     if (_pParams)
         pFormulaDecl->getParams().assign(*compareValuesWithOrder(&_expr, *_pParams));
     else
@@ -750,7 +772,7 @@ private:
             else
                 return new ir::Binary(ir::Binary::EQUALS,
                                       new ir::VariableReference(generateNewVariable(_assignment.getExpression(),
-                                                                                    *pLeftVariable->getType())),
+                                                                                    pLeftVariable->getType())),
                                       _assignment.getExpression());
         }
         // TODO Correct return.
@@ -795,18 +817,28 @@ private:
 
     // P*(u) = m(u)<m(x) & P(u).
     ir::ExpressionPtr _generateRecPreCond(ir::Call &_call) {
-        return new ir::Binary(ir::Binary::BOOL_AND,
-                              _generatetMeasureCall(_call),
-                              _generatePreConditionCall(_call));
+        const ir::FormulaDeclarationPtr pMeasure = m_info.getMeasure(predicateReference(_call)->getName());
+        if (pMeasure)
+            return new ir::Binary(ir::Binary::BOOL_AND,
+                                new ir::Binary(ir::Binary::LESS,
+                                                _generatetMeasureCall(_call),
+                                                addSimpleArgs(new ir::FormulaCall(pMeasure))),
+                                _generatePreConditionCall(_call));
+        else
+            return NULL;
     }
 
     // QSB2: forall x. P(x) => P*(u).
     ir::ExpressionPtr _generateQSB2(const ir::Predicate &_predicate, ir::Call &_call, ir::Expression &_precond) {
-        return _generateFormula(true,
-                                new ir::Binary(ir::Binary::IMPLIES,
-                                               &_precond,
-                                               _generateRecPreCond(_call)),
-                                &_predicate.getInParams());
+        const ir::ExpressionPtr pRecPreCond = _generateRecPreCond(_call);
+        if (pRecPreCond)
+            return _generateFormula(true,
+                                    new ir::Binary(ir::Binary::IMPLIES,
+                                                &_precond,
+                                                pRecPreCond),
+                                    &_predicate.getInParams());
+        else
+            return NULL;
     }
 
     // Is there formulas of correctness?
