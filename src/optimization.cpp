@@ -1,7 +1,8 @@
-/// \file reduce_expression.cpp
+/// \file optimization.cpp
 ///
 
 #include "ir/visitor.h"
+#include "verification.h"
 
 using namespace ir;
 
@@ -86,7 +87,7 @@ inline void reduce(ir::Node &_node, const ir::ExpressionPtr &_pFrom, const ir::E
     ReduceExpression(_node, _pFrom, _pTo).reduce();
 }
 
-void reduceExpression(ir::Node &_node) {
+void reduceExpressions(ir::Node &_node) {
 
     // !(a = b) -> a != b
     reduce(_node,
@@ -131,4 +132,25 @@ void reduceExpression(ir::Node &_node) {
                                          new ir::Wild(L"b")),
                           new ir::Wild(L"c")));
 
+}
+
+// Reduce an extra formula call.
+class ReduceFormulaCall : public Visitor {
+public:
+    ReduceFormulaCall() : Visitor(CHILDREN_FIRST) {}
+
+    bool visitFormulaCall(ir::FormulaCall &_call) {
+        const ir::ExpressionPtr pExpr = _call.getTarget()->getFormula();
+        if (pExpr->getKind() == ir::Expression::FORMULA_CALL) {
+            ir::FormulaCallPtr pCall = new ir::FormulaCall(pExpr.as<FormulaCall>()->getTarget());
+            copyCallArgs(pCall, _call);
+            callSetter(pCall);
+        }
+        return true;
+    }
+};
+
+void optimize(ir::Node &_node) {
+    reduceExpressions(_node);
+    ReduceFormulaCall().traverseNode(_node);
 }

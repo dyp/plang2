@@ -21,7 +21,7 @@
 #include "backend_c.h"
 #include "typecheck.h"
 #include "parser_context.h"
-#include "reduce_expression.h"
+#include "optimization.h"
 #include "pp_flat_tree.h"
 #include "pp_syntax.h"
 #include "options.h"
@@ -66,7 +66,7 @@ int main(int _argc, const char ** _argv) {
             pModule = verify(*pModule);
 
         if (Options::instance().bOptimize)
-            reduceExpression(*pModule);
+            optimize(*pModule);
 
         if (Options::instance().prettyPrint & PP_FLAT)
             prettyPrintFlatTree(*pModule);
