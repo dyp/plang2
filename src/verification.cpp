@@ -162,16 +162,9 @@ std::wstring fmtInt(const int _n) {
 
 ir::NamedValuePtr generateNewVariable(const ir::NodePtr _pNode, const ir::TypePtr _pType) {
     ir::NamedValuesPtr pVars = varCollector(_pNode);
-
-    int i = 1;
-    while (1) {
+    for (int i=0; true; ++i)
         if (pVars->findByNameIdx(fmtInt(i)) == -1)
-            break;
-        else
-            ++i;
-    }
-
-    return new ir::NamedValue(fmtInt(i), _pType);
+            return new ir::NamedValue(fmtInt(i), _pType);
 }
 
 // Class of factual and formal params.
