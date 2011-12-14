@@ -149,6 +149,13 @@ public:
         return m_nodes.back();
     }
 
+    /// Add element to the front of collection.
+    /// \param _pNode Pointer to node to add.
+    Auto<_Node> prepend(const Auto<_Node> &_pNode) {
+        m_nodes.insert(m_nodes.begin(), _pNode);
+        return m_nodes.front();
+    }
+
     /// Append elements from another collection.
     /// \param _other Other collection.
     template<typename _OtherNode, typename _OtherBase>
@@ -199,7 +206,6 @@ public:
         for (size_t i = 0; i < size(); ++i)
             if (get(i)->getName() == _name)
                 return i;
-
         return (size_t)-1;
     }
 
