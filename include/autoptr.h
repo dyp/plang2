@@ -212,6 +212,12 @@ inline Auto<_Obj> clone(const _Obj &_obj) {
     return cloner.get(&_obj);
 }
 
+template<typename _Obj>
+inline Auto<_Obj> clone(const Auto<_Obj> &_obj) {
+    Cloner cloner;
+    return cloner.get(_obj);
+}
+
 // We need a sequence point between allocation and evaluation of constructor arguments
 // in order to cache uninitialized object and prevent infinite recursion on cyclic references.
 #define NEW_CLONE(_ORIGINAL, _CLONER, _CTOR) \
