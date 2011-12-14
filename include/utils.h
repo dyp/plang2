@@ -54,4 +54,6 @@ struct Option {
 bool parseOptions(size_t _cArgs, const char **_pArgs, Option *_pOptions, void *_pParam,
 		ArgHandler _notAnOptionHandler);
 
+std::wstring cyrillicToASCII(const std::wstring &_str);
+
 #endif /* UTILS_H_ */

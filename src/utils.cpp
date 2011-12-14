@@ -8,6 +8,7 @@
 #include <wchar.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <algorithm>
 
 #include "utils.h"
 
@@ -254,4 +255,31 @@ bool parseOptions(size_t _cArgs, const char **_pArgs, Option *_pOptions, void *_
     }
 
     return true;
+}
+
+std::wstring cyrillicToASCII(const std::wstring &_str) {
+    std::wstring sRussia = L"абвгдеёжзийклмнопрстуфцчшщъыьэюя";
+    std::wstring sTranslit[] = { L"a", L"b", L"v", L"g", L"d", L"e", L"jo", L"zh", L"z", L"i", L"j",
+                                 L"k", L"l", L"m", L"n", L"o", L"p", L"r", L"s", L"t", L"u", L"f",
+                                 L"x", L"cz", L"ch", L"sh", L"shh", L"\"", L"y'", L"'", L"e'", L"ju", L"ja" };
+    std::wstring sResult = L"";
+
+    for (int i=0; i<_str.size(); ++i) {
+        const wchar_t symbol = towlower(_str[i]);
+        const wchar_t *c = std::lower_bound(sRussia.c_str(), sRussia.c_str() + sRussia.size(), symbol);
+        if (*c != symbol) {
+            sResult += _str[i];
+            continue;
+        }
+        const int ind  = c - sRussia.c_str();
+        if (_str[i] != symbol) {
+            std::wstring tmp = sTranslit[ind];
+            transform(tmp.begin(), tmp.end(), tmp.begin(), towupper);
+            sResult += tmp;
+        }
+        else
+            sResult += sTranslit[ind];
+    }
+
+    return sResult;
 }
