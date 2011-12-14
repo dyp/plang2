@@ -37,6 +37,8 @@ bool _handleBackEnd(const std::string &_val, void *_p) {
         opts.backEnd |= BE_PP;
     else if (_val == "c" || _val == "2")
         opts.backEnd |= BE_C;
+    else if (_val == "pvs" || _val == "3")
+        opts.backEnd |= BE_PVS;
     else
         return false;
 
@@ -72,7 +74,7 @@ void _printUsage() {
         << "    plang [OPTIONS] FILE\n\n"
         << "Options\n\n"
         << "    -p, --prettyprint=TYPE        Pretty-printer mode, where TYPE is 'none' (0), 'flat' (1), 'ast' (2), 'lex' (3), 'p' (4)\n"
-        << "    -b, --backend=TYPE            Use backend, where TYPE is 'none' (0), 'pp' (1), 'c' (2)\n"
+        << "    -b, --backend=TYPE            Use backend, where TYPE is 'none' (0), 'pp' (1), 'c' (2), 'pvs' (3)\n"
         << "    -t, --typecheck=TYPE          Do typecheck, where TYPE is 'none' (0), 'on' (1), 'soft' (2)\n"
         << "    -o, --output=FILE             Output file name\n"
         << "    -v, --verbose                 Print debug info\n"

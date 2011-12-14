@@ -16,6 +16,7 @@ set(SOURCES
     ir/visitor.cpp
     backend_c.cpp
     backend_debug.cpp
+    backend_pvs.cpp
     collect_constraints.cpp
     lexer.cpp
     llir.cpp

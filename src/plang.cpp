@@ -19,6 +19,7 @@
 #include "llir.h"
 #include "backend_debug.h"
 #include "backend_c.h"
+#include "backend_pvs.h"
 #include "typecheck.h"
 #include "parser_context.h"
 #include "optimization.h"
@@ -79,6 +80,17 @@ int main(int _argc, const char ** _argv) {
 
         if (Options::instance().backEnd == BE_NONE)
             return EXIT_SUCCESS;
+
+        if (Options::instance().backEnd == BE_PVS) {
+            std::string strOut = Options::instance().strOutputFilename;
+            if (!strOut.empty()) {
+                std::wofstream ofs(strOut.c_str());
+                generatePvs(*pModule, ofs);
+            }
+            else
+                generatePvs(*pModule);
+            return EXIT_SUCCESS;
+        }
 
         llir::Module module;
 
