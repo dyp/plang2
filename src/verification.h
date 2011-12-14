@@ -6,6 +6,14 @@
 
 #include "ir/declarations.h"
 
+// Collect all variables from _pNode.
+// _pNode can be NULL.
+ir::NamedValuesPtr varCollector(const ir::NodePtr _pNode);
+
+// Collect all variables from _pNode and put it into _container.
+// _pNode can be NULL;
+void varCollector(const ir::NodePtr _pNode, const ir::NamedValues &_container);
+
 // Copy call args from _call to any call in _pExpr.
 // _pExpr can be NULL.
 ir::ExpressionPtr copyCallArgs(const ir::ExpressionPtr _pExpr, const ir::FormulaCall &_call);

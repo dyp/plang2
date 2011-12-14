@@ -55,6 +55,60 @@ bool callChecker(ir::NodePtr _pNode) {
     return cc.run();
 }
 
+typedef Collection<ir::FormulaDeclaration> Formulas;
+typedef Auto<Formulas> FormulasPtr;
+
+// Class to extract needed formulas from module.
+class FormulasCollector : public ir::Visitor {
+public:
+    FormulasCollector(const ir::Node &_node, Formulas &_container) :
+        m_pNode(&_node), m_pContainer(&_container), m_nCount(0)
+    {}
+
+    bool visitFormulaCall(ir::FormulaCall &_call) {
+        if (m_pContainer->findByNameIdx(_call.getName()) == -1)
+            if (_call.getTarget()) {
+                m_pContainer->prepend(_call.getTarget());
+                ++m_nCount;
+            }
+        return true;
+    }
+
+    int run() {
+        traverseNode(*m_pNode);
+        return m_nCount;
+    }
+
+private:
+    ir::NodePtr m_pNode;
+    FormulasPtr m_pContainer;
+    int m_nCount;
+};
+
+int collectFormulas(ir::Node &_node, FormulasPtr _pContainer) {
+    if (_pContainer)
+        return FormulasCollector(_node, *_pContainer).run();
+    else
+        return 0;
+}
+
+void collectAllFormulas(ir::Node &_node, FormulasPtr _pContainer) {
+    if (!_pContainer)
+        return;
+    if (collectFormulas(_node, _pContainer) != 0) {
+        FormulasPtr pContainer = new Formulas();
+        pContainer->assign(*_pContainer);
+        collectAllFormulas(*_pContainer, pContainer);
+        _pContainer->assign(*pContainer);
+    }
+}
+
+FormulasPtr collectAllFormulas(ir::Node &_node) {
+    FormulasPtr pContainer = new Formulas();
+    collectAllFormulas(_node, pContainer);
+    return pContainer;
+}
+
 // Class for analize variables.
 class VarAnalyzer : public Visitor {
 public:
@@ -62,30 +116,31 @@ public:
         m_pNode(&_node), m_pContainer(&_container), m_pStandart(_pStandart)
     {}
 
-    void addValue(const std::wstring &_sName, const ir::TypePtr _pType) {
+    void addValue(const ir::NamedValue &_val) {
         if (!m_pStandart) {
-            if (m_pContainer->findByNameIdx(_sName) == (size_t)-1)
-                m_pContainer->add(new ir::NamedValue(_sName, _pType));
+            if (m_pContainer->findByNameIdx(_val.getName()) == (size_t)-1)
+                m_pContainer->add(&_val);
         }
         else {
-            if (m_pContainer->findByNameIdx(_sName) == (size_t)-1)
-                if (m_pStandart->findByNameIdx(_sName) != (size_t)-1)
-                    m_pContainer->add(new ir::NamedValue(_sName, _pType));
+            if (m_pContainer->findByNameIdx(_val.getName()) == (size_t)-1)
+                if (m_pStandart->findByNameIdx(_val.getName()) != (size_t)-1)
+                    m_pContainer->add(&_val);
         }
     }
 
     virtual bool visitVariableReference(ir::VariableReference &_node) {
-        addValue(_node.getName(), _node.getType());
+        if (_node.getTarget())
+            addValue(*_node.getTarget());
         return false;
     }
 
     virtual bool visitNamedValue(ir::NamedValue &_node) {
-        addValue(_node.getName(), _node.getType());
+        addValue(_node);
         return false;
     }
 
     virtual bool visitParam(ir::Param &_node) {
-        addValue(_node.getName(), _node.getType());
+        addValue(_node);
         return false;
     }
 
@@ -150,7 +205,7 @@ ir::NamedValuesPtr compareValuesWithOrder(const ir::NodePtr _pNode, const ir::Na
     return compareValues(&_standart, *pContainer);
 }
 
-std::wstring fmtInt(const int _n) {
+static std::wstring fmtInt(const int _n) {
     int i = _n;
     std::wstring result = L"";
     while (i!=0) {
@@ -162,7 +217,7 @@ std::wstring fmtInt(const int _n) {
 
 ir::NamedValuePtr generateNewVariable(const ir::NodePtr _pNode, const ir::TypePtr _pType) {
     ir::NamedValuesPtr pVars = varCollector(_pNode);
-    for (int i=0; true; ++i)
+    for (int i=1; ; ++i)
         if (pVars->findByNameIdx(fmtInt(i)) == -1)
             return new ir::NamedValue(fmtInt(i), _pType);
 }
@@ -292,7 +347,7 @@ public:
         if (!m_pParameters)
             pFormulaCall->getArgs().add(new ir::VariableReference(&_node));
         else
-            pFormulaCall->getArgs().add(m_pParameters->getArg(_node));
+            pFormulaCall->getArgs().add(clone(m_pParameters->getArg(_node)));
         return false;
     }
 
@@ -396,14 +451,14 @@ ir::NamedValuesPtr getPredicateParams(const ir::PredicateType &_predicateType) {
 ir::FormulaDeclarationPtr declareFormula(const std::wstring &_sName, const ir::Expression &_expr,
                                          const ir::NamedValuesPtr _pParams = NULL, const ir::TypePtr _pType = NULL)
 {
-    ir::FormulaDeclarationPtr pFormulaDecl = new ir::FormulaDeclaration(_sName, _pType , &_expr);
+    ir::FormulaDeclarationPtr pFormulaDecl = new ir::FormulaDeclaration(_sName, _pType , clone(_expr));
     if (_expr.getKind() == ir::Expression::FORMULA)
         if (((ir::Formula&)_expr).getQuantifier() == ir::Formula::NONE)
-            pFormulaDecl->setFormula(((ir::Formula&)_expr).getSubformula());
+            pFormulaDecl->setFormula(clone(((ir::Formula&)_expr).getSubformula()));
     if (_pParams)
-        pFormulaDecl->getParams().assign(*compareValuesWithOrder(&_expr, *_pParams));
+        pFormulaDecl->getParams().assign(*clone(compareValuesWithOrder(&_expr, *_pParams)));
     else
-        pFormulaDecl->getParams().assign(*varCollector(&_expr));
+        pFormulaDecl->getParams().assign(*clone(varCollector(&_expr)));
     return pFormulaDecl;
 }
 
@@ -517,7 +572,7 @@ private:
 class Correction : public Visitor {
 public:
     Correction(const ir::Module &_module, const ir::Module &_theoriesContainer) :
-        m_pModule(&_module), m_pTheories(&_theoriesContainer), m_pPreCond(NULL), m_pPostCond(NULL), m_pPredicate(NULL)
+        m_pModule(&_module), m_pTheories(&_theoriesContainer), m_pPreCond(NULL), m_pPostCond(NULL), m_pPredicate(NULL), m_nLemma(1)
     {
         if (m_pModule)
             m_info.traverseNode(*m_pModule);
@@ -671,6 +726,11 @@ public:
             pPostCond  = m_info.getPostCondition(_predicate.getName()),
             pMeasure   = m_info.getMeasure(_predicate.getName());
 
+         if (pPreCond)
+             m_pTheory->getFormulas().append(*collectAllFormulas(*pPreCond));
+         if (pPostCond)
+             m_pTheory->getFormulas().append(*collectAllFormulas(*pPostCond));
+
          addFormula(pPreCond);
          addFormula(pPostCond);
          addFormula(pMeasure);
@@ -694,15 +754,22 @@ private:
     ir::ExpressionPtr m_pPreCond, m_pPostCond;
     ir::PredicatePtr m_pPredicate;
     PredicateInfoCollection m_info;
+    int m_nLemma;
 
-    void addLemma(ir::ExpressionPtr _pExpr) {
-        if (m_pTheory && _pExpr)
-            m_pTheory->getLemmas().add(new ir::LemmaDeclaration(_pExpr));
+    void addLemma(ir::ExpressionPtr _pExpr, const std::wstring &_name = L"") {
+        if (!m_pTheory || !_pExpr)
+            return;
+        ir::LemmaDeclarationPtr pLemma = new ir::LemmaDeclaration(clone(_pExpr));
+        if (_name.empty())
+            pLemma->setLabel(new ir::Label(fmtInt(m_nLemma++, L"L%u")));
+        else
+            pLemma->setLabel(new ir::Label(_name));
+        m_pTheory->getLemmas().add(pLemma);
     }
 
     void addFormula(ir::FormulaDeclarationPtr _pFormula) {
         if (m_pTheory && _pFormula)
-            m_pTheory->getFormulas().add(_pFormula);
+            m_pTheory->getFormulas().add(clone(_pFormula));
     }
 
     inline void _modifyConditions(const ir::ExpressionPtr _pPreCond, const ir::ExpressionPtr _pPostCond) {
