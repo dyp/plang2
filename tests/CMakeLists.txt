@@ -27,6 +27,7 @@ set(TESTS_INFERENCE
     inference/literals.psrc
     inference/literals_structured.psrc
     inference/literals_negative.psrc
+    inference/param_array.psrc
 )
 
 run_tests("-t0" "${TESTS_PARSING}")
