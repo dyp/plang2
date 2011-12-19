@@ -11,6 +11,17 @@ macro(run_tests FLAGS TESTS)
     endforeach()
 endmacro()
 
+macro(run_pp_tests FLAGS TESTS)
+    foreach(TEST ${TESTS})
+        add_test(${TEST}
+            ${PROJECT_SOURCE_DIR}/tools/test_pp.sh
+            ${PROJECT_SOURCE_DIR}/tools
+            ${PROJECT_BINARY_DIR}/src
+            ${PROJECT_SOURCE_DIR}/tests/${TEST}
+            ${FLAGS})
+    endforeach()
+endmacro()
+
 set(TESTS_PARSING
     parsing/logic_mul.psrc
     parsing/logic_gcd.psrc
@@ -30,5 +41,10 @@ set(TESTS_INFERENCE
     inference/param_array.psrc
 )
 
+set(TESTS_PRETTYPRINTER
+    prettyprinter/simply_formulas.psrc
+)
+
 run_tests("-t0" "${TESTS_PARSING}")
 run_tests("-t2" "${TESTS_INFERENCE}")
+run_pp_tests("-t0" "${TESTS_PRETTYPRINTER}")
