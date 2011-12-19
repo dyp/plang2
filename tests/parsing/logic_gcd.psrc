@@ -8,7 +8,7 @@
 
 // Input:
 formula divisor(nat x, a) = exists nat z. x*z = a;
-formula divisor2(nat с, a, b) = divisor(с, a) & divisor(с, b);
+formula divisor2(nat c, a, b) = divisor(c, a) & divisor(c, b);
 formula НОД(nat c, a, b) = divisor2(c, a, b) & forall nat x . (divisor2(x, a, b) => x <= c);
 
 D(nat a, b : nat c)
