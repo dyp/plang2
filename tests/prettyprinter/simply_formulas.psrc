@@ -1,0 +1,6 @@
+formula abs(nat a : nat) = a > 0 ? a : -a;
+formula max(nat a, b : nat) = a > b ? a : b;
+formula fib(nat i: nat) = ((i = 0) or (i = 1)) ? 1 : fib(i - 1) + fib(i);
+
+formula sqr(real x : real) = x * x;
+formula islimit(real x) = forall real e. (e > 0) & (exists real d. d > 0 & (forall real t. (t > 0) & (abs(x - t) < d) => abs(sqr(x) - sqr(t)) < e));
