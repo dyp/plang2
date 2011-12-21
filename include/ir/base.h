@@ -174,11 +174,15 @@ public:
             add(_cloner.get(_other.get(i)));
     }
 
+    void clear() {
+        m_nodes.clear();
+    }
+
     /// Assign elements from another collection.
     /// \param _other Other collection.
     template<typename _OtherNode, typename _OtherBase>
     void assign(const Collection<_OtherNode, _OtherBase> &_other) {
-        m_nodes.clear();
+        clear();
         append(_other);
     }
 
@@ -200,6 +204,14 @@ public:
             return false;
         m_nodes.erase(iNode);
         return true;
+    }
+
+    template<class _Predicate>
+    size_t findIdx(const _Node &_node, _Predicate _pred = std::equal_to<_Node>()) const {
+        for (size_t i = 0; i < size(); ++i)
+            if (get(i) && _pred(_node, *get(i)))
+                return i;
+        return (size_t)-1;
     }
 
     size_t findByNameIdx(const std::wstring &_name) const {
