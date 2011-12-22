@@ -93,7 +93,18 @@ set(TESTS_CALLGRAPH
     callgraph/same_names.psrc
 )
 
+set(TESTS_SEMANTICS
+    semantics/sample1.psrc
+    semantics/sample2.psrc
+    semantics/switch_real.psrc
+    semantics/arCons.psrc
+    semantics/arMod.psrc
+    semantics/compat.psrc
+    semantics/arSum.psrc
+)
+
 run_tests("-t0" "${TESTS_PARSING}")
 run_tests("-t2" "${TESTS_INFERENCE}")
+run_tests("-t1" "${TESTS_SEMANTICS}")
 run_pp_tests("-t0" "${TESTS_PRETTYPRINTER}")
 run_cg_tests("-t2" "${TESTS_CALLGRAPH}")

@@ -1,0 +1,15 @@
+/*
+
+<test>
+    /Module/F
+</test>
+
+*/
+
+type Ar(nat k) = array (real, 1..k);
+type Ar1(nat k, nat l) = array (real, 1..k, 1..l);
+
+F(nat n, Ar(n) x: Ar1(n, 2*n) y)
+{
+    y = for (var i, var j) { case (1..n, 1..n) : x[i]+1 case (1..n, (n+1)..(2*n-1)) : 0 case (1..n, 2*n) : -1 }
+}

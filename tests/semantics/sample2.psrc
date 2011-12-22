@@ -1,0 +1,19 @@
+/*
+
+<test>
+    /Module/D
+</test>
+
+*/
+
+D(nat a, b : nat c)
+pre a >= 1 & b >= 1
+{
+	if (a = b)
+		c = a
+	else if (a < b)
+		D(a, b - a : c)
+	else
+		D(a - b, b : c)
+}
+

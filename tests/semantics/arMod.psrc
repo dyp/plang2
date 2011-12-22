@@ -1,0 +1,14 @@
+/*
+
+<test>
+    /Module/perm
+</test>
+
+*/
+
+type Vec(nat n) = array (real, 1..2*n);
+type Vec1(nat n) = array (real, 1..2*n, 1..2*n);
+
+perm(nat n1, Vec1(n1) b, nat m1, m2, m3 : Vec1(n1) c)
+{ c = b.[ (m1, m2): b[m2, m1], (m2, m2): b[m3, m3], (m3, m3): b[m1, m1] ] };
+
