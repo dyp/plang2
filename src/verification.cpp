@@ -118,7 +118,7 @@ public:
 
     void addValue(const ir::NamedValue &_val) {
         if (!m_pBound->empty())
-            if (m_pBound->findIdx(_val, compare_values()) != -1)
+            if (m_pBound->findIdx(_val, CompareValues()) != -1)
                 return;
         if (!m_pStandart) {
             if (m_pContainer->findByNameIdx(_val.getName()) == (size_t)-1)
@@ -171,7 +171,7 @@ private:
     ir::NodePtr m_pNode;
     ir::NamedValuesPtr m_pContainer, m_pStandart, m_pBound;
 
-    struct compare_values{
+    struct CompareValues{
         bool operator() (const ir::NamedValue& x, const ir::NamedValue& y) const {
             return (x.getName() == y.getName()) && (*x.getType() == *y.getType());
         }
