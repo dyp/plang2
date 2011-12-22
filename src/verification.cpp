@@ -173,7 +173,7 @@ private:
 
     struct compare_values{
         bool operator() (const ir::NamedValue& x, const ir::NamedValue& y) const {
-            return (x.getName() == y.getName()) && (x.getType() = y.getType());
+            return (x.getName() == y.getName()) && (*x.getType() == *y.getType());
         }
     };
 
