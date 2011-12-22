@@ -1,0 +1,17 @@
+/*
+
+<test>
+    /Module/Umn
+</test>
+
+*/
+
+Umn(nat a, b:  nat c)
+pre a >= 0 & b >= 0
+{
+	if (a = 0)
+		c = 0
+	else
+		c = b + Umn(a - 1, b)
+}
+post c = a * b;

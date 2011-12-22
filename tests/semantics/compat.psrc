@@ -1,0 +1,26 @@
+/*
+
+<test>
+    /Module/P
+</test>
+
+*/
+
+type T = subtype(int a: a >= 0);
+type S = subtype(int b: b >= 10);
+type Ar(nat n) = array(real, 0..n, 0..n+1);
+
+F(nat k, nat m, S s, Ar(k) ar, Ar(m) ar1, predicate (nat a: nat b) pre a >= 0 post b >= 0: subtype(int a: a >= 20) t)
+{
+	t = s;   //s>=10 => s>=20
+	ar1 = ar;
+	ar[a, b] = ar1[b, a];
+}
+
+
+P(nat m , predicate (nat a: nat b) pre a >= 0 post b >= 0: T t, Ar(m) ar1)
+{
+	P(m , predicate (S s: S s1) pre s >= 10 {s1 = s; } post s1 >= 10: t, ar1);
+}
+
+

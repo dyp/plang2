@@ -1,0 +1,19 @@
+/*
+
+<test>
+    /Module/foo
+</test>
+
+*/
+
+
+foo(real _f : int _class) {
+	switch (_f) {
+		case 0..2: _class = 1
+		case 5..7: _class = 1
+		case 3:    _class = 2
+		case 8:    _class = 2
+		default:   _class = 0
+	}
+}
+

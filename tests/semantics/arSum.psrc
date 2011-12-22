@@ -1,0 +1,23 @@
+/*
+
+<test>
+    /Module/perm
+</test>
+
+*/
+
+type Vec1(nat n) = array (real, 1..n, 1..n);
+type Vec2(nat n) = array (real, 1..n, n+1..2*n);
+type Vec3(nat n) = array (real, n+1..2*n, 1..n);
+type Vec4(nat n) = array (real, n+1..2*n, n+1..2*n);
+
+perm(nat n: nat k) {
+	Vec1(n) v1;
+	Vec2(n) v2;
+	Vec3(n) v3;
+	Vec4(n) v4;
+	Vec1(2*n) v;
+
+	v = v1 + v2 + v3 + v4;
+}
+
