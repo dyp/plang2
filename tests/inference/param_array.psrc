@@ -1,0 +1,17 @@
+/*
+
+<test>
+        bvec//NamedReferenceType = bit
+</test>
+
+*/
+
+type bit = bool;
+type bvec(nat n) = array(bit, 0 .. n-1);
+
+ripple1(nat n, bvec(n) a: nat c)
+pre true
+{
+    c=0;
+}
+post true;
