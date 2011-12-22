@@ -113,10 +113,13 @@ FormulasPtr collectAllFormulas(ir::Node &_node) {
 class VarAnalyzer : public Visitor {
 public:
     VarAnalyzer(const ir::Node &_node, const ir::NamedValues &_container, const ir::NamedValuesPtr _pStandart = NULL) :
-        m_pNode(&_node), m_pContainer(&_container), m_pStandart(_pStandart)
+        m_pNode(&_node), m_pContainer(&_container), m_pStandart(_pStandart), m_pBound(new ir::NamedValues)
     {}
 
     void addValue(const ir::NamedValue &_val) {
+        if (!m_pBound->empty())
+            if (m_pBound->findIdx(_val, compare_values()) != -1)
+                return;
         if (!m_pStandart) {
             if (m_pContainer->findByNameIdx(_val.getName()) == (size_t)-1)
                 m_pContainer->add(&_val);
@@ -144,7 +147,17 @@ public:
         return false;
     }
 
-    // TODO Type parameters order, formulas.
+    virtual bool traverseFormula(ir::Formula &_node) {
+        VISITOR_ENTER(Formula, _node);
+
+        m_pBound->assign(_node.getBoundVariables());
+        VISITOR_TRAVERSE(Expression, Subformula, _node.getSubformula(), _node, Formula, setSubformula);
+        m_pBound->clear();
+
+        VISITOR_EXIT();
+    }
+
+    // TODO Type parameters order.
 
     void run() {
         traverseNode(*m_pNode);
@@ -156,7 +169,13 @@ public:
 
 private:
     ir::NodePtr m_pNode;
-    ir::NamedValuesPtr m_pContainer, m_pStandart;
+    ir::NamedValuesPtr m_pContainer, m_pStandart, m_pBound;
+
+    struct compare_values{
+        bool operator() (const ir::NamedValue& x, const ir::NamedValue& y) const {
+            return (x.getName() == y.getName()) && (x.getType() = y.getType());
+        }
+    };
 
 public:
     static ir::NamedValuesPtr _varCollector(const ir::NodePtr _pNode, const ir::NamedValuesPtr pStandart = NULL) {
@@ -569,6 +588,7 @@ private:
 };
 
 // Correctnes proove class.
+// TODO Path, lemmas names.
 class Correction : public Visitor {
 public:
     Correction(const ir::Module &_module, const ir::Module &_theoriesContainer) :
@@ -577,6 +597,8 @@ public:
         if (m_pModule)
             m_info.traverseNode(*m_pModule);
     }
+
+    //TODO bool traverseNode(Node &_node) { saveConditions(m_pPreCond, m_pPostCond); }
 
     // Corr(A, t, K, P, Q).
     void generalCorr(const ir::Predicate &_predicate, ir::Node &_node, const ir::ExpressionPtr _pPreCond = NULL,
@@ -663,20 +685,19 @@ public:
     }
 
     // Corr(A, t, if (E) B(x: y) else C(x: y), P, Q).
-    virtual bool visitIf(ir::If &_if) {
+    virtual bool traverseIf(ir::If &_if) {
         ruleQC(_if, m_pPreCond, m_pPostCond);
-        stop();
         return false;
     }
 
-    // TODO Add 3 statements.
+    // TODO Implement all statements.
 
-    // TODO Normal call.
-    virtual bool visitCall(ir::Call &_call) {
+    // Corr(A, t, B(C(x): y), P, Q)
+    virtual bool traverseCall(ir::Call &_call) {
+
         if (!m_pPreCond || !m_pPredicate)
             return false;
 
-        // FIXME _call.getLabel()->getName().
         if (predicateReference(_call)->getName() != m_pPredicate->getName()) {
             // Simple call.
             // RB.
@@ -690,7 +711,7 @@ public:
     }
 
     // Corr(A, t, a := E, P, Q).
-    virtual bool visitAssignment(ir::Assignment &_assignment) {
+    virtual bool traverseAssignment(ir::Assignment &_assignment) {
 
         if (!callChecker(&_assignment))
             specialCorr(_assignment, m_pPreCond, m_pPostCond);
@@ -710,12 +731,11 @@ public:
                 ruleQS(*pCall, *pTail, *pVar, m_pPreCond, m_pPostCond);
         }
 
-        // FIXME Stop traversing.
-        //stop();
         return false;
     }
 
-    virtual bool visitPredicate(ir::Predicate &_predicate) {
+    virtual bool traversePredicate(ir::Predicate &_predicate) {
+
         // Create Theory.
         m_pTheory = new Module(_predicate.getName());
         m_pTheories->getModules().add(m_pTheory);
@@ -821,7 +841,7 @@ private:
 
     }
 
-    // generate L(a := E).
+    // L(a := E).
     static ir::ExpressionPtr _generateLogicAssignment(ir::Assignment &_assignment) {
         ir::NamedValuePtr pLeftVariable = getLeftVariable(_assignment);
         if (pLeftVariable) {
@@ -839,7 +859,7 @@ private:
         return new ir::Binary();
     }
 
-    // generate L(K(x: y)).
+    // L(K(x: y)).
     static ir::ExpressionPtr _generateLogic(ir::Statement &_statement) {
         switch (_statement.getKind()) {
             case ir::Statement::ASSIGNMENT:
@@ -901,7 +921,7 @@ private:
             return NULL;
     }
 
-    // Is there formulas of correctness?
+    // Are there formulas of correctness?
     bool isCorrect(const ir::Call &_call) {
         return predicateType(_call.getPredicate())->getPreCondition() &&
                predicateType(_call.getPredicate())->getPostCondition();
