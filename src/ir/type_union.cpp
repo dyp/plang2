@@ -20,6 +20,9 @@ int UnionType::compare(const Type &_other) const {
     if (_other.getKind() == BOTTOM)
         return ORD_SUPER;
 
+    if (_other.getKind() == SUBTYPE)
+        return inverse(((const Subtype&)_other).compare(*this));
+
     if (_other.getKind() != UNION)
         return ORD_NONE;
 
