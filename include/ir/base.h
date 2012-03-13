@@ -371,6 +371,10 @@ public:
         ORD_EQUALS  = 0x10,
     };
 
+    static int inverse(int _nOrder) {
+        return _nOrder == ORD_SUB ? ORD_SUPER : (_nOrder == ORD_SUPER ? ORD_SUB : _nOrder);
+    }
+
     // Subtyping.
     virtual int compare(const Type &_other) const;
     bool compare(const Type &_other, int _order) const;

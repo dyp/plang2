@@ -415,6 +415,17 @@ public:
         return NEW_CLONE(this, _cloner, Subtype(_cloner.get(getParam()), _cloner.get(getExpression())));
     }
 
+    virtual bool less(const Type &_other) const;
+    virtual TypePtr getMeet(Type &_other);
+    virtual TypePtr getJoin(Type &_other);
+    virtual bool rewrite(const TypePtr &_pOld, const TypePtr &_pNew, bool _bRewriteFlags = true);
+    virtual int compare(const Type &_other) const;
+    virtual int getMonotonicity(const Type &_var) const;
+
+    virtual bool hasFresh() const {
+        return m_pParam && m_pParam->getType()->hasFresh();
+    }
+
     virtual bool contains(const TypePtr &_pType) const {
         return m_pParam && ((*m_pParam->getType() == *_pType) || m_pParam->getType()->contains(_pType));
     }

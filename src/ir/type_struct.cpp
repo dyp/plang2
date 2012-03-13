@@ -112,6 +112,9 @@ int StructType::compare(const Type & _other) const {
     if (_other.getKind() == BOTTOM)
         return ORD_SUPER;
 
+    if (_other.getKind() == SUBTYPE)
+        return inverse(((const Subtype&)_other).compare(*this));
+
     if (_other.getKind() != STRUCT)
         return ORD_NONE;
 
@@ -437,6 +440,9 @@ bool tc::TupleType::less(const Type &_other) const {
 int tc::TupleType::compare(const Type &_other) const {
     if (_other.getKind() == FRESH)
         return ORD_UNKNOWN;
+
+    if (_other.getKind() == SUBTYPE)
+        return inverse(((const Subtype&)_other).compare(*this));
 
     if (_other.getKind() != TUPLE)
         return ORD_NONE;
