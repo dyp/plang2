@@ -32,6 +32,22 @@ public:
 
     bool isBuiltin() const { return m_bBuiltin; }
 
+    virtual bool less(const Node& _other) const {
+        if (!AnonymousPredicate::equals(_other))
+            return AnonymousPredicate::less(_other);
+        const Predicate& other = (const Predicate&)_other;
+        if (isBuiltin() != other.isBuiltin())
+            return !isBuiltin() && other.isBuiltin();
+        return getName() < other.getName();
+    }
+
+    virtual bool equals(const Node& _other) const {
+        if (!AnonymousPredicate::equals(_other))
+            return false;
+        const Predicate& other = (const Predicate&)_other;
+        return isBuiltin() == other.isBuiltin() && getName() == other.getName();
+    }
+
     virtual NodePtr clone(Cloner &_cloner) const {
         PredicatePtr pCopy = NEW_CLONE(this, _cloner, Predicate(getName(), isBuiltin()));
         cloneTo(*pCopy, _cloner);
@@ -185,6 +201,18 @@ public:
     /// \param _pTarget Referenced variable.
     void setDeclaration(const VariableDeclarationPtr &_pDeclaration) { m_pDeclaration = _pDeclaration; }
 
+    virtual bool less(const Node& _other) const {
+        return NamedValue::equals(_other)
+            ? getKind() < ((const Variable&)_other).getKind()
+            : NamedValue::less(_other);
+    }
+
+    virtual bool equals(const Node& _other) const {
+        return NamedValue::equals(_other)
+            ? getKind() == ((const Variable&)_other).getKind()
+            : false;
+    }
+
     virtual NodePtr clone(Cloner &_cloner) const {
         return NEW_CLONE(this, _cloner, Variable(m_kind == LOCAL, getName(), _cloner.get(getType()), isMutable(), _cloner.get(getDeclaration())));
     }
@@ -236,6 +264,22 @@ public:
     void setType(const TypePtr &_pType) { m_pVar->setType(_pType); }
 
     std::wstring getName() const;
+
+    virtual bool less(const Node& _other) const {
+        if (!Statement::equals(_other))
+            return Statement::less(_other);
+        const VariableDeclaration& other = (const VariableDeclaration&)_other;
+        if (_equals(getVariable(), other.getVariable()))
+            return _less(getVariable(), other.getVariable());
+        return _less(getValue(), other.getValue());
+    }
+
+    virtual bool equals(const Node& _other) const {
+        if (!Statement::equals(_other))
+            return false;
+        const VariableDeclaration& other = (const VariableDeclaration&)_other;
+        return _equals(getVariable(), other.getVariable()) && _equals(getValue(), other.getValue());
+    }
 
     virtual NodePtr clone(Cloner &_cloner) const {
         return NEW_CLONE(this, _cloner, VariableDeclaration(_cloner.get(getVariable()), _cloner.get(getValue()), _cloner.get(getLabel())));
@@ -332,6 +376,8 @@ public:
     /// Set declared formula postcondition.
     /// \param _pFormula Formula.
     void setFormula(const ExpressionPtr &_pFormula) { m_pFormula = _pFormula; }
+
+    bool operator< (const FormulaDeclaration& _other) {}
 
     virtual NodePtr clone(Cloner &_cloner) const {
         FormulaDeclarationPtr pCopy = NEW_CLONE(this, _cloner, FormulaDeclaration(getName(), _cloner.get(getResultType()), _cloner.get(getFormula()), _cloner.get(getLabel())));
