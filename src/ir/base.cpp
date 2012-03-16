@@ -68,4 +68,52 @@ TypePtr resolveBaseType(const TypePtr &_pType) {
     return pType;
 }
 
+bool Label::less(const Node& _other) const {
+    if (!Node::equals(_other))
+        return Node::less(_other);
+    return getName() < ((const Label&)_other).getName();
+}
+
+bool Label::equals(const Node& _other) const {
+    if (!Node::equals(_other))
+        return false;
+    return getName() == ((const Label&)_other).getName();
+}
+
+bool Statement::less(const Node& _other) const {
+    if (!Node::equals(_other))
+        return Node::less(_other);
+    const Statement& other = (const Statement&)_other;
+    if (getKind() != other.getKind())
+        return getKind() < other.getKind();
+    return _less(getLabel(), other.getLabel());
+}
+
+bool Statement::equals(const Node& _other) const {
+    if (!Node::equals(_other))
+        return false;
+    const Statement& other = (const Statement&)_other;
+    return getKind() == other.getKind() && _equals(getLabel(), other.getLabel());
+}
+
+bool NamedValue::less(const Node& _other) const {
+    if (Node::equals(_other))
+        return Node::less(_other);
+    const NamedValue& other = (const NamedValue&)_other;
+    if (getKind() != other.getKind())
+        return getKind() < other.getKind();
+    if (*getType() != *other.getType())
+        return *getType() < *other.getType();
+    return getName() < other.getName();
+}
+
+bool NamedValue::equals(const Node& _other) const {
+    if (Node::equals(_other))
+        return false;
+    const NamedValue& other = (const NamedValue&)_other;
+    return getKind() == other.getKind()
+        && *getType() == *other.getType()
+        && getName() == other.getName();
+}
+
 }

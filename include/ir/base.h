@@ -98,9 +98,20 @@ public:
 
     virtual NodesPtr getChildren() const;
 
+    bool operator<(const Node& _other) const { return less(_other); }
+    bool operator>(const Node& _other) const { return _other < *this; }
+    bool operator==(const Node& _other) const { return equals(_other); }
+    bool operator!=(const Node& _other) const { return !equals(_other); }
+
+    virtual bool less(const Node& _other) const { return getNodeKind() < _other.getNodeKind(); }
+    virtual bool equals(const Node& _other) const { return getNodeKind() == _other.getNodeKind(); }
+
     // \returns Deep copy of the node.
     virtual NodePtr clone(Cloner &_cloner) const { return NULL; }
 
+protected:
+    static bool _less(const NodePtr& _pLeft, const NodePtr& _pRight) { return (_pLeft && _pRight) ? *_pLeft < *_pRight : !_pLeft && _pRight; }
+    static bool _equals(const NodePtr& _pLeft, const NodePtr& _pRight) { return (_pLeft && _pRight) ? *_pLeft == *_pRight : (bool)_pLeft == (bool)_pRight; }
 };
 
 /// Collection of homogeneous nodes.
@@ -206,6 +217,13 @@ public:
         return true;
     }
 
+    bool remove(size_t _index) {
+        if (_index >= size())
+            return false;
+        m_nodes.erase(m_nodes.begin() + _index);
+        return true;
+    }
+
     template<class _Predicate>
     size_t findIdx(const _Node &_node, _Predicate _pred = std::equal_to<_Node>()) const {
         for (size_t i = 0; i < size(); ++i)
@@ -219,6 +237,30 @@ public:
             if (get(i)->getName() == _name)
                 return i;
         return (size_t)-1;
+    }
+
+    virtual bool less(const Node& _other) const {
+        if (_Base::equals(_other))
+            return _Base::less(_other);
+        const Collection& other = (const Collection&)_other;
+        if (size() != other.size())
+            return size() < other.size();
+        for (size_t i=0; i<size(); ++i)
+            if (!_equals(get(i), other.get(i)))
+                return _less(get(i), other.get(i));
+        return false;
+    }
+
+    virtual bool equals(const Node& _other) const {
+        if (_Base::equals(_other))
+            return false;
+        const Collection& other = (const Collection&)_other;
+        if (size() != other.size())
+            return false;
+        for (size_t i=0; i<size(); ++i)
+            if (!_equals(get(i), other.get(i)))
+                return false;
+        return true;
     }
 
     virtual NodePtr clone(Cloner &_cloner) const {
@@ -429,6 +471,9 @@ public:
     /// \param _pType Type associated with value.
     void setType(const TypePtr &_pType) { m_pType = _pType; }
 
+    virtual bool less(const Node& _other) const;
+    virtual bool equals(const Node& _other) const;
+
     virtual NodePtr clone(Cloner &_cloner) const {
         return NEW_CLONE(this, _cloner, NamedValue(m_strName, _cloner.get(m_pType.ptr())));
     }
@@ -523,6 +568,9 @@ public:
     /// \param _strName Label name.
     void setName(const std::wstring &_strName) { m_strName = _strName; }
 
+    virtual bool less(const Node& _other) const;
+    virtual bool equals(const Node& _other) const;
+
     virtual NodePtr clone(Cloner &_cloner) const { return NEW_CLONE(this, _cloner, Label(m_strName)); }
 
 private:
@@ -596,6 +644,9 @@ public:
     // Check if the statement ends like a block (i.e. separating semicolon is not needed).
     // \return True if the statement ends like a block, false otherwise.
     virtual bool isBlockLike() const { return false; }
+
+    virtual bool less(const Node& _other) const;
+    virtual bool equals(const Node& _other) const;
 
     virtual NodePtr clone(Cloner &_cloner) const {
         return NEW_CLONE(this, _cloner, Statement(_cloner.get(getLabel())));

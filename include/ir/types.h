@@ -259,6 +259,9 @@ public:
     size_t getOrdinal() const { return m_ord; }
     void setOrdinal(size_t _ord) { m_ord = _ord; }
 
+    virtual bool less(const Node& _other) const;
+    virtual bool equals(const Node& _other) const;
+
     virtual NodePtr clone(Cloner &_cloner) const {
         UnionConstructorDeclarationPtr pCopy = NEW_CLONE(this, _cloner, UnionConstructorDeclaration(getName(), getOrdinal(),
                 _cloner.get(getUnion())));

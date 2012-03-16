@@ -305,3 +305,20 @@ int ParameterizedType::getMonotonicity(const Type &_var) const {
     // TODO: consider parameters after other operators of parameterized types get implemented.
     return getActualType()->getMonotonicity(_var);
 }
+
+bool UnionConstructorDeclaration::less(const Node& _other) const {
+    if (!Node::equals(_other))
+        return Node::less(_other);
+    const UnionConstructorDeclaration& other = (const UnionConstructorDeclaration&)_other;
+    if (getName() != other.getName())
+        return getName() < other.getName();
+    return getFields() < other.getFields();
+}
+
+bool UnionConstructorDeclaration::equals(const Node& _other) const {
+    if (!Node::equals(_other))
+        return false;
+    const UnionConstructorDeclaration& other = (const UnionConstructorDeclaration&)_other;
+    return getName() == other.getName()
+        && getFields() == other.getFields();
+}
