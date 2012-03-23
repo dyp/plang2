@@ -176,7 +176,7 @@ public:
         if (_pObj == NULL)
             return NULL;
 
-        Cache::iterator iObj = m_cache.find(_pObj);
+        Cache::iterator iObj = m_cache.find(_getHandle(_pObj));
 
         if (iObj != m_cache.end())
             return iObj->second;
@@ -193,15 +193,27 @@ public:
         return get(_pObj.ptr());
     }
 
+    template<class _Obj>
+    void alias(const Auto<_Obj> &_pObj, const Auto<_Obj> &_pOther) {
+        _mergeHandles(_getHandle(_pObj.ptr()), _getHandle(_pOther.ptr()));
+    }
+
     void *allocate(size_t _cSize, const void *_pOriginal);
     void *allocate(size_t _cSize, const Counted *_pOriginal);
 
     friend void *operator new(size_t, Cloner &, const void *);
 
 private:
-    typedef std::map<const void *, const Counted *> Cache;
+    typedef std::map<int, const Counted *> Cache;
+    typedef std::map<const void *, int> Handles;
+    typedef std::multimap<int, const void *> Objects;
 
     Cache m_cache;
+    Handles m_handles;
+    Objects m_objects;
+
+    int _getHandle(const void *_pObject);
+    void _mergeHandles(int _nHandle, int _nOther);
 };
 
 void *operator new(size_t _cSize, Cloner &_cloner, const void *_pOriginal);
