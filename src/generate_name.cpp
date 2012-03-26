@@ -124,3 +124,13 @@ std::wstring NameGenerator::makeNameLemmaArrayMod(){
     m_arrayModNumber++;
     return fmtInt(m_arrayModNumber, L"ArrayModification%u");
 }
+
+std::wstring NameGenerator::makeNameLemmaIf(){
+    m_ifNumber++;
+    return fmtInt(m_ifNumber, L"If%u");
+}
+
+std::wstring NameGenerator::makeNameLemmaArrayUnion(){
+    m_arrayUnionNumber++;
+    return fmtInt(m_arrayUnionNumber, L"ArrayUnion%u");
+}
