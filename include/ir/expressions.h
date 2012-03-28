@@ -118,6 +118,11 @@ public:
 
     static void substitute(ExpressionPtr& _pExpr, Matches& _matches);
 
+    static bool implies(const ExpressionPtr& _pLeft, const ExpressionPtr& _pRight);
+    bool implies(const Expression& _other) const {
+        return implies(this, &_other);
+    }
+
     /// Get type of the expression.
     /// \returns Type associated with expression.
     virtual TypePtr getType() const { return m_pType; }
