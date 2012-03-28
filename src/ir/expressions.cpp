@@ -190,6 +190,30 @@ bool Expression::equals(const Node& _other) const {
     return getKind() == other.getKind() && _equals(getType(), other.getType());
 }
 
+bool Expression::implies(const ExpressionPtr& _pLeft, const ExpressionPtr& _pRight) {
+    if (_matches(_pLeft, _pRight))
+        return true;
+    if (!_pLeft || !_pRight)
+        return false;
+
+    if (_pLeft->getKind() == BINARY) {
+        const Binary& bin = (const Binary&)*_pLeft;
+        if (bin.getOperator() == Binary::BOOL_AND && (implies(bin.getLeftSide(), _pRight) || implies(bin.getRightSide(), _pRight)))
+            return true;
+        if (bin.getOperator() == Binary::BOOL_OR && implies(bin.getLeftSide(), _pRight) && implies(bin.getRightSide(), _pRight))
+            return true;
+    }
+    if (_pRight->getKind() == BINARY) {
+        const Binary& bin = (const Binary&)*_pRight;
+        if (bin.getOperator() == Binary::BOOL_AND && implies(_pLeft, bin.getLeftSide()) && implies(_pLeft, bin.getRightSide()))
+            return true;
+        if (bin.getOperator() == Binary::BOOL_OR && (implies(_pLeft, bin.getLeftSide()) || implies(_pLeft, bin.getRightSide())))
+            return true;
+    }
+
+    return false;
+}
+
 bool Wild::less(const Node& _other) const {
     if (!Expression::equals(_other))
         return Expression::less(_other);
