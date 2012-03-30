@@ -585,6 +585,7 @@ public:
     Overflow &getOverflow() { return m_overflow; }
 
     bool isSymmetrical() const;
+    int getInverseOperator() const;
 
     virtual bool less(const Node& _other) const;
     virtual bool equals(const Node& _other) const;
