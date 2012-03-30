@@ -66,20 +66,6 @@ NamedValuePtr UnionAlternativeExpr::getField() const {
 
 bool Binary::isSymmetrical() const {
     switch (getOperator()) {
-        case SUBTRACT:
-        case DIVIDE:
-        case REMAINDER:
-        case POWER:
-        case SHIFT_LEFT:
-        case SHIFT_RIGHT:
-        case IN:
-        case LESS:
-        case LESS_OR_EQUALS:
-        case GREATER:
-        case GREATER_OR_EQUALS:
-        case IMPLIES:
-            return false;
-
         case ADD:
         case MULTIPLY:
         case EQUALS:
@@ -92,10 +78,25 @@ bool Binary::isSymmetrical() const {
         case BITWISE_XOR:
         case IFF:
             return true;
-
         default:
-            assert(false);
             return false;
+    }
+}
+
+int Binary::getInverseOperator() const {
+    if (isSymmetrical())
+        return getOperator();
+    switch (getOperator()) {
+        case LESS:
+            return GREATER;
+        case LESS_OR_EQUALS:
+            return GREATER_OR_EQUALS;
+        case GREATER:
+            return LESS;
+        case GREATER_OR_EQUALS:
+            return LESS_OR_EQUALS;
+        default:
+            return -1;
     }
 }
 
@@ -355,7 +356,7 @@ bool Binary::matches(const Expression& _other, MatchesPtr _pMatches) const {
         return false;
     if (_matches(getLeftSide(), other.getLeftSide(), _pMatches) && _matches(getRightSide(), other.getRightSide(), _pMatches))
         return true;
-    return isSymmetrical()
+    return getOperator() == other.getInverseOperator()
         ? _matches(getLeftSide(), other.getRightSide(), _pMatches) && _matches(getRightSide(), other.getLeftSide(), _pMatches)
         : false;
 }
