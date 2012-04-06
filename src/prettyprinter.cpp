@@ -5,6 +5,7 @@
 #include "utils.h"
 #include "ir/statements.h"
 #include "ir/visitor.h"
+#include "pp_syntax.h"
 
 #include <iostream>
 
@@ -375,7 +376,7 @@ public:
             return true;
 
         if (_type.getKind() == Type::FRESH) {
-            m_os << fmtFreshType((tc::FreshType &)_type);;
+            m_os << fmtFreshType((tc::FreshType &)_type);
         } else if (_type.getKind() <= Type::GENERIC) {
             m_os << fmtType(_type.getKind());
 
@@ -425,10 +426,20 @@ public:
         return false;
     }
 
+    virtual bool traverseSubtype(Subtype &_type) {
+        VISITOR_ENTER(Subtype, _type);
+        m_os << L"subtype(";
+        VISITOR_TRAVERSE(NamedValue, SubtypeParam, _type.getParam(), _type, Subtype, setParam);
+        m_os << L": ";
+        prettyPrintSyntax(*_type.getExpression(), m_os);
+        m_os << L")";
+        VISITOR_EXIT();
+    }
+
     virtual bool visitRange(Range &_type) {
-        traverseExpression(*_type.getMin());
+        prettyPrintSyntax(*_type.getMin());
         m_os << L"..";
-        traverseExpression(*_type.getMax());
+        prettyPrintSyntax(*_type.getMax());
         return false;
     }
 
