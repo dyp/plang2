@@ -144,6 +144,9 @@ public:
             case ir::Binary::IMPLIES:
                 m_os << L"=>";
                 break;
+            case ir::Binary::IFF:
+                m_os << L"<=>";
+                break;
         }
     }
 
