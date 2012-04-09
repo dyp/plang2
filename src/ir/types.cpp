@@ -60,6 +60,9 @@ int Type::compare(const Type &_other) const {
     /*if (hasFresh() || _other.hasFresh())
         return OrdUnknown;*/
 
+    if (_other.getKind() == SUBTYPE)
+        return inverse(((const Subtype&)_other).compare(*this));
+
     if (kinds == P(NAT, NAT))
         return cmpBits(getBits(), _other.getBits());
     if (kinds == P(NAT, INT))
