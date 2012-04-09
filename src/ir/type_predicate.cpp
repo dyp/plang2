@@ -124,6 +124,9 @@ int PredicateType::compare(const Type &_other) const {
     if (_other.getKind() == BOTTOM)
         return ORD_SUPER;
 
+    if (_other.getKind() == SUBTYPE)
+        return inverse(((const Subtype&)_other).compare(*this));
+
     if (_other.getKind() != getKind())
         return ORD_NONE;
 
