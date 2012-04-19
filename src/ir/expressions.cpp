@@ -175,6 +175,40 @@ void Expression::substitute(ExpressionPtr& _pExpr, Matches& _matches) {
         _pExpr =  _matches.getExpression((Wild&)*_pExpr);
 }
 
+class SubstituteByMask : public Visitor {
+public:
+    SubstituteByMask(ir::Node &_node, const ir::ExpressionPtr &_pFrom, const ir::ExpressionPtr &_pTo) :
+        Visitor(CHILDREN_FIRST), m_pNode(&_node), m_pFrom(_pFrom), m_pTo(_pTo)
+    {}
+
+    bool visitExpression(ir::Expression &_expr) {
+        Matches matches;
+        if (!_expr.matches(*m_pFrom, &matches))
+            return true;
+
+        ir::ExpressionPtr pNewNode = clone(*m_pTo);
+        Expression::substitute(pNewNode, matches);
+
+        // FIXME If _expr is root node.
+        callSetter(pNewNode);
+
+        return true;
+    }
+
+    void substitute() {
+        traverseNode(*m_pNode);
+    }
+
+private:
+    ir::NodePtr m_pNode;
+    ir::ExpressionPtr m_pFrom, m_pTo;
+
+};
+
+void Expression::substitute(ir::Node &_node, const ir::ExpressionPtr &_pFrom, const ir::ExpressionPtr &_pTo) {
+    SubstituteByMask(_node, _pFrom, _pTo).substitute();
+}
+
 bool Expression::less(const Node& _other) const {
     if (!Node::equals(_other))
         return Node::less(_other);
@@ -196,6 +230,15 @@ bool Expression::implies(const ExpressionPtr& _pLeft, const ExpressionPtr& _pRig
         return true;
     if (!_pLeft || !_pRight)
         return false;
+
+    if (_pLeft->getKind() == Expression::LITERAL
+        && _pLeft.as<Literal>()->getLiteralKind() == Literal::BOOL
+        && _pLeft.as<Literal>()->getBool() == false)
+        return true;
+    if (_pRight->getKind() == Expression::LITERAL
+        && _pRight.as<Literal>()->getLiteralKind() == Literal::BOOL
+        && _pRight.as<Literal>()->getBool() == true)
+        return true;
 
     if (_pLeft->getKind() == BINARY) {
         const Binary& bin = (const Binary&)*_pLeft;
