@@ -121,6 +121,7 @@ public:
     }
 
     static void substitute(ExpressionPtr& _pExpr, Matches& _matches);
+    static void substitute(ir::Node &_node, const ir::ExpressionPtr &_pFrom, const ir::ExpressionPtr &_pTo);
 
     static bool implies(const ExpressionPtr& _pLeft, const ExpressionPtr& _pRight);
     bool implies(const Expression& _other) const {
@@ -173,6 +174,7 @@ public:
     Matches() {}
     void addExpression(const Wild& _wild, const Expression& _expr) { m_map.insert(std::make_pair(&_wild, &_expr)); }
     ExpressionPtr getExpression(const Wild& _wild) { return m_map.find(&_wild)->second; }
+    ExpressionPtr getExpression(const std::wstring& _sName) { return getExpression(Wild(_sName)); }
 private:
     std::map<WildPtr, ExpressionPtr, PtrLess<Wild> > m_map;
 };
