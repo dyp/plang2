@@ -172,9 +172,18 @@ private:
 class Matches : public Node {
 public:
     Matches() {}
-    void addExpression(const Wild& _wild, const Expression& _expr) { m_map.insert(std::make_pair(&_wild, &_expr)); }
-    ExpressionPtr getExpression(const Wild& _wild) { return m_map.find(&_wild)->second; }
-    ExpressionPtr getExpression(const std::wstring& _sName) { return getExpression(Wild(_sName)); }
+    void addExpression(const Wild& _wild, const Expression& _expr) {
+        m_map.insert(std::make_pair(&_wild, &_expr));
+    }
+    ExpressionPtr getExpression(const Wild& _wild) {
+        std::map<WildPtr, ExpressionPtr>::iterator it = m_map.find(&_wild);
+        if (it != m_map.end())
+            return it->second;
+        return NULL;
+    }
+    ExpressionPtr getExpression(const std::wstring& _sName) {
+        return getExpression(Wild(_sName));
+    }
 private:
     std::map<WildPtr, ExpressionPtr, PtrLess<Wild> > m_map;
 };
