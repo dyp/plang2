@@ -329,36 +329,37 @@ bool CollectPreConditions::visitCall(Call &_node) {
                     Collection<Range> rangesCall = arrayRangesWithCurrentParams(pCallArg);
                     ExpressionPtr pExpr;
 
-                    Collection<Range> rangesPred;
+                    Collection<Range> rangesPred, ranges;
 
 //в разных случаях доступ к аргументам может быть и не таким
                     NamedValues params = pTypePred.as<ParameterizedType>()->getParams();
-                    Collection<Range> ranges = pTypePred.as<ParameterizedType>()->getActualType()
-                        .as<DerivedType>().as<ArrayType>()->getDimensions();
+                    ArrayTypePtr pArray = pTypePred.as<ParameterizedType>()->getActualType()
+                        .as<DerivedType>().as<ArrayType>();
+                    if (pArray)
+                        getRanges(*pArray, ranges);
 
                     Collection<Expression> args = pPredParam->getType().as<NamedReferenceType>()->getArgs();
 
                     for(int j = 0; j < ranges.size(); j++) {
                         RangePtr pNewRange = new Range(ranges.get(j)->getMin(), ranges.get(j)->getMax());
 
-                        for(int i = 0; i < params.size(); i++) {
-                            VarSubstitute substitute(params.get(i), args.get(i));
-                            substitute.traverseNode(*(pNewRange.ptr()));
+                        for(int l = 0; l < params.size(); l++) {
+                            Expression::substitute(*pNewRange, new VariableReference(params.get(l)), args.get(l));
                         }
 
                         rangesPred.add(pNewRange);
                     }
 
                     if(rangesCall.size() == rangesPred.size()) {
-                        for(int i = 0; i < rangesCall.size(); i++) {
-                            if(i == 0)
+                        for(int l = 0; l < rangesCall.size(); l++) {
+                            if(l == 0)
                                 pExpr = new Binary(Binary::BOOL_AND,
                                     new Binary(Binary::EQUALS, rangesCall.get(0)->getMin(), rangesPred.get(0)->getMin()),
                                     new Binary(Binary::EQUALS, rangesCall.get(0)->getMax(), rangesPred.get(0)->getMax()));
                             else
                                 pExpr = new Binary(Binary::BOOL_AND, pExpr, new Binary(Binary::BOOL_AND,
-                                    new Binary(Binary::EQUALS, rangesCall.get(i)->getMin(), rangesPred.get(i)->getMin()),
-                                    new Binary(Binary::EQUALS, rangesCall.get(i)->getMax(), rangesPred.get(i)->getMax())));
+                                    new Binary(Binary::EQUALS, rangesCall.get(l)->getMin(), rangesPred.get(l)->getMin()),
+                                    new Binary(Binary::EQUALS, rangesCall.get(l)->getMax(), rangesPred.get(l)->getMax())));
                         }
 
                         if(pCond)
@@ -490,36 +491,38 @@ bool CollectPreConditions::visitCall(Call &_node) {
                         Collection<Range> rangesCall = arrayRangesWithCurrentParams(pCallArg);
                         ExpressionPtr pExpr;
 
-                        Collection<Range> rangesPred;
+                        Collection<Range> rangesPred, ranges;
 
 //в разных случаях доступ к аргументам может быть и не таким
                         NamedValues params = pTypePred.as<ParameterizedType>()->getParams();
-                        Collection<Range> ranges = pTypePred.as<ParameterizedType>()->getActualType()
-                            .as<DerivedType>().as<ArrayType>()->getDimensions();
+
+                        ArrayTypePtr pArray = pTypePred.as<ParameterizedType>()->getActualType()
+                            .as<DerivedType>().as<ArrayType>();
+                        if (pArray)
+                            getRanges(*pArray, ranges);
 
                         Collection<Expression> args = pPredParam->getType().as<NamedReferenceType>()->getArgs();
 
-                        for(int j = 0; j < ranges.size(); j++) {
-                            RangePtr pNewRange = new Range(ranges.get(j)->getMin(), ranges.get(j)->getMax());
+                        for(int k = 0; k < ranges.size(); k++) {
+                            RangePtr pNewRange = new Range(ranges.get(k)->getMin(), ranges.get(k)->getMax());
 
-                            for(int i = 0; i < params.size(); i++) {
-                                VarSubstitute substitute(params.get(i), args.get(i));
-                                substitute.traverseNode(*(pNewRange.ptr()));
+                            for(int l = 0; l < params.size(); l++) {
+                                Expression::substitute(*pNewRange, new VariableReference(params.get(l)), args.get(l));
                             }
 
                             rangesPred.add(pNewRange);
                         }
 
                         if(rangesCall.size() == rangesPred.size()) {
-                            for(int i = 0; i < rangesCall.size(); i++) {
-                                if(i == 0)
+                            for(int l = 0; l < rangesCall.size(); l++) {
+                                if(l == 0)
                                     pExpr = new Binary(Binary::BOOL_AND,
                                         new Binary(Binary::EQUALS, rangesCall.get(0)->getMin(), rangesPred.get(0)->getMin()),
                                         new Binary(Binary::EQUALS, rangesCall.get(0)->getMax(), rangesPred.get(0)->getMax()));
                                 else
                                     pExpr = new Binary(Binary::BOOL_AND, pExpr, new Binary(Binary::BOOL_AND,
-                                        new Binary(Binary::EQUALS, rangesCall.get(i)->getMin(), rangesPred.get(i)->getMin()),
-                                        new Binary(Binary::EQUALS, rangesCall.get(i)->getMax(), rangesPred.get(i)->getMax())));
+                                        new Binary(Binary::EQUALS, rangesCall.get(l)->getMin(), rangesPred.get(l)->getMin()),
+                                        new Binary(Binary::EQUALS, rangesCall.get(l)->getMax(), rangesPred.get(l)->getMax())));
                             }
 
                             if(pCond)
@@ -1265,9 +1268,14 @@ RangePtr CollectPreConditions::arrayRangeWithCurrentParams(ExpressionPtr _pArray
             getType().as<NamedReferenceType>()->getDeclaration().as<TypeDeclaration>()->
             getType().as<ParameterizedType>()->getParams();
 
-        RangePtr pRange = _pArray.as<VariableReference>()->getTarget().as<Param>()->
+        Collection<Type> dims;
+        _pArray.as<VariableReference>()->getTarget().as<Param>()->
             getType().as<NamedReferenceType>()->getDeclaration().as<TypeDeclaration>()->
-            getType().as<ParameterizedType>()->getActualType().as<DerivedType>().as<ArrayType>()->getDimensions().get(0);
+            getType().as<ParameterizedType>()->getActualType().as<DerivedType>().as<ArrayType>()->getDimensions(dims);
+        TypePtr pType = getNotNamedReferenceType(dims.get(0));
+        RangePtr pRange = NULL;
+        if (pType && pType->getKind() == Type::SUBTYPE)
+            pType.as<Subtype>()->asRange();
 
         Collection<Expression> args = _pArray.as<VariableReference>()->getTarget().as<Param>()->
             getType().as<NamedReferenceType>()->getArgs();
@@ -1275,8 +1283,7 @@ RangePtr CollectPreConditions::arrayRangeWithCurrentParams(ExpressionPtr _pArray
         pNewRange = new Range(pRange->getMin(), pRange->getMax());
 
         for(int i = 0; i < params.size(); i++) {
-            VarSubstitute substitute(params.get(i), args.get(i));
-            substitute.traverseNode(*(pNewRange.ptr()));
+            Expression::substitute(*pNewRange, new VariableReference(params.get(i)), args.get(i));
         }
     }
 
@@ -1293,9 +1300,14 @@ Collection<Range> CollectPreConditions::arrayRangesWithCurrentParams(ExpressionP
             getType().as<NamedReferenceType>()->getDeclaration().as<TypeDeclaration>()->
             getType().as<ParameterizedType>()->getParams();
 
-        Collection<Range> ranges = _pArray.as<VariableReference>()->getTarget().as<Param>()->
+        ArrayTypePtr pArray = _pArray.as<VariableReference>()->getTarget().as<Param>()->
             getType().as<NamedReferenceType>()->getDeclaration().as<TypeDeclaration>()->
-            getType().as<ParameterizedType>()->getActualType().as<DerivedType>().as<ArrayType>()->getDimensions();
+            getType().as<ParameterizedType>()->getActualType().as<DerivedType>().as<ArrayType>();
+
+        Collection<Range> ranges;
+
+        if (pArray)
+            getRanges(*pArray, ranges);
 
         Collection<Expression> args = _pArray.as<VariableReference>()->getTarget().as<Param>()->
             getType().as<NamedReferenceType>()->getArgs();
@@ -1306,8 +1318,7 @@ Collection<Range> CollectPreConditions::arrayRangesWithCurrentParams(ExpressionP
             RangePtr pNewRange = new Range(ranges.get(j)->getMin(), ranges.get(j)->getMax());
 
             for(int i = 0; i < params.size(); i++) {
-                VarSubstitute substitute(params.get(i), args.get(i));
-                substitute.traverseNode(*(pNewRange.ptr()));
+                Expression::substitute(*pNewRange, new VariableReference(params.get(i)), args.get(i));
             }
 
             newRanges.add(pNewRange);
@@ -1383,4 +1394,31 @@ Auto<Module> ir::processPreConditions(Module &_module) {
     CollectPreConditions collector(*pNewModule);
     collector.traverseNode(_module);
     return pNewModule;
+}
+
+void ir::getRanges(const ArrayType &_array, Collection<Range> &_ranges) {
+    Collection<Type> dims;
+    _array.getDimensions(dims);
+
+    if (dims.empty())
+        return;
+
+    for(size_t i = 0; i < dims.size(); ++i) {
+        TypePtr pType = CollectPreConditions::getNotNamedReferenceType(dims.get(i));
+        if (!pType) {
+            _ranges.add(NULL);
+            continue;
+        }
+
+        switch (pType->getKind()) {
+            case Type::SUBTYPE:
+                pType = pType.as<Subtype>()->asRange();
+                // no brake.
+            case Type::RANGE:
+                _ranges.add(pType.as<Range>());
+                break;
+            default:
+                _ranges.add(NULL);
+        }
+    }
 }

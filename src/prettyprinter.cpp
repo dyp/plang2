@@ -449,16 +449,32 @@ public:
     }
 
     virtual bool visitArrayType(ArrayType &_type) {
-        traverseType(*_type.getBaseType());
+        TypePtr pBaseType = _type.getBaseType();
+        while (pBaseType->getKind() == Type::ARRAY)
+            pBaseType = pBaseType.as<ArrayType>()->getBaseType();
+        traverseType(*pBaseType);
 
-        if (_type.getDimensions().empty())
+        Collection<Type> dims;
+        _type.getDimensions(dims);
+
+        if (dims.empty()) {
             m_os << L"[]";
-        else
-            for (size_t i = 0; i < _type.getDimensions().size(); ++i) {
-                m_os << L"[";
-                traverseRange(*_type.getDimensions().get(i));
-                m_os << L"]";
+            return false;
+        }
+
+        for (size_t i = 0; i < dims.size(); ++i) {
+            m_os << L"[";
+
+            TypePtr pDim = dims.get(i);
+            if (pDim->getKind() == Type::SUBTYPE) {
+                RangePtr pRange = pDim.as<Subtype>()->asRange();
+                if (pRange)
+                    pDim = pRange;
             }
+            traverseType(*pDim);
+
+            m_os << L"]";
+        }
 
         return false;
     }

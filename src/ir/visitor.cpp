@@ -119,7 +119,7 @@ bool Visitor::traverseUnionType(UnionType &_type) {
 
 bool Visitor::traverseArrayType(ArrayType &_type) {
     ENTER(ArrayType, _type);
-    TRAVERSE_COL(Range, ArrayDimDecl, _type.getDimensions());
+    TRAVERSE(Type, ArrayDimType, _type.getDimensionType(), _type, ArrayType, setDimensionType);
     TRAVERSE(Type, ArrayBaseType, _type.getBaseType(), _type, DerivedType, setBaseType);
     EXIT();
 }

@@ -48,6 +48,7 @@ public:
     virtual int handleParameterizedTypeParam(Node &_node);
     virtual int handleVarDeclVar(Node &_node);
     virtual int handleSwitchCaseValuePost(Node &_node);
+    virtual int handleArrayDimType(Node &_node);
 
     virtual bool traverseSwitch(Switch &_stmt);
 
@@ -741,6 +742,11 @@ int Collector::handlePredicateOutParam(Node &_node) {
 int Collector::handleParameterizedTypeParam(Node &_node) {
     collectParam((NamedValue *)&_node, 0);
     return 0;
+}
+
+int Collector::handleArrayDimType(Node &_node) {
+    m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+        (Type*)&_node, new Type(Type::INT, Number::GENERIC)));
 }
 
 bool Collector::visitNamedReferenceType(NamedReferenceType &_type) {
