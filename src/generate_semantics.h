@@ -39,7 +39,7 @@ public:
     ExpressionPtr varBelongsSetOneDimension(VariableReferencePtr _pVar, ExpressionPtr _pExpr);
     ExpressionPtr varsBelongSetSeveralDimensions(Collection<VariableReference> _vars, ExpressionPtr _pExpr);
 
-    TypePtr getNotNamedReferenceType(TypePtr _pType);
+    static TypePtr getNotNamedReferenceType(TypePtr _pType);
 
     virtual bool visitPredicateType(PredicateType &_node);          //creating modules for theory
     virtual bool visitLambda(Lambda &_node);
@@ -94,6 +94,8 @@ private:
 };
 
 Auto<Module> processPreConditions(Module &_module);
+
+void getRanges(const ArrayType &_array, Collection<Range> &_ranges);
 
 };
 

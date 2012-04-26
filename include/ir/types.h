@@ -411,6 +411,8 @@ public:
     /// \param _pExpression Boolean expression.
     void setExpression(const ExpressionPtr &_pExpression) { m_pExpression = _pExpression; }
 
+    RangePtr asRange() const;
+
     virtual NodePtr clone(Cloner &_cloner) const {
         return NEW_CLONE(this, _cloner, Subtype(_cloner.get(getParam()), _cloner.get(getExpression())));
     }
@@ -467,6 +469,8 @@ public:
     /// \param _pExpression Expression corresponding to the upper bound of the type.
     void setMax(const ExpressionPtr &_pExpression) { m_pMax = _pExpression; }
 
+    SubtypePtr asSubtype() const;
+
     virtual NodePtr clone(Cloner &_cloner) const {
         return NEW_CLONE(this, _cloner, Range(_cloner.get(getMin()), _cloner.get(getMax())));
     }
@@ -480,25 +484,59 @@ class ArrayType : public DerivedType {
 public:
     /// Initialize with base type.
     /// \param _pType Base type.
-    ArrayType(const TypePtr &_pType = NULL) : DerivedType(_pType) {}
+    ArrayType(const TypePtr &_pType = NULL, const TypePtr &_pDimensionType = NULL) :
+        DerivedType(_pType), m_pDimensionType(_pDimensionType)
+    {}
 
     /// Get type kind.
     /// \returns #Array.
     virtual int getKind() const { return ARRAY; }
 
-    /// Get array dimensions as list of ranges.
+    TypePtr &getDimensionType() { return m_pDimensionType; }
+    const TypePtr &getDimensionType() const { return m_pDimensionType; }
+
+    void setDimensionType(const TypePtr &_pType) { m_pDimensionType = _pType; }
+
+    virtual TypePtr getRootType() {
+        return getBaseType()->getKind() == ARRAY
+            ? getBaseType().as<ArrayType>()->getRootType()
+            : getBaseType();
+    }
+
+    /// Get array dimensions as list of types.
     /// \return List of ranges.
-    Collection<Range> &getDimensions() { return m_dimensions; }
-    const Collection<Range> &getDimensions() const { return m_dimensions; }
+    void getDimensions(Collection<Type> &_dimensions) const;
+
+    size_t getDimensionsCount() const {
+        return getBaseType()->getKind() == ARRAY
+            ? getBaseType().as<ArrayType>()->getDimensionsCount() + 1
+            : 1;
+    }
+
+    virtual bool less(const Type &_other) const;
+    virtual TypePtr getMeet(Type &_other);
+    virtual TypePtr getJoin(Type &_other);
+    virtual bool rewrite(const TypePtr &_pOld, const TypePtr &_pNew, bool _bRewriteFlags = true);
+    virtual int compare(const Type &_other) const;
+    virtual int getMonotonicity(const Type &_var) const;
+
+    virtual bool hasFresh() const {
+        return getBaseType()->hasFresh();
+    }
+
+    virtual bool contains(const TypePtr &_pType) const {
+        return *getBaseType() == *_pType
+            || getBaseType()->contains(_pType)
+            || *getDimensionType() == *_pType
+            || getDimensionType()->contains(_pType);
+    }
 
     virtual NodePtr clone(Cloner &_cloner) const {
-        ArrayTypePtr pCopy = NEW_CLONE(this, _cloner, ArrayType(_cloner.get(getBaseType())));
-        pCopy->getDimensions().appendClones(getDimensions(), _cloner);
-        return pCopy;
+        return NEW_CLONE(this, _cloner, ArrayType(_cloner.get(getBaseType()), _cloner.get(getDimensionType())));
     }
 
 private:
-    Collection<Range> m_dimensions;
+    TypePtr m_pDimensionType;
 };
 
 /// Set type.
