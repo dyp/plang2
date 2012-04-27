@@ -2804,6 +2804,8 @@ bool Parser::parseDeclarations(Context &_ctx, Module &_module) {
                     if (!pCtx->consume(SEMICOLON))
                         ERROR(*pCtx, false, L"Semicolon expected");
                     _module.getTypes().add(pDecl);
+                    if (!typecheck(*pCtx, *pDecl))
+                            return false;
                 } else
                     ERROR(*pCtx, false, L"Failed parsing type declaration");
                 break;
@@ -2814,14 +2816,20 @@ bool Parser::parseDeclarations(Context &_ctx, Module &_module) {
                     ERROR(*pCtx, false, L"Failed parsing process declaration");
                 break;
             case FORMULA:
-                if (FormulaDeclarationPtr pFormula = parseFormulaDeclaration(*pCtx))
+                if (FormulaDeclarationPtr pFormula = parseFormulaDeclaration(*pCtx)) {
                     _module.getFormulas().add(pFormula);
+                    if (!typecheck(*pCtx, *pFormula))
+                        return false;
+                }
                 else
                     ERROR(* pCtx, false, L"Failed parsing formula declaration");
                 break;
             case LEMMA:
-                if (LemmaDeclarationPtr pLemma = parseLemmaDeclaration(*pCtx))
+                if (LemmaDeclarationPtr pLemma = parseLemmaDeclaration(*pCtx)) {
                     _module.getLemmas().add(pLemma);
+                    if (!typecheck(*pCtx, *pLemma))
+                        return false;
+                }
                 else
                     ERROR(*pCtx, false, L"Failed parsing lemma declaration");
                 break;
