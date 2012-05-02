@@ -372,3 +372,12 @@ bool UnionConstructorDeclaration::equals(const Node& _other) const {
     return getName() == other.getName()
         && getFields() == other.getFields();
 }
+
+bool NamedReferenceType::less(const Type &_other) const {
+    assert(_other.getKind() == Type::NAMED_REFERENCE);
+    const NamedReferenceType &other = (const NamedReferenceType &)_other;
+
+    if (!_equals(getDeclaration(), other.getDeclaration()))
+        return _less(getDeclaration(), other.getDeclaration());
+    return getArgs() < other.getArgs();
+}

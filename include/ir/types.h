@@ -83,6 +83,8 @@ public:
     Collection<Expression> &getArgs() { return m_args; }
     const Collection<Expression> &getArgs() const { return m_args; }
 
+    virtual bool less(const Type &_other) const;
+
     virtual NodePtr clone(Cloner &_cloner) const {
         NamedReferenceTypePtr pCopy = NEW_CLONE(this, _cloner, NamedReferenceType(_cloner.get(getDeclaration())));
         pCopy->getArgs().appendClones(getArgs(), _cloner);
