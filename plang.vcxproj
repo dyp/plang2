@@ -78,9 +78,12 @@
     <ClCompile Include="src\autoptr.cpp" />
     <ClCompile Include="src\backend_c.cpp" />
     <ClCompile Include="src\backend_debug.cpp" />
+    <ClCompile Include="src\backend_pvs.cpp" />
     <ClCompile Include="src\collect_constraints.cpp" />
     <ClCompile Include="src\generate_name.cpp" />
     <ClCompile Include="src\generate_semantics.cpp" />
+    <ClCompile Include="src\ir\type_subtype.cpp" />
+    <ClCompile Include="src\optimization.cpp" />
     <ClCompile Include="src\verification.cpp" />
     <ClCompile Include="src\ir\base.cpp" />
     <ClCompile Include="src\ir\builtins.cpp" />
@@ -99,7 +102,6 @@
     <ClCompile Include="src\parser.cpp" />
     <ClCompile Include="src\parser_context.cpp" />
     <ClCompile Include="src\plang.cpp" />
-    <ClCompile Include="src\reduce_expression.cpp" />
     <ClCompile Include="src\pp_flat_tree.cpp" />
     <ClCompile Include="src\pp_syntax.cpp" />
     <ClCompile Include="src\prettyprinter.cpp" />
@@ -125,9 +127,11 @@
     <ClInclude Include="include\utils.h" />
     <ClInclude Include="src\backend_c.h" />
     <ClInclude Include="src\backend_debug.h" />
+    <ClInclude Include="src\backend_pvs.h" />
     <ClInclude Include="src\collect_constraints.h" />
     <ClInclude Include="src\generate_name.h" />
     <ClInclude Include="src\generate_semantics.h" />
+    <ClInclude Include="src\optimization.h" />
     <ClInclude Include="src\verification.h" />
     <ClInclude Include="src\llir_process.h" />
     <ClInclude Include="src\options.h" />
