@@ -132,6 +132,22 @@ bool Expression::matchCollections(const Collection<Expression>& _left, const Col
     return true;
 }
 
+bool Expression::_matches(const ExpressionPtr& _pLeft, const ExpressionPtr& _pRight, MatchesPtr _pMatches) {
+    if (!_pLeft || !_pRight)
+        return (bool)_pLeft == (bool)_pRight;
+
+    MatchesPtr
+        pNewMatches = !_pMatches ? new Matches() : _pMatches,
+        pOldMatches = new Matches(*pNewMatches);
+
+    if (!_pLeft->matches(*_pRight, pNewMatches)) {
+        pNewMatches->swap(*pOldMatches);
+        return false;
+    }
+
+    return true;
+}
+
 bool Expression::matches(const Expression& _other, MatchesPtr _pMatches) const {
     if (!_pMatches)
         return getKind() == WILD || _other.getKind() == WILD || _other.getKind() == getKind();
@@ -140,10 +156,17 @@ bool Expression::matches(const Expression& _other, MatchesPtr _pMatches) const {
     if (getKind() != WILD && _other.getKind() != WILD)
         return _other.getKind() == getKind();
 
-    if (getKind() == WILD)
-        _pMatches->addExpression((const Wild&)*this, _other);
-    else
-        _pMatches->addExpression((const Wild&)_other, *this);
+    const Wild&
+        wild = getKind() == WILD ? (const Wild&)*this : (const Wild&)_other;
+    const ExpressionPtr
+        pExpr = getKind() != WILD ? this : &_other,
+        pPattern = _pMatches->getExpression(wild);
+
+    if (pPattern && !_matches(pExpr, pPattern))
+        return false;
+    if (!pPattern)
+        _pMatches->addExpression(wild, *pExpr);
+
     return true;
 }
 
@@ -222,7 +245,7 @@ bool Expression::equals(const Node& _other) const {
     if (!Node::equals(_other))
         return false;
     const Expression& other = (const Expression&)_other;
-    //FIXME Enable, when typechecking will work.
+    //FIXME Enable, when typechecking will works.
     return getKind() == other.getKind();// && _equals(getType(), other.getType());
 }
 

@@ -8,6 +8,13 @@
 using namespace ir;
 
 void reduceExpressions(ir::Node &_node) {
+    // a => a -> true
+    Expression::substitute(_node,
+        new ir::Binary(ir::Binary::IMPLIES,
+                       new ir::Wild(L"a"),
+                       new ir::Wild(L"a")),
+        new ir::Literal(true));
+
     // !!a -> a
     Expression::substitute(_node,
         new ir::Unary(ir::Unary::BOOL_NEGATE,
@@ -58,6 +65,16 @@ void reduceExpressions(ir::Node &_node) {
                                       new ir::Wild(L"b")),
                        new ir::Wild(L"c")));
 
+    // a => (a & b) -> a => b
+    Expression::substitute(_node,
+        new ir::Binary(ir::Binary::IMPLIES,
+                       new ir::Wild(L"a"),
+                       new ir::Binary(ir::Binary::BOOL_AND,
+                                      new ir::Wild(L"a"),
+                                      new ir::Wild(L"b"))),
+        new ir::Binary(ir::Binary::IMPLIES,
+                       new ir::Wild(L"a"),
+                       new ir::Wild(L"b")));
 }
 
 // Reduce an extra formula call.
