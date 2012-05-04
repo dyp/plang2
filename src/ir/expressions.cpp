@@ -222,7 +222,8 @@ bool Expression::equals(const Node& _other) const {
     if (!Node::equals(_other))
         return false;
     const Expression& other = (const Expression&)_other;
-    return getKind() == other.getKind() && _equals(getType(), other.getType());
+    //FIXME Enable, when typechecking will work.
+    return getKind() == other.getKind();// && _equals(getType(), other.getType());
 }
 
 bool Expression::implies(const ExpressionPtr& _pLeft, const ExpressionPtr& _pRight) {
