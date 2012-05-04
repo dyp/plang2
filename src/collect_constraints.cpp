@@ -20,6 +20,7 @@ public:
     virtual ~Collector() {}
 
     virtual bool visitRange(Range &_type);
+    virtual bool visitArrayType(ArrayType &_type);
     virtual bool visitVariableReference(VariableReference &_var);
     virtual bool visitPredicateReference(PredicateReference &_ref);
     virtual bool visitFormulaCall(FormulaCall &_call);
@@ -30,6 +31,7 @@ public:
     virtual bool visitBinary(Binary &_binary);
     virtual bool visitTernary(Ternary &_ternary);
     virtual bool visitFormula(Formula &_formula);
+    virtual bool visitArrayPartExpr(ArrayPartExpr &_array);
     virtual bool visitStructConstructor(StructConstructor &_cons);
     virtual bool visitUnionConstructor(UnionConstructor &_cons);
     virtual bool visitListConstructor(ListConstructor &_cons);
@@ -52,7 +54,6 @@ public:
     virtual int handleVarDeclVar(Node &_node);
     virtual int handleSubtypeParam(Node &_node);
     virtual int handleSwitchCaseValuePost(Node &_node);
-    virtual int handleArrayDimType(Node &_node);
 
     virtual bool traverseSwitch(Switch &_stmt);
 
@@ -118,6 +119,13 @@ bool Collector::visitRange(Range &_type) {
         _type.getMax()->getType(), pSubtype->getParam()->getType()));
 
     callSetter(pSubtype);
+    return true;
+}
+
+bool Collector::visitArrayType(ArrayType &_type) {
+    // FIXME There is should be finite type.
+    m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+        _type.getDimensionType(), new Type(Type::INT, Number::GENERIC)));
     return true;
 }
 
@@ -552,6 +560,25 @@ bool Collector::visitFormula(Formula &_formula) {
     return true;
 }
 
+bool Collector::visitArrayPartExpr(ArrayPartExpr &_array) {
+    _array.setType(new tc::FreshType(tc::FreshType::PARAM_OUT));
+
+    ArrayTypePtr
+        pArrayType = new ArrayType(),
+        pCurrentArray = pArrayType;
+    for (size_t i=0; i<_array.getIndices().size(); ++i) {
+        pCurrentArray->setDimensionType(new Type(Type::BOTTOM));
+        if (i+1 == _array.getIndices().size())
+            continue;
+        pCurrentArray->setBaseType(new ArrayType());
+        pCurrentArray = pCurrentArray->getBaseType().as<ArrayType>();
+    }
+    pCurrentArray->setBaseType(_array.getType());
+
+    m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE, _array.getObject()->getType(), pArrayType));
+    return true;
+}
+
 bool Collector::visitStructConstructor(StructConstructor &_cons) {
     StructTypePtr pStruct = new StructType();
 
@@ -780,11 +807,6 @@ int Collector::handleParameterizedTypeParam(Node &_node) {
     return 0;
 }
 
-int Collector::handleArrayDimType(Node &_node) {
-    m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
-        (Type*)&_node, new Type(Type::INT, Number::GENERIC)));
-}
-
 bool Collector::visitNamedReferenceType(NamedReferenceType &_type) {
     // Replace reference type with actual one.
     if (NodeSetter *pSetter = getNodeSetter()) {
@@ -844,7 +866,7 @@ int Collector::handleSwitchCaseValuePost(Node &_node) {
 void tc::collect(tc::Formulas &_constraints, Node &_node, ir::Context &_ctx) {
     Collector collector(_constraints, _ctx);
 
-    tc::ContextStack::push(ref(&_constraints));
+    tc::ContextStack::push(::ref(&_constraints));
     collector.traverseNode(_node);
     tc::ContextStack::pop();
 }
