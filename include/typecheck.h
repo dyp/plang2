@@ -209,6 +209,7 @@ struct Context : public Counted {
     ir::TypePtr lookup(const tc::Formula &_f, const tc::Formula &_cond);
     bool rewrite(const ir::TypePtr &_pOld, const ir::TypePtr &_pNew, bool _bRewriteFlags = true);
     bool implies(Formula &_f);
+    bool implies(Formulas &_fs);
     virtual Auto<Context> clone(Cloner &_cloner) const;
     bool add(const FormulaPtr &_pFormula);
     bool add(int _kind, const ir::TypePtr &_pLhs, const ir::TypePtr &_pRhs);

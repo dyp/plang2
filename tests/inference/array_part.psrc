@@ -1,0 +1,4 @@
+type below = 1..10;
+type A = array(nat, below);
+
+lemma forall A a. exists below i. a[i] = 0;

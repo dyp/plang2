@@ -539,6 +539,14 @@ bool Context::implies(Formula &_f) {
     return false;
 }
 
+bool Context::implies(Formulas &_fs) {
+    for (tc::Formulas::iterator i = _fs.begin(); i != _fs.end(); ++i)
+        if (!implies(**i))
+            return false;
+
+    return true;
+}
+
 bool Context::add(const FormulaPtr &_pFormula) {
     if (_pFormula->eval() == Formula::TRUE)
         return false;
