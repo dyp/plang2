@@ -4,6 +4,7 @@
 #include "ir/base.h"
 #include "ir/types.h"
 #include "ir/declarations.h"
+#include "ir/expressions.h"
 #include "typecheck.h"
 
 using namespace ir;
@@ -61,7 +62,7 @@ int Type::compare(const Type &_other) const {
         return OrdUnknown;*/
 
     if (_other.getKind() == SUBTYPE)
-        return inverse(((const Subtype&)_other).compare(*this));
+        return inverse(_other.compare(*this));
 
     if (kinds == P(NAT, NAT))
         return cmpBits(getBits(), _other.getBits());
@@ -230,6 +231,49 @@ TypePtr Type::getMeet(ir::Type &_other) {
     return (Type *)NULL;
 }
 
+void ArrayType::getDimensions(Collection<Type> &_dimensions) const {
+    _dimensions.add(getDimensionType());
+    if (getBaseType()->getKind() == ARRAY)
+        getBaseType().as<ArrayType>()->getDimensions(_dimensions);
+}
+
+RangePtr Subtype::asRange() const {
+    Matches matches;
+    BinaryPtr pMask =
+        new Binary(Binary::BOOL_AND,
+                   new Binary(Binary::GREATER_OR_EQUALS,
+                              new Wild(L"c"),
+                              new Wild(L"a")),
+                   new Binary(Binary::LESS_OR_EQUALS,
+                              new Wild(L"c"),
+                              new Wild(L"b")));
+
+    pMask->setType(new Type(Type::BOOL));
+    pMask->getLeftSide()->setType(new Type(Type::BOOL));
+    pMask->getRightSide()->setType(new Type(Type::BOOL));
+
+    if (!Expression::matches(getExpression(), pMask, &matches))
+        return NULL;
+    return new Range(matches.getExpression(L"a"), matches.getExpression(L"b"));
+}
+
+SubtypePtr Range::asSubtype() const {
+    NamedValuePtr pParam = new NamedValue(L"i", new Type(Type::GENERIC));
+    BinaryPtr pExpr = new Binary(Binary::BOOL_AND,
+        new Binary(Binary::GREATER_OR_EQUALS,
+            new VariableReference(pParam),
+            getMin()),
+        new Binary(Binary::LESS_OR_EQUALS,
+            new VariableReference(pParam),
+            getMax()));
+
+    pExpr->setType(new Type(Type::BOOL));
+    pExpr->getLeftSide()->setType(new Type(Type::BOOL));
+    pExpr->getRightSide()->setType(new Type(Type::BOOL));
+
+    return new Subtype(pParam, pExpr);
+}
+
 bool Type::isMonotone(const Type &_var, bool _bStrict) const {
     return getMonotonicity(_var) & (MT_MONOTONE | (_bStrict ? 0 : MT_CONST));
 }
@@ -275,6 +319,9 @@ int TypeType::compare(const Type &_other) const {
         return ORD_NONE;
 
     const TypeType &other = (const TypeType &)_other;
+
+    if (_other.getKind() == SUBTYPE)
+        return inverse(_other.compare(*this));
 
     if (m_pDecl && m_pDecl->getType()) {
         if (other.m_pDecl && other.m_pDecl->getType())
