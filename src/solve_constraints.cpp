@@ -501,9 +501,9 @@ bool Solver::prune(int &_result) {
                 }
 
             if (bRedundant)
-                if (m_redundantParts.find(std::make_pair(k, m_nCurrentCFPart)) == m_redundantParts.end())
+                if (m_redundantParts.find(std::make_pair(m_nCurrentCFPart, k)) == m_redundantParts.end())
                     // Causes runCompound() to delete part k.
-                    m_redundantParts.insert(std::make_pair(m_nCurrentCFPart, k));
+                    m_redundantParts.insert(std::make_pair(k, m_nCurrentCFPart));
         }
     }
 
