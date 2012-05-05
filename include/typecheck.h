@@ -285,6 +285,8 @@ bool solve(Formulas &_formulas, Formulas &_substs);
 
 void collect(Formulas &_constraints, ir::Node &_node, ir::Context &_ctx);
 
+void linkPredicates(ir::Context &_ctx, ir::Node &_node);
+
 void apply(Formulas &_constraints, ir::Node &_node);
 
 }; // namespace tc

@@ -2758,8 +2758,10 @@ bool Parser::typecheck(Context &_ctx, Node &_node) {
 
     tc::collect(constraints, _node, _ctx);
 
-    if (tc::solve(constraints, substs))
+    if (tc::solve(constraints, substs)) {
         tc::apply(substs, _node);
+        tc::linkPredicates(_ctx, _node);
+    }
     else if (Options::instance().typeCheck != TC_SOFT)
         ERROR(_ctx, false, L"Type error");
 
