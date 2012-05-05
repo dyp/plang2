@@ -43,6 +43,7 @@ protected:
     bool expandSet(int _kind, const SetTypePtr &_pLhs, const SetTypePtr &_pRhs, tc::FormulaList &_formulas);
     bool expandList(int _kind, const ListTypePtr &_pLhs, const ListTypePtr &_pRhs, tc::FormulaList &_formulas);
     bool expandMap(int _kind, const MapTypePtr &_pLhs, const MapTypePtr &_pRhs, tc::FormulaList &_formulas);
+    bool expandArray(int _kind, const ArrayTypePtr &_pLhs, const ArrayTypePtr &_pRhs, tc::FormulaList &_formulas);
     bool expandType(int _kind, const TypeTypePtr &_pLhs, const TypeTypePtr &_pRhs, tc::FormulaList &_formulas);
     bool runCompound(Operation _op, int &_result);
 
@@ -50,6 +51,7 @@ private:
     tc::Formulas::iterator m_iCurrentCF, m_iLastCF;
     int m_nCurrentCFPart;
     FreshTypeSet m_guessIgnored;
+    std::set<std::pair<size_t, size_t> > m_redundantParts;
 };
 
 bool Solver::fork() {
@@ -220,6 +222,7 @@ bool Solver::runCompound(Operation _operation, int &_result) {
         bool bFormulaModified = false;
 
         m_iCurrentCF = i;
+        m_redundantParts.clear();
 
         for (size_t j = 0; j < cf.size();) {
             Auto<tc::Formulas> pPart = cf.getPartPtr(j);
@@ -242,6 +245,20 @@ bool Solver::runCompound(Operation _operation, int &_result) {
 
             m_nCurrentCFPart = -1;
             CS::pop();
+        }
+
+        if (!m_redundantParts.empty()) {
+            std::set<size_t> partsToDelete;
+
+            for (std::set<std::pair<size_t, size_t> >::iterator j = m_redundantParts.begin();
+                    j != m_redundantParts.end(); ++j)
+                partsToDelete.insert(j->second);
+
+            for (std::set<size_t>::reverse_iterator j = partsToDelete.rbegin(); j != partsToDelete.rend(); ++j)
+                if (!CS::top()->implies(cf.getPart(*j))) {
+                    bFormulaModified = true;
+                    cf.removePart(*j);
+                }
         }
 
         if (bFormulaModified) {
@@ -475,16 +492,22 @@ bool Solver::prune(int &_result) {
     for (size_t k = 0; k < cf.size(); ++k) {
         if (k != m_nCurrentCFPart) {
             tc::Formulas &other = cf.getPart(k);
+            bool bRedundant = true;
 
             for (tc::Formulas::iterator l = other.begin(); l != other.end(); ++l)
-                if (!context().implies(**l))
-                    return false;
+                if (!context().implies(**l)) {
+                    bRedundant = false;
+                    break;
+                }
+
+            if (bRedundant)
+                if (m_redundantParts.find(std::make_pair(k, m_nCurrentCFPart)) == m_redundantParts.end())
+                    // Causes runCompound() to delete part k.
+                    m_redundantParts.insert(std::make_pair(m_nCurrentCFPart, k));
         }
     }
 
-    _result = tc::Formula::FALSE; // Causes runCompound() to delete current part.
-
-    return true;
+    return false;
 }
 
 bool Solver::refute(int &_result) {
@@ -723,6 +746,12 @@ bool Solver::expandMap(int _kind, const MapTypePtr &_pLhs, const MapTypePtr &_pR
     return true;
 }
 
+bool Solver::expandArray(int _kind, const ArrayTypePtr &_pLhs, const ArrayTypePtr &_pRhs, tc::FormulaList &_formulas) {
+    _formulas.push_back(new tc::Formula(_kind, _pLhs->getBaseType(), _pRhs->getBaseType()));
+    _formulas.push_back(new tc::Formula(_kind, _pRhs->getDimensionType(), _pLhs->getDimensionType()));
+    return true;
+}
+
 bool Solver::expandType(int _kind, const TypeTypePtr &_pLhs, const TypeTypePtr &_pRhs,
         tc::FormulaList & _formulas)
 {
@@ -762,6 +791,8 @@ bool Solver::expand(int &_result) {
                 bResult = expandList(f.getKind(), pLhs.as<ListType>(), pRhs.as<ListType>(), formulas);
             else if (pLhs->getKind() == Type::MAP && pRhs->getKind() == Type::MAP)
                 bResult = expandMap(f.getKind(), pLhs.as<MapType>(), pRhs.as<MapType>(), formulas);
+            else if (pLhs->getKind() == Type::ARRAY && pRhs->getKind() == Type::ARRAY)
+                bResult = expandArray(f.getKind(), pLhs.as<ArrayType>(), pRhs.as<ArrayType>(), formulas);
             else if (pLhs->getKind() == Type::TYPE && pRhs->getKind() == Type::TYPE)
                 bResult = expandType(f.getKind(), pLhs.as<TypeType>(), pRhs.as<TypeType>(), formulas);
             else
@@ -1080,7 +1111,7 @@ bool Solver::run() {
 
 bool tc::solve(tc::Formulas &_formulas, tc::Formulas &_result) {
     CS::clear();
-    CS::push(ContextPtr(new Context(ref(&_formulas), ref(&_result))));
+    CS::push(ContextPtr(new Context(::ref(&_formulas), ::ref(&_result))));
 
     if (Options::instance().bVerbose) {
         std::wcout << std::endl << L"Solving:" << std::endl;
