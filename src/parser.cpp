@@ -1224,15 +1224,31 @@ ArrayTypePtr Parser::parseArrayType(Context &_ctx) {
     if (! ctx.consume(LPAREN))
         ERROR(ctx, NULL, L"Expected \"(\", got: %ls", TOK_S(ctx));
 
-    TypePtr pType = parseType(ctx);
-
-    if (!pType)
+    TypePtr pBaseType = parseType(ctx);
+    if (!pBaseType)
         return NULL;
 
-    ArrayTypePtr pArray = new ArrayType(pType);
+    ArrayTypePtr
+        pArray = new ArrayType(pBaseType),
+        pCurrentArray = pArray;
 
-    if (!parseList(ctx, pArray->getDimensions(), &Parser::parseRange, COMMA, RPAREN, COMMA))
-        return NULL;
+    while (1) {
+        if (! ctx.consume(COMMA))
+            ERROR(ctx, NULL, L"Expected \",\", got: %ls", TOK_S(ctx));
+
+        TypePtr pDimensionType = parseType(ctx);
+        if (!pDimensionType)
+            return NULL;
+
+        pCurrentArray->setDimensionType(pDimensionType);
+        if (ctx.consume(RPAREN))
+            break;
+
+        pCurrentArray->setBaseType(new ArrayType());
+        pCurrentArray = pCurrentArray->getBaseType().as<ArrayType>();
+    }
+
+    pCurrentArray->setBaseType(pBaseType);
 
     _ctx.mergeChildren();
 

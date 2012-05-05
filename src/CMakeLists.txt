@@ -10,6 +10,7 @@ set(SOURCES
     ir/expressions.cpp
     ir/type_derived.cpp
     ir/type_predicate.cpp
+    ir/type_array.cpp
     ir/type_subtype.cpp
     ir/types.cpp
     ir/type_struct.cpp
