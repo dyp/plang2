@@ -19,14 +19,17 @@ public:
     Collector(tc::Formulas & _constraints, ir::Context & _ctx);
     virtual ~Collector() {}
 
+    virtual bool visitRange(Range &_type);
     virtual bool visitVariableReference(VariableReference &_var);
     virtual bool visitPredicateReference(PredicateReference &_ref);
+    virtual bool visitFormulaCall(FormulaCall &_call);
     virtual bool visitFunctionCall(FunctionCall &_call);
     virtual bool visitCall(Call &_call);
     virtual bool visitLiteral(Literal &_lit);
     virtual bool visitUnary(Unary &_unary);
     virtual bool visitBinary(Binary &_binary);
     virtual bool visitTernary(Ternary &_ternary);
+    virtual bool visitFormula(Formula &_formula);
     virtual bool visitStructConstructor(StructConstructor &_cons);
     virtual bool visitUnionConstructor(UnionConstructor &_cons);
     virtual bool visitListConstructor(ListConstructor &_cons);
@@ -47,6 +50,7 @@ public:
     virtual int handlePredicateOutParam(Node &_node);
     virtual int handleParameterizedTypeParam(Node &_node);
     virtual int handleVarDeclVar(Node &_node);
+    virtual int handleSubtypeParam(Node &_node);
     virtual int handleSwitchCaseValuePost(Node &_node);
     virtual int handleArrayDimType(Node &_node);
 
@@ -104,6 +108,19 @@ void Collector::collectParam(const NamedValuePtr &_pParam, int _nFlags) {
     pFresh->addFlags(_nFlags);
 }
 
+bool Collector::visitRange(Range &_type) {
+    SubtypePtr pSubtype = _type.asSubtype();
+    collectParam(pSubtype->getParam(), tc::FreshType::PARAM_OUT);
+
+    m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+        _type.getMin()->getType(), pSubtype->getParam()->getType()));
+    m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+        _type.getMax()->getType(), pSubtype->getParam()->getType()));
+
+    callSetter(pSubtype);
+    return true;
+}
+
 bool Collector::visitVariableReference(VariableReference &_var) {
     _var.setType(_var.getTarget()->getType());
     return true;
@@ -132,6 +149,14 @@ bool Collector::visitPredicateReference(PredicateReference &_ref) {
         m_constraints.insert(new tc::Formula(tc::Formula::EQUALS, funcs.get(0)->getType(), _ref.getType()));
     }
 
+    return true;
+}
+
+bool Collector::visitFormulaCall(FormulaCall &_call) {
+    _call.setType(_call.getTarget()->getResultType());
+    for (size_t i = 0; i < _call.getArgs().size(); ++i)
+        m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+            _call.getArgs().get(i)->getType(), _call.getTarget()->getParams().get(i)->getType()));
     return true;
 }
 
@@ -521,6 +546,12 @@ bool Collector::visitTernary(Ternary &_ternary) {
     return true;
 }
 
+bool Collector::visitFormula(Formula &_formula) {
+    _formula.setType(createFresh(_formula.getType()));
+    m_constraints.insert(new tc::Formula(tc::Formula::EQUALS, _formula.getType(), new Type(Type::BOOL)));
+    return true;
+}
+
 bool Collector::visitStructConstructor(StructConstructor &_cons) {
     StructTypePtr pStruct = new StructType();
 
@@ -711,6 +742,11 @@ bool Collector::visitAssignment(Assignment &_assignment) {
 
 int Collector::handleVarDeclVar(Node &_node) {
     collectParam((NamedValue *)&_node, tc::FreshType::PARAM_OUT);
+    return 0;
+}
+
+int Collector::handleSubtypeParam(Node &_node) {
+    collectParam((NamedValue *)&_node, 0);
     return 0;
 }
 
