@@ -117,7 +117,7 @@ public:
 
     virtual bool matches(const Expression& _other, MatchesPtr _pMatches = NULL) const;
     static bool matches(const ExpressionPtr& _pLeft, const ExpressionPtr& _pRight, MatchesPtr _pMatches = NULL) {
-        return (_pLeft && _pRight) ? _pLeft->matches(*_pRight, _pMatches) : (bool)_pLeft == (bool)_pRight;
+        return _matches(_pLeft, _pRight, _pMatches);
     }
 
     static void substitute(ExpressionPtr& _pExpr, Matches& _matches);
@@ -137,11 +137,9 @@ public:
     void setType(const TypePtr &_pType) { m_pType = _pType; }
 
 protected:
-    static bool _matches(const ExpressionPtr& _pLeft, const ExpressionPtr& _pRight, MatchesPtr _pMatches = NULL) {
-        return matches(_pLeft, _pRight, _pMatches);
-    }
+    static bool _matches(const ExpressionPtr& _pLeft, const ExpressionPtr& _pRight, MatchesPtr _pMatches = NULL);
     static bool matchNamedValues(const NamedValues& _left, const NamedValues& _right);
-    static bool matchCollections(const Collection<Expression>& _left, const Collection<Expression>& _right, MatchesPtr _pMatches= NULL);
+    static bool matchCollections(const Collection<Expression>& _left, const Collection<Expression>& _right, MatchesPtr _pMatches = NULL);
 
 private:
     TypePtr m_pType;
@@ -183,6 +181,9 @@ public:
     }
     ExpressionPtr getExpression(const std::wstring& _sName) {
         return getExpression(Wild(_sName));
+    }
+    void swap(Matches& _other) {
+        m_map.swap(_other.m_map);
     }
 private:
     std::map<WildPtr, ExpressionPtr, PtrLess<Wild> > m_map;
