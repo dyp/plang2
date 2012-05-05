@@ -814,20 +814,11 @@ bool Collector::visitNamedReferenceType(NamedReferenceType &_type) {
         TypePtr pType = pDecl->getType();
 
         if (!_type.getArgs().empty()) {
-            assert(pType->getKind() == Type::PARAMETERIZED);
-            assert(false && "Not implemented");
+            ParameterizedTypePtr pOrigType = pType.as<ParameterizedType>();
+            pType = clone(*pOrigType->getActualType());
 
-            ParameterizedTypePtr pOrigType = clone(*pType).as<ParameterizedType>();
-
-            for (size_t i = 0; i < pOrigType->getParams().size(); ++i) {
-                TypePtr pParamType = pOrigType->getParams().get(i)->getType();
-                TypePtr pReplacement = _type.getArgs().get(i).as<TypeExpr>()->getContents();
-
-                assert(pParamType->getKind() == Type::FRESH);
-
-                pOrigType->rewrite(pParamType, pReplacement);
-            }
-            pType = pOrigType;
+            for (size_t i = 0; i < pOrigType->getParams().size(); ++i)
+                Expression::substitute(*pNewType, new VariableReference(pOrigType->getParams().get(i)), _type.getArgs().get(i));
         }
 
         pSetter->set(pType);
