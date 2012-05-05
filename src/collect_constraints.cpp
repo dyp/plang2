@@ -808,22 +808,29 @@ int Collector::handleParameterizedTypeParam(Node &_node) {
 }
 
 bool Collector::visitNamedReferenceType(NamedReferenceType &_type) {
-    // Replace reference type with actual one.
-    if (NodeSetter *pSetter = getNodeSetter()) {
-        TypeDeclarationPtr pDecl = (TypeDeclarationPtr)_type.getDeclaration();
-        TypePtr pType = pDecl->getType();
+    NodeSetter *pSetter = getNodeSetter();
+    if (pSetter == NULL)
+        return true;
 
-        if (!_type.getArgs().empty()) {
-            ParameterizedTypePtr pOrigType = pType.as<ParameterizedType>();
-            pType = clone(*pOrigType->getActualType());
-
-            for (size_t i = 0; i < pOrigType->getParams().size(); ++i)
-                Expression::substitute(*pNewType, new VariableReference(pOrigType->getParams().get(i)), _type.getArgs().get(i));
-        }
-
-        pSetter->set(pType);
+    TypePtr pDeclType = ((TypeDeclarationPtr)_type.getDeclaration())->getType();
+    if (_type.getArgs().empty()) {
+        pSetter->set(pDeclType);
+        return true;
     }
 
+    assert(pDeclType->getKind() == Type::PARAMETERIZED);
+    ParameterizedTypePtr pOrigType = pDeclType.as<ParameterizedType>();
+    TypePtr pType = clone(*pOrigType->getActualType());
+
+    for (size_t i=0; i < pOrigType->getParams().size(); ++i) {
+        TypePtr pParamType = pOrigType->getParams().get(i)->getType();
+        if (pParamType->getKind() != Type::TYPE)
+            Expression::substitute(*pType, new VariableReference(pOrigType->getParams().get(i)), _type.getArgs().get(i));
+        else
+            pType->rewrite(pParamType, _type.getArgs().get(i).as<TypeExpr>()->getContents());
+    }
+
+    pSetter->set(pType);
     return true;
 }
 
