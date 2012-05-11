@@ -561,6 +561,40 @@ bool Context::add(int _kind, const ir::TypePtr &_pLhs, const ir::TypePtr &_pRhs)
     return add(new Formula(_kind, _pLhs, _pRhs));
 }
 
+class PredicateLinker : public ir::Visitor {
+public:
+    PredicateLinker(ir::Context &_ctx) : Visitor(CHILDREN_FIRST), m_ctx(_ctx) {}
+
+    virtual bool visitPredicateReference(ir::PredicateReference &_ref) {
+        ir::Predicates predicetes;
+
+        m_ctx.getPredicates(_ref.getName(), predicetes);
+        if (predicetes.empty())
+            return true;
+
+        for (size_t i=0; i<predicetes.size(); ++i) {
+            ir::PredicatePtr pPredicate = predicetes.get(i);
+            ir::TypePtr pType = pPredicate->getType();
+
+            const size_t szOrd = _ref.getType()->compare(*pType);
+            if (szOrd != ir::Type::ORD_EQUALS && szOrd != ir::Type::ORD_SUPER)
+                continue;
+
+            if (!_ref.getTarget()
+                || _ref.getTarget()->getType()->compare(*pType) == ir::Type::ORD_SUB)
+                _ref.setTarget(pPredicate);
+        }
+        return true;
+    }
+
+private:
+    ir::Context &m_ctx;
+};
+
+void tc::linkPredicates(ir::Context &_ctx, ir::Node &_node) {
+    PredicateLinker(_ctx).traverseNode(_node);
+}
+
 class FreshTypeRewriter : public ir::Visitor {
 public:
     FreshTypeRewriter(const Formulas &_substs) : Visitor(CHILDREN_FIRST), m_substs(_substs) {}
