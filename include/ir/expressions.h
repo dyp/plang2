@@ -174,7 +174,7 @@ public:
         m_map.insert(std::make_pair(&_wild, &_expr));
     }
     ExpressionPtr getExpression(const Wild& _wild) {
-        std::map<WildPtr, ExpressionPtr>::iterator it = m_map.find(&_wild);
+        std::map<WildPtr, ExpressionPtr, PtrLess<Wild>>::iterator it = m_map.find(&_wild);
         if (it != m_map.end())
             return it->second;
         return NULL;
