@@ -836,7 +836,7 @@ bool Collector::visitNamedReferenceType(NamedReferenceType &_type) {
 
 bool Collector::visitTypeExpr(TypeExpr &_expr) {
     TypeTypePtr pType = new TypeType();
-    pType->getDeclaration()->setType(_expr.getContents());
+    pType->setDeclaration(new TypeDeclaration(L"", _expr.getContents()));
     _expr.setType(pType);
     return true;
 }
