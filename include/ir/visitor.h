@@ -185,13 +185,6 @@ bool Visitor::traverseCollection(Collection<_Node, _Base> &_nodes) {
 
             if (!traverseNode(*_nodes.get(i)))
                 return false;
-
-            if (m_order == CHILDREN_FIRST) {
-                callRoleHandler(true);
-                if (!callWalkUp())
-                    return !isStopped();
-                callRoleHandler(false);
-            }
         }
     }
 
