@@ -320,6 +320,9 @@ public:
     /// \param _strName Identifier.
     void setName(const std::wstring &_strName) { m_strName = _strName; }
 
+    virtual bool less(const Node &_other) const;
+    virtual bool equals(const Node &_other) const;
+
     virtual NodePtr clone(Cloner &_cloner) const {
         return NEW_CLONE(this, _cloner, TypeDeclaration(getName(), _cloner.get(getType()), _cloner.get(getLabel())));
     }

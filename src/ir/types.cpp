@@ -381,3 +381,31 @@ bool NamedReferenceType::less(const Type &_other) const {
         return _less(getDeclaration(), other.getDeclaration());
     return getArgs() < other.getArgs();
 }
+
+bool NamedReferenceType::equals(const Type &_other) const {
+    assert(_other.getKind() == Type::NAMED_REFERENCE);
+    const NamedReferenceType& other = (const NamedReferenceType&)_other;
+
+    return _equals(getDeclaration(), other.getDeclaration())
+        && getArgs() == other.getArgs();
+}
+
+bool TypeDeclaration::less(const Node &_other) const {
+    if (!Statement::equals(_other))
+        return Statement::less(_other);
+    const TypeDeclaration& other = (const TypeDeclaration&)_other;
+    if (getKind() != other.getKind())
+        return getKind() < other.getKind();
+    if (!_equals(getType(), other.getType()))
+        return _less(getType(), other.getType());
+    return getName() < other.getName();
+}
+
+bool TypeDeclaration::equals(const Node &_other) const {
+    if (!Statement::equals(_other))
+        return false;
+    const TypeDeclaration& other = (const TypeDeclaration&)_other;
+    return getKind() == other.getKind()
+        && _equals(getType(), other.getType())
+        && getName() == other.getName();
+}
