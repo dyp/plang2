@@ -254,7 +254,7 @@ RangePtr Subtype::asRange() const {
 
     if (!Expression::matches(getExpression(), pMask, &matches))
         return NULL;
-    return new Range(matches.getExpression(L"a"), matches.getExpression(L"b"));
+    return new Range(matches.getExprByName(L"a"), matches.getExprByName(L"b"));
 }
 
 SubtypePtr Range::asSubtype() const {

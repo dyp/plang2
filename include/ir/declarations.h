@@ -202,8 +202,8 @@ public:
     void setDeclaration(const VariableDeclarationPtr &_pDeclaration) { m_pDeclaration = _pDeclaration; }
 
     virtual bool less(const Node& _other) const {
-        return NamedValue::equals(_other)
-            ? getKind() < ((const Variable&)_other).getKind()
+        return !NamedValue::equals(_other)
+            ? !isMutable() && ((const Variable&)_other).isMutable()
             : NamedValue::less(_other);
     }
 
@@ -269,7 +269,7 @@ public:
         if (!Statement::equals(_other))
             return Statement::less(_other);
         const VariableDeclaration& other = (const VariableDeclaration&)_other;
-        if (_equals(getVariable(), other.getVariable()))
+        if (!_equals(getVariable(), other.getVariable()))
             return _less(getVariable(), other.getVariable());
         return _less(getValue(), other.getValue());
     }
@@ -380,7 +380,25 @@ public:
     /// \param _pFormula Formula.
     void setFormula(const ExpressionPtr &_pFormula) { m_pFormula = _pFormula; }
 
-    bool operator< (const FormulaDeclaration& _other) {}
+    virtual bool less(const Node& _other) const {
+        if (!Statement::equals(_other))
+            return Statement::less(_other);
+        const FormulaDeclaration& other = (const FormulaDeclaration&)_other;
+        if (getName() != other.getName())
+            return getName() < other.getName();
+        if (!_equals(getResultType(), other.getResultType()))
+            return _less(getResultType(), other.getResultType());
+        if (!_equals(getFormula(), other.getFormula()))
+            return _less(getFormula(), other.getFormula());
+        return getParams() < other.getParams();
+    }
+
+    virtual bool equals(const Node& _other) const {
+        const FormulaDeclaration& other = (const FormulaDeclaration&)_other;
+        return getName() == other.getName()
+            && _equals(getResultType(), other.getResultType())
+            && getParams() == other.getParams();
+    }
 
     virtual NodePtr clone(Cloner &_cloner) const {
         FormulaDeclarationPtr pCopy = NEW_CLONE(this, _cloner, FormulaDeclaration(getName(), _cloner.get(getResultType()), _cloner.get(getFormula()), _cloner.get(getLabel())));
