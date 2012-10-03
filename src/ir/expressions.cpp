@@ -6,7 +6,10 @@
 #include "ir/declarations.h"
 #include "ir/statements.h"
 #include "ir/visitor.h"
+#include "utils.h"
 #include "typecheck.h"
+
+#include "../pp_syntax.h"
 
 using namespace ir;
 
@@ -668,8 +671,8 @@ bool FunctionCall::less(const Node& _other) const {
     if (!Expression::equals(_other))
         return Expression::less(_other);
     const FunctionCall& other = (const FunctionCall&)_other;
-    if (!_equals(getPredicate(), other.getPredicate()))
-        return _less(getPredicate(), other.getPredicate());
+    if (getPredicate() != other.getPredicate())
+        return getPredicate() < other.getPredicate();
     return getArgs() < other.getArgs();
 }
 
@@ -677,7 +680,7 @@ bool FunctionCall::equals(const Node& _other) const {
     if (!Expression::equals(_other))
         return false;
     const FunctionCall& other = (const FunctionCall&)_other;
-    return _equals(getPredicate(), other.getPredicate()) && getArgs() == other.getArgs();
+    return getPredicate() == other.getPredicate() && getArgs() == other.getArgs();
 }
 
 bool FunctionCall::matches(const Expression& _other, MatchesPtr _pMatches) const {

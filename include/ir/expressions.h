@@ -167,26 +167,32 @@ private:
     std::wstring m_strName;
 };
 
-class Matches : public Node {
+template<class _Marker>
+class MarkedMap : public Node {
 public:
-    Matches() {}
-    void addExpression(const Wild& _wild, const Expression& _expr) {
-        m_map.insert(std::make_pair(&_wild, &_expr));
+    MarkedMap() {}
+    void addExpression(const _Marker& _mark, const Expression& _expr) {
+        m_map.insert(std::make_pair(&_mark, &_expr));
     }
-    ExpressionPtr getExpression(const Wild& _wild) {
-        std::map<WildPtr, ExpressionPtr, PtrLess<Wild> >::iterator it = m_map.find(&_wild);
+    ExpressionPtr getExpression(const _Marker& _mark) {
+        typename std::map<Auto<_Marker>, ExpressionPtr, PtrLess<_Marker> >::iterator it = m_map.find(&_mark);
         if (it != m_map.end())
             return it->second;
         return NULL;
     }
-    ExpressionPtr getExpression(const std::wstring& _sName) {
-        return getExpression(Wild(_sName));
-    }
-    void swap(Matches& _other) {
+    void swap(MarkedMap& _other) {
         m_map.swap(_other.m_map);
     }
-private:
-    std::map<WildPtr, ExpressionPtr, PtrLess<Wild> > m_map;
+protected:
+    std::map<Auto<_Marker>, ExpressionPtr, PtrLess<_Marker> > m_map;
+};
+
+class Matches : public MarkedMap<Wild> {
+public:
+    Matches() {}
+    ExpressionPtr getExprByName(const std::wstring& _sName) {
+        return getExpression(Wild(_sName));
+    }
 };
 
 /// Representation of nil and numeric, character and string literals.

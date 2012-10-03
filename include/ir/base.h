@@ -23,6 +23,7 @@
 #include <algorithm>
 #include <string>
 #include <map>
+#include <functional>
 
 #include "autoptr.h"
 
@@ -225,11 +226,15 @@ public:
     }
 
     template<class _Predicate>
-    size_t findIdx(const _Node &_node, _Predicate _pred = std::equal_to<_Node>()) const {
+    size_t findIdx(const _Node &_node, _Predicate _pred) const {
         for (size_t i = 0; i < size(); ++i)
             if (get(i) && _pred(_node, *get(i)))
                 return i;
         return (size_t)-1;
+    }
+
+    size_t findIdx(const _Node &_node) const {
+        return findIdx(_node, std::equal_to<_Node>());
     }
 
     size_t findByNameIdx(const std::wstring &_name) const {
@@ -252,7 +257,7 @@ public:
     }
 
     virtual bool equals(const Node& _other) const {
-        if (_Base::equals(_other))
+        if (!_Base::equals(_other))
             return false;
         const Collection& other = (const Collection&)_other;
         if (size() != other.size())
@@ -477,6 +482,9 @@ public:
 
     virtual bool less(const Node& _other) const;
     virtual bool equals(const Node& _other) const;
+    bool operator== (const NamedValue& _other) const {
+        return equals(_other);
+    }
 
     virtual NodePtr clone(Cloner &_cloner) const {
         return NEW_CLONE(this, _cloner, NamedValue(m_strName, _cloner.get(m_pType.ptr())));
@@ -676,7 +684,11 @@ public:
     // \return True.
     virtual bool isBlockLike() const { return true; }
 
-    virtual NodePtr clone(Cloner &_cloner) const { return NEW_CLONE(this, _cloner, Block()); }
+    virtual NodePtr clone(Cloner &_cloner) const {
+        Auto<Block > pCopy = NEW_CLONE(this, _cloner, Block());
+        pCopy->appendClones(*this, _cloner);
+        return pCopy;
+    }
 };
 
 /// Collection of statements that can be executed simultaneously.
@@ -693,7 +705,11 @@ public:
     // \return False.
     virtual bool isBlockLike() const { return false; }
 
-    virtual NodePtr clone(Cloner &_cloner) const { return NEW_CLONE(this, _cloner, ParallelBlock()); }
+    virtual NodePtr clone(Cloner &_cloner) const {
+        Auto<ParallelBlock > pCopy = NEW_CLONE(this, _cloner, ParallelBlock());
+        pCopy->appendClones(*this, _cloner);
+        return pCopy;
+    }
 };
 
 bool isTypeVariable(const NamedValuePtr &_pVar);
