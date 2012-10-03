@@ -90,6 +90,7 @@ namespace ir {
 class Context {
 public:
     typedef std::map<std::wstring, ir::ModulePtr> ModuleMap;
+    typedef std::map<std::wstring, Context*> ModuleContextMap;
     typedef std::multimap<std::wstring, ir::PredicatePtr> PredicateMap;
     typedef std::map<std::wstring, ir::NamedValuePtr> VariableMap;
     typedef std::map<std::wstring, ir::TypeDeclarationPtr> TypeMap;
@@ -104,7 +105,7 @@ public:
         : m_loc(_loc), m_bScope(_bScope), m_pChild(NULL), m_pParent(NULL), m_pFailed(NULL),
           m_modules(NULL), m_predicates(NULL), m_variables(NULL), m_types(NULL), m_labels(NULL),
           m_processes(NULL), m_formulas(NULL), m_constructors(NULL), m_bFailed(false), m_pCons(NULL),
-          m_flags(_flags)
+          m_modulesCtxs(NULL), m_flags(_flags)
     {}
 
     ~Context();
@@ -156,6 +157,9 @@ public:
     ir::ModulePtr getModule(const std::wstring &_strName) const;
     void addModule(const ir::ModulePtr &_pModule);
 
+    Context* getModuleCtx(const std::wstring &_strName) const;
+    void addModuleCtx(const ir::ModulePtr &_pModule, Context* _ctx);
+
     bool getPredicates(const std::wstring &_strName, ir::Predicates &_predicates) const;
     ir::PredicatePtr getPredicate(const std::wstring &_strName) const;
     void addPredicate(const ir::PredicatePtr &_pPred);
@@ -206,6 +210,7 @@ private:
     Context *m_pChild, *m_pParent, *m_pFailed;
     StatusMessages m_messages;
     ModuleMap *m_modules;
+    ModuleContextMap *m_modulesCtxs;
     PredicateMap *m_predicates;
     VariableMap *m_variables;
     TypeMap *m_types;

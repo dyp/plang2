@@ -11,6 +11,11 @@ using namespace lexer;
 using namespace ir;
 
 Context::~Context() {
+    if (m_modulesCtxs != NULL)
+        for (ModuleContextMap::const_iterator i = m_modulesCtxs->begin(); i != m_modulesCtxs->end(); ++i)
+            delete i->second;
+    delete m_modulesCtxs;
+
     delete m_modules;
     delete m_predicates;
     delete m_variables;
@@ -154,6 +159,30 @@ void Context::addModule(const ir::ModulePtr &_pModule) {
     if (m_modules == NULL)
         m_modules = new ModuleMap();
     (*m_modules)[_pModule->getName()] = _pModule;
+}
+
+Context* Context::getModuleCtx(const std::wstring &_strName) const {
+    if (m_modulesCtxs) {
+        ModuleContextMap::const_iterator i = m_modulesCtxs->find(_strName);
+        if (i != m_modulesCtxs->end())
+            return i->second;
+    }
+
+    return m_pParent ? m_pParent->getModuleCtx(_strName) : NULL;
+}
+
+void Context::addModuleCtx(const ir::ModulePtr &_pModule, Context *_ctx) {
+    if (m_pChild == NULL)
+        return;
+
+    if (m_modulesCtxs == NULL)
+        m_modulesCtxs = new ModuleContextMap();
+    (*m_modulesCtxs)[_pModule->getName()] = _ctx;
+
+    if (*m_loc < *m_pChild->m_loc)
+        m_loc = m_pChild->m_loc;
+
+    m_messages.splice(m_messages.end(), m_pChild->m_messages);
 }
 
 bool Context::getPredicates(const std::wstring &_strName, ir::Predicates &_predicates) const {

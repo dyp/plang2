@@ -710,6 +710,25 @@ ExpressionPtr Parser::parseAtom(Context &_ctx) {
 
     if (!pExpr && ctx.is(IDENTIFIER)) {
         std::wstring str = ctx.getValue();
+        Context *pModuleCtx = &ctx;
+
+        // TODO Module args.
+        ModulePtr pModule;
+        while (!pExpr && (pModule = pModuleCtx->getModule(str)) && ctx.nextIs(DOT)) {
+            ctx.skip(2);
+
+            if (!ctx.is(IDENTIFIER))
+                ERROR(ctx, NULL, L"Identifier expected");
+
+            Context *pContext = pModuleCtx->getModuleCtx(str);
+            assert(pContext != NULL);
+            pModuleCtx = pContext;
+
+            str = ctx.getValue();
+
+        }
+        Context &moduleCtx = *pModuleCtx;
+
         NamedValuePtr pVar;
         bool bLinkedIdentifier = false;
 
@@ -718,7 +737,7 @@ ExpressionPtr Parser::parseAtom(Context &_ctx) {
             bLinkedIdentifier = true;
         }
 
-        if ((pVar = ctx.getVariable(str)) && (!bAllowTypes || !isTypeVariable(pVar))) {
+        if ((pVar = moduleCtx.getVariable(str)) && (!bAllowTypes || !isTypeVariable(pVar))) {
             pExpr = new VariableReference(pVar);
             ctx.skip(bLinkedIdentifier ? 2 : 1);
         }
@@ -727,7 +746,7 @@ ExpressionPtr Parser::parseAtom(Context &_ctx) {
             ERROR(ctx, NULL, L"Parameter with name %ls not found", str.c_str());
 
         if (!pExpr && _ctx.getConstructor(str)) {
-            if (ctx.nextIs(QUESTION) && !ctx.nextLoc()->hasLeadingSpace()) {
+            if (moduleCtx.nextIs(QUESTION) && !moduleCtx.nextLoc()->hasLeadingSpace()) {
                 assert(false && "Unimplemented");
                 // ParseRecognizer?
             } else
@@ -736,14 +755,14 @@ ExpressionPtr Parser::parseAtom(Context &_ctx) {
 
         PredicatePtr pPred;
 
-        if (!pExpr && (pPred = ctx.getPredicate(str))) {
+        if (!pExpr && (pPred = moduleCtx.getPredicate(str))) {
             pExpr = new PredicateReference(str);
             ++ctx;
         }
 
         FormulaDeclarationPtr pFormula;
 
-        if (!pExpr && (ctx.getFlags() & ALLOW_FORMULAS) && (pFormula = ctx.getFormula(str))) {
+        if (!pExpr && (ctx.getFlags() & ALLOW_FORMULAS) && (pFormula = moduleCtx.getFormula(str))) {
             FormulaCallPtr pCall = new FormulaCall();
 
             ++ctx;
@@ -760,7 +779,7 @@ ExpressionPtr Parser::parseAtom(Context &_ctx) {
         TypePtr pRealType;
 
         if (!pExpr) {
-            if (TypeDeclarationPtr pTypeDecl = ctx.getType(str))
+            if (TypeDeclarationPtr pTypeDecl = moduleCtx.getType(str))
                 pRealType = pTypeDecl->getType();
         }
 
@@ -2907,8 +2926,9 @@ ModulePtr Parser::parseModule(Context &_ctx, bool _bTopLevel) {
             UNEXPECTED(_ctx, "End of module");
     }
 
-    _ctx.mergeChildren();
     _ctx.addModule(pModule);
+    _ctx.addModuleCtx(pModule, &ctx);
+    _ctx.setChild(NULL);
 
     return pModule;
 }
