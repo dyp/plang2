@@ -84,11 +84,15 @@ public:
 
     bool visitFormulaCall(ir::FormulaCall &_call) {
         const ir::ExpressionPtr pExpr = _call.getTarget()->getFormula();
-        if (pExpr->getKind() == ir::Expression::FORMULA_CALL) {
-            ir::FormulaCallPtr pCall = new ir::FormulaCall(pExpr.as<FormulaCall>()->getTarget());
-            copyCallArgs(pCall, _call);
-            callSetter(pCall);
-        }
+        if (pExpr->getKind() != ir::Expression::FORMULA_CALL)
+            return true;
+
+        FormulaCallPtr pCall = clone(pExpr.as<FormulaCall>());
+        for (size_t i=0; i<_call.getArgs().size(); ++i)
+            Expression::substitute(*pCall, new VariableReference(_call.getTarget()->getParams().get(i)), _call.getArgs().get(i));
+
+        callSetter(pCall);
+
         return true;
     }
 };
