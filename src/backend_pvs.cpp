@@ -49,14 +49,14 @@ public:
             return L"";
         switch (_pType->getKind()) {
             case ir::Type::BOOL:
-                return L"_b";
+                return L"b";
             case ir::Type::NAT:
-                return L"_n";
+                return L"n";
         }
     }
 
     bool visitVariableReference(ir::VariableReference &_var) {
-        _var.setName(_var.getName() + getMangling(_var.getType()));
+        _var.setName(_var.getName() + L"_" + getMangling(_var.getType()));
         return false;
     }
 
