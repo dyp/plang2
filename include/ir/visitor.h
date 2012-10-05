@@ -166,8 +166,9 @@ private:
     bool m_bStopped;
     int m_order;
 
-    bool _traverseAnonymousPredicate(AnonymousPredicate &_decl);
-    bool _traverseDeclarationGroup(DeclarationGroup &_decl);
+protected:
+    virtual bool _traverseAnonymousPredicate(AnonymousPredicate &_decl);
+    virtual bool _traverseDeclarationGroup(DeclarationGroup &_decl);
 };
 
 template<class _Node, class _Base>
