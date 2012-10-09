@@ -2439,24 +2439,25 @@ CallPtr Parser::parseCall(Context &_ctx) {
     if (!ctx.consume(RPAREN))
         UNEXPECTED(ctx, ")");
 
-    while (ctx.consume(CASE)) {
-        if (!ctx.in(LABEL, IDENTIFIER, INTEGER) || !ctx.nextIs(COLON))
-            ERROR(ctx, NULL, L"Label identifier expected");
+    if (!branches.empty())
+        while (ctx.consume(CASE)) {
+            if (!ctx.in(LABEL, IDENTIFIER, INTEGER) || !ctx.nextIs(COLON))
+                ERROR(ctx, NULL, L"Label identifier expected");
 
-        typedef call_branch_map_t::iterator I;
-        std::pair<I, I> bounds = branches.equal_range(ctx.scan());
+            typedef call_branch_map_t::iterator I;
+            std::pair<I, I> bounds = branches.equal_range(ctx.scan());
 
-        ++ctx;
+            ++ctx;
 
-        if (bounds.first == bounds.second)
-            ERROR(ctx, NULL, L"Label identifier expected");
+            if (bounds.first == bounds.second)
+                ERROR(ctx, NULL, L"Label identifier expected");
 
-        if (StatementPtr pStmt = parseStatement(ctx))
-            for (I i = bounds.first; i != bounds.second; ++ i)
-                i->second->setHandler(pStmt);
-        else
-            ERROR(ctx, NULL, L"Statement required");
-    }
+            if (StatementPtr pStmt = parseStatement(ctx))
+                for (I i = bounds.first; i != bounds.second; ++ i)
+                    i->second->setHandler(pStmt);
+            else
+                ERROR(ctx, NULL, L"Statement required");
+        }
 
     _ctx.mergeChildren();
 
