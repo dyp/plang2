@@ -634,6 +634,8 @@ public:
         LEMMA_DECLARATION,
         /// Declaration of a (nested) predicate. Can be cast to Predicate.
         PREDICATE_DECLARATION,
+        /// Block of variable declarations. Can be cast to VariableDeclarationGroup
+        VARIABLE_DECLARATION_GROUP,
     };
 
     /// Default constructor.

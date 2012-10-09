@@ -290,6 +290,18 @@ private:
     ExpressionPtr m_pValue;
 };
 
+class VariableDeclarationGroup : public Collection<VariableDeclaration, Statement> {
+public:
+    VariableDeclarationGroup() {}
+    virtual int getKind() const { return VARIABLE_DECLARATION_GROUP; }
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        Auto<VariableDeclarationGroup > pCopy = NEW_CLONE(this, _cloner, VariableDeclarationGroup());
+        pCopy->appendClones(*this, _cloner);
+        return pCopy;
+    }
+};
+
 /// Statement that wraps type declaration.
 class TypeDeclaration : public Statement {
 public:
