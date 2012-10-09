@@ -525,6 +525,8 @@ bool Visitor::traverseStatement(Statement &_stmt) {
             return traverseLemmaDeclaration((LemmaDeclaration &)_stmt);
         case Statement::PREDICATE_DECLARATION:
             return traversePredicate((Predicate &)_stmt);
+        case Statement::VARIABLE_DECLARATION_GROUP:
+            return traverseVariableDeclarationGroup((VariableDeclarationGroup &)_stmt);
     }
 
     ENTER(Statement, _stmt);
@@ -689,6 +691,13 @@ bool Visitor::traversePredicate(Predicate &_stmt) {
     if (!_traverseAnonymousPredicate(_stmt))
         return false;
 
+    EXIT();
+}
+
+bool Visitor::traverseVariableDeclarationGroup(VariableDeclarationGroup &_stmt) {
+    ENTER(Block, _stmt);
+    TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
+    TRAVERSE_COL(VariableDeclarationGroup, VariableDeclarationGroupElement, _stmt);
     EXIT();
 }
 

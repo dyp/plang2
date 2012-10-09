@@ -78,6 +78,7 @@ NODE(VariableDeclaration, Statement)
 NODE(FormulaDeclaration, Statement)
 NODE(LemmaDeclaration, Statement)
 NODE(Predicate, Statement)
+NODE(VariableDeclarationGroup, Statement)
 
 // Misc.
 NODE(UnionConstructorDeclaration, Node)

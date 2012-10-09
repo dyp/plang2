@@ -2498,12 +2498,12 @@ StatementPtr Parser::parseStatement(Context &_ctx) {
                 return decls.get(0);
 
             // decls.size() > 1
-            ParallelBlockPtr pBlock = new ParallelBlock();
+            VariableDeclarationGroupPtr pGroup = new VariableDeclarationGroup();
 
-            pBlock->append(decls);
+            pGroup->append(decls);
             _ctx.mergeChildren();
 
-            return pBlock;
+            return pGroup;
         }
     }
 
