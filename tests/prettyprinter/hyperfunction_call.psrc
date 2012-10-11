@@ -1,0 +1,13 @@
+bar(nat a : nat b #1 : nat c #2) {
+}
+
+foo(nat a : nat b, nat c #1 : nat d, nat e #2) {
+    bar(a : b #3 : c #4)
+        case 3 : {
+            foo(a: b, c #3 : d, e #4)
+                case 3: b = 0
+                case 4: d = 0;
+        }
+        case 4: b = 0
+}
+

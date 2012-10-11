@@ -1,0 +1,10 @@
+module A {
+    nat a = 0;
+
+    foo(nat a: nat b, nat c #1 : nat d, nat e #2)
+    {
+        label: bar() {}
+        nat df = 1, as = df + 1
+    }
+    measure a;
+}

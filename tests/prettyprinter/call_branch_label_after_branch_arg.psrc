@@ -1,0 +1,8 @@
+bar(nat a : nat b #1 : nat c #2) {
+}
+
+foo(nat a : nat b, nat c #qwerty : nat d, nat e #2) {
+    bar(a : b #qwerty: c #2);
+    b = a + c
+}
+
