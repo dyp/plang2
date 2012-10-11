@@ -259,6 +259,11 @@ ir::LabelPtr Context::getLabel(const std::wstring &_strName) const {
     return m_pParent ? m_pParent->getLabel(_strName) : ir::LabelPtr();
 }
 
+ir::LabelPtr Context::createLabel(const std::wstring &_strName) {
+    LabelPtr pLabel = getLabel(_strName);
+    return !pLabel ? new Label(_strName) : pLabel;
+}
+
 void Context::addLabel(const ir::LabelPtr &_pLabel) {
     if (m_labels == NULL)
         m_labels = new LabelMap();

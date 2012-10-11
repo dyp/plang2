@@ -171,6 +171,7 @@ public:
     void addType(const ir::TypeDeclarationPtr &_pType);
 
     ir::LabelPtr getLabel(const std::wstring &_strName) const;
+    ir::LabelPtr createLabel(const std::wstring &_strName);
     void addLabel(const ir::LabelPtr &_pLabel);
 
     ir::ProcessPtr getProcess(const std::wstring &_strName) const;
