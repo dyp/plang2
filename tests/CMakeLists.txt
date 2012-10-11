@@ -43,6 +43,13 @@ set(TESTS_INFERENCE
 
 set(TESTS_PRETTYPRINTER
     prettyprinter/simply_formulas.psrc
+    prettyprinter/call_branch_label_after_branch_arg.psrc
+    prettyprinter/hyperfunction_call.psrc
+    prettyprinter/jumps_and_labels.psrc
+    prettyprinter/labels_and_simply_operators.psrc
+    prettyprinter/modules_and_pred_in_pred.psrc
+    prettyprinter/type_and_variable_decls.psrc
+    prettyprinter/var_decl_in_call.psrc
 )
 
 run_tests("-t0" "${TESTS_PARSING}")

@@ -1,0 +1,17 @@
+bar(nat a: nat b, c)
+pre true
+{
+    some_label1 : {
+        b = 0;
+        c = 0;
+        c = 17;
+        b = a + c
+    }
+    b = 0;
+    {
+        b = 0;
+        some_label : b = 0 || c = 0 || c = 17 || b = a + c
+    }
+    b = 0
+}
+post true;

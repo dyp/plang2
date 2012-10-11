@@ -1,0 +1,14 @@
+foo () {
+    nat i = 0;
+
+    main_loop:
+
+    if (i > 10)
+        i = 0
+    else {
+        i = i + 1;
+        #main_loop
+    }
+
+    end_of_loop:
+}
