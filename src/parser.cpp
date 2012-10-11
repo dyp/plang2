@@ -1099,8 +1099,7 @@ bool Parser::parsePredicateParamsAndBody(Context &_ctx, AnonymousPredicate &_pre
             if (!branches.insert(std::make_pair(strLabel, pBranch)).second)
                 ERROR(_ctx, false, L"Duplicate branch name \"%ls\"", strLabel.c_str());
 
-            pBranch->setLabel(new Label(strLabel));
-            _ctx.addLabel(pBranch->getLabel());
+            pBranch->setLabel(_ctx.createLabel(strLabel));
         }
     }
 
@@ -2156,10 +2155,7 @@ JumpPtr Parser::parseJump(Context &_ctx) {
         ERROR(ctx, NULL, L"Label identifier expected");
 
     std::wstring name = ctx.scan();
-    LabelPtr pLabel = ctx.getLabel(name);
-
-    if (!pLabel)
-        ERROR(ctx, NULL, L"Unknown label %ls", name.c_str());
+    LabelPtr pLabel = ctx.createLabel(name);
 
     _ctx.mergeChildren();
 
@@ -2511,7 +2507,7 @@ StatementPtr Parser::parseStatement(Context &_ctx) {
 
     if (_ctx.in(IDENTIFIER, LABEL, INTEGER) && _ctx.nextIs(COLON)) {
         Context &ctx = *_ctx.createChild(false);
-        LabelPtr pLabel = new Label(ctx.scan(2));
+        LabelPtr pLabel = ctx.createLabel(ctx.scan(2));
 
         if (ctx.is(RBRACE))
             pStmt = new Statement();
@@ -2529,7 +2525,6 @@ StatementPtr Parser::parseStatement(Context &_ctx) {
         }
 
         pStmt->setLabel(pLabel);
-        ctx.addLabel(pLabel);
         _ctx.mergeChildren();
 
         return pStmt;
