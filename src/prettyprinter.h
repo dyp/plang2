@@ -19,6 +19,7 @@ protected:
     std::wostream &m_os;
 
     std::wstring fmtIndent(const std::wstring &_s);
+    std::wstring fmtFreshType(tc::FreshType &_type);
     std::wstring fmtType(int _kind);
 };
 
