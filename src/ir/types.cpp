@@ -1,6 +1,7 @@
 /// \file types.cpp
 ///
 
+#include <list>
 #include "ir/base.h"
 #include "ir/types.h"
 #include "ir/declarations.h"
@@ -231,8 +232,8 @@ TypePtr Type::getMeet(ir::Type &_other) {
     return (Type *)NULL;
 }
 
-void ArrayType::getDimensions(Collection<Type> &_dimensions) const {
-    _dimensions.add(getDimensionType());
+void ArrayType::getDimensions(std::list<TypePtr>& _dimensions) const {
+    _dimensions.push_back(getDimensionType());
     if (getBaseType()->getKind() == ARRAY)
         getBaseType().as<ArrayType>()->getDimensions(_dimensions);
 }
