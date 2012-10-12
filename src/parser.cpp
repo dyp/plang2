@@ -1239,7 +1239,7 @@ ArrayTypePtr Parser::parseArrayType(Context &_ctx) {
     if (!ctx.consume(ARRAY))
         ERROR(ctx, NULL, L"Expected \"array\", got: %ls", TOK_S(ctx));
 
-    if (! ctx.consume(LPAREN))
+    if (!ctx.consume(LPAREN))
         ERROR(ctx, NULL, L"Expected \"(\", got: %ls", TOK_S(ctx));
 
     TypePtr pBaseType = parseType(ctx);
@@ -1251,7 +1251,7 @@ ArrayTypePtr Parser::parseArrayType(Context &_ctx) {
         pCurrentArray = pArray;
 
     while (1) {
-        if (! ctx.consume(COMMA))
+        if (!ctx.consume(COMMA))
             ERROR(ctx, NULL, L"Expected \",\", got: %ls", TOK_S(ctx));
 
         TypePtr pDimensionType = parseType(ctx);
@@ -2821,8 +2821,6 @@ bool Parser::parseDeclarations(Context &_ctx, Module &_module) {
                     if (!pCtx->consume(SEMICOLON))
                         ERROR(*pCtx, false, L"Semicolon expected");
                     _module.getTypes().add(pDecl);
-                    if (!typecheck(*pCtx, *pDecl))
-                            return false;
                 } else
                     ERROR(*pCtx, false, L"Failed parsing type declaration");
                 break;
