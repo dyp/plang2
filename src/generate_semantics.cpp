@@ -5,6 +5,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <list>
 
 #include "ir/statements.h"
 #include "generate_semantics.h"
@@ -1268,11 +1269,11 @@ RangePtr CollectPreConditions::arrayRangeWithCurrentParams(ExpressionPtr _pArray
             getType().as<NamedReferenceType>()->getDeclaration().as<TypeDeclaration>()->
             getType().as<ParameterizedType>()->getParams();
 
-        Collection<Type> dims;
+        std::list<TypePtr> dims;
         _pArray.as<VariableReference>()->getTarget().as<Param>()->
             getType().as<NamedReferenceType>()->getDeclaration().as<TypeDeclaration>()->
             getType().as<ParameterizedType>()->getActualType().as<DerivedType>().as<ArrayType>()->getDimensions(dims);
-        TypePtr pType = getNotNamedReferenceType(dims.get(0));
+        TypePtr pType = getNotNamedReferenceType(dims.front());
         RangePtr pRange = NULL;
         if (pType && pType->getKind() == Type::SUBTYPE)
             pType.as<Subtype>()->asRange();
@@ -1397,14 +1398,11 @@ Auto<Module> ir::processPreConditions(Module &_module) {
 }
 
 void ir::getRanges(const ArrayType &_array, Collection<Range> &_ranges) {
-    Collection<Type> dims;
+    std::list<TypePtr> dims;
     _array.getDimensions(dims);
 
-    if (dims.empty())
-        return;
-
-    for(size_t i = 0; i < dims.size(); ++i) {
-        TypePtr pType = CollectPreConditions::getNotNamedReferenceType(dims.get(i));
+    for(std::list<TypePtr>::iterator i = dims.begin(); i != dims.end(); ++i) {
+        TypePtr pType = CollectPreConditions::getNotNamedReferenceType(*i);
         if (!pType) {
             _ranges.add(NULL);
             continue;

@@ -6,6 +6,7 @@
 #ifndef TYPES_H_
 #define TYPES_H_
 
+#include <list>
 #include "base.h"
 #include "expressions.h"
 
@@ -508,7 +509,7 @@ public:
 
     /// Get array dimensions as list of types.
     /// \return List of ranges.
-    void getDimensions(Collection<Type> &_dimensions) const;
+    void getDimensions(std::list<TypePtr> &_dimensions) const;
 
     size_t getDimensionsCount() const {
         return getBaseType()->getKind() == ARRAY
