@@ -36,6 +36,7 @@ std::wstring fmtAddParens(const std::wstring & _s, bool _bAddLeadingSpace = true
 std::wstring fmtAddDetail(const std::wstring & _s);
 
 std::wstring fmtInt(int64_t _n, const wchar_t * _fmt = L"%lld");
+std::wstring intToAlpha(int _n);
 
 
 // Command-line args.

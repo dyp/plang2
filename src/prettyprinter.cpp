@@ -128,7 +128,7 @@ static std::wstring fmtLabel(const LabelPtr &_pLabel) {
 
 std::map<size_t, std::wstring> g_freshTypes;
 
-static std::wstring fmtFreshType(tc::FreshType &_type) {
+std::wstring PrettyPrinterBase::fmtFreshType(tc::FreshType &_type) {
     std::wstring strName = g_freshTypes[_type.getOrdinal()];
 
     if (strName.empty()) {
@@ -340,219 +340,8 @@ void print(ir::Node &_node, std::wostream &_os) {
     pp.traverseNode(_node);
 }
 
-class PrettyPrinterCompact: public PrettyPrinterBase {
-public:
-    PrettyPrinterCompact(std::wostream &_os, NodePtr _pRoot, int _nFlags) : PrettyPrinterBase(_os), m_pRoot(_pRoot), m_nFlags(_nFlags) {}
-
-    void print(Node &_node) {
-        if (&_node == NULL)
-            m_os << "NULL";
-        else
-            traverseNode(_node);
-    }
-
-    virtual bool visitNamedValue(NamedValue &_val) {
-        if (&_val != m_pRoot.ptr()) {
-            if (getLoc().bPartOfCollection && getLoc().cPosInCollection != 0)
-                m_os << L", ";
-            else if (getLoc().role == R_PredicateTypeOutParam && getLoc().cPosInCollection == 0)
-                m_os << L" : ";
-        }
-
-        if (getRole() != R_EnumValueDecl)
-            traverseType(*_val.getType());
-
-        if (!_val.getName().empty() && getLoc().type != N_Param) {
-            if (getRole() != R_EnumValueDecl)
-                m_os << L" ";
-            m_os << _val.getName();
-        }
-
-        return false;
-    }
-
-    virtual bool visitType(Type &_type) {
-        if ((m_nFlags & PPC_NO_INCOMPLETE_TYPES) && (_type.getKind() == Type::FRESH || _type.getKind() == Type::GENERIC))
-            return true;
-
-        if (_type.getKind() == Type::FRESH) {
-            m_os << fmtFreshType((tc::FreshType &)_type);
-        } else if (_type.getKind() <= Type::GENERIC) {
-            m_os << fmtType(_type.getKind());
-
-            if (_type.getKind() >= Type::NAT && _type.getKind() <= Type::REAL && _type.getBits() != Number::GENERIC) {
-                if ((_type.getKind() <= Type::INT && !(m_nFlags & PPC_NO_INT_BITS)) ||
-                        ((_type.getKind() == Type::REAL && !(m_nFlags & PPC_NO_REAL_BITS))))
-                    m_os << L"(" << fmtBits(_type.getBits()) << L")";
-            }
-        }
-
-        return true;
-    }
-
-    virtual bool visitTypeType(TypeType &_type) {
-        m_os << L"<";
-        if (TypePtr pType = _type.getDeclaration()->getType())
-            traverseType(*pType);
-        m_os << L">";
-        return false;
-    }
-
-    virtual bool visitNamedReferenceType(NamedReferenceType &_type) {
-        m_os << _type.getName();
-        return true;
-    }
-
-    virtual bool visitSetType(SetType &_type) {
-        m_os << L"{";
-        traverseType(*_type.getBaseType());
-        m_os << L"}";
-        return false;
-    }
-
-    virtual bool visitListType(ListType &_type) {
-        m_os << L"[[";
-        traverseType(*_type.getBaseType());
-        m_os << L"]]";
-        return false;
-    }
-
-    virtual bool visitMapType(MapType &_type) {
-        m_os << L"{";
-        traverseType(*_type.getIndexType());
-        m_os << L":";
-        traverseType(*_type.getBaseType());
-        m_os << L"}";
-        return false;
-    }
-
-    virtual bool traverseSubtype(Subtype &_type) {
-        VISITOR_ENTER(Subtype, _type);
-        m_os << L"subtype(";
-        VISITOR_TRAVERSE(NamedValue, SubtypeParam, _type.getParam(), _type, Subtype, setParam);
-        m_os << L": ";
-        prettyPrintSyntax(*_type.getExpression(), m_os);
-        m_os << L")";
-        VISITOR_EXIT();
-    }
-
-    virtual bool visitRange(Range &_type) {
-        prettyPrintSyntax(*_type.getMin());
-        m_os << L"..";
-        prettyPrintSyntax(*_type.getMax());
-        return false;
-    }
-
-    virtual bool visitLiteral(Literal &_lit) {
-        m_os << fmtLiteral(_lit);
-        return false;
-    }
-
-    virtual bool visitArrayType(ArrayType &_type) {
-        TypePtr pBaseType = _type.getBaseType();
-        while (pBaseType->getKind() == Type::ARRAY)
-            pBaseType = pBaseType.as<ArrayType>()->getBaseType();
-        traverseType(*pBaseType);
-
-        Collection<Type> dims;
-        _type.getDimensions(dims);
-
-        if (dims.empty()) {
-            m_os << L"[]";
-            return false;
-        }
-
-        for (size_t i = 0; i < dims.size(); ++i) {
-            m_os << L"[";
-
-            TypePtr pDim = dims.get(i);
-            if (pDim->getKind() == Type::SUBTYPE) {
-                RangePtr pRange = pDim.as<Subtype>()->asRange();
-                if (pRange)
-                    pDim = pRange;
-            }
-            traverseType(*pDim);
-
-            m_os << L"]";
-        }
-
-        return false;
-    }
-
-    virtual bool traverseEnumType(EnumType &_type) {
-        m_os << L"(";
-        Visitor::traverseEnumType(_type);
-        m_os << L")";
-        return true;
-    }
-
-    virtual bool traverseStructType(StructType &_type) {
-        m_os << L"(";
-        VISITOR_ENTER(StructType, _type);
-        VISITOR_TRAVERSE_COL(NamedValue, StructFieldDecl, _type.getNamesOrd());
-        if (!_type.getNamesOrd().empty() && !_type.getTypesOrd().empty())
-            m_os << L"; ";
-        VISITOR_TRAVERSE_COL(NamedValue, StructFieldDecl, _type.getTypesOrd());
-
-        if (!_type.getNamesSet().empty()) {
-            // Ensure sorting for debug purposes (don't reorder source collection though).
-            std::map<std::wstring, NamedValuePtr> sortedFieldsMap;
-            NamedValues sortedFields;
-
-            for (size_t i = 0; i < _type.getNamesSet().size(); ++i)
-                sortedFieldsMap[_type.getNamesSet().get(i)->getName()] = _type.getNamesSet().get(i);
-
-            for (std::map<std::wstring, NamedValuePtr>::iterator i = sortedFieldsMap.begin();
-                    i != sortedFieldsMap.end(); ++i)
-                sortedFields.add(i->second);
-
-            m_os << L"; ";
-            VISITOR_TRAVERSE_COL(NamedValue, StructFieldDecl, sortedFields);
-        }
-        m_os << L")";
-        VISITOR_EXIT();
-    }
-
-    virtual bool traverseUnionType(UnionType &_type) {
-        m_os << L"(";
-        Visitor::traverseUnionType(_type);
-        m_os << L")";
-        return true;
-    }
-
-    virtual bool visitUnionConstructorDeclaration(UnionConstructorDeclaration &_cons) {
-        if (&_cons != m_pRoot.ptr() && getLoc().bPartOfCollection && getLoc().cPosInCollection != 0)
-            m_os << L", ";
-
-        m_os << _cons.getName() << L"(";
-        VISITOR_TRAVERSE_COL(NamedValue, UnionConsField, _cons.getFields());
-        m_os << L")";
-        return false;
-    }
-
-    virtual bool traversePredicateType(PredicateType &_type) {
-        VISITOR_ENTER(PredicateType, _type);
-        m_os << L"predicate(";
-        VISITOR_TRAVERSE_COL(Param, PredicateTypeInParam, _type.getInParams());
-
-        for (size_t i = 0; i < _type.getOutParams().size(); ++i)
-            VISITOR_TRAVERSE_COL(Param, PredicateTypeOutParam, *_type.getOutParams().get(i));
-
-        m_os << L")";
-        VISITOR_EXIT();
-    }
-
-    virtual bool visitStatement(Statement &_node) {
-        return false;
-    }
-
-private:
-    NodePtr m_pRoot;
-    int m_nFlags;
-};
-
 void prettyPrint(tc::Context &_constraints, std::wostream &_os) {
-    PrettyPrinterCompact pp(_os, NULL, 0);
+    PrettyPrinterSyntax pp(_os, true, 0);
 
     _os << L"\n";
 
@@ -583,7 +372,7 @@ void prettyPrint(tc::Context &_constraints, std::wostream &_os) {
 }
 
 void prettyPrint(const tc::Formula &_formula, std::wostream &_os, bool _bNewLine) {
-    PrettyPrinterCompact pp(_os, NULL, 0);
+    PrettyPrinterSyntax pp(_os, true, 0);
 
     if (!_formula.is(tc::Formula::COMPOUND)) {
         pp.print(*_formula.getLhs());
@@ -625,6 +414,6 @@ void prettyPrint(const tc::Formula &_formula, std::wostream &_os, bool _bNewLine
 }
 
 void prettyPrintCompact(Node &_node, std::wostream &_os, int _nFlags) {
-    PrettyPrinterCompact pp(_os, &_node, _nFlags);
+    PrettyPrinterSyntax pp(_os, true, _nFlags);
     pp.traverseNode(_node);
 }

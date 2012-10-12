@@ -30,6 +30,16 @@ std::wstring fmtInt(int64_t _n, const wchar_t * _fmt) {
     return buf;
 }
 
+std::wstring intToAlpha(int _n) {
+    std::wstring strResult = L"";
+
+    for(; _n; _n /= 26)
+        strResult += 'a' + _n%26;
+    std::reverse(strResult.begin(), strResult.end());
+
+    return strResult;
+}
+
 std::wstring intToWStrHex(int64_t _n) {
     wchar_t buf[64];
     swprintf(buf, 64, L"%llX", _n);
