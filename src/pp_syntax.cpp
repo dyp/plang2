@@ -67,6 +67,14 @@ std::wstring fmtBits(int _bits) {
     }
 }
 
+bool PrettyPrinterSyntax::traverseType(Type &_type) {
+    if (&_type != NULL)
+        return Visitor::traverseType(_type);
+
+    m_os << L"NULL";
+    return true;
+}
+
 bool PrettyPrinterSyntax::visitType(Type &_type) {
     if ((m_nFlags & PPC_NO_INCOMPLETE_TYPES) && (_type.getKind() == Type::FRESH || _type.getKind() == Type::GENERIC))
         return true;
@@ -169,7 +177,7 @@ bool PrettyPrinterSyntax::visitArrayType(ArrayType &_type) {
             m_os << L"]";
 
         const bool bIsLast = (*i == dims.back());
-        if (!bIsLast)
+        if (!bIsLast && !m_bCompact)
             m_os << L", ";
     }
 
@@ -207,8 +215,32 @@ void PrettyPrinterSyntax::printStructNamedValues(const NamedValues& _nvs, std::s
 }
 
 bool PrettyPrinterSyntax::needsIndent() {
-    return (getRole() != R_PredicateInParam && getRole() != R_PredicateOutParam);
+    switch (getRole()) {
+        case R_FormulaCallArgs:
+        case R_FunctionCallArgs:
+        case R_PredicateInParam:
+        case R_PredicateOutParam:
+        case R_PredicateCallArgs:
+        case R_PredicateCallBranchResults:
+            return false;
+    }
+    return !m_bCompact && !m_bSingleLine;
 }
+
+#define INDENT()                                \
+    const bool bNeedsIndent = needsIndent();    \
+    const bool oldSingleLine = m_bSingleLine;   \
+    if (bNeedsIndent) {                         \
+        incTab();                               \
+        m_bSingleLine = true;                   \
+    }
+
+#define UNINDENT()                              \
+    if (bNeedsIndent) {                         \
+        decTab();                               \
+        m_os << L"\n" << fmtIndent();           \
+        m_bSingleLine = oldSingleLine;          \
+    }
 
 std::wstring getNewFieldName(std::set<std::wstring>& _usedNames) {
     size_t i = 1;
@@ -226,9 +258,7 @@ bool PrettyPrinterSyntax::traverseStructType(StructType &_type) {
 
     m_os << (!m_bCompact ? L"struct(" : L"(");
 
-    const bool bNeedsIndent = needsIndent() && !m_bCompact;
-    if (bNeedsIndent)
-        incTab();
+    INDENT();
 
     bool bIsFirst = true;
     std::set<std::wstring> usedNames;
@@ -262,11 +292,7 @@ bool PrettyPrinterSyntax::traverseStructType(StructType &_type) {
     }
     printStructNamedValues(typeFields, usedNames, bIsFirst, bNeedsIndent);
 
-    if (bNeedsIndent) {
-        m_os << L"\n";
-        decTab();
-        m_os << fmtIndent();
-    }
+    UNINDENT();
     m_os << L")";
 
     VISITOR_EXIT();
@@ -284,9 +310,7 @@ bool PrettyPrinterSyntax::traverseUnionType(UnionType &_type) {
     VISITOR_ENTER(UnionType, _type);
     m_os << L"union(";
 
-    const bool bNeedsIndent = needsIndent() && !m_bCompact;
-    if (bNeedsIndent)
-        incTab();
+    INDENT();
 
     for (size_t i = 0; i < _type.getConstructors().size(); ++i) {
         if (bNeedsIndent)
@@ -299,11 +323,7 @@ bool PrettyPrinterSyntax::traverseUnionType(UnionType &_type) {
             m_os << ", ";
     }
 
-    if (bNeedsIndent) {
-        m_os << L"\n";
-        decTab();
-        m_os << fmtIndent();
-    }
+    UNINDENT();
     m_os << L")";
     VISITOR_EXIT();
 }
@@ -313,10 +333,49 @@ bool PrettyPrinterSyntax::traversePredicateType(PredicateType &_type) {
     m_os << L"predicate(";
     VISITOR_TRAVERSE_COL(Param, PredicateTypeInParam, _type.getInParams());
 
-    for (size_t i = 0; i < _type.getOutParams().size(); ++i)
-        VISITOR_TRAVERSE_COL(Param, PredicateTypeOutParam, *_type.getOutParams().get(i));
+    for (size_t i = 0; i < _type.getOutParams().size(); ++i) {
+        m_os << " : ";
+        for (size_t j = 0; j < _type.getOutParams().get(i)->size(); ++j) {
+            if (j != 0)
+                m_os << L", ";
+            traverseType(*_type.getOutParams().get(i)->get(j)->getType());
+            m_os << L" " << _type.getOutParams().get(i)->get(j)->getName();
+        }
+        if (_type.getOutParams().get(i)->getLabel() && !_type.getOutParams().get(i)->getLabel()->getName().empty())
+            m_os << L" #" << _type.getOutParams().get(i)->getLabel()->getName();
+    }
 
     m_os << L")";
+
+    if (m_bCompact)
+        VISITOR_EXIT();
+
+    if (_type.getPreCondition()) {
+        m_os << L" pre ";
+        VISITOR_TRAVERSE(Formula, PredicatePreCondition, _type.getPreCondition(), _type, PredicateType, setPreCondition);
+    }
+
+    Branches& branches = _type.getOutParams();
+    for (size_t i = 0; i < branches.size(); ++i) {
+        if (!branches.get(i) || !branches.get(i)->getPreCondition() || !branches.get(i)->getLabel())
+            continue;
+        Branch& br = *branches.get(i);
+        m_os << L" pre " << br.getLabel()->getName() << L": ";
+        VISITOR_TRAVERSE(Formula, PredicatePreCondition, br.getPreCondition(), br, Branch, setPreCondition);
+    }
+    for (size_t i = 0; i < branches.size(); ++i) {
+        if (!branches.get(i) || !branches.get(i)->getPostCondition() || !branches.get(i)->getLabel())
+            continue;
+        Branch& br = *branches.get(i);
+        m_os << L" post " << br.getLabel()->getName() << L": ";
+        VISITOR_TRAVERSE(Formula, PredicatePostCondition, br.getPostCondition(), br, Branch, setPostCondition);
+    }
+
+    if (_type.getPostCondition()) {
+        m_os << L" post ";
+        VISITOR_TRAVERSE(Formula, PredicatePostCondition, _type.getPostCondition(), _type, PredicateType, setPostCondition);
+    }
+
     VISITOR_EXIT();
 }
 
@@ -600,7 +659,6 @@ void PrettyPrinterSyntax::printMergedStatement(const StatementPtr _pStmt) {
     }
 }
 
-//TODO: Use this function.
 void PrettyPrinterSyntax::feedLine(const Statement& _stmt) {
     if (_stmt.getLabel())
         m_os << L"\n" << fmtIndent();
@@ -1033,8 +1091,7 @@ bool PrettyPrinterSyntax::needsParen() {
         if (nParentKind == ir::Expression::BINARY) {
             const ir::BinaryPtr pChild = getChild().as<Binary>();
             const ir::BinaryPtr pParent = getParent().as<Binary>();
-            if (pChild->getOperator() >= pParent->getOperator())
-                return false;
+            return (Binary::getPrecedence(pChild->getOperator()) < Binary::getPrecedence(pParent->getOperator()));
         }
         return true;
     }
@@ -1088,6 +1145,29 @@ bool PrettyPrinterSyntax::visitPredicateReference(ir::PredicateReference &_node)
     return true;
 }
 
+bool PrettyPrinterSyntax::visitLambda(ir::Lambda &_node) {
+    m_os << L"predicate";
+    return true;
+}
+
+bool PrettyPrinterSyntax::traverseBinder(Binder &_expr) {
+    VISITOR_ENTER(Binder, _expr);
+    VISITOR_TRAVERSE(Expression, BinderCallee, _expr.getPredicate(), _expr, Binder, setPredicate);
+
+    m_os << L"(";
+    for (size_t i = 0; i < _expr.getArgs().size(); ++i) {
+        if (_expr.getArgs().get(i))
+            traverseExpression(*_expr.getArgs().get(i));
+        else
+            m_os << L"_";
+        const bool bIsLast = (_expr.getArgs().size() - 1 == i);
+        if (!bIsLast)
+            m_os << L", ";
+    }
+    m_os << L")";
+
+    VISITOR_EXIT();
+}
 
 bool PrettyPrinterSyntax::visitUnary(ir::Unary &_node) {
     printUnaryOperator(_node);
@@ -1150,15 +1230,162 @@ bool PrettyPrinterSyntax::traverseFunctionCall(ir::FunctionCall &_expr) {
 }
 
 bool PrettyPrinterSyntax::traverseFormulaCall(ir::FormulaCall &_node) {
-
-    m_os << _node.getName();
-
-    m_os << "(";
+    m_os << _node.getName() << L"(";
     const bool bResult = Visitor::traverseFormulaCall(_node);
     m_os << ")";
-
     return bResult;
+}
 
+bool PrettyPrinterSyntax::traverseStructFieldDefinition(StructFieldDefinition &_cons) {
+    VISITOR_ENTER(StructFieldDefinition, _cons);
+
+    if (getLoc().cPosInCollection > 0)
+        m_os << L", ";
+    if (!_cons.getName().empty())
+        m_os << _cons.getName() << L": ";
+
+    VISITOR_TRAVERSE(Expression, StructFieldValue, _cons.getValue(), _cons, StructFieldDefinition, setValue);
+    VISITOR_EXIT();
+}
+
+bool PrettyPrinterSyntax::traverseStructConstructor(StructConstructor &_expr) {
+    VISITOR_ENTER(StructConstructor, _expr);
+    m_os << L"(";
+    VISITOR_TRAVERSE_COL(StructFieldDefinition, StructFieldDef, _expr);
+    m_os << L")";
+    VISITOR_EXIT();
+}
+
+bool PrettyPrinterSyntax::traverseUnionConstructor(UnionConstructor &_expr) {
+    VISITOR_ENTER(UnionConstructor, _expr);
+    m_os << _expr.getName() << L"(";
+    VISITOR_TRAVERSE_COL(StructFieldDefinition, UnionCostructorParam, _expr);
+    m_os << L")";
+    VISITOR_EXIT();
+}
+
+bool PrettyPrinterSyntax::traverseElementDefinition(ElementDefinition &_cons) {
+    VISITOR_ENTER(ElementDefinition, _cons);
+    if (getLoc().cPosInCollection > 0)
+        m_os << L", ";
+
+    VISITOR_TRAVERSE(Expression, ElementIndex, _cons.getIndex(), _cons, ElementDefinition, setIndex);
+    if (_cons.getIndex())
+        m_os << L": ";
+
+    VISITOR_TRAVERSE(Expression, ElementValue, _cons.getValue(), _cons, ElementDefinition, setValue);
+    VISITOR_EXIT();
+}
+
+bool PrettyPrinterSyntax::traverseArrayConstructor(ArrayConstructor &_expr) {
+    VISITOR_ENTER(ArrayConstructor, _expr);
+    m_os << L"[";
+    VISITOR_TRAVERSE_COL(ElementDefinition, ArrayElementDef, _expr);
+    m_os << L"]";
+    VISITOR_EXIT();
+}
+
+bool PrettyPrinterSyntax::traverseMapConstructor(MapConstructor &_expr) {
+    VISITOR_ENTER(MapConstructor, _expr);
+    m_os << L"[{";
+    VISITOR_TRAVERSE_COL(ElementDefinition, MapElementDef, _expr);
+    m_os << L"}]";
+    VISITOR_EXIT();
+}
+
+bool PrettyPrinterSyntax::traverseSetConstructor(SetConstructor &_expr) {
+    VISITOR_ENTER(SetConstructor, _expr);
+    m_os << L"{";
+    VISITOR_TRAVERSE_COL(Expression, SetElementDef, _expr);
+    m_os << L"}";
+    VISITOR_EXIT();
+}
+
+bool PrettyPrinterSyntax::traverseListConstructor(ListConstructor &_expr) {
+    VISITOR_ENTER(ListConstructor, _expr);
+    m_os << L"[[";
+    VISITOR_TRAVERSE_COL(Expression, ListElementDef, _expr);
+    m_os << L"]]";
+    VISITOR_EXIT();
+}
+
+bool PrettyPrinterSyntax::traverseArrayPartDefinition(ArrayPartDefinition &_cons) {
+    VISITOR_ENTER(ArrayPartDefinition, _cons);
+    m_os << L"case ";
+    VISITOR_TRAVERSE_COL(Expression, ArrayPartCond, _cons.getConditions());
+    m_os << L": ";
+    VISITOR_TRAVERSE(Expression, ArrayPartValue, _cons.getExpression(), _cons, ArrayPartDefinition, setExpression);
+    VISITOR_EXIT();
+}
+
+bool PrettyPrinterSyntax::traverseArrayIteration(ArrayIteration &_expr) {
+    VISITOR_ENTER(ArrayIteration, _expr);
+
+    m_os << L"for(";
+    VISITOR_TRAVERSE_COL(NamedValue, ArrayIterator, _expr.getIterators());
+    m_os << L") { ";
+
+    INDENT();
+
+    for (size_t i = 0; i < _expr.size(); ++i) {
+        if (bNeedsIndent)
+            m_os << L"\n" << fmtIndent();
+        traverseArrayPartDefinition(*_expr.get(i));
+        m_os << L" ";
+    }
+
+    if (_expr.getDefault()) {
+        if (bNeedsIndent)
+            m_os << L"\n" << fmtIndent();
+        m_os << L"default: ";
+        VISITOR_TRAVERSE(Expression, ArrayIterationDefault, _expr.getDefault(), _expr, ArrayIteration, setDefault);
+        m_os << L" ";
+    }
+
+    UNINDENT();
+
+    m_os << L"}";
+    VISITOR_EXIT();
+}
+
+bool PrettyPrinterSyntax::traverseArrayPartExpr(ArrayPartExpr &_expr) {
+    VISITOR_ENTER(ArrayPartExpr, _expr);
+    VISITOR_TRAVERSE(Expression, ArrayPartObject, _expr.getObject(), _expr, Component, setObject);
+    m_os << L"[";
+    VISITOR_TRAVERSE_COL(Expression, ArrayPartIndex, _expr.getIndices());
+    m_os << L"]";
+    VISITOR_EXIT();
+}
+
+bool PrettyPrinterSyntax::traverseFieldExpr(FieldExpr &_expr) {
+    VISITOR_ENTER(FieldExpr, _expr);
+    VISITOR_TRAVERSE(Expression, FieldObject, _expr.getObject(), _expr, Component, setObject);
+    m_os << L"." << _expr.getFieldName();
+    VISITOR_EXIT();
+}
+
+bool PrettyPrinterSyntax::traverseMapElementExpr(MapElementExpr &_expr) {
+    VISITOR_ENTER(MapElementExpr, _expr);
+    VISITOR_TRAVERSE(Expression, MapElementObject, _expr.getObject(), _expr, Component, setObject);
+    m_os << L"[";
+    VISITOR_TRAVERSE(Expression, MapElementIndex, _expr.getIndex(), _expr, MapElementExpr, setIndex);
+    m_os << L"]";
+    VISITOR_EXIT();
+}
+
+bool PrettyPrinterSyntax::traverseListElementExpr(ListElementExpr &_expr) {
+    VISITOR_ENTER(ListElementExpr, _expr);
+    VISITOR_TRAVERSE(Expression, ListElementObject, _expr.getObject(), _expr, Component, setObject);
+    m_os << L"[";
+    VISITOR_TRAVERSE(Expression, ListElementIndex, _expr.getIndex(), _expr, ListElementExpr, setIndex);
+    m_os << L"]";
+    VISITOR_EXIT();
+}
+
+bool PrettyPrinterSyntax::visitConstructor(Constructor& _expr) {
+    if (getRole() == R_ReplacementValue || getRole() == R_CastParam)
+        m_os << L" ";
+    return true;
 }
 
 void PrettyPrinterSyntax::run() {
@@ -1205,6 +1432,7 @@ void PrettyPrinterSyntax::mergeLines() {
 void PrettyPrinterSyntax::separateLines() {
     m_bMergeLines = false;
 }
+
 std::wstring PrettyPrinterSyntax::getNewLabelName(const std::wstring& _name) {
     for (size_t i = 1;; ++i) {
         const std::wstring strName = _name + fmtInt(i, L"%d");

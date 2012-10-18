@@ -1,0 +1,8 @@
+bar () {
+    union(
+        decl1(nat a),
+        decl2(nat b)
+    ) a, b;
+
+    a = b.a
+}

@@ -1,0 +1,23 @@
+
+type S = struct(
+    nat a, b,
+    real c
+);
+
+type M = map(string, string);
+
+type L = list(nat);
+
+bar () {
+    S s = (1, 2, 3);
+    nat a = s.a;
+
+    M m = [{"one":"one", "two":"two"}];
+    string str = m["one"];
+
+    L l = [[1, 2, 3, 4]];
+    nat n = l[1];
+
+    array(nat, 1..10) arr;
+    arr = arr[1:5];
+}

@@ -51,6 +51,17 @@ set(TESTS_PRETTYPRINTER
     prettyprinter/modules_and_pred_in_pred.psrc
     prettyprinter/type_and_variable_decls.psrc
     prettyprinter/var_decl_in_call.psrc
+    prettyprinter/array_constructor.psrc
+    prettyprinter/array_iterator.psrc
+    prettyprinter/binder.psrc
+    prettyprinter/cast.psrc
+    prettyprinter/field_expr.psrc
+    prettyprinter/map_constructor.psrc
+    prettyprinter/predicate_type.psrc
+    prettyprinter/struct_constructor.psrc
+    prettyprinter/types.psrc
+    prettyprinter/union_constructor.psrc
+    prettyprinter/union_element.psrc
 )
 
 run_tests("-t0" "${TESTS_PARSING}")

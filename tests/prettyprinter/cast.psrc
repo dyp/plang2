@@ -1,0 +1,5 @@
+foo() {
+    array(nat, 1..3) a = array(nat, 1..3)[1: 0, 2: 1, 3: 0, 4: 1]; // 1..4
+    list(nat) l = list(nat)[[1, 2, 3, 4]];
+    set(nat) s = set(nat){1, 2, 3, 4}
+}
