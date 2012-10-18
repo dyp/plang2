@@ -1,0 +1,14 @@
+foo(nat a, b, c) {
+}
+
+bar(nat a, b: nat c: nat d, e) {
+}
+
+baz(nat a, b, c:) {
+    predicate(nat c:)
+        qux = foo(a, b, _);
+    predicate(nat f: nat c: nat d, e)
+        quux = bar(a, _);
+    qux(c:);
+    quux(c : a : b, c)
+}

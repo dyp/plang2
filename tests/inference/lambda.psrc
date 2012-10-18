@@ -1,0 +1,19 @@
+/*
+
+<test>
+    f/Type ~ predicate
+</test>
+
+*/
+
+foo(nat a, b: nat c) {
+    c = a + b;
+}
+
+bar(nat a) {
+    predicate(nat b: nat c)
+        f = predicate(nat b: nat c) {
+            c = 10 + foo(10, b)
+        };
+    f(15: nat d)
+}

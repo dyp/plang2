@@ -25,6 +25,8 @@ public:
     virtual bool visitPredicateReference(PredicateReference &_ref);
     virtual bool visitFormulaCall(FormulaCall &_call);
     virtual bool visitFunctionCall(FunctionCall &_call);
+    virtual bool visitLambda(Lambda &_lambda);
+    virtual bool visitBinder(Binder &_binder);
     virtual bool visitCall(Call &_call);
     virtual bool visitLiteral(Literal &_lit);
     virtual bool visitUnary(Unary &_unary);
@@ -182,6 +184,39 @@ bool Collector::visitFunctionCall(FunctionCall &_call) {
             _call.getPredicate()->getType(), pType));
 //    m_constraints.insert(new tc::Formula(tc::Formula::Equals,
 //            _call.getPredicate()->getType(), pType));
+
+    return true;
+}
+
+bool Collector::visitLambda(Lambda &_lambda) {
+    _lambda.setType(_lambda.getPredicate().getType());
+    return true;
+}
+
+bool Collector::visitBinder(Binder &_binder) {
+    PredicateTypePtr
+        pType = new PredicateType(),
+        pPredicateType = new PredicateType();
+
+    _binder.setType(createFresh(_binder.getType()));
+    pType->getOutParams().add(new Branch());
+    pPredicateType->getOutParams().add(new Branch());
+
+    for (size_t i = 0; i < _binder.getArgs().size(); ++i)
+        if (_binder.getArgs().get(i)) {
+            pType->getInParams().add(new Param(L"", _binder.getArgs().get(i)->getType()));
+            pPredicateType->getInParams().add(new Param(L"", _binder.getArgs().get(i)->getType()));
+        } else
+            pPredicateType->getInParams().add(new Param(L"", new Type(Type::TOP)));
+
+    if (_binder.getPredicate()->getKind() == Expression::PREDICATE) {
+        PredicatePtr pPredicate = _binder.getPredicate().as<PredicateReference>()->getTarget();
+        pType->getOutParams().assign(pPredicate->getOutParams());
+        pPredicateType->getOutParams().assign(pPredicate->getOutParams());
+    }
+
+    m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+            pPredicateType, _binder.getPredicate()->getType()));
 
     return true;
 }
