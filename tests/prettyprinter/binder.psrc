@@ -1,0 +1,7 @@
+foo(nat a, b, c) {
+}
+
+bar(nat a, b, c:) {
+    predicate(nat c:) baz = foo(a, b, _);
+    baz(c:)
+}

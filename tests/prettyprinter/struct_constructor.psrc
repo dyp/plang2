@@ -1,0 +1,5 @@
+type S = struct(
+    nat a, b,
+    real c);
+
+S s = (c: 0, a: 1, b: 0);

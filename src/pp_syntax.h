@@ -11,10 +11,10 @@
 class PrettyPrinterSyntax: public PrettyPrinterBase {
 public:
     PrettyPrinterSyntax(ir::Node &_node, std::wostream &_os) :
-        PrettyPrinterBase(_os), m_pNode(&_node), m_szDepth(0), m_bCompact(false), m_nFlags(0), m_bMergeLines(false)
+        PrettyPrinterBase(_os), m_pNode(&_node), m_szDepth(0), m_bCompact(false), m_nFlags(0), m_bMergeLines(false), m_bSingleLine(false)
     {}
     PrettyPrinterSyntax(std::wostream &_os, bool _bCompact = false, int _nFlags = 0) :
-        PrettyPrinterBase(_os), m_pNode(NULL), m_szDepth(0), m_bCompact(_bCompact), m_nFlags(_nFlags), m_bMergeLines(false)
+        PrettyPrinterBase(_os), m_pNode(NULL), m_szDepth(0), m_bCompact(_bCompact), m_nFlags(_nFlags), m_bMergeLines(false), m_bSingleLine(false)
     {}
 
     void run();
@@ -44,6 +44,7 @@ protected:
     virtual bool visitLabel(ir::Label &_label);
 
     // NODE / TYPE
+    virtual bool traverseType(ir::Type &_type);
     virtual bool visitType(ir::Type &_type);
     virtual bool visitTypeType(ir::TypeType &_type);
     virtual bool visitNamedReferenceType(ir::NamedReferenceType &_type);
@@ -107,12 +108,29 @@ protected:
     virtual bool visitLiteral(ir::Literal &_node);
     virtual bool visitVariableReference(ir::VariableReference &_node);
     virtual bool visitPredicateReference(ir::PredicateReference &_node);
+    virtual bool visitLambda(ir::Lambda &_node);
+    virtual bool traverseBinder(ir::Binder &_expr);
     virtual bool visitUnary(ir::Unary &_node);
     virtual bool traverseBinary(ir::Binary &_node);
     virtual bool traverseTernary(ir::Ternary &_node);
     virtual bool traverseFormula(ir::Formula &_node);
     virtual bool traverseFunctionCall(ir::FunctionCall &_expr);
     virtual bool traverseFormulaCall(ir::FormulaCall &_node);
+    virtual bool traverseStructFieldDefinition(ir::StructFieldDefinition &_cons);
+    virtual bool traverseStructConstructor(ir::StructConstructor &_expr);
+    virtual bool traverseUnionConstructor(ir::UnionConstructor &_expr);
+    virtual bool traverseElementDefinition(ir::ElementDefinition &_cons);
+    virtual bool traverseArrayConstructor(ir::ArrayConstructor &_expr);
+    virtual bool traverseMapConstructor(ir::MapConstructor &_expr);
+    virtual bool traverseSetConstructor(ir::SetConstructor &_expr);
+    virtual bool traverseListConstructor(ir::ListConstructor &_expr);
+    virtual bool traverseArrayPartDefinition(ir::ArrayPartDefinition &_cons);
+    virtual bool traverseArrayIteration(ir::ArrayIteration &_expr);
+    virtual bool traverseArrayPartExpr(ir::ArrayPartExpr &_expr);
+    virtual bool traverseFieldExpr(ir::FieldExpr &_expr);
+    virtual bool traverseMapElementExpr(ir::MapElementExpr &_expr);
+    virtual bool traverseListElementExpr(ir::ListElementExpr &_expr);
+    virtual bool visitConstructor(ir::Constructor& _expr);
 
     size_t getDepth() const;
     std::wstring fmtIndent(const std::wstring &_s = L"");
@@ -126,7 +144,7 @@ private:
     ir::NodePtr m_pNode;
     size_t m_szDepth;
     int m_nFlags;
-    bool m_bMergeLines, m_bCompact;
+    bool m_bMergeLines, m_bCompact, m_bSingleLine;
     std::set<std::wstring> m_usedLabels;
 
 };

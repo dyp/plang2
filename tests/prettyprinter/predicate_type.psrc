@@ -1,0 +1,6 @@
+foo( : ) {
+    predicate(nat a : nat c #1: nat d #2) pre a > 0 pre 1: a = 1 pre 2: a = 2 b = predicate(nat a : nat c: nat d) {
+        nat a = 0
+    }
+}
+

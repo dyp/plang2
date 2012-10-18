@@ -1,0 +1,25 @@
+
+type A = array(nat, 1..10, 1..100, 1..30);
+type B = A;
+type C = set(A);
+type D = list(nat);
+type E = map(nat, bool);
+type F = enum(one, two, three);
+
+type G = struct(
+    int a, b,
+    F i,
+    struct(int c, d) g
+);
+
+type H = union(
+    node(nat a, nat b),
+    lft(nat c)
+);
+
+type I = predicate (nat a, nat b : nat c);
+
+type J(type T) = struct (
+    nat a, b,
+    T t
+);

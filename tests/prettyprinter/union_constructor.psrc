@@ -1,0 +1,6 @@
+type U = union(
+    decl1(nat a, nat b),
+    decl2(nat b)
+);
+
+U u = decl1(v0, 2);
