@@ -333,7 +333,20 @@ BinderPtr Parser::parseBinder(Context &_ctx, Expression &_base) {
     if (!ctx.consume(RPAREN))
         UNEXPECTED(ctx, ")");
 
-    pBinder->setPredicate(&_base);
+
+    ExpressionPtr pPredicate = &_base;
+    if (_base.getKind() == Expression::PREDICATE) {
+        ir::Predicates predicates;
+        const std::wstring strName = pPredicate.as<PredicateReference>()->getName();
+
+        _ctx.getPredicates(strName, predicates);
+        if (predicates.size() != 1)
+            ERROR(ctx, NULL, L"Overloaded binders are not implemented");
+
+        pPredicate = new PredicateReference(strName, predicates.get(0));
+    }
+
+    pBinder->setPredicate(pPredicate);
     _ctx.mergeChildren();
 
     return pBinder;
