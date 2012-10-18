@@ -9,8 +9,6 @@
 #include "utils.h"
 #include "typecheck.h"
 
-#include "../pp_syntax.h"
-
 using namespace ir;
 
 std::wstring NamedReferenceType::getName() const {
