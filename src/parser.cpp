@@ -542,7 +542,7 @@ ExpressionPtr Parser::parseCastOrTypeReference(Context &_ctx, const TypePtr &_pT
             //case Type::NamedReference:
                 pExpr = parseAtom(ctx);
                 if (pExpr)
-                    pExpr->setType(_pType);
+                    pExpr = new CastExpr(pExpr, new TypeExpr(_pType));
         }
     }
 
