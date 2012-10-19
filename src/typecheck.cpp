@@ -110,11 +110,8 @@ int FreshType::compare(const ir::Type &_other) const {
 }
 
 bool FormulaCmp::operator()(const FormulaPtr &_lhs, const FormulaPtr &_rhs) const {
-    if (_lhs->getKind() < _rhs->getKind())
-        return true;
-
-    if (_rhs->getKind() < _lhs->getKind())
-        return false;
+    if (_lhs->getKind() != _rhs->getKind())
+        return _lhs->getKind() < _rhs->getKind();
 
     if (_lhs->is(Formula::COMPOUND)) {
         const CompoundFormula &lhs = *_lhs.as<CompoundFormula>();
@@ -144,29 +141,18 @@ bool FormulaCmp::operator()(const FormulaPtr &_lhs, const FormulaPtr &_rhs) cons
         return false;
     }
 
-    if (!_lhs->getLhs() && _rhs->getLhs())
-        return true;
+    if (_lhs->hasFresh() != _rhs->hasFresh())
+        return _lhs->hasFresh() && !_rhs->hasFresh();
 
-    if (!_rhs->getLhs())
-        return false;
+    if (!_lhs->getLhs() ^ !_rhs->getLhs())
+        return !_lhs->getLhs();
+    if (_lhs->getLhs() && _rhs->getLhs() && *_lhs->getLhs() != *_rhs->getLhs())
+        return *_lhs->getLhs() < *_rhs->getLhs();
 
-    if (!_lhs->getRhs() && _rhs->getRhs())
-        return true;
-
-    if (!_rhs->getRhs())
-        return false;
-
-    if (_lhs->hasFresh() && !_rhs->hasFresh())
-        return true;
-
-    if (_rhs->hasFresh() && !_lhs->hasFresh())
-        return false;
-
-    if ((*_lhs->getLhs()) < (*_rhs->getLhs()))
-        return true;
-
-    if (!((*_rhs->getLhs()) < (*_lhs->getLhs())) && (*_lhs->getRhs()) < (*_rhs->getRhs()))
-        return true;
+    if (!_lhs->getRhs() || !_rhs->getRhs())
+        return !_lhs->getRhs() && _rhs->getRhs();
+    if (*_lhs->getRhs() != *_rhs->getRhs())
+       return *_lhs->getRhs() < *_rhs->getRhs();
 
     return false;
 }

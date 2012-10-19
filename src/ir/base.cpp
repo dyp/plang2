@@ -102,9 +102,9 @@ bool NamedValue::less(const Node& _other) const {
     const NamedValue& other = (const NamedValue&)_other;
     if (getKind() != other.getKind())
         return getKind() < other.getKind();
-    if (getType() != other.getType())
-        return getType() < other.getType();
-    return getName() < other.getName();
+    if (getName() != other.getName())
+        return getName() < other.getName();
+    return _less(getType(), other.getType());
 }
 
 bool NamedValue::equals(const Node& _other) const {
@@ -112,8 +112,8 @@ bool NamedValue::equals(const Node& _other) const {
         return false;
     const NamedValue& other = (const NamedValue&)_other;
     return getKind() == other.getKind()
-        && getType() == other.getType()
-        && getName() == other.getName();
+        && getName() == other.getName()
+        && _equals(getType(), other.getType());
 }
 
 }
