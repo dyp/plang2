@@ -2406,29 +2406,31 @@ CallPtr Parser::parseCall(Context &_ctx) {
     if (!ctx.consume(LPAREN))
         UNEXPECTED(ctx, "(");
 
-    if (!parseList(ctx, pCall->getArgs(), &Parser::parseExpression, -1, -1, COMMA))
-        ERROR(ctx, NULL, L"Failed to parse input parameters");
-
     typedef std::multimap<std::wstring, CallBranchPtr> call_branch_map_t;
     call_branch_map_t branches;
 
-    while (ctx.consume(COLON)) {
-        CallBranchPtr pBranch = new CallBranch();
+    if (!ctx.is(RPAREN)) {
+        if (!ctx.is(COLON) && !parseList(ctx, pCall->getArgs(), &Parser::parseExpression, -1, -1, COMMA))
+            ERROR(ctx, NULL, L"Failed to parse input parameters");
 
-        pCall->getBranches().add(pBranch);
+        while (ctx.consume(COLON)) {
+            CallBranchPtr pBranch = new CallBranch();
 
-        if (!ctx.in(RPAREN, HASH, COLON)) {
-            if (!parseCallResults(ctx, *pCall, *pBranch))
-                ERROR(ctx, NULL, L"Failed to parse output parameters");
-        }
+            pCall->getBranches().add(pBranch);
 
-        if (ctx.is(HASH) && ctx.nextIn(IDENTIFIER, LABEL, INTEGER)) {
-            const std::wstring strLabel = ctx.scan(2, 1);
+            if (!ctx.in(RPAREN, HASH, COLON)) {
+                if (!parseCallResults(ctx, *pCall, *pBranch))
+                    ERROR(ctx, NULL, L"Failed to parse output parameters");
+            }
 
-            if (LabelPtr pLabel = ctx.getLabel(strLabel))
-                pBranch->setHandler(new Jump(pLabel));
-            else
-                branches.insert(std::make_pair(strLabel, pBranch));
+            if (ctx.is(HASH) && ctx.nextIn(IDENTIFIER, LABEL, INTEGER)) {
+                const std::wstring strLabel = ctx.scan(2, 1);
+
+                if (LabelPtr pLabel = ctx.getLabel(strLabel))
+                    pBranch->setHandler(new Jump(pLabel));
+                else
+                    branches.insert(std::make_pair(strLabel, pBranch));
+            }
         }
     }
 
