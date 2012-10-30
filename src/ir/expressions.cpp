@@ -65,6 +65,60 @@ NamedValuePtr UnionAlternativeExpr::getField() const {
     return getConstructor()->getFields().get(m_idx.second);
 }
 
+static std::map<std::pair<int, int>, int> g_precMap;
+
+#define ADD_PRECEDENCE(_KIND, _PREC, _OPERATOR) \
+    g_precMap.insert(std::pair<std::pair<int, int>, int>(std::pair<int, int>(_KIND, _OPERATOR), _PREC));
+
+static std::map<std::pair<int, int>, int>& _getPrecedenceMap() {
+    if (!g_precMap.empty())
+        return g_precMap;
+
+    int nPrec = 0;
+
+    ADD_PRECEDENCE(Expression::BINARY, nPrec, Binary::IMPLIES);
+    ADD_PRECEDENCE(Expression::BINARY, nPrec, Binary::IFF);
+    ADD_PRECEDENCE(Expression::TERNARY, ++nPrec, -1);
+    ADD_PRECEDENCE(Expression::BINARY, ++nPrec, Binary::BOOL_OR);
+    ADD_PRECEDENCE(Expression::BINARY, ++nPrec, Binary::BOOL_XOR);
+    ADD_PRECEDENCE(Expression::BINARY, nPrec, Binary::BOOL_AND);
+    ADD_PRECEDENCE(Expression::BINARY, ++nPrec, Binary::EQUALS);
+    ADD_PRECEDENCE(Expression::BINARY, nPrec, Binary::NOT_EQUALS);
+    ADD_PRECEDENCE(Expression::BINARY, ++nPrec, Binary::LESS);
+    ADD_PRECEDENCE(Expression::BINARY, nPrec, Binary::LESS_OR_EQUALS);
+    ADD_PRECEDENCE(Expression::BINARY, nPrec, Binary::GREATER);
+    ADD_PRECEDENCE(Expression::BINARY, nPrec, Binary::GREATER_OR_EQUALS);
+    ADD_PRECEDENCE(Expression::BINARY, ++nPrec, Binary::IN);
+    ADD_PRECEDENCE(Expression::BINARY, ++nPrec, Binary::SHIFT_LEFT);
+    ADD_PRECEDENCE(Expression::BINARY, nPrec, Binary::SHIFT_RIGHT);
+    ADD_PRECEDENCE(Expression::BINARY, ++nPrec, Binary::ADD);
+    ADD_PRECEDENCE(Expression::UNARY, nPrec, Unary::PLUS);
+    ADD_PRECEDENCE(Expression::BINARY, nPrec, Binary::SUBTRACT);
+    ADD_PRECEDENCE(Expression::UNARY, nPrec, Unary::MINUS);
+    ADD_PRECEDENCE(Expression::UNARY, ++nPrec, Unary::BOOL_NEGATE);
+    ADD_PRECEDENCE(Expression::UNARY, nPrec, Unary::BITWISE_NEGATE);
+    ADD_PRECEDENCE(Expression::BINARY, ++nPrec, Binary::MULTIPLY);
+    ADD_PRECEDENCE(Expression::BINARY, nPrec, Binary::DIVIDE);
+    ADD_PRECEDENCE(Expression::BINARY, nPrec, Binary::REMAINDER);
+    ADD_PRECEDENCE(Expression::BINARY, ++nPrec, Binary::POWER);
+
+    return g_precMap;
+}
+#undef ADD_PRECEDENCE
+
+
+int Unary::getPrecedence(int _operator) {
+    return _getPrecedenceMap()[std::pair<int, int>(Expression::UNARY, _operator)];
+}
+
+int Binary::getPrecedence(int _operator) {
+    return _getPrecedenceMap()[std::pair<int, int>(Expression::BINARY, _operator)];
+}
+
+int Ternary::getPrecedence() {
+    return _getPrecedenceMap()[std::pair<int, int>(Expression::TERNARY, -1)];
+}
+
 bool Binary::isSymmetrical() const {
     switch (getOperator()) {
         case ADD:
