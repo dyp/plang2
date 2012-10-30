@@ -450,6 +450,8 @@ public:
     /// \return #Unary.
     virtual int getKind() const { return UNARY; }
 
+    static int getPrecedence(int _operator);
+
     /// Get operator.
     /// \return Operator (one of #Minus, #BoolNegate and #BitwiseNegate).
     int getOperator() const { return m_operator; }
@@ -577,6 +579,8 @@ public:
     /// \return #Binary.
     virtual int getKind() const { return BINARY; }
 
+    static int getPrecedence(int _operator);
+
     /// Get operator.
     /// \return Operator (#Add, #Subtract, etc.)
     int getOperator() const { return m_operator; }
@@ -638,6 +642,8 @@ public:
     /// Get expression kind.
     /// \return #Ternary.
     virtual int getKind() const { return TERNARY; }
+
+    static int getPrecedence();
 
     /// Get logical condition.
     /// \return Condition.

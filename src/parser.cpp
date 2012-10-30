@@ -497,33 +497,31 @@ int Parser::getBinaryOp(int _token) const {
 void Parser::initOps() {
     m_ops.resize(END_OF_FILE + 1);
 
-    int nPrec = 0;
-
-    m_ops[IMPLIES]    = operator_t(nPrec, Binary::IMPLIES);
-    m_ops[IFF]        = operator_t(nPrec, Binary::IFF);
-    m_ops[QUESTION]   = operator_t(++nPrec);
+    m_ops[IMPLIES]    = operator_t(Binary::getPrecedence(Binary::IMPLIES), Binary::IMPLIES);
+    m_ops[IFF]        = operator_t(Binary::getPrecedence(Binary::IFF), Binary::IFF);
+    m_ops[QUESTION]   = operator_t(Ternary::getPrecedence());
 //    m_oPS[COLON]      = operator_t(nPrec);
-    m_ops[OR]         = operator_t(++nPrec, Binary::BOOL_OR);
-    m_ops[XOR]        = operator_t(++nPrec, Binary::BOOL_XOR);
-    m_ops[AMPERSAND]  = operator_t(++nPrec, Binary::BOOL_AND);
-    m_ops[AND]        = operator_t(nPrec, Binary::BOOL_AND);
-    m_ops[EQ]         = operator_t(++nPrec, Binary::EQUALS);
-    m_ops[NE]         = operator_t(nPrec, Binary::NOT_EQUALS);
-    m_ops[LT]         = operator_t(++nPrec, Binary::LESS);
-    m_ops[LTE]        = operator_t(nPrec, Binary::LESS_OR_EQUALS);
-    m_ops[GT]         = operator_t(nPrec, Binary::GREATER);
-    m_ops[GTE]        = operator_t(nPrec, Binary::GREATER_OR_EQUALS);
-    m_ops[IN]         = operator_t(++nPrec, Binary::IN);
-    m_ops[SHIFTLEFT]  = operator_t(++nPrec, Binary::SHIFT_LEFT);
-    m_ops[SHIFTRIGHT] = operator_t(nPrec, Binary::SHIFT_RIGHT);
-    m_ops[PLUS]       = operator_t(++nPrec, Binary::ADD, Unary::PLUS);
-    m_ops[MINUS]      = operator_t(nPrec, Binary::SUBTRACT, Unary::MINUS);
-    m_ops[BANG]       = operator_t(++nPrec, -1, Unary::BOOL_NEGATE);
-    m_ops[TILDE]      = operator_t(nPrec, -1, Unary::BITWISE_NEGATE);
-    m_ops[ASTERISK]   = operator_t(++nPrec, Binary::MULTIPLY);
-    m_ops[SLASH]      = operator_t(nPrec, Binary::DIVIDE);
-    m_ops[PERCENT]    = operator_t(nPrec, Binary::REMAINDER);
-    m_ops[CARET]      = operator_t(++nPrec, Binary::POWER);
+    m_ops[OR]         = operator_t(Binary::getPrecedence(Binary::BOOL_OR), Binary::BOOL_OR);
+    m_ops[XOR]        = operator_t(Binary::getPrecedence(Binary::BOOL_XOR), Binary::BOOL_XOR);
+    m_ops[AMPERSAND]  = operator_t(Binary::getPrecedence(Binary::BOOL_AND), Binary::BOOL_AND);
+    m_ops[AND]        = operator_t(Binary::getPrecedence(Binary::BOOL_AND), Binary::BOOL_AND);
+    m_ops[EQ]         = operator_t(Binary::getPrecedence(Binary::EQUALS), Binary::EQUALS);
+    m_ops[NE]         = operator_t(Binary::getPrecedence(Binary::NOT_EQUALS), Binary::NOT_EQUALS);
+    m_ops[LT]         = operator_t(Binary::getPrecedence(Binary::LESS), Binary::LESS);
+    m_ops[LTE]        = operator_t(Binary::getPrecedence(Binary::LESS_OR_EQUALS), Binary::LESS_OR_EQUALS);
+    m_ops[GT]         = operator_t(Binary::getPrecedence(Binary::GREATER), Binary::GREATER);
+    m_ops[GTE]        = operator_t(Binary::getPrecedence(Binary::GREATER_OR_EQUALS), Binary::GREATER_OR_EQUALS);
+    m_ops[IN]         = operator_t(Binary::getPrecedence(Binary::IN), Binary::IN);
+    m_ops[SHIFTLEFT]  = operator_t(Binary::getPrecedence(Binary::SHIFT_LEFT), Binary::SHIFT_LEFT);
+    m_ops[SHIFTRIGHT] = operator_t(Binary::getPrecedence(Binary::SHIFT_RIGHT), Binary::SHIFT_RIGHT);
+    m_ops[PLUS]       = operator_t(Binary::getPrecedence(Binary::ADD), Binary::ADD, Unary::PLUS);
+    m_ops[MINUS]      = operator_t(Binary::getPrecedence(Binary::SUBTRACT), Binary::SUBTRACT, Unary::MINUS);
+    m_ops[BANG]       = operator_t(Unary::getPrecedence(Unary::BOOL_NEGATE), -1, Unary::BOOL_NEGATE);
+    m_ops[TILDE]      = operator_t(Unary::getPrecedence(Unary::BITWISE_NEGATE), -1, Unary::BITWISE_NEGATE);
+    m_ops[ASTERISK]   = operator_t(Binary::getPrecedence(Binary::MULTIPLY), Binary::MULTIPLY);
+    m_ops[SLASH]      = operator_t(Binary::getPrecedence(Binary::DIVIDE), Binary::DIVIDE);
+    m_ops[PERCENT]    = operator_t(Binary::getPrecedence(Binary::REMAINDER), Binary::REMAINDER);
+    m_ops[CARET]      = operator_t(Binary::getPrecedence(Binary::POWER), Binary::POWER);
 }
 
 ExpressionPtr Parser::parseCastOrTypeReference(Context &_ctx, const TypePtr &_pType) {
@@ -2826,6 +2824,8 @@ bool Parser::parseDeclarations(Context &_ctx, Module &_module) {
                     if (!pCtx->consume(SEMICOLON))
                         ERROR(*pCtx, false, L"Semicolon expected");
                     _module.getTypes().add(pDecl);
+                    if (!typecheck(*pCtx, *pDecl))
+                            return false;
                 } else
                     ERROR(*pCtx, false, L"Failed parsing type declaration");
                 break;
