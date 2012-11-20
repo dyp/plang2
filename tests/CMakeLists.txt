@@ -62,6 +62,7 @@ set(TESTS_PRETTYPRINTER
     prettyprinter/types.psrc
     prettyprinter/union_constructor.psrc
     prettyprinter/union_element.psrc
+    prettyprinter/decls_order.psrc
 )
 
 run_tests("-t0" "${TESTS_PARSING}")
