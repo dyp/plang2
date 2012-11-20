@@ -1,0 +1,14 @@
+
+type B = nat;
+
+foo(B a) {
+    a = 0
+}
+
+type T = nat;
+
+bar(nat b) {
+    T t;
+    foo(0);
+}
+

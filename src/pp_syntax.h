@@ -21,23 +21,10 @@ public:
     void print(ir::Node &_node);
 
 protected:
-    template <class _Base, class _Node>
-    void printGroup(const ir::Collection<_Base, _Node>& _group, const std::wstring& _strSeparator) {
-        for (size_t i = 0; i < _group.size(); ++i) {
-            if (!_group.get(i))
-                continue;
-            m_os << fmtIndent();
-
-            mergeLines();
-            traverseNode(*_group.get(i));
-            separateLines();
-
-            m_os << _strSeparator;
-        }
-    }
 
     // NODE / MODULE
     virtual bool _traverseDeclarationGroup(ir::DeclarationGroup &_decl);
+    void printDeclarationGroup(ir::Module &_module);
     virtual bool traverseModule(ir::Module &_module);
 
     // NODE / LABEL
@@ -146,6 +133,10 @@ private:
     int m_nFlags;
     bool m_bMergeLines, m_bCompact, m_bSingleLine;
     std::set<std::wstring> m_usedLabels;
+    std::multimap<ir::NodePtr, ir::NodePtr> m_decls, m_params, m_deps;
+
+    void _buildDependencies(ir::NodePtr _pRoot);
+    void _topologicalSort(const ir::NodePtr& _pDecl, std::list<ir::NodePtr>& _sorted);
 
 };
 
