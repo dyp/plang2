@@ -177,8 +177,6 @@ bool Solver::infer(int & _result) {
         tc::FormulaPtr pTest = *i;
         bool bIsImplied = false;
 
-        prettyPrint(*pTest, std::wcerr);
-
         iNext = ::next(i);
         context()->erase(i);
 
