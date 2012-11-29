@@ -39,6 +39,7 @@ set(TESTS_INFERENCE
     inference/literals_structured.psrc
     inference/literals_negative.psrc
     inference/param_array.psrc
+    inference/procedure_call.psrc
 )
 
 set(TESTS_PRETTYPRINTER

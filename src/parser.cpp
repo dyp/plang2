@@ -2457,6 +2457,9 @@ CallPtr Parser::parseCall(Context &_ctx) {
                 ERROR(ctx, NULL, L"Statement required");
         }
 
+    if (pCall->getBranches().empty())
+        pCall->getBranches().add(new Branch());
+
     _ctx.mergeChildren();
 
     return pCall;

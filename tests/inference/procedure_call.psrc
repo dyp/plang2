@@ -1,0 +1,6 @@
+foo(nat a) {
+}
+
+bar(nat a) {
+    foo(0)
+}
