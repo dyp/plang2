@@ -173,7 +173,7 @@ std::wstring PrettyPrinterBase::fmtType(int _kind) {
         case Type::CHAR:    return L"char";
         case Type::STRING:  return L"string";
         case Type::TYPE:    return L"type";
-        case Type::GENERIC: return L"generic";
+        case Type::GENERIC: return L"var";
         default:            return L"";
     }
 }
