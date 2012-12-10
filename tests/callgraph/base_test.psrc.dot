@@ -1,7 +1,7 @@
 digraph G {
+strukt -> foo3
+strukt -> foo4
 baz -> foo2
 baz -> foo3
 baz -> strukt
-strukt -> foo3
-strukt -> foo4
 }

@@ -1,9 +1,11 @@
 digraph G {
 baz -> foo
 baz -> foo1
-baz1 -> baz
 baz1 -> foo
+baz1 -> foo1
+baz1 -> baz
+quux -> foo
+quux -> foo1
 quux -> baz
 quux -> baz1
-quux -> foo
 }

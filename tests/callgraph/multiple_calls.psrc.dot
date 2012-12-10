@@ -1,5 +1,5 @@
 digraph G {
-quux -> baz
 quux -> foo
 quux -> foo1
+quux -> baz
 }

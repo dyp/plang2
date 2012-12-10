@@ -1,9 +1,8 @@
 type P = predicate(:);
 
-foo1(:);
-foo2(:);
-foo3(:);
-foo4(:);
+foo2(:) {}
+foo3(:) {}
+foo4(:) {}
 
 strukt(struct (P q, P w) s:)
 {   s.q(:); }

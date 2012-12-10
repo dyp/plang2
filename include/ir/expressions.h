@@ -1266,6 +1266,10 @@ public:
     /// Default constructor.
     AnonymousPredicate() : m_pPreCond(NULL), m_pPostCond(NULL), m_pBlock(NULL), m_pType(NULL), m_pMeasure(NULL) {}
 
+    /// Get statement kind.
+    /// \return #AnonymousPredicate.
+    virtual int getKind() const { return ANONYMOUS_PREDICATE; }
+
     /// Get list of formal input parameters.
     /// \return List of parameters.
     Params &getInParams() { return m_paramsIn; }

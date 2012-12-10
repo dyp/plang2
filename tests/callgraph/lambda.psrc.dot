@@ -1,7 +1,7 @@
 digraph G {
+foo -> baz
 baz -> baz2
 baz -> lambda1
-foo -> baz
 foo2 -> lambda2
 lambda1 -> baz
 lambda2 -> baz2

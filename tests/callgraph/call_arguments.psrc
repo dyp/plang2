@@ -1,9 +1,9 @@
 // Test for a(b:...) , a and b - variables of predicate type.
 type P = predicate(:);
 
-foo(:);
-foo1(:);
-foo2(:);
+foo(:) {}
+foo1(:) {}
+foo2(:) {}
 bar(P _foo:) {
     _foo(:);
 }

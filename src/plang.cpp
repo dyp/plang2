@@ -28,6 +28,7 @@
 #include "options.h"
 #include "generate_semantics.h"
 #include "verification.h"
+#include "generate_callgraph.h"
 #include "tail_recursion_elimination.h"
 #include "cvc3_solver.h"
 
@@ -85,6 +86,9 @@ int main(int _argc, const char ** _argv) {
 
         if (Options::instance().prettyPrint & PP_SYNTAX)
             pp::prettyPrintSyntax(*pModule, std::wcout, NULL, true);
+
+        if (Options::instance().prettyPrint & PP_CALLGRAPH)
+            printModuleCallGraph(*pModule, std::wcout);
 
         if (Options::instance().backEnd == BE_NONE)
             return EXIT_SUCCESS;

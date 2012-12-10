@@ -1,7 +1,7 @@
 type P = predicate(:);
 
-foo(:);
-foo1(:);
+foo(:) {}
+foo1(:) {}
 baz(P a:P z) {
     z = a;
     z(:);

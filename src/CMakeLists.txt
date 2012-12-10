@@ -37,6 +37,8 @@ set(SOURCES
     generate_semantics.cpp
     generate_name.cpp
     type_lattice.cpp
+    callgraph.cpp
+    generate_callgraph.cpp
     tail_recursion_elimination.cpp
     term_rewriting.cpp
     node_analysis.cpp

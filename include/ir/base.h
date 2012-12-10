@@ -681,8 +681,10 @@ public:
         LEMMA_DECLARATION,
         /// Declaration of a (nested) predicate. Can be cast to Predicate.
         PREDICATE_DECLARATION,
-        /// Block of variable declarations. Can be cast to VariableDeclarationGroup
+        /// Block of variable declarations. Can be cast to VariableDeclarationGroup.
         VARIABLE_DECLARATION_GROUP,
+        /// Anonymous predicate inside Lambda. Can be cast to AnonymousPredicate.
+        ANONYMOUS_PREDICATE,
     };
 
     /// Default constructor.

@@ -14,6 +14,7 @@ enum {
     PP_AST        = 2,
     PP_LEX        = 4,
     PP_SYNTAX     = 8,
+    PP_CALLGRAPH  = 16,
 };
 
 // Type check.
