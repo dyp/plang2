@@ -172,7 +172,7 @@ struct PtrLess {
 class Cloner {
 public:
     template<class _Obj>
-    Auto<_Obj> get(const _Obj *_pObj) {
+    Auto<_Obj> get(const _Obj *_pObj, bool _bKeepOriginal = false) {
         if (_pObj == NULL)
             return NULL;
 
@@ -180,6 +180,9 @@ public:
 
         if (iObj != m_cache.end())
             return iObj->second;
+
+        if (_bKeepOriginal)
+            return _pObj;
 
         Auto<_Obj> pClone = _pObj->clone(*this).template as<_Obj>();
 
@@ -189,8 +192,8 @@ public:
     }
 
     template<class _Obj>
-    Auto<_Obj> get(const Auto<_Obj> &_pObj) {
-        return get(_pObj.ptr());
+    Auto<_Obj> get(const Auto<_Obj> &_pObj, bool _bKeepOriginal = false) {
+        return get(_pObj.ptr(), _bKeepOriginal);
     }
 
     template<class _Obj>
