@@ -8,9 +8,12 @@
 
 #include "typecheck.h"
 #include "prettyprinter.h"
+#include "pp_syntax.h"
 
 #include <ir/statements.h>
+#include <ir/builtins.h>
 #include <ir/visitor.h>
+#include <utils.h>
 
 using namespace ir;
 
@@ -39,8 +42,10 @@ public:
     virtual bool visitListConstructor(ListConstructor &_cons);
     virtual bool visitSetConstructor(SetConstructor &_cons);
     virtual bool visitArrayConstructor(ArrayConstructor &_cons);
+    virtual bool visitArrayIteration(ArrayIteration& _iter);
     virtual bool visitMapConstructor(MapConstructor &_cons);
     virtual bool visitFieldExpr(FieldExpr &_field);
+    virtual bool visitReplacement(Replacement &_repl);
     virtual bool visitCastExpr(CastExpr &_cast);
     virtual bool visitAssignment(Assignment &_assignment);
     virtual bool visitVariableDeclaration(VariableDeclaration &_var);
@@ -110,6 +115,34 @@ void Collector::collectParam(const NamedValuePtr &_pParam, int _nFlags) {
     _pParam->setType(pFresh);
     pFresh->addFlags(_nFlags);
 }
+
+static const TypePtr _getContentsType(const ExpressionPtr _pExpr) {
+    return _pExpr->getType() && _pExpr->getType()->getKind() == Type::TYPE
+        ? _pExpr.as<TypeExpr>()->getContents()
+        : _pExpr->getType();
+}
+
+static ExpressionPtr _getConditionForIndex(const ExpressionPtr& _pIndex, const VariableReferencePtr& _pVar, bool _bEquality) {
+    ExpressionPtr pExpr;
+    if (_pIndex->getKind() == Expression::TYPE) {
+        const TypePtr pIndexType = _getContentsType(_pIndex);
+        if (pIndexType->getKind() != Type::SUBTYPE)
+            throw std::runtime_error("Expected subtype or range.");
+
+        SubtypePtr pSubtype = pIndexType.as<Subtype>();
+
+        pExpr = !_bEquality
+            ? new Unary(Unary::BOOL_NEGATE, clone(*pSubtype->getExpression()))
+            : clone(*pSubtype->getExpression());
+
+        Expression::substitute(*pExpr, new VariableReference(pSubtype->getParam()), _pVar);
+    }
+    else
+        pExpr = new Binary(_bEquality ? Binary::EQUALS : Binary::NOT_EQUALS, _pVar, _pIndex);
+
+    return pExpr;
+}
+
 
 bool Collector::visitRange(Range &_type) {
     SubtypePtr pSubtype = _type.asSubtype();
@@ -598,9 +631,13 @@ bool Collector::visitFormula(Formula &_formula) {
 bool Collector::visitArrayPartExpr(ArrayPartExpr &_array) {
     _array.setType(new tc::FreshType(tc::FreshType::PARAM_OUT));
 
+    const MapTypePtr pMapType = new MapType(new Type(Type::BOTTOM), _array.getType());
+    const ListTypePtr pListType = new ListType(_array.getType());
+
     ArrayTypePtr
         pArrayType = new ArrayType(),
         pCurrentArray = pArrayType;
+
     for (size_t i=0; i<_array.getIndices().size(); ++i) {
         pCurrentArray->setDimensionType(new Type(Type::BOTTOM));
         if (i+1 == _array.getIndices().size())
@@ -610,7 +647,26 @@ bool Collector::visitArrayPartExpr(ArrayPartExpr &_array) {
     }
     pCurrentArray->setBaseType(_array.getType());
 
-    m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE, _array.getObject()->getType(), pArrayType));
+    if (_array.getIndices().size() > 1) {
+        m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE, _array.getObject()->getType(), pArrayType));
+        return true;
+    }
+
+    tc::CompoundFormulaPtr pFormula = new tc::CompoundFormula();
+
+    // A = a[i], I i
+    // A <= B[_|_, _|_, ...]
+    pFormula->addPart().insert(new tc::Formula(tc::Formula::SUBTYPE, _array.getObject()->getType(), pArrayType));
+
+    // or A <= {_|_ : B}
+    pFormula->addPart().insert(new tc::Formula(tc::Formula::SUBTYPE, _array.getObject()->getType(), pMapType));
+
+    // or A <= [[B]] and I <= nat
+    tc::Formulas& formulas = pFormula->addPart();
+    formulas.insert(new tc::Formula(tc::Formula::SUBTYPE, _array.getObject()->getType(), pListType));
+    formulas.insert(new tc::Formula(tc::Formula::SUBTYPE, _array.getIndices().get(0)->getType(), new Type(Type::NAT, Number::GENERIC)));
+
+    m_constraints.insert(pFormula);
     return true;
 }
 
@@ -663,8 +719,7 @@ bool Collector::visitUnionConstructor(UnionConstructor &_cons) {
 bool Collector::visitSetConstructor(SetConstructor &_cons) {
     SetTypePtr pSet = new SetType(NULL);
 
-    pSet->setBaseType(createFresh());
-    pSet->getBaseType().as<tc::FreshType>()->setFlags(tc::FreshType::PARAM_OUT);
+    pSet->setBaseType(new tc::FreshType(tc::FreshType::PARAM_OUT));
     _cons.setType(pSet);
 
     for (size_t i = 0; i < _cons.size(); ++i)
@@ -677,8 +732,7 @@ bool Collector::visitSetConstructor(SetConstructor &_cons) {
 bool Collector::visitListConstructor(ListConstructor &_cons) {
     ListTypePtr pList = new ListType(NULL);
 
-    pList->setBaseType(createFresh());
-    pList->getBaseType().as<tc::FreshType>()->setFlags(tc::FreshType::PARAM_OUT);
+    pList->setBaseType(new tc::FreshType(tc::FreshType::PARAM_OUT));
     _cons.setType(pList);
 
     for (size_t i = 0; i < _cons.size(); ++i)
@@ -691,13 +745,131 @@ bool Collector::visitListConstructor(ListConstructor &_cons) {
 bool Collector::visitArrayConstructor(ArrayConstructor &_cons) {
     ArrayTypePtr pArray = new ArrayType(NULL);
 
-    pArray->setBaseType(createFresh());
-    pArray->getBaseType().as<tc::FreshType>()->setFlags(tc::FreshType::PARAM_OUT);
+    pArray->setBaseType(new tc::FreshType(tc::FreshType::PARAM_OUT));
     _cons.setType(pArray);
+
+    if (_cons.empty()) {
+        pArray->setDimensionType(createFresh());
+        return true;
+    }
 
     for (size_t i = 0; i < _cons.size(); ++i)
         m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                _cons.get(i)->getValue()->getType(), pArray->getBaseType()));
+            _cons.get(i)->getValue()->getType(), pArray->getBaseType()));
+
+    const tc::FreshTypePtr pParamType = new tc::FreshType(tc::FreshType::PARAM_IN);
+    SubtypePtr pEnumType = new Subtype(new NamedValue(L"", pParamType));
+    const VariableReferencePtr pVar = new VariableReference(pEnumType->getParam());
+
+    const tc::FreshTypePtr pEnumType1 = createFresh();
+    m_constraints.insert(new tc::Formula(tc::Formula::EQUALS, pEnumType1, pEnumType));
+
+    bool bFirst = true;
+    size_t nInc = 0;
+    for (size_t i = 0; i < _cons.size(); ++i) {
+        if (_cons.get(i)->getIndex()) {
+            const TypePtr pIndexType = _getContentsType(_cons.get(i)->getIndex());
+            m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE, pIndexType, pParamType));
+            ExpressionPtr pExpr = _getConditionForIndex(_cons.get(i)->getIndex(), pVar, false);
+
+            pEnumType->setExpression(pEnumType->getExpression()
+                ? new Binary(Binary::BOOL_AND, pEnumType->getExpression(), pExpr)
+                : pExpr);
+        }
+        else {
+            PredicatePtr pIndexer = Builtins::instance().find(bFirst ? L"zero" : L"inc");
+            assert(pIndexer);
+
+            FunctionCallPtr pCallIndexer = new FunctionCall(new PredicateReference(pIndexer));
+            pCallIndexer->getArgs().add(new TypeExpr(pEnumType1));
+
+            if (!bFirst)
+                pCallIndexer->getArgs().add(new Literal(Number(intToStr(++nInc), Number::INTEGER)));
+
+            bFirst = false;
+            _cons.get(i)->setIndex(pCallIndexer);
+        }
+    }
+
+    const VariableReferencePtr pParam = new VariableReference(new NamedValue(L"", pParamType));
+
+    if (_cons.size() == 1) {
+        pArray->setDimensionType(_cons.get(0)->getIndex()->getType());
+        return true;
+    }
+
+    SubtypePtr pSubtype = new Subtype(pParam->getTarget());
+    pArray->setDimensionType(pSubtype);
+
+    ExpressionPtr pExpr = NULL;
+    for (size_t i = 0; i < _cons.size(); ++i) {
+        ExpressionPtr pEquals = _getConditionForIndex(_cons.get(i)->getIndex(), pParam, true);
+        pExpr = pExpr ? new Binary(Binary::BOOL_OR, pExpr, pEquals) : pEquals;
+    }
+
+    pSubtype->setExpression(pExpr);
+
+    return true;
+}
+
+bool Collector::visitArrayIteration(ArrayIteration& _iter) {
+    ArrayTypePtr pArrayType = new ArrayType();
+    _iter.setType(pArrayType);
+
+    std::vector<TypePtr> dimensions;
+    const bool bUnknownDimensionType = _iter.getDefault();
+    for (size_t i = 0; i < _iter.getIterators().size(); ++i)
+        dimensions.push_back(!bUnknownDimensionType ? new tc::FreshType(tc::FreshType::PARAM_OUT) : new Type(Type::TOP));
+
+    TypePtr pBaseType = new tc::FreshType(tc::FreshType::PARAM_OUT);
+
+    for (size_t i = 0; i < _iter.size(); ++i) {
+        const Collection<Expression>& conds = _iter.get(i)->getConditions();
+        for (size_t j = 0; j < conds.size(); ++j) {
+            if (conds.get(j)->getKind() == Expression::CONSTRUCTOR
+                && conds.get(j).as<Constructor>()->getConstructorKind() == Constructor::STRUCT_FIELDS)
+            {
+                const StructConstructor& constructor = *conds.get(j).as<StructConstructor>();
+                if (_iter.getIterators().size() != constructor.size())
+                    throw std::runtime_error("Count of iterators does not match count of fields.");
+
+                for (size_t k = 0; k < constructor.size(); ++k) {
+                    m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                        _getContentsType(constructor.get(k)->getValue()), dimensions[k]));
+                    m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                        _getContentsType(constructor.get(k)->getValue()), _iter.getIterators().get(k)->getType()));
+                }
+
+                continue;
+            }
+
+            assert(_iter.getIterators().size() == 1);
+
+            m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                _getContentsType(conds.get(j)), dimensions[0]));
+            m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                _getContentsType(conds.get(j)), _iter.getIterators().get(0)->getType()));
+        }
+
+        m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+            _getContentsType(_iter.get(i)->getExpression()), pBaseType));
+    }
+
+    if (_iter.getDefault())
+        m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+            _getContentsType(_iter.getDefault()), pBaseType));
+
+    for (std::vector<TypePtr>::iterator i = dimensions.begin();; ++i) {
+        pArrayType->setDimensionType(*i);
+
+        if (i == --dimensions.end())
+            break;
+
+        pArrayType->setBaseType(new ArrayType());
+        pArrayType = pArrayType->getBaseType().as<ArrayType>();
+    }
+
+    pArrayType->setBaseType(pBaseType);
 
     return true;
 }
@@ -791,6 +963,11 @@ bool Collector::visitCastExpr(CastExpr &_cast) {
     m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
             _cast.getExpression()->getType(), pToType));
 
+    return true;
+}
+
+bool Collector::visitReplacement(Replacement &_repl) {
+    _repl.setType(_repl.getObject()->getType());
     return true;
 }
 
