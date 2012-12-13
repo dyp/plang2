@@ -359,7 +359,7 @@ public:
     virtual bool matches(const Expression& _other, MatchesPtr _pMatches = NULL) const;
 
     virtual NodePtr clone(Cloner &_cloner) const {
-        return NEW_CLONE(this, _cloner, VariableReference(m_strName, _cloner.get(m_pTarget)));
+        return NEW_CLONE(this, _cloner, VariableReference(m_strName, _cloner.get(m_pTarget, true)));
     }
 
 private:
