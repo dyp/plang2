@@ -5,6 +5,24 @@
 
 using namespace ir;
 
+class CollectIdentifiers : public ir::Visitor {
+public:
+    CollectIdentifiers(std::map<NamedValuePtr, std::wstring>& _identifiers, std::set<std::wstring>& _usedIdentifiers) :
+        m_identifiers(_identifiers), m_usedIdentifiers(_usedIdentifiers)
+    {}
+
+    virtual bool visitNamedValue(NamedValue & _val) {
+        if (!_val.getName().empty()) {
+            m_identifiers.insert(std::pair<NamedValuePtr, std::wstring>(&_val, _val.getName()));
+            m_usedIdentifiers.insert(_val.getName());
+        }
+    }
+
+private:
+    std::map<NamedValuePtr, std::wstring> &m_identifiers;
+    std::set<std::wstring> &m_usedIdentifiers;
+};
+
 typedef std::multimap<NodePtr, NodePtr> Graph;
 typedef std::pair<const NodePtr, NodePtr> Edge;
 
@@ -1071,6 +1089,19 @@ bool PrettyPrinterSyntax::traverseLemmaDeclaration(LemmaDeclaration &_stmt) {
 }
 
 // NODE / NAMED_VALUE
+std::wstring PrettyPrinterSyntax::getNamedValueName(NamedValue &_val) {
+    std::wstring strIdent = m_identifiers[&_val];
+
+    if (strIdent.empty()) {
+        for (m_nLastFoundIdentifier;
+            !m_usedLabels.insert(strIdent = intToAlpha(m_nLastFoundIdentifier)).second;
+            ++m_nLastFoundIdentifier);
+        m_identifiers[&_val] = strIdent;
+    }
+
+    return strIdent;
+}
+
 bool PrettyPrinterSyntax::visitNamedValue(NamedValue &_val) {
     if (!m_path.empty()) {
         if (getLoc().bPartOfCollection && getLoc().cPosInCollection != 0)
@@ -1082,11 +1113,12 @@ bool PrettyPrinterSyntax::visitNamedValue(NamedValue &_val) {
     if (getRole() != R_EnumValueDecl)
         traverseType(*_val.getType());
 
-    if (!_val.getName().empty() && getLoc().type != N_Param) {
-        if (getRole() != R_EnumValueDecl)
-            m_os << L" ";
-        m_os << _val.getName();
-    }
+    if (getLoc().type == N_Param)
+        return false;
+    if (getRole() != R_EnumValueDecl)
+        m_os << L" ";
+
+    m_os << getNamedValueName(_val);
 
     return false;
 }
@@ -1317,7 +1349,7 @@ bool PrettyPrinterSyntax::visitLiteral(ir::Literal &_node) {
 }
 
 bool PrettyPrinterSyntax::visitVariableReference(ir::VariableReference &_node) {
-    m_os << _node.getName();
+    m_os << (_node.getTarget() ? getNamedValueName(*_node.getTarget()) : _node.getName());
     return false;
 }
 
@@ -1573,8 +1605,10 @@ bool PrettyPrinterSyntax::visitConstructor(Constructor& _expr) {
 #undef UNINDENT
 
 void PrettyPrinterSyntax::run() {
-    if (m_pNode)
+    if (m_pNode) {
+        CollectIdentifiers(m_identifiers, m_usedIdentifiers).traverseNode(*m_pNode);
         traverseNode(*m_pNode);
+    }
     else if (m_bCompact)
         m_os << L"NULL";
 }
@@ -1582,8 +1616,10 @@ void PrettyPrinterSyntax::run() {
 void PrettyPrinterSyntax::print(Node &_node) {
     if (&_node == NULL)
         m_os << "NULL";
-    else
+    else {
+        CollectIdentifiers(m_identifiers, m_usedIdentifiers).traverseNode(_node);
         traverseNode(_node);
+    }
 }
 
 size_t PrettyPrinterSyntax::getDepth() const {
