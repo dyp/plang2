@@ -20,8 +20,10 @@ bool Subtype::less(const Type &_other) const {
 }
 
 TypePtr Subtype::getMeet(Type &_other) {
-    if (TypePtr pMeet = Type::getMeet(_other))
-        return pMeet;
+    SideType meet = _getMeet(_other);
+    if (meet.first || meet.second || _other.getKind() == FRESH)
+        return meet.first;
+
     if (_other.getKind() == FRESH)
         return NULL;
 
@@ -30,8 +32,11 @@ TypePtr Subtype::getMeet(Type &_other) {
     SubtypePtr pType = new Subtype();
     NamedValuePtr pParam = getParam();
 
-    if (*other.getParam()->getType() != *getParam()->getType())
+    if (*other.getParam()->getType() != *getParam()->getType()) {
         pParam = new NamedValue(getParam()->getName(), getParam()->getType()->getMeet(*other.getParam()->getType()));
+        if (!pParam->getType())
+            return NULL;
+    }
 
     Cloner cloner;
     NamedValuePtr pNewParam = cloner.get(pParam);
@@ -52,8 +57,9 @@ TypePtr Subtype::getMeet(Type &_other) {
 }
 
 TypePtr Subtype::getJoin(Type &_other) {
-    if (TypePtr pJoin = Type::getJoin(_other))
-        return pJoin;
+    SideType join = _getJoin(_other);
+    if (join.first || join.second || _other.getKind() == FRESH)
+        return join.first;
 
     if (_other.getKind() == FRESH)
         return NULL;
@@ -63,8 +69,11 @@ TypePtr Subtype::getJoin(Type &_other) {
     SubtypePtr pType = new Subtype();
     NamedValuePtr pParam = getParam();
 
-    if (*other.getParam()->getType() != *getParam()->getType())
+    if (*other.getParam()->getType() != *getParam()->getType()) {
         pParam = new NamedValue(getParam()->getName(), getParam()->getType()->getJoin(*other.getParam()->getType()));
+        if (!pParam->getType())
+            return NULL;
+    }
 
     Cloner cloner;
     NamedValuePtr pNewParam = cloner.get(pParam);
