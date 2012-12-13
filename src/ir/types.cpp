@@ -152,84 +152,102 @@ int maxBitsIntNat(int _bitsInt, int _bitsNat) {
     return _bitsInt;
 }
 
-TypePtr Type::getJoin(Type &_other) {
-    if (getKind() == TOP || _other.getKind() == BOTTOM)
-        return this;
-
-    if (getKind() == BOTTOM || _other.getKind() == TOP)
-        return &_other;
-
-    if (getKind() == FRESH || _other.getKind() == FRESH) {
-        ir::Type &fresh = getKind() == FRESH ? *this : _other;
-        ir::Type &other = getKind() == FRESH ? _other : *this;
-
-        if (other.contains(&fresh))
-            return new Type(TOP);
-
-        return (Type *)NULL;
-    }
-
-    switch (compare(_other)) {
-        case ORD_SUB:
-            return &_other;
-        case ORD_SUPER:
-        case ORD_EQUALS:
-            return this;
-    }
-
-    typedef std::pair<int, int> P;
-    P kinds(getKind(), _other.getKind());
-
-    if (kinds == P(NAT, INT))
-        return new Type(INT, maxBitsIntNat(_other.getBits(), getBits()));
-
-    if (kinds == P(INT, NAT))
-        return new Type(INT, maxBitsIntNat(getBits(), _other.getBits()));
-
-    if (getKind() != _other.getKind())
-        return new Type(TOP);
-
-    return (Type *)NULL;
+/* virtual */ TypePtr Type::getJoin(Type &_other) {
+    return _getJoin(_other).first;
 }
 
-TypePtr Type::getMeet(ir::Type &_other) {
+/* protected */ SideType Type::_getJoin(Type &_other) {
     if (getKind() == TOP || _other.getKind() == BOTTOM)
-        return &_other;
+        return std::make_pair(this, false);
 
     if (getKind() == BOTTOM || _other.getKind() == TOP)
-        return this;
+        return std::make_pair(&_other, false);
 
     if (getKind() == FRESH || _other.getKind() == FRESH) {
         ir::Type &fresh = getKind() == FRESH ? *this : _other;
         ir::Type &other = getKind() == FRESH ? _other : *this;
 
         if (other.contains(&fresh))
-            return new Type(BOTTOM);
+            return std::make_pair(new Type(TOP), false);
 
-        return (Type *)NULL;
+        return std::make_pair((Type *)NULL, false);
     }
 
-    switch (compare(_other)) {
+    const int nOrd = compare(_other);
+
+    switch (nOrd) {
         case ORD_SUB:
-        case ORD_EQUALS:
-            return this;
+            return std::make_pair(&_other, false);
         case ORD_SUPER:
-            return &_other;
+        case ORD_EQUALS:
+            return std::make_pair(this, false);
     }
 
     typedef std::pair<int, int> P;
     P kinds(getKind(), _other.getKind());
 
     if (kinds == P(NAT, INT))
-        return new Type(NAT, minBitsIntNat(_other.getBits(), getBits()));
+        return std::make_pair(new Type(INT, maxBitsIntNat(_other.getBits(), getBits())), false);
 
     if (kinds == P(INT, NAT))
-        return new Type(NAT, minBitsIntNat(getBits(), _other.getBits()));
+        return std::make_pair(new Type(INT, maxBitsIntNat(getBits(), _other.getBits())), false);
 
-    if (getKind() != _other.getKind())
-        return new Type(BOTTOM);
+    if (getKind() != _other.getKind()) {
+        if (nOrd == ORD_UNKNOWN)
+            return std::make_pair((Type *)NULL, true);
+        return std::make_pair(new Type(TOP), false);
+    }
 
-    return (Type *)NULL;
+    return std::make_pair((Type *)NULL, false);
+}
+
+/* virtual */ TypePtr Type::getMeet(ir::Type &_other) {
+    return _getMeet(_other).first;
+}
+
+/* protected */ SideType Type::_getMeet(ir::Type &_other) {
+    if (getKind() == TOP || _other.getKind() == BOTTOM)
+        return std::make_pair(&_other, false);
+
+    if (getKind() == BOTTOM || _other.getKind() == TOP)
+        return std::make_pair(this, false);
+
+    if (getKind() == FRESH || _other.getKind() == FRESH) {
+        ir::Type &fresh = getKind() == FRESH ? *this : _other;
+        ir::Type &other = getKind() == FRESH ? _other : *this;
+
+        if (other.contains(&fresh))
+            return std::make_pair(new Type(BOTTOM), false);
+
+        return std::make_pair((Type *)NULL, false);
+    }
+
+    const int nOrd = compare(_other);
+
+    switch (nOrd) {
+        case ORD_SUB:
+        case ORD_EQUALS:
+            return std::make_pair(this, false);
+        case ORD_SUPER:
+            return std::make_pair(&_other, false);
+    }
+
+    typedef std::pair<int, int> P;
+    P kinds(getKind(), _other.getKind());
+
+    if (kinds == P(NAT, INT))
+        return std::make_pair(new Type(NAT, minBitsIntNat(_other.getBits(), getBits())), false);
+
+    if (kinds == P(INT, NAT))
+        return std::make_pair(new Type(NAT, minBitsIntNat(getBits(), _other.getBits())), false);
+
+    if (getKind() != _other.getKind()) {
+        if (nOrd == ORD_UNKNOWN)
+            return std::make_pair((Type *)NULL, true);
+        return std::make_pair(new Type(BOTTOM), false);
+    }
+
+    return std::make_pair((Type *)NULL, false);
 }
 
 void ArrayType::getDimensions(std::list<TypePtr>& _dimensions) const {
