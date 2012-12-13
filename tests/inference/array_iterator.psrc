@@ -1,0 +1,26 @@
+type A = array(int, 1..10);
+type B = array(real, 1..100, 1..5);
+
+foo () {
+    A a1 = for(int i) {
+        case 1..5: 1
+        case 6..10: 2
+        default: 40
+    };
+
+    A a2 = for(int i) {
+        case 1..5: 1
+        case 6..10: 2
+    };
+
+    B b1 = for (int i, j) {
+        case (1..5, 1..2): 1
+        case (6..30, 3..5): 2
+        default: 3
+    };
+
+    B b2 = for (int i, j) {
+        case (1..5, 1..2): 1
+        case (6..100, 3..5): 2
+    }
+}

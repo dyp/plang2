@@ -2790,7 +2790,12 @@ bool Parser::typecheck(Context &_ctx, Node &_node) {
 
     tc::Formulas constraints, substs;
 
-    tc::collect(constraints, _node, _ctx);
+    try {
+        tc::collect(constraints, _node, _ctx);
+    }
+    catch (const std::exception &_e) {
+        ERROR(_ctx, false, L"Type error: %s", _e.what());
+    }
 
     if (tc::solve(constraints, substs)) {
         tc::apply(substs, _node);

@@ -22,6 +22,8 @@ Builtins::Builtins() {
 
     m_predicates.add(new Predicate(L"print", true));
     m_predicates.add(new Predicate(L"len", true));
+    m_predicates.add(new Predicate(L"inc", true));
+    m_predicates.add(new Predicate(L"zero", true));
 }
 
 }

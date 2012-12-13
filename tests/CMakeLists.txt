@@ -43,6 +43,9 @@ set(TESTS_INFERENCE
     inference/binder.psrc
     inference/lambda.psrc
     inference/struct_constructor.psrc
+    inference/array_part.psrc
+    inference/array_constructor.psrc
+    inference/array_iterator.psrc
 )
 
 set(TESTS_PRETTYPRINTER
