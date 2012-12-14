@@ -42,6 +42,7 @@ set(TESTS_INFERENCE
     inference/procedure_call.psrc
     inference/binder.psrc
     inference/lambda.psrc
+    inference/struct_constructor.psrc
 )
 
 set(TESTS_PRETTYPRINTER
