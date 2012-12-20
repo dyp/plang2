@@ -20,10 +20,9 @@ bool ArrayType::less(const Type &_other) const {
 }
 
 TypePtr ArrayType::getMeet(Type &_other) {
-    if (TypePtr pMeet = Type::getMeet(_other))
-        return pMeet;
-    if (_other.getKind() == FRESH)
-        return NULL;
+    SideType meet = _getMeet(_other);
+    if (meet.first || meet.second || _other.getKind() == FRESH)
+        return meet.first;
 
     const ArrayType& other = (const ArrayType&)_other;
 
@@ -38,10 +37,9 @@ TypePtr ArrayType::getMeet(Type &_other) {
 }
 
 TypePtr ArrayType::getJoin(Type &_other) {
-    if (TypePtr pJoin = Type::getJoin(_other))
-        return pJoin;
-    if (_other.getKind() == FRESH)
-        return NULL;
+    SideType join = _getJoin(_other);
+    if (join.first || join.second || _other.getKind() == FRESH)
+        return join.first;
 
     const ArrayType& other = (const ArrayType&)_other;
 

@@ -281,6 +281,7 @@ private:
 class Type;
 
 typedef std::map<TypePtr, TypePtr> TypeSubst;
+typedef std::pair<TypePtr, bool> SideType;
 
 /// Virtual ancestor of all types.
 class Type : public Node {
@@ -421,6 +422,9 @@ protected:
     /// Default constructor.
     /// Only descendant classes should use this.
     Type() : m_kind (0), m_nBits(0) {}
+
+    SideType _getJoin(Type &_other); // Supremum.
+    SideType _getMeet(Type &_other); // Infinum.
 
 private:
     int m_kind;

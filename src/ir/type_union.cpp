@@ -118,10 +118,9 @@ bool UnionType::rewrite(const TypePtr &_pOld, const TypePtr &_pNew, bool _bRewri
 }
 
 TypePtr UnionType::getMeet(ir::Type &_other) {
-    TypePtr pMeet = Type::getMeet(_other);
-
-    if (pMeet || _other.getKind() == FRESH)
-        return pMeet;
+    SideType meet = _getMeet(_other);
+    if (meet.first || meet.second || _other.getKind() == FRESH)
+        return meet.first;
 
     const UnionType &other = (const UnionType &)_other;
     UnionTypePtr pUnion = new UnionType();
@@ -138,7 +137,7 @@ TypePtr UnionType::getMeet(ir::Type &_other) {
 
             tc::TupleType otherFields = tc::TupleType(&otherCons.getFields());
 
-            pMeet = tc::TupleType(&cons.getFields()).getMeet(otherFields);
+            TypePtr pMeet = tc::TupleType(&cons.getFields()).getMeet(otherFields);
 
             if (!pMeet)
                 return NULL;
@@ -157,10 +156,9 @@ TypePtr UnionType::getMeet(ir::Type &_other) {
 }
 
 TypePtr UnionType::getJoin(ir::Type &_other) {
-    TypePtr pJoin = Type::getJoin(_other);
-
-    if (pJoin || _other.getKind() == FRESH)
-        return pJoin;
+    SideType join = _getJoin(_other);
+    if (join.first || join.second || _other.getKind() == FRESH)
+        return join.first;
 
     const UnionType &other = (const UnionType &)_other;
     size_t cOtherUnmatched = other.getConstructors().size();
@@ -178,7 +176,7 @@ TypePtr UnionType::getJoin(ir::Type &_other) {
 
             tc::TupleType otherFields = tc::TupleType(&otherCons.getFields());
 
-            pJoin = tc::TupleType(&cons.getFields()).getJoin(otherFields);
+            TypePtr pJoin = tc::TupleType(&cons.getFields()).getJoin(otherFields);
 
             if (!pJoin)
                 return NULL;
