@@ -111,6 +111,7 @@ public:
 
     TypeDeclarationPtr parseTypeDeclaration(Context &_ctx);
     VariableDeclarationPtr parseVariableDeclaration(Context &_ctx, int _nFlags);
+    StatementPtr parseVariableDeclarationGroup(Context &_ctx, int _nFlags = 0);
     FormulaDeclarationPtr parseFormulaDeclaration(Context &_ctx);
     LemmaDeclarationPtr parseLemmaDeclaration(Context &_ctx);
     ExpressionPtr parseExpression(Context &_ctx);
@@ -1677,6 +1678,25 @@ bool Parser::parseParamList(Context &_ctx, Collection<_Param> &_params,
     return true;
 }
 
+StatementPtr Parser::parseVariableDeclarationGroup(Context &_ctx, int _nFlags) {
+    Collection<VariableDeclaration> decls;
+    parseParamList(_ctx, decls, &Parser::parseVariableDeclaration, ALLOW_INITIALIZATION | PART_OF_LIST | _nFlags);
+
+    if (decls.empty())
+        return NULL;
+
+    if (decls.size() == 1)
+        return decls.get(0);
+
+    // decls.size() > 1
+    VariableDeclarationGroupPtr pGroup = new VariableDeclarationGroup();
+
+    pGroup->append(decls);
+    _ctx.mergeChildren();
+
+    return pGroup;
+}
+
 ParamPtr Parser::parseParam(Context &_ctx, int _nFlags) {
     if (!_ctx.is(IDENTIFIER))
         return NULL;
@@ -2497,26 +2517,9 @@ StatementPtr Parser::parseStatement(Context &_ctx) {
         case TYPE: return parseTypeDeclaration(_ctx);
 
         case PREDICATE:
-        CASE_BUILTIN_TYPE: {
-            Collection<VariableDeclaration> decls;
-
-            parseParamList(_ctx, decls, &Parser::parseVariableDeclaration,
-                    LOCAL_VARIABLE | ALLOW_INITIALIZATION | PART_OF_LIST);
-
-            if (decls.empty())
-                return NULL;
-
-            if (decls.size() == 1)
-                return decls.get(0);
-
-            // decls.size() > 1
-            VariableDeclarationGroupPtr pGroup = new VariableDeclarationGroup();
-
-            pGroup->append(decls);
-            _ctx.mergeChildren();
-
-            return pGroup;
-        }
+        case MUTABLE:
+        CASE_BUILTIN_TYPE:
+            return parseVariableDeclarationGroup(_ctx, LOCAL_VARIABLE);
     }
 
     StatementPtr pStmt;
@@ -2547,7 +2550,7 @@ StatementPtr Parser::parseStatement(Context &_ctx) {
     }
 
     if (_ctx.getType(_ctx.getValue()))
-        return parseVariableDeclaration(_ctx, LOCAL_VARIABLE | ALLOW_INITIALIZATION);
+        return parseVariableDeclarationGroup(_ctx, LOCAL_VARIABLE);
 
     Context &ctx = *_ctx.createChild(false);
 
@@ -2822,16 +2825,16 @@ bool Parser::parseDeclarations(Context &_ctx, Module &_module) {
                 }
                 // no break;
             CASE_BUILTIN_TYPE:
-            case MUTABLE:
-                if (VariableDeclarationPtr pDecl = parseVariableDeclaration(*pCtx, ALLOW_INITIALIZATION)) {
-                    if (!pCtx->consume(SEMICOLON))
-                        ERROR(*pCtx, false, L"Semicolon expected");
-                    _module.getVariables().add(pDecl);
-                    if (!typecheck(*pCtx, *pDecl))
-                        return false;
-                } else
+            case MUTABLE: {
+                Collection<VariableDeclaration> decls;
+                parseParamList(*pCtx, decls, &Parser::parseVariableDeclaration);
+                if (decls.empty())
                     ERROR(* pCtx, false, L"Failed parsing variable declaration");
-                break;
+                _module.getVariables().append(decls);
+                if (!typecheck(*pCtx, decls))
+                        return false;
+            }
+            break;
             case TYPE:
                 if (TypeDeclarationPtr pDecl = parseTypeDeclaration(*pCtx)) {
                     if (!pCtx->consume(SEMICOLON))
