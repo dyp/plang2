@@ -197,8 +197,9 @@ int PredicateType::compare(const Type &_other) const {
 }
 
 TypePtr PredicateType::getMeet(ir::Type &_other) {
-    if (TypePtr pMeet = Type::getMeet(_other))
-        return pMeet;
+    SideType meet = _getMeet(_other);
+    if (meet.first || meet.second || _other.getKind() == FRESH)
+        return meet.first;
 
     if (_other.getKind() == FRESH)
         return NULL;
@@ -253,8 +254,9 @@ TypePtr PredicateType::getMeet(ir::Type &_other) {
 }
 
 TypePtr PredicateType::getJoin(ir::Type &_other) {
-    if (TypePtr pJoin = Type::getJoin(_other))
-        return pJoin;
+    SideType join = _getJoin(_other);
+    if (join.first || join.second || _other.getKind() == FRESH)
+        return join.first;
 
     if (_other.getKind() == FRESH)
         return NULL;

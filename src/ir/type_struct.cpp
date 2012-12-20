@@ -216,10 +216,9 @@ int StructType::compare(const Type & _other) const {
 }
 
 TypePtr StructType::getMeet(ir::Type &_other) {
-    TypePtr pMeet = Type::getMeet(_other);
-
-    if (pMeet || _other.getKind() == FRESH)
-        return pMeet;
+    SideType meet = _getMeet(_other);
+    if (meet.first || meet.second || _other.getKind() == FRESH)
+        return meet.first;
 
     const StructType &other = (const StructType &)_other;
     StructTypePtr pStruct = new StructType();
@@ -309,10 +308,9 @@ TypePtr StructType::getMeet(ir::Type &_other) {
 }
 
 TypePtr StructType::getJoin(ir::Type &_other) {
-    TypePtr pJoin = Type::getJoin(_other);
-
-    if (pJoin || _other.getKind() == FRESH)
-        return pJoin;
+    SideType join = _getJoin(_other);
+    if (join.first || join.second || _other.getKind() == FRESH)
+        return join.first;
 
     const StructType &other = (const StructType &)_other;
     StructTypePtr pStruct = new StructType();
@@ -360,7 +358,7 @@ TypePtr StructType::getJoin(ir::Type &_other) {
             j->second.second = NULL;
         }
 
-        pJoin = pType->getJoin(*pTypeOther);
+        TypePtr pJoin = pType->getJoin(*pTypeOther);
 
         if (!pJoin)
             return NULL;
@@ -382,7 +380,7 @@ TypePtr StructType::getJoin(ir::Type &_other) {
         NamedValuePtr pFieldOther = i->second.second;
 
         if (pField && pFieldOther) {
-            pJoin = pField->getType()->getMeet(*pFieldOther->getType());
+            TypePtr pJoin = pField->getType()->getMeet(*pFieldOther->getType());
             if (!pJoin)
                 return NULL;
             pStruct->getNamesSet().add(new NamedValue(pField->getName(), pJoin));
