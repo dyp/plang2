@@ -11,10 +11,12 @@
 class PrettyPrinterSyntax: public PrettyPrinterBase {
 public:
     PrettyPrinterSyntax(ir::Node &_node, std::wostream &_os) :
-        PrettyPrinterBase(_os), m_pNode(&_node), m_szDepth(0), m_bCompact(false), m_nFlags(0), m_bMergeLines(false), m_bSingleLine(false)
+        PrettyPrinterBase(_os), m_pNode(&_node), m_szDepth(0), m_bCompact(false), m_nFlags(0), m_bMergeLines(false), m_bSingleLine(false),
+        m_nLastFoundIdentifier(1)
     {}
     PrettyPrinterSyntax(std::wostream &_os, bool _bCompact = false, int _nFlags = 0) :
-        PrettyPrinterBase(_os), m_pNode(NULL), m_szDepth(0), m_bCompact(_bCompact), m_nFlags(_nFlags), m_bMergeLines(false), m_bSingleLine(false)
+        PrettyPrinterBase(_os), m_pNode(NULL), m_szDepth(0), m_bCompact(_bCompact), m_nFlags(_nFlags), m_bMergeLines(false), m_bSingleLine(false),
+        m_nLastFoundIdentifier(1)
     {}
 
     void run();
@@ -78,6 +80,7 @@ protected:
     virtual bool traverseLemmaDeclaration(ir::LemmaDeclaration &_stmt);
 
     // NODE / NAMED_VALUE
+    std::wstring getNamedValueName(ir::NamedValue &_val);
     virtual bool visitNamedValue(ir::NamedValue &_val);
 
     // NODE / EXPRESSION
@@ -133,7 +136,10 @@ private:
     int m_nFlags;
     bool m_bMergeLines, m_bCompact, m_bSingleLine;
     std::set<std::wstring> m_usedLabels;
-    std::multimap<ir::NodePtr, ir::NodePtr> m_decls, m_params, m_deps;
+    std::map<ir::NamedValuePtr, std::wstring> m_identifiers;
+    std::set<std::wstring> m_usedIdentifiers;
+    int m_nLastFoundIdentifier;
+    std::multimap<ir::NodePtr, ir::NodePtr> m_decls, m_deps;
 
     void _buildDependencies(ir::NodePtr _pRoot);
     void _topologicalSort(const ir::NodePtr& _pDecl, std::list<ir::NodePtr>& _sorted);
