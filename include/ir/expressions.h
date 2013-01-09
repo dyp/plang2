@@ -1337,7 +1337,7 @@ public:
         _pred.getInParams().appendClones(getInParams(), _cloner);
         _pred.getOutParams().appendClones(getOutParams(), _cloner);
         _pred.setPreCondition(_cloner.get(getPreCondition()));
-        _pred.setPostCondition(_cloner.get(getPreCondition()));
+        _pred.setPostCondition(_cloner.get(getPostCondition()));
         _pred.setBlock(_cloner.get(getBlock()));
         _pred.setMeasure(_cloner.get(getMeasure()));
     }
