@@ -153,9 +153,9 @@ public:
         llir::Types::const_iterator iType2 = other.m_fieldTypes.begin();
 
         for (; iType != m_fieldTypes.end(); ++ iType, ++ iType2) {
-            if (* iType < * iType2)
+            if (**iType < **iType2)
                 return true;
-            if (* iType2 < * iType)
+            if (**iType2 < **iType)
                 return false;
         }
 
