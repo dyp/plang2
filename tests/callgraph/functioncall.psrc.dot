@@ -1,0 +1,11 @@
+digraph G {
+bar(predicate( : ) a, predicate( : ) b : int z) -> bar2
+bar(predicate( : ) a, predicate( : ) b : int z) -> bar3
+bar(predicate( : ) a, predicate( : ) b : int z) -> bar4
+baz -> bar(predicate( : ) a, predicate( : ) b : int z)
+baz -> bar4
+baz -> quux
+quux -> bar2
+quux -> bar4
+quux -> bar5
+}

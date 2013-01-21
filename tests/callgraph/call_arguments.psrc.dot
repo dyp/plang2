@@ -1,0 +1,8 @@
+digraph G {
+bar -> foo
+bar -> foo1
+bar -> foo2
+baz -> bar
+quux -> bar
+quux -> baz
+}

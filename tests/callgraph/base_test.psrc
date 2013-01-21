@@ -1,0 +1,16 @@
+type P = predicate(:);
+
+foo1(:);
+foo2(:);
+foo3(:);
+foo4(:);
+
+strukt(struct (P q, P w) s:)
+{   s.q(:); }
+
+baz(P i:){
+    P c = foo2;
+    c(:);
+    foo3(:);
+    strukt((foo3, foo4):);
+}

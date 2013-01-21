@@ -22,6 +22,17 @@ macro(run_pp_tests FLAGS TESTS)
     endforeach()
 endmacro()
 
+macro(run_cg_tests FLAGS TESTS)
+    foreach(TEST ${TESTS})
+        add_test(${TEST}
+            ${PROJECT_SOURCE_DIR}/tools/test_cg.sh
+            ${PROJECT_SOURCE_DIR}/tools
+            ${PROJECT_BINARY_DIR}/src
+            ${PROJECT_SOURCE_DIR}/tests/${TEST}
+            ${FLAGS})
+    endforeach()
+endmacro()
+
 set(TESTS_PARSING
     parsing/logic_mul.psrc
     parsing/logic_gcd.psrc
@@ -72,6 +83,17 @@ set(TESTS_PRETTYPRINTER
     prettyprinter/decls_order.psrc
 )
 
+set(TESTS_CALLGRAPH
+    callgraph/base_test.psrc
+    callgraph/multiple_calls.psrc
+    callgraph/lambda.psrc
+    callgraph/functioncall.psrc
+    callgraph/call_results.psrc
+    callgraph/call_arguments.psrc
+    callgraph/same_names.psrc
+)
+
 run_tests("-t0" "${TESTS_PARSING}")
 run_tests("-t2" "${TESTS_INFERENCE}")
 run_pp_tests("-t0" "${TESTS_PRETTYPRINTER}")
+run_cg_tests("-t2" "${TESTS_CALLGRAPH}")

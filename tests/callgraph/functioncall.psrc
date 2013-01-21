@@ -1,0 +1,27 @@
+type P = predicate(:);
+
+bar(:) {}
+
+bar(P a, P b:int z) {
+    a(:);
+    b(:);
+}
+bar2(:) {}
+bar3(:) {}
+bar4(:) {}
+bar5(:) {}
+
+foo(:int z);
+
+quux(P a:P z) {
+    a(:);
+    z = a;
+}
+
+baz() {
+    predicate(P, P:int) d = bar;
+    int x1 = d(bar2, bar3) + 1;
+    int x2 = d(quux(bar4), quux(bar5)) + 1;
+    P a = quux(bar2);
+    a(:);
+}

@@ -1,0 +1,16 @@
+// Not working test for call results.
+type P = predicate(:);
+
+foo(:);
+foo1(:);
+baz(P a:P z) {
+    z = a;
+}
+quux(:) {
+    baz(foo:P c);
+    c(:);
+
+    baz(foo1:P f);
+    f(:);
+}
+

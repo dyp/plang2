@@ -1,0 +1,3 @@
+digraph G {
+baz -> bar(predicate( : ) a, predicate( : ) b : )
+}

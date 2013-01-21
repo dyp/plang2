@@ -1,0 +1,17 @@
+type P = predicate(:);
+
+baz(predicate (:) a :) {
+    a(:);
+}
+baz2(:) {}
+
+foo(:) {
+    baz(predicate (:) {baz(baz2:)}:);
+}
+
+foo2(:) {
+    P a = predicate (:) {baz2(:)};
+    a(:)
+}
+
+
