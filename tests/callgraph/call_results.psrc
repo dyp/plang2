@@ -1,0 +1,25 @@
+type P = predicate(:);
+
+foo(:);
+foo1(:);
+baz(P a:P z) {
+    z = a;
+    z(:);
+}
+baz1(P a:P z) {
+    baz(a:z);
+    z(:);
+}
+quux(:) {
+    P c;
+    baz1(foo:P c);
+    c(:);
+
+    predicate (P:P) d = baz;
+    P e = foo1;
+    P f;
+    d(e:f);
+    f(:);
+}
+
+

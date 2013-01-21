@@ -1,0 +1,22 @@
+// Test for a(b:...) , a and b - variables of predicate type.
+type P = predicate(:);
+
+foo(:);
+foo1(:);
+foo2(:);
+bar(P _foo:) {
+    _foo(:);
+}
+baz(predicate(P:) _bar, P _foo:) {
+    _bar(_foo:);
+}
+quux(:) {
+    baz(bar, foo:);
+
+    P d = foo1;
+    predicate (P:) b = bar;
+    b(d:);
+    b(foo2:);
+}
+
+

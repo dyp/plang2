@@ -1,0 +1,11 @@
+type P = predicate(:);
+
+bar(:) {}
+
+bar(P a, P b:) {}
+bar2(:) {}
+bar3(:) {}
+
+baz() {
+    bar(bar2, bar3:);
+}
