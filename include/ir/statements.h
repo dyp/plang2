@@ -149,7 +149,7 @@ public:
     const Collection<VariableDeclaration> &getDeclarations() const { return m_decls; }
 
     virtual NodePtr clone(Cloner &_cloner) const {
-        CallPtr pCopy = NEW_CLONE(this, _cloner, Call(_cloner.get(getPredicate()), _cloner.get(getLabel())));
+        CallPtr pCopy = NEW_CLONE(this, _cloner, Call(_cloner.get(getPredicate(), true), _cloner.get(getLabel())));
         pCopy->getArgs().appendClones(getArgs(), _cloner);
         pCopy->getBranches().appendClones(getBranches(), _cloner);
         pCopy->getDeclarations().appendClones(getDeclarations(), _cloner);
@@ -525,7 +525,7 @@ public:
     const Collection<Expression> &getArgs() const { return m_args; }
 
     virtual NodePtr clone(Cloner &_cloner) const {
-        SendPtr pCopy = NEW_CLONE(this, _cloner, Send(_cloner.get(getReceiver()), _cloner.get(getMessage()), _cloner.get(getLabel())));
+        SendPtr pCopy = NEW_CLONE(this, _cloner, Send(_cloner.get(getReceiver(), true), _cloner.get(getMessage()), _cloner.get(getLabel())));
         pCopy->getArgs().appendClones(getArgs(), _cloner);
         return pCopy;
     }

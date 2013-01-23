@@ -413,7 +413,7 @@ public:
     virtual bool matches(const Expression& _other, MatchesPtr _pMatches = NULL) const;
 
     virtual NodePtr clone(Cloner &_cloner) const {
-        return NEW_CLONE(this, _cloner, PredicateReference(m_strName, _cloner.get(m_pTarget), _cloner.get(getType())));
+        return NEW_CLONE(this, _cloner, PredicateReference(m_strName, _cloner.get(m_pTarget, true), _cloner.get(getType())));
     }
 
 private:
@@ -1194,7 +1194,7 @@ public:
     virtual bool matches(const Expression& _other, MatchesPtr _pMatches = NULL) const;
 
     virtual NodePtr clone(Cloner &_cloner) const {
-        FormulaCallPtr pExpr = NEW_CLONE(this, _cloner, FormulaCall(_cloner.get(getTarget())));
+        FormulaCallPtr pExpr = NEW_CLONE(this, _cloner, FormulaCall(_cloner.get(getTarget(), true)));
         pExpr->getArgs().appendClones(getArgs(), _cloner);
         return pExpr;
     }
@@ -1570,7 +1570,7 @@ public:
     virtual bool equals(const Node& _other) const;
 
     virtual NodePtr clone(Cloner &_cloner) const {
-        UnionConstructorPtr pCopy = NEW_CLONE(this, _cloner, UnionConstructor(getName(), _cloner.get(getPrototype())));
+        UnionConstructorPtr pCopy = NEW_CLONE(this, _cloner, UnionConstructor(getName(), _cloner.get(getPrototype(), true)));
         pCopy->getDeclarations().appendClones(getDeclarations(), _cloner);
         return pCopy;
     }
