@@ -214,7 +214,7 @@ public:
     }
 
     virtual NodePtr clone(Cloner &_cloner) const {
-        return NEW_CLONE(this, _cloner, Variable(m_kind == LOCAL, getName(), _cloner.get(getType()), isMutable(), _cloner.get(getDeclaration())));
+        return NEW_CLONE(this, _cloner, Variable(m_kind == LOCAL, getName(), _cloner.get(getType()), isMutable(), _cloner.get(getDeclaration(), true)));
     }
 
 private:
@@ -542,7 +542,7 @@ public:
     void setAncestor(const ClassPtr &_pClass) { m_pAncestor = _pClass; }
 
     virtual NodePtr clone(Cloner &_cloner) const {
-        ClassPtr pCopy = NEW_CLONE(this, _cloner, Class(getName(), _cloner.get(getAncestor())));
+        ClassPtr pCopy = NEW_CLONE(this, _cloner, Class(getName(), _cloner.get(getAncestor(), true)));
         cloneTo(*pCopy, _cloner);
         return pCopy;
     }

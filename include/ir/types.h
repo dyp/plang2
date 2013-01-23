@@ -88,7 +88,7 @@ public:
     virtual bool equals(const Type &_other) const;
 
     virtual NodePtr clone(Cloner &_cloner) const {
-        NamedReferenceTypePtr pCopy = NEW_CLONE(this, _cloner, NamedReferenceType(_cloner.get(getDeclaration())));
+        NamedReferenceTypePtr pCopy = NEW_CLONE(this, _cloner, NamedReferenceType(_cloner.get(getDeclaration(), true)));
         pCopy->getArgs().appendClones(getArgs(), _cloner);
         return pCopy;
     }
