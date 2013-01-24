@@ -376,7 +376,10 @@ ExpressionPtr Parser::parseComponent(Context &_ctx, Expression &_base) {
     Context &ctx = *_ctx.createChild(false);
     ExpressionPtr pExpr;
 
-    if (ctx.is(DOT)) {
+    if (ctx.is(DOT) && ctx.nextIn(LBRACKET, LPAREN, MAP_LBRACKET)) {
+        ++ctx;
+        pExpr = parseReplacement(ctx, _base);
+    } else if (ctx.is(DOT)) {
         const std::wstring &fieldName = ctx.scan(2, 1);
         ComponentPtr pExpr = new FieldExpr(fieldName);
 
@@ -386,9 +389,6 @@ ExpressionPtr Parser::parseComponent(Context &_ctx, Expression &_base) {
         return pExpr;
     } else if (ctx.is(LBRACKET)) {
         pExpr = parseArrayPart(ctx, _base);
-
-        if (!pExpr)
-            pExpr = parseReplacement(ctx, _base);
     } else if (ctx.is(LPAREN)) {
         if (_base.getKind() == Expression::TYPE) {
             pExpr = parseExpression(ctx);
@@ -409,11 +409,6 @@ ExpressionPtr Parser::parseComponent(Context &_ctx, Expression &_base) {
 
         if (!pExpr)
             pExpr = parseBinder(ctx, _base);
-
-        if (!pExpr)
-            pExpr = parseReplacement(ctx, _base);
-    } else if (ctx.in(MAP_LBRACKET, FOR)) {
-        pExpr = parseReplacement(ctx, _base);
     }
 
     if (!pExpr)

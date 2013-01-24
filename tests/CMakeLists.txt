@@ -31,6 +31,7 @@ set(TESTS_PARSING
     parsing/subformula_args.psrc
     parsing/array_subtype.psrc
     parsing/quantifier.psrc
+    parsing/replacement.psrc
 )
 
 set(TESTS_INFERENCE
