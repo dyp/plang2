@@ -446,7 +446,7 @@ std::wstring getNewFieldName(std::set<std::wstring>& _usedNames) {
     std::wstring strName;
 
     do {
-        std::wstring strName = intToAlpha(i++);
+        strName = intToAlpha(i++);
     } while (!_usedNames.insert(strName).second);
 
     return strName;
@@ -1022,6 +1022,10 @@ bool PrettyPrinterSyntax::traverseVariable(Variable &_val) {
 bool PrettyPrinterSyntax::traverseVariableDeclaration(VariableDeclaration &_stmt) {
     VISITOR_ENTER(VariableDeclaration, _stmt);
     VISITOR_TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
+
+    if (_stmt.getVariable()->isMutable())
+        m_os << "mutable ";
+
     VISITOR_TRAVERSE(Variable, VarDeclVar, _stmt.getVariable(), _stmt, VariableDeclaration, setVariable);
 
     if (_stmt.getValue()) {

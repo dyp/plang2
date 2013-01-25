@@ -160,6 +160,7 @@ public:
         ALLOW_INITIALIZATION = 0x08,
         LOCAL_VARIABLE = 0x10,
         PART_OF_LIST = 0x20,
+        IS_MUTABLE = 0x40
     };
 
     // Expression parsing constants.
@@ -1179,10 +1180,11 @@ PredicatePtr Parser::parsePredicate(Context &_ctx) {
 
 VariableDeclarationPtr Parser::parseVariableDeclaration(Context &_ctx, int _nFlags) {
     Context &ctx = *_ctx.createChild(false);
-    const bool bMutable = ctx.consume(MUTABLE);
+    bool bMutable = (_nFlags & IS_MUTABLE);
     TypePtr pType;
 
     if ((_nFlags & PART_OF_LIST) == 0) {
+        bMutable |= ctx.consume(MUTABLE);
         pType = parseType(ctx);
 
         if (!pType)
@@ -1639,6 +1641,8 @@ bool Parser::parseParamList(Context &_ctx, Collection<_Param> &_params,
             || ((_nFlags & ALLOW_EMPTY_NAMES) && isTypeName(ctx, ctx.getValue()));
 
         if (bNeedType) {
+            if (ctx.consume(MUTABLE))
+                _nFlags |= IS_MUTABLE;
             pType = parseType(ctx);
             if (!pType)
                 ERROR(ctx, false, L"Type required");
@@ -2827,7 +2831,7 @@ bool Parser::parseDeclarations(Context &_ctx, Module &_module) {
             CASE_BUILTIN_TYPE:
             case MUTABLE: {
                 Collection<VariableDeclaration> decls;
-                parseParamList(*pCtx, decls, &Parser::parseVariableDeclaration);
+                parseParamList(*pCtx, decls, &Parser::parseVariableDeclaration, ALLOW_INITIALIZATION | PART_OF_LIST);
                 if (decls.empty())
                     ERROR(* pCtx, false, L"Failed parsing variable declaration");
                 _module.getVariables().append(decls);
