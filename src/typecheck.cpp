@@ -558,6 +558,9 @@ public:
         if (predicetes.empty())
             return true;
 
+        if (_ref.getTarget())
+            _ref.setTarget(NULL);
+
         for (size_t i=0; i<predicetes.size(); ++i) {
             ir::PredicatePtr pPredicate = predicetes.get(i);
             ir::TypePtr pType = pPredicate->getType();
