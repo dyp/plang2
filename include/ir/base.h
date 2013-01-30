@@ -245,7 +245,7 @@ public:
     }
 
     virtual bool less(const Node& _other) const {
-        if (_Base::equals(_other))
+        if (!_Base::equals(_other))
             return _Base::less(_other);
         const Collection& other = (const Collection&)_other;
         if (size() != other.size())
