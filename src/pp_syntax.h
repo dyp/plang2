@@ -104,6 +104,7 @@ protected:
     virtual bool traverseBinary(ir::Binary &_node);
     virtual bool traverseTernary(ir::Ternary &_node);
     virtual bool traverseFormula(ir::Formula &_node);
+    virtual bool traverseReplacement(ir::Replacement &_expr);
     virtual bool traverseFunctionCall(ir::FunctionCall &_expr);
     virtual bool traverseFormulaCall(ir::FormulaCall &_node);
     virtual bool traverseStructFieldDefinition(ir::StructFieldDefinition &_cons);

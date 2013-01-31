@@ -1427,6 +1427,14 @@ bool PrettyPrinterSyntax::traverseFormula(ir::Formula &_node) {
     VISITOR_EXIT();
 }
 
+bool PrettyPrinterSyntax::traverseReplacement(Replacement &_expr) {
+    VISITOR_ENTER(Replacement, _expr);
+    VISITOR_TRAVERSE(Expression, ReplacementObject, _expr.getObject(), _expr, Component, setObject);
+    m_os << ".";
+    VISITOR_TRAVERSE(Constructor, ReplacementValue, _expr.getNewValues(), _expr, Replacement, setNewValues);
+    VISITOR_EXIT();
+}
+
 bool PrettyPrinterSyntax::traverseFunctionCall(ir::FunctionCall &_expr) {
     VISITOR_ENTER(FunctionCall, _expr);
     VISITOR_TRAVERSE(Expression, FunctionCallee, _expr.getPredicate(), _expr, FunctionCall, setPredicate);
@@ -1590,7 +1598,7 @@ bool PrettyPrinterSyntax::traverseListElementExpr(ListElementExpr &_expr) {
 }
 
 bool PrettyPrinterSyntax::visitConstructor(Constructor& _expr) {
-    if (getRole() == R_ReplacementValue || getRole() == R_CastParam)
+    if (getRole() == R_CastParam)
         m_os << L" ";
     return true;
 }
