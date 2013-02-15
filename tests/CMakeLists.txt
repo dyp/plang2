@@ -239,6 +239,7 @@ set(TESTS_CALLGRAPH
     callgraph/call_results.psrc
     callgraph/call_arguments.psrc
     callgraph/same_names.psrc
+    callgraph/printing_graph_SCC.psrc
 )
 
 set(TESTS_SEMANTICS
@@ -291,7 +292,15 @@ run_tests("-t2" "${TESTS_INFERENCE}")
 run_tests("-t3" "${TESTS_REWRITING}")
 run_tests("-t1" "${TESTS_SEMANTICS}")
 run_pp_tests("-t0" "${TESTS_PRETTYPRINTER}")
-run_cg_tests("-t2" "${TESTS_CALLGRAPH}")
+
+find_program(SCCMAP sccmap)
+
+if(SCCMAP)
+    run_cg_tests("-t2" "${TESTS_CALLGRAPH}")
+else()
+    message(STATUS "WARNING: 'sccmap' was not found. Not generating some tests.")
+endif()
+
 run_ot_tests("-t2" "${TESTS_TRASFORMATION}")
 run_st_matching("-t0" "${TESTS_STATEMENT_TREE_MATCHING}")
 run_st("-t0" "${TESTS_STATEMENT_TREE}")

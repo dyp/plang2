@@ -9,17 +9,24 @@ echo "[ Test   ]" `basename $TEST`
 
 EXPECTED=$TEST.dot
 RESULT=`mktemp`
+EXPECTED2=`mktemp`
+cp $EXPECTED $EXPECTED2
 
 $BIN_DIR/plang -pcg $@ $TEST > $RESULT
-diff -b $RESULT $EXPECTED >/dev/null 2>&1
+sccmap -d -S $TEST.dot >> $EXPECTED2
+$CUR_DIR/test_cg_sort.py $RESULT
+$CUR_DIR/test_cg_sort.py $EXPECTED2
+diff -b $RESULT $EXPECTED2 >/dev/null 2>&1
 
 if [ "$?" = "0" ]; then
     echo "[ \033[0;32mPassed\033[0m ]"
     rm $RESULT
+    rm $EXPECTED2
     exit 0
 else
     echo "[ \033[0;31mFailed\033[0m ]"
-    diff -u $RESULT $EXPECTED
+    diff -u -b $RESULT $EXPECTED2
     rm $RESULT
+    rm $EXPECTED2
     exit 1
 fi

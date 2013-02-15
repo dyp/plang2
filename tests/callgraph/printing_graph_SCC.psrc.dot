@@ -1,0 +1,16 @@
+digraph G {
+bar1 -> foo
+bar2 -> baz1
+baz -> bar
+baz1 -> bar1
+foo -> foo2
+foo3 -> foo2
+bar -> baz
+bar -> foo
+foo2 -> foo
+foo2 -> foo3
+foo2 -> foo2
+main -> bar2
+main -> baz
+main -> foo2
+}
