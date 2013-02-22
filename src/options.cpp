@@ -62,6 +62,24 @@ bool _handleTypeCheck(const std::string &_val, void *_p) {
 }
 
 static
+bool _handleTransformation(const std::string &_val, void *_p) {
+    Options &opts = *(Options *)_p;
+
+    if (_val == "none" || _val == "0")
+        opts.transformation = OT_NONE;
+    else if (_val == "tailrec" || _val == "1")
+        opts.transformation = OT_TRE;
+    else if (_val == "predinline" || _val == "2")
+        opts.transformation = OT_PI;
+    else if (_val == "varmerge" || _val == "3")
+        opts.transformation = OT_VM;
+    else
+        return false;
+
+    return true;
+}
+
+static
 bool _handleNotAnOption(const std::string &_val, void *_p) {
     Options &opts = *(Options *)_p;
     opts.args.push_back(_val);
@@ -76,6 +94,7 @@ void _printUsage() {
         << "    -p, --prettyprint=TYPE        Pretty-printer mode, where TYPE is 'none' (0), 'flat' (1), 'ast' (2), 'lex' (3), 'p' (4)\n"
         << "    -b, --backend=TYPE            Use backend, where TYPE is 'none' (0), 'pp' (1), 'c' (2), 'pvs' (3)\n"
         << "    -t, --typecheck=TYPE          Do typecheck, where TYPE is 'none' (0), 'on' (1), 'soft' (2)\n"
+        << "    -T, --transformation=TYPE     Do optimizing transformation, where TYPE is 'none' (0), 'tailrec' (1), 'predinline' (2), 'varmerge' (3)\n"
         << "    -o, --output=FILE             Output file name\n"
         << "    -v, --verbose                 Print debug info\n"
         << "    -O, --optimize                Optimize logical expressions\n"
@@ -90,6 +109,7 @@ bool Options::init(size_t _cArgs, const char **_pArgs) {
         { "prettyprint",     'p', _handlePrettyPrint, NULL,                        NULL,                          true  },
         { "backend",         'b', _handleBackEnd,     NULL,                        NULL,                          true  },
         { "typecheck",       't', _handleTypeCheck,   NULL,                        NULL,                          false },
+        { "transformation",  'T', _handleTransformation,NULL,                      NULL,                          true  },
         { "output",          'o', NULL,               NULL,                        &instance().strOutputFilename, false },
         { "verbose",         'v', NULL,               &instance().bVerbose,        NULL,                          false },
         { "help",            'h', NULL,               &bHelp,                      NULL,                          false },
@@ -121,6 +141,7 @@ Options::Options() :
     prettyPrint(PP_NONE),
     typeCheck(TC_ON),
     backEnd(BE_NONE),
+    transformation(OT_NONE),
     bOptimize(false),
     bCheckSemantics(false),
     bVerify(false),
