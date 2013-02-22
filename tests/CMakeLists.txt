@@ -33,6 +33,17 @@ macro(run_cg_tests FLAGS TESTS)
     endforeach()
 endmacro()
 
+macro(run_ot_tests FLAGS TESTS)
+    foreach(TEST ${TESTS})
+        add_test(${TEST}
+            ${PROJECT_SOURCE_DIR}/tools/test_ot.sh
+            ${PROJECT_SOURCE_DIR}/tools
+            ${PROJECT_BINARY_DIR}/src
+            ${PROJECT_SOURCE_DIR}/tests/${TEST}
+            ${FLAGS})
+    endforeach()
+endmacro()
+
 set(TESTS_PARSING
     parsing/logic_mul.psrc
     parsing/logic_gcd.psrc
@@ -103,8 +114,13 @@ set(TESTS_SEMANTICS
     semantics/arSum.psrc
 )
 
+set(TESTS_TRASFORMATION
+    transformation/tail_recursion.psrc
+)
+
 run_tests("-t0" "${TESTS_PARSING}")
 run_tests("-t2" "${TESTS_INFERENCE}")
 run_tests("-t1" "${TESTS_SEMANTICS}")
 run_pp_tests("-t0" "${TESTS_PRETTYPRINTER}")
 run_cg_tests("-t2" "${TESTS_CALLGRAPH}")
+run_ot_tests("-t2" "${TESTS_TRASFORMATION}")
