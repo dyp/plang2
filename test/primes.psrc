@@ -36,7 +36,7 @@ mainRec (nat n :) {
 }
 
 main (:) {
-	nat n = 10;
+	nat(32) n = 10;
 	mainRec (n :);
 }
 

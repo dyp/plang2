@@ -28,24 +28,25 @@ public:
     CGenerator * addChild();
     CGenerator * getChild();
 
-    std::wostream & generate(std::wostream & _os, const Module & _module);
-    std::wostream & generate(std::wostream & _os, const Function & _function);
-    std::wostream & generate(std::wostream & _os, const Type & _type);
-    std::wostream & generate(std::wostream & _os, const StructType & _struct);
+    std::wostream & generateModule(std::wostream & _os, const Module & _module);
+    std::wostream & generateFunction(std::wostream & _os, const Function & _function);
+    std::wostream & generateType(std::wostream & _os, const Type & _type);
+    std::wostream & generateStructType(std::wostream & _os, const StructType & _struct);
     std::wostream & generateTypeDef(std::wostream & _os, const Type & _type);
-    std::wostream & generate(std::wostream & _os, const Constant & _const);
+    std::wostream & generateConst(std::wostream & _os, const Constant & _const);
 
-    std::wostream & generate(std::wostream & _os, const Instruction & _instr, bool _bInline, bool _bLast);
-    std::wostream & generate(std::wostream & _os, const Binary & _instr);
-    std::wostream & generate(std::wostream & _os, const Unary & _instr);
-    std::wostream & generate(std::wostream & _os, const Literal & _lit);
-    std::wostream & generate(std::wostream & _os, const Operand & _op);
-    std::wostream & generate(std::wostream & _os, const If & _instr);
-    std::wostream & generate(std::wostream & _os, const Call & _instr);
-    std::wostream & generate(std::wostream & _os, const Field & _instr);
-    std::wostream & generate(std::wostream & _os, const Cast & _instr);
-    std::wostream & generate(std::wostream & _os, const Copy & _instr);
-    std::wostream & generate(std::wostream & _os, const Switch & _instr);
+    std::wostream & generateInstruction(std::wostream & _os, const Instruction & _instr, bool _bInline, bool _bLast);
+    std::wostream & generateBinary(std::wostream & _os, const Binary & _instr);
+    std::wostream & generateUnary(std::wostream & _os, const Unary & _instr);
+    std::wostream & generateLiteral(std::wostream & _os, const Literal & _lit);
+    std::wostream & generateOperand(std::wostream & _os, const Operand & _op);
+    std::wostream & generateIf(std::wostream & _os, const If & _instr);
+    std::wostream & generateWhile(std::wostream & _os, const While & _instr);
+    std::wostream & generateCall(std::wostream & _os, const Call & _instr);
+    std::wostream & generateField(std::wostream & _os, const Field & _instr);
+    std::wostream & generateCast(std::wostream & _os, const Cast & _instr);
+    std::wostream & generateCopy(std::wostream & _os, const Copy & _instr);
+    std::wostream & generateSwitch(std::wostream & _os, const Switch & _instr);
 
     std::wstring resolveType(const void * _p) { return resolveName(& CGenerator::m_types, _p); }
 
@@ -169,7 +170,7 @@ bool CGenerator::canInline(const Instruction & _instr) const {
     return iInstr != m_inlinedInstrs.end() ? iInstr->second : NULL;
 }*/
 
-std::wostream & CGenerator::generate(std::wostream & _os, const Module & _module) {
+std::wostream & CGenerator::generateModule(std::wostream & _os, const Module & _module) {
 
     for (Functions::const_iterator iFunc = _module.functions().begin(); iFunc != _module.functions().end(); ++ iFunc)
         m_vars[iFunc->ptr()] = (* iFunc)->getName();
@@ -185,7 +186,7 @@ std::wostream & CGenerator::generate(std::wostream & _os, const Module & _module
         getChild()->generate(** iConst);*/
 
     for (Consts::const_iterator iConst = _module.consts().begin(); iConst != _module.consts().end(); ++ iConst)
-        getChild()->generate(_os, ** iConst);
+        getChild()->generateConst(_os, ** iConst);
 
     _os << "\n";
 
@@ -195,7 +196,7 @@ std::wostream & CGenerator::generate(std::wostream & _os, const Module & _module
     }
 
     for (Functions::const_iterator iFunc = _module.functions().begin(); iFunc != _module.functions().end(); ++ iFunc) {
-        getChild()->generate(_os, ** iFunc);
+        getChild()->generateFunction(_os, ** iFunc);
         _os << "\n";
     }
 
@@ -204,7 +205,7 @@ std::wostream & CGenerator::generate(std::wostream & _os, const Module & _module
     return _os;
 }
 
-std::wostream & CGenerator::generate(std::wostream & _os, const Literal & _lit) {
+std::wostream & CGenerator::generateLiteral(std::wostream & _os, const Literal & _lit) {
     switch (_lit.getKind()) {
         case Literal::NUMBER:
             return _os << L"(" << _lit.getNumber().toString() << L")";
@@ -223,10 +224,10 @@ std::wostream & CGenerator::generate(std::wostream & _os, const Literal & _lit) 
     return _os;
 }
 
-std::wostream & CGenerator::generate(std::wostream & _os, const Operand & _op) {
+std::wostream & CGenerator::generateOperand(std::wostream & _os, const Operand & _op) {
     switch (_op.getKind()) {
         case Operand::LITERAL:
-            return generate(_os, _op.getLiteral());
+            return generateLiteral(_os, _op.getLiteral());
         case Operand::VARIABLE: {
             inline_map_t::iterator iInstr = m_inlinedInstrs.find(_op.getVariable().ptr());
             //const Instruction * pInstr = getInlineByResult(_op.getVariable().ptr());
@@ -255,36 +256,36 @@ std::wostream & CGenerator::generate(std::wostream & _os, const Operand & _op) {
     return _os;
 }
 
-std::wostream & CGenerator::generate(std::wostream & _os, const Binary & _instr) {
+std::wostream & CGenerator::generateBinary(std::wostream & _os, const Binary & _instr) {
 
     if (_instr.getBinaryKind() == Binary::JMZ || _instr.getBinaryKind() == Binary::JNZ) {
         _os << L"if (";
 
         if (_instr.getBinaryKind() == Binary::JMZ) {
             _os << L"! (";
-            generate(_os, _instr.getOp1());
+            generateOperand(_os, _instr.getOp1());
             _os << L")";
         } else
-            generate(_os, _instr.getOp1());
+            generateOperand(_os, _instr.getOp1());
 
         _os << L") goto ";
-        generate(_os, _instr.getOp2());
+        generateOperand(_os, _instr.getOp2());
 
         return _os;
     } else if (_instr.getBinaryKind() == Binary::STORE) {
         _os << L"(* ";
-        generate(_os, _instr.getOp1());
+        generateOperand(_os, _instr.getOp1());
         _os << L") = ";
-        generate(_os, _instr.getOp2());
+        generateOperand(_os, _instr.getOp2());
 
         return _os;
     }
 
     switch (_instr.getBinaryKind()) {
         case Binary::SET:
-            generate(_os, _instr.getOp1());
+            generateOperand(_os, _instr.getOp1());
             _os << L" = ";
-            generate(_os, _instr.getOp2());
+            generateOperand(_os, _instr.getOp2());
             return _os;
     }
 
@@ -292,7 +293,7 @@ std::wostream & CGenerator::generate(std::wostream & _os, const Binary & _instr)
 
     _os << L"(";
 //    _os << L"(";
-    generate(_os, _instr.getOp1());
+    generateOperand(_os, _instr.getOp1());
 //    _os << L")";
 
     switch (_instr.getBinaryKind()) {
@@ -373,34 +374,34 @@ std::wostream & CGenerator::generate(std::wostream & _os, const Binary & _instr)
     }
 
     _os << L" " << strInstr << L" ";
-    generate(_os, _instr.getOp2());
+    generateOperand(_os, _instr.getOp2());
     //_os << L")";
     _os << L")";
 
     return _os;
 }
 
-std::wostream & CGenerator::generate(std::wostream & _os, const Unary & _instr) {
+std::wostream & CGenerator::generateUnary(std::wostream & _os, const Unary & _instr) {
 //    std::wstring strInstr = L"!!!";
 
     switch (_instr.getUnaryKind()) {
         case Unary::RETURN:
             _os << L"return ";
-            generate(_os, _instr.getOp());
+            generateOperand(_os, _instr.getOp());
             break;
         case Unary::PTR:
             _os << L"(& ";
-            generate(_os, _instr.getOp());
+            generateOperand(_os, _instr.getOp());
             _os << L")";
             break;
         case Unary::LOAD:
             _os << L"(* ";
-            generate(_os, _instr.getOp());
+            generateOperand(_os, _instr.getOp());
             _os << L")";
             break;
         case Unary::MALLOC:
             _os << L"__p_alloc(";
-            generate(_os, _instr.getOp());
+            generateOperand(_os, _instr.getOp());
             _os << L")";
             break;
         /*case Unary::Free: strInstr = L"free"; break;
@@ -409,22 +410,22 @@ std::wostream & CGenerator::generate(std::wostream & _os, const Unary & _instr) 
         case Unary::UnrefNd: strInstr = L"unrefnd"; break;*/
         case Unary::JMP:
             _os << L"goto ";
-            generate(_os, _instr.getOp());
+            generateOperand(_os, _instr.getOp());
             break;
     }
 
     return _os;
 }
 
-std::wostream & CGenerator::generate(std::wostream & _os, const Call & _instr) {
+std::wostream & CGenerator::generateCall(std::wostream & _os, const Call & _instr) {
     _os << L"(";
-    generate(_os, _instr.getFunction());
+    generateOperand(_os, _instr.getFunction());
     _os << L") (";
 
     size_t cArgs = _instr.args().size();
 
     for (Operands::const_iterator iArg = _instr.args().begin(); iArg != _instr.args().end(); ++ iArg, -- cArgs) {
-        generate(_os, * iArg);
+        generateOperand(_os, * iArg);
         if (cArgs > 1)
             _os << L", ";
     }
@@ -434,15 +435,15 @@ std::wostream & CGenerator::generate(std::wostream & _os, const Call & _instr) {
     return _os;
 }
 
-std::wostream & CGenerator::generate(std::wostream & _os, const If & _instr) {
+std::wostream & CGenerator::generateIf(std::wostream & _os, const If & _instr) {
     _os << L"if (";
-    generate(_os, _instr.getCondition()) << L") {\n";
+    generateOperand(_os, _instr.getCondition()) << L") {\n";
 
     if (! _instr.brTrue().empty()) {
         Instructions::const_iterator iLast = ::prev(_instr.brTrue().end());
         ++ m_nLevel;
         for (Instructions::const_iterator iInstr = _instr.brTrue().begin(); iInstr != _instr.brTrue().end(); ++ iInstr)
-            generate(_os, ** iInstr, false, iInstr == iLast);
+            generateInstruction(_os, ** iInstr, false, iInstr == iLast);
         -- m_nLevel;
     }
 
@@ -451,7 +452,7 @@ std::wostream & CGenerator::generate(std::wostream & _os, const If & _instr) {
         Instructions::const_iterator iLast = ::prev(_instr.brFalse().end());
         ++ m_nLevel;
         for (Instructions::const_iterator iInstr = _instr.brFalse().begin(); iInstr != _instr.brFalse().end(); ++ iInstr)
-            generate(_os, ** iInstr, false, iInstr == iLast);
+            generateInstruction(_os, ** iInstr, false, iInstr == iLast);
         -- m_nLevel;
     }
 
@@ -460,7 +461,24 @@ std::wostream & CGenerator::generate(std::wostream & _os, const If & _instr) {
     return _os;
 }
 
-std::wostream & CGenerator::generate(std::wostream & _os, const Type & _type) {
+std::wostream & CGenerator::generateWhile(std::wostream & _os, const While & _instr) {
+    _os << L"while (";
+    generateOperand(_os, _instr.getCondition()) << L") {\n";
+
+    if (! _instr.getBlock().empty()) {
+        Instructions::const_iterator iLast = ::prev(_instr.getBlock().end());
+        ++ m_nLevel;
+        for (Instructions::const_iterator iInstr = _instr.getBlock().begin(); iInstr != _instr.getBlock().end(); ++ iInstr)
+            generateInstruction(_os, ** iInstr, false, iInstr == iLast);
+        -- m_nLevel;
+    }
+
+    _os << fmtIndent(L"}");
+
+    return _os;
+}
+
+std::wostream & CGenerator::generateType(std::wostream & _os, const Type & _type) {
     std::wstring strName = resolveType(& _type);
 
     if (! strName.empty())
@@ -490,10 +508,10 @@ std::wostream & CGenerator::generate(std::wostream & _os, const Type & _type) {
         case Type::Quad:    return m_os << "quad";*/
 
         case Type::STRUCT:
-            return generate(_os, (StructType &) _type);
+            return generateStructType(_os, (StructType &) _type);
 
         case Type::POINTER:
-            generate(_os, * ((PointerType &) _type).getBase());
+            generateType(_os, * ((PointerType &) _type).getBase());
             _os << L" *";
             return _os;
     }
@@ -501,35 +519,35 @@ std::wostream & CGenerator::generate(std::wostream & _os, const Type & _type) {
     return _os << L"t" << _type.getKind();
 }
 
-std::wostream & CGenerator::generate(std::wostream & _os, const Field & _instr) {
+std::wostream & CGenerator::generateField(std::wostream & _os, const Field & _instr) {
     _os << L"& ";
-    generate(_os, _instr.getOp()) << L"->f";
+    generateOperand(_os, _instr.getOp()) << L"->f";
     _os << _instr.getIndex();
     return _os;
 }
 
-std::wostream & CGenerator::generate(std::wostream & _os, const Cast & _instr) {
+std::wostream & CGenerator::generateCast(std::wostream & _os, const Cast & _instr) {
     _os << L"(";
-    generate(_os, * _instr.getType());
+    generateType(_os, * _instr.getType());
     _os << L") ";
-    generate(_os, _instr.getOp());
+    generateOperand(_os, _instr.getOp());
     return _os;
 }
 
-std::wostream & CGenerator::generate(std::wostream & _os, const Copy & _instr) {
+std::wostream & CGenerator::generateCopy(std::wostream & _os, const Copy & _instr) {
     _os << L"memcpy(";
-    generate(_os, _instr.getDest());
+    generateOperand(_os, _instr.getDest());
     _os << L", ";
-    generate(_os, _instr.getSrc());
+    generateOperand(_os, _instr.getSrc());
     _os << L", ";
-    generate(_os, _instr.getSize());
+    generateOperand(_os, _instr.getSize());
     _os << L")";
     return _os;
 }
 
-std::wostream & CGenerator::generate(std::wostream & _os, const Switch & _instr) {
+std::wostream & CGenerator::generateSwitch(std::wostream & _os, const Switch & _instr) {
     _os << L"switch (";
-    generate(_os, _instr.getArg()) << L") {\n";
+    generateOperand(_os, _instr.getArg()) << L") {\n";
     ++ m_nLevel;
     for (SwitchCases::const_iterator iCase = _instr.cases().begin(); iCase != _instr.cases().end(); ++ iCase) {
         for (size_t i = 0; i < iCase->values.size(); ++ i) {
@@ -539,7 +557,7 @@ std::wostream & CGenerator::generate(std::wostream & _os, const Switch & _instr)
 
         ++ m_nLevel;
         for (Instructions::const_iterator iInstr = iCase->body.begin(); iInstr != iCase->body.end(); ++ iInstr)
-            generate(_os, ** iInstr, false, false);
+            generateInstruction(_os, ** iInstr, false, false);
         _os << fmtIndent(L"break;") << L"\n";
         -- m_nLevel;
     }
@@ -549,7 +567,7 @@ std::wostream & CGenerator::generate(std::wostream & _os, const Switch & _instr)
         Instructions::const_iterator iLast = ::prev(_instr.deflt().end());
         ++ m_nLevel;
         for (Instructions::const_iterator iInstr = _instr.deflt().begin(); iInstr != _instr.deflt().end(); ++ iInstr)
-            generate(_os, ** iInstr, false, iInstr == iLast);
+            generateInstruction(_os, ** iInstr, false, iInstr == iLast);
         -- m_nLevel;
     }
 
@@ -560,12 +578,12 @@ std::wostream & CGenerator::generate(std::wostream & _os, const Switch & _instr)
     return _os;
 }
 
-std::wostream & CGenerator::generate(std::wostream & _os,
+std::wostream & CGenerator::generateInstruction(std::wostream & _os,
         const Instruction & _instr, bool _bInline, bool _bLast)
 {
     if (! _bInline && canInline(_instr)) {
         std::wstringstream ss;
-        generate(ss, _instr, true, _bLast);
+        generateInstruction(ss, _instr, true, _bLast);
         m_inlinedInstrs[_instr.getResult().ptr()] = inline_instr_t(ss.str(), & _instr);
         return _os;
     }
@@ -595,31 +613,34 @@ std::wostream & CGenerator::generate(std::wostream & _os,
 
     switch (_instr.getKind()) {
         case Instruction::UNARY:
-            generate(_os, (Unary &) _instr);
+            generateUnary(_os, (Unary &) _instr);
             break;
         case Instruction::BINARY:
-            generate(_os, (Binary &) _instr);
+            generateBinary(_os, (Binary &) _instr);
             break;
         /*case Instruction::Select:
             generate((Select &) _instr);
             break;*/
         case Instruction::CALL:
-            generate(_os, (Call &) _instr);
+            generateCall(_os, (Call &) _instr);
             break;
         case Instruction::IF:
-            generate(_os, (If &) _instr);
+            generateIf(_os, (If &) _instr);
+            break;
+        case Instruction::WHILE:
+            generateWhile(_os, (While &) _instr);
             break;
         case Instruction::SWITCH:
-            generate(_os, (Switch &) _instr);
+            generateSwitch(_os, (Switch &) _instr);
             break;
         case Instruction::FIELD:
-            generate(_os, (Field &) _instr);
+            generateField(_os, (Field &) _instr);
             break;
         case Instruction::CAST:
-            generate(_os, (Cast &) _instr);
+            generateCast(_os, (Cast &) _instr);
             break;
         case Instruction::COPY:
-            generate(_os, (Copy &) _instr);
+            generateCopy(_os, (Copy &) _instr);
             break;
         /*default:
             m_os << L"nop";*/
@@ -637,9 +658,9 @@ std::wostream & CGenerator::generate(std::wostream & _os,
     return _os;
 }
 
-std::wostream & CGenerator::generate(std::wostream & _os, const Function & _function) {
+std::wostream & CGenerator::generateFunction(std::wostream & _os, const Function & _function) {
     if (_function.getResult()) {
-        getChild()->generate(_os, * _function.getReturnType());
+        getChild()->generateType(_os, * _function.getReturnType());
         _os << std::endl;
 
 /*        getChild()->m_vars[_function.getResult().ptr()] = L"r";
@@ -662,7 +683,7 @@ std::wostream & CGenerator::generate(std::wostream & _os, const Function & _func
         getChild()->m_args[iArg->ptr()] = strName;
 
         _os << getChild()->fmtIndent(L"");
-        getChild()->generate(_os, * (* iArg)->getType()) << " ";
+        getChild()->generateType(_os, * (* iArg)->getType()) << " ";
         _os << strName;
         if (cArgs > 1)
             _os << L",";
@@ -692,7 +713,7 @@ std::wostream & CGenerator::generate(std::wostream & _os, const Function & _func
     if (! _function.instructions().empty()) {
         Instructions::const_iterator iLast = ::prev(_function.instructions().end());
         for (Instructions::const_iterator iInstr = _function.instructions().begin(); iInstr != _function.instructions().end(); ++ iInstr)
-            getChild()->generate(ss, ** iInstr, false, iInstr == iLast);
+            getChild()->generateInstruction(ss, ** iInstr, false, iInstr == iLast);
     }
 
     for (name_map_t::iterator iVar = getChild()->m_vars.begin(); iVar != getChild()->m_vars.end(); ++ iVar) {
@@ -700,7 +721,7 @@ std::wostream & CGenerator::generate(std::wostream & _os, const Function & _func
 
         if (pVar->isUsed()) {
             _os << getChild()->fmtIndent(L"");
-            getChild()->generate(_os, * pVar->getType()) << " ";
+            getChild()->generateType(_os, * pVar->getType()) << " ";
             _os << iVar->second << L";" << std::endl;
         }
     }
@@ -762,7 +783,7 @@ std::wostream & CGenerator::generateTypeDef(std::wostream & _os, const Type & _t
     std::wstring strName = fmtInt(m_types.size(), L"td%llu");
 
     _os << L"typedef ";
-    generate(_os, _type);
+    generateType(_os, _type);
     _os << L" " << strName << L";\n\n";
 
     m_types[& _type] = strName;
@@ -770,14 +791,14 @@ std::wostream & CGenerator::generateTypeDef(std::wostream & _os, const Type & _t
     return _os;
 }
 
-std::wostream & CGenerator::generate(std::wostream & _os, const StructType & _struct) {
+std::wostream & CGenerator::generateStructType(std::wostream & _os, const StructType & _struct) {
     _os << L"struct {\n";
 
     size_t cField = 0;
 
     for (Types::const_iterator iType = _struct.fieldTypes().begin(); iType != _struct.fieldTypes().end(); ++ iType, ++ cField) {
         _os << fmtIndent(L"");
-        generate(_os, ** iType);
+        generateType(_os, ** iType);
         _os << L" " << fmtInt(cField, L"f%llu") << L";\n";
     }
 
@@ -787,7 +808,7 @@ std::wostream & CGenerator::generate(std::wostream & _os, const StructType & _st
 }
 
 
-std::wostream & CGenerator::generate(std::wostream & _os, const Constant & _const) {
+std::wostream & CGenerator::generateConst(std::wostream & _os, const Constant & _const) {
     std::wstring strName = fmtInt(m_nConst ++, L"c%llu");
 
     if (_const.getLiteral()->getKind() == Literal::STRING) {
@@ -796,12 +817,12 @@ std::wostream & CGenerator::generate(std::wostream & _os, const Constant & _cons
                 << "L\"" << _const.getLiteral()->getString() << L"\")";
     } else {
         _os << L"const ";
-        generate(_os, * _const.getType());
+        generateType(_os, * _const.getType());
         _os << L" " << strName;
 
         _os << L" = ";
 
-        generate(_os, * _const.getLiteral());
+        generateLiteral(_os, * _const.getLiteral());
     }
 
     /*if (_const.getType()->getKind() == Type::WChar) {
@@ -818,7 +839,7 @@ std::wostream & CGenerator::generate(std::wostream & _os, const Constant & _cons
 void generateC(const Module & _module, std::wostream & _os) {
     CGenerator gen;
 
-    gen.generate(_os, _module);
+    gen.generateModule(_os, _module);
 }
 
 };

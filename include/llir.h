@@ -323,6 +323,7 @@ public:
         CALL,
         BUILTIN,
         IF,
+        WHILE,
         SWITCH,
         SELECT,
         FIELD,
@@ -359,8 +360,6 @@ public:
     Function(const std::wstring & _strName, const Auto<Type> & _returnType)
         : Variable(new Type(Type::FUNCTION)), m_strName(_strName), m_result(new Variable(_returnType)) {}
 
-    ~Function() { /*freeList(m_instructions);*/ }
-
     const std::wstring & getName() const { return m_strName; }
 
     const Auto<Type> & getReturnType() const { return m_result->getType(); }
@@ -388,7 +387,6 @@ typedef std::list<Auto<Function> > Functions;
 
 class Module : public Counted {
 public:
-    ~Module() { /*freeList(m_functions);*/ }
 
     Functions & functions() { return m_functions; }
     const Functions & functions() const { return m_functions; }
@@ -629,10 +627,6 @@ private:
 class If : public Instruction {
 public:
     If(const Operand & _condition) : m_condition(_condition) {}
-    virtual ~If() {
-        /*freeList(m_brTrue);
-        freeList(m_brFalse);*/
-    }
 
     virtual int getKind() const { return Instruction::IF; }
     const Operand & getCondition() const { return m_condition; }
@@ -647,6 +641,23 @@ public:
 private:
     Operand m_condition;
     Instructions m_brTrue, m_brFalse;
+};
+
+class While : public Instruction {
+public:
+    While(const Operand & _condition) : m_condition(_condition) {}
+
+    virtual int getKind() const { return Instruction::WHILE; }
+    const Operand & getCondition() const { return m_condition; }
+    Operand & getCondition() { return m_condition; }
+    void setCondition(const Operand & _op) { m_condition = _op; }
+
+    Instructions & getBlock() { return m_block; }
+    const Instructions & getBlock() const { return m_block; }
+
+private:
+    Operand m_condition;
+    Instructions m_block;
 };
 
 class Cast : public Instruction {

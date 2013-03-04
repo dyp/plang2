@@ -73,6 +73,9 @@ void ProcessLL::processInstruction(Instruction & _instr) {
         case Instruction::IF:
             processIf((If &) _instr);
             break;
+        case Instruction::WHILE:
+            processWhile((While &) _instr);
+            break;
         case Instruction::SWITCH:
             processSwitch((Switch &) _instr);
             break;
@@ -108,6 +111,11 @@ void ProcessLL::processIf(If & _instr) {
     processOperand(_instr.getCondition());
     processInstructions(_instr.brTrue());
     processInstructions(_instr.brFalse());
+}
+
+void ProcessLL::processWhile(While & _instr) {
+    processOperand(_instr.getCondition());
+    processInstructions(_instr.getBlock());
 }
 
 void ProcessLL::processSwitch(Switch & _instr) {

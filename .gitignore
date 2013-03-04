@@ -19,3 +19,6 @@ vgcore.*
 
 # Old test directory. New tests should be added to /tests/ and be runnable by CTest.
 /test/
+
+#Temp files.
+*~
