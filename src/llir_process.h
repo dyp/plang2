@@ -28,6 +28,7 @@ public:
     virtual void processBinary(Binary & _instr);
     virtual void processCall(Call & _instr);
     virtual void processIf(If & _instr);
+    virtual void processWhile(While & _instr);
     virtual void processSwitch(Switch & _instr);
     virtual void processSelect(Select & _instr);
     virtual void processField(Field & _instr);
