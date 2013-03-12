@@ -8,6 +8,7 @@
 #include "pp_syntax.h"
 
 #include <iostream>
+#include <sstream>
 
 using namespace ir;
 
@@ -414,6 +415,8 @@ void prettyPrint(const tc::Formula &_formula, std::wostream &_os, bool _bNewLine
 }
 
 void prettyPrintCompact(Node &_node, std::wostream &_os, int _nFlags) {
-    PrettyPrinterSyntax pp(_os, true, _nFlags);
+    std::wstringstream wstringstream;
+    PrettyPrinterSyntax pp(wstringstream, true, _nFlags);
     pp.traverseNode(_node);
+    _os << removeRedundantSymbols(wstringstream.str(), L"\r\n ");
 }
