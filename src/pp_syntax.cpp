@@ -1388,7 +1388,6 @@ bool PrettyPrinterSyntax::visitUnary(ir::Unary &_node) {
 }
 
 bool PrettyPrinterSyntax::traverseBinary(ir::Binary &_node) {
-
     VISITOR_ENTER(Binary, _node);
     VISITOR_TRAVERSE(Expression, BinarySubexpression, _node.getLeftSide(), _node, Binary, setLeftSide);
 
@@ -1398,11 +1397,9 @@ bool PrettyPrinterSyntax::traverseBinary(ir::Binary &_node) {
 
     VISITOR_TRAVERSE(Expression, BinarySubexpression, _node.getRightSide(), _node, Binary, setRightSide);
     VISITOR_EXIT();
-
 }
 
 bool PrettyPrinterSyntax::traverseTernary(ir::Ternary &_node) {
-
     VISITOR_ENTER(Ternary, _node);
 
     VISITOR_TRAVERSE(Expression, TernarySubexpression, _node.getIf(), _node, Ternary, setIf);
@@ -1412,11 +1409,9 @@ bool PrettyPrinterSyntax::traverseTernary(ir::Ternary &_node) {
     VISITOR_TRAVERSE(Expression, TernarySubexpression, _node.getElse(), _node, Ternary, setElse);
 
     VISITOR_EXIT();
-
 }
 
 bool PrettyPrinterSyntax::traverseFormula(ir::Formula &_node) {
-
     VISITOR_ENTER(Formula, _node);
 
     const int nQuantifier = _node.getQuantifier();
@@ -1430,7 +1425,6 @@ bool PrettyPrinterSyntax::traverseFormula(ir::Formula &_node) {
 
     VISITOR_TRAVERSE(Expression, Subformula, _node.getSubformula(), _node, Formula, setSubformula);
     VISITOR_EXIT();
-
 }
 
 bool PrettyPrinterSyntax::traverseFunctionCall(ir::FunctionCall &_expr) {
@@ -1492,9 +1486,9 @@ bool PrettyPrinterSyntax::traverseElementDefinition(ElementDefinition &_cons) {
 
 bool PrettyPrinterSyntax::traverseArrayConstructor(ArrayConstructor &_expr) {
     VISITOR_ENTER(ArrayConstructor, _expr);
-    m_os << L"[";
+    m_os << L"[ ";
     VISITOR_TRAVERSE_COL(ElementDefinition, ArrayElementDef, _expr);
-    m_os << L"]";
+    m_os << L" ]";
     VISITOR_EXIT();
 }
 
@@ -1516,9 +1510,9 @@ bool PrettyPrinterSyntax::traverseSetConstructor(SetConstructor &_expr) {
 
 bool PrettyPrinterSyntax::traverseListConstructor(ListConstructor &_expr) {
     VISITOR_ENTER(ListConstructor, _expr);
-    m_os << L"[[";
+    m_os << L"[[ ";
     VISITOR_TRAVERSE_COL(Expression, ListElementDef, _expr);
-    m_os << L"]]";
+    m_os << L" ]]";
     VISITOR_EXIT();
 }
 
@@ -1564,9 +1558,9 @@ bool PrettyPrinterSyntax::traverseArrayIteration(ArrayIteration &_expr) {
 bool PrettyPrinterSyntax::traverseArrayPartExpr(ArrayPartExpr &_expr) {
     VISITOR_ENTER(ArrayPartExpr, _expr);
     VISITOR_TRAVERSE(Expression, ArrayPartObject, _expr.getObject(), _expr, Component, setObject);
-    m_os << L"[";
+    m_os << L"[ ";
     VISITOR_TRAVERSE_COL(Expression, ArrayPartIndex, _expr.getIndices());
-    m_os << L"]";
+    m_os << L" ]";
     VISITOR_EXIT();
 }
 
@@ -1580,18 +1574,18 @@ bool PrettyPrinterSyntax::traverseFieldExpr(FieldExpr &_expr) {
 bool PrettyPrinterSyntax::traverseMapElementExpr(MapElementExpr &_expr) {
     VISITOR_ENTER(MapElementExpr, _expr);
     VISITOR_TRAVERSE(Expression, MapElementObject, _expr.getObject(), _expr, Component, setObject);
-    m_os << L"[";
+    m_os << L"[ ";
     VISITOR_TRAVERSE(Expression, MapElementIndex, _expr.getIndex(), _expr, MapElementExpr, setIndex);
-    m_os << L"]";
+    m_os << L" ]";
     VISITOR_EXIT();
 }
 
 bool PrettyPrinterSyntax::traverseListElementExpr(ListElementExpr &_expr) {
     VISITOR_ENTER(ListElementExpr, _expr);
     VISITOR_TRAVERSE(Expression, ListElementObject, _expr.getObject(), _expr, Component, setObject);
-    m_os << L"[";
+    m_os << L"[ ";
     VISITOR_TRAVERSE(Expression, ListElementIndex, _expr.getIndex(), _expr, ListElementExpr, setIndex);
-    m_os << L"]";
+    m_os << L" ]";
     VISITOR_EXIT();
 }
 
