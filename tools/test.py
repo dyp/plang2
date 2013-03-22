@@ -12,6 +12,14 @@ def extractTest(_fileName):
         lc = False  # Line comment
         tc = False  # In-test comment
         while ln:
+            if t and ln.startswith("\\"):
+                # Handle simple escaping
+                if len(ln) > 1:
+                    s += ln[1]
+                    ln = ln[2:]
+                else:
+                    ln = ""
+                continue
             if bc == 0 and ln.startswith("//"):
                 lc = True
                 ln = ln[2:]
