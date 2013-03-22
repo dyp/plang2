@@ -191,12 +191,11 @@ bool Expression::_matches(const ExpressionPtr& _pLeft, const ExpressionPtr& _pRi
     if (!_pLeft || !_pRight)
         return (bool)_pLeft == (bool)_pRight;
 
-    MatchesPtr
-        pNewMatches = !_pMatches ? new Matches() : _pMatches,
-        pOldMatches = new Matches(*pNewMatches);
+    MatchesPtr pNewMatches = !_pMatches ? MatchesPtr(new Matches()) : _pMatches;
+    Matches oldMatches(*pNewMatches);
 
     if (!_pLeft->matches(*_pRight, pNewMatches)) {
-        pNewMatches->swap(*pOldMatches);
+        pNewMatches->swap(oldMatches);
         return false;
     }
 
