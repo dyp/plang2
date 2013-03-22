@@ -206,6 +206,16 @@ public:
             m_nodes[_c] = _pNode;
     }
 
+    /// Insert elements from another collection before element with number _c.
+    /// \param _c Index of element (zero-based).
+    /// \param _other Other collection.
+    template<typename _OtherNode, typename _OtherBase>
+    void insert(size_t _c, const Collection<_OtherNode, _OtherBase> &_other) {
+        m_nodes.reserve(m_nodes.size() + _other.size());
+        if (_c <= m_nodes.size())
+            m_nodes.insert(m_nodes.begin() + _c, _other.m_nodes.begin(), _other.m_nodes.end());
+    }
+
     /// Remove element.
     /// \param _pNode Pointer to element to remove.
     /// \return True if node was successfully removed, false if not found.
@@ -276,6 +286,8 @@ public:
 
 private:
     std::vector<Auto<_Node> > m_nodes;
+
+    template<class, class> friend class Collection;
 };
 
 class Type;
