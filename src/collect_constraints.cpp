@@ -370,6 +370,7 @@ bool Collector::visitBinary(Binary &_binary) {
             //   or (B < A and C = A and A <= real and B <= real and C <= real)
             //   or (A <= C and B <= C and C = {D})
             //   or (A <= C and B <= C and C = [[D]])   /* Operator "+" only. */
+            //   or (A = T1[D1] & B = T2[D2] & C = T3[D3] & T1 <= T3 & T2 <= T3 & D1 <= D3 & D2 <= D3)   /* Operator "+" only. */
             {
                 tc::CompoundFormulaPtr p = new tc::CompoundFormula();
                 tc::Formulas & part1 = p->addPart();
@@ -423,19 +424,43 @@ bool Collector::visitBinary(Binary &_binary) {
                         _binary.getType(), pSet));
 
                 if (_binary.getOperator() == Binary::ADD) {
-                    tc::Formulas & part = p->addPart();
+                    tc::Formulas & part4 = p->addPart();
                     ListTypePtr pList = new ListType(NULL);
 
                     pList->setBaseType(createFresh());
 
-                    part.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                    part4.insert(new tc::Formula(tc::Formula::SUBTYPE,
                             _binary.getLeftSide()->getType(),
                             _binary.getType()));
-                    part.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                    part4.insert(new tc::Formula(tc::Formula::SUBTYPE,
                             _binary.getRightSide()->getType(),
                             _binary.getType()));
-                    part.insert(new tc::Formula(tc::Formula::EQUALS,
+                    part4.insert(new tc::Formula(tc::Formula::EQUALS,
                             _binary.getType(), pList));
+
+                    tc::Formulas & part5 = p->addPart();
+
+                    ArrayTypePtr
+                        pA = new ArrayType(createFresh(), createFresh()),
+                        pB = new ArrayType(createFresh(), createFresh()),
+                        pC = new ArrayType(new tc::FreshType(tc::FreshType::PARAM_OUT),
+                            new tc::FreshType(tc::FreshType::PARAM_OUT));
+
+                    part5.insert(new tc::Formula(tc::Formula::EQUALS,
+                        _binary.getLeftSide()->getType(), pA));
+                    part5.insert(new tc::Formula(tc::Formula::EQUALS,
+                        _binary.getRightSide()->getType(), pB));
+                    part5.insert(new tc::Formula(tc::Formula::EQUALS,
+                        _binary.getType(), pC));
+
+                    part5.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                        pA->getBaseType(), pC->getBaseType()));
+                    part5.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                        pB->getBaseType(), pC->getBaseType()));
+                    part5.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                        pA->getDimensionType(), pC->getDimensionType()));
+                    part5.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                        pB->getDimensionType(), pC->getDimensionType()));
                 }
 
                 m_constraints.insert(p);
@@ -446,9 +471,9 @@ bool Collector::visitBinary(Binary &_binary) {
         case Binary::DIVIDE:
         case Binary::REMAINDER:
         case Binary::POWER:
-            //         x : A * y : B = z :C
+            //         x : A * y : B = z : C
             // -----------------------------------
-            // (A <= B and C = B) or (B < A and C = A)
+            // ((A <= B and C = B) or (B < A and C = A)) and A <= real and B <= real and C <= real
             {
                 tc::CompoundFormulaPtr p = new tc::CompoundFormula();
                 tc::Formulas & part1 = p->addPart();
