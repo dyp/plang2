@@ -304,7 +304,7 @@ bool PrettyPrinterSyntax::visitNamedReferenceType(NamedReferenceType &_type) {
 bool PrettyPrinterSyntax::visitSetType(SetType &_type) {
     m_os << (m_bCompact ? L"{" : L"set(");
     traverseType(*_type.getBaseType());
-    m_os << (m_bCompact ? L")" : L")");
+    m_os << (m_bCompact ? L"}" : L")");
     return false;
 }
 
