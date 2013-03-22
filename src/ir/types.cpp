@@ -102,14 +102,6 @@ bool Type::compare(const Type &_other, int _order) const {
     return (compare(_other) & _order) != 0;
 }
 
-bool Type::operator ==(const Type &_other) const {
-    return !(*this < _other || _other < *this);
-}
-
-bool Type::operator !=(const Type &_other) const {
-    return *this < _other || _other < *this;
-}
-
 bool Type::less(const Type &_other) const {
     assert(getKind() == _other.getKind());
 
@@ -124,14 +116,18 @@ bool Type::less(const Type &_other) const {
     return nOrder == ORD_SUB;
 }
 
-bool Type::operator <(const Type &_other) const {
-    if (getKind() < _other.getKind())
-        return true;
+bool Type::less(const Node& _other) const {
+    assert(_other.getNodeKind() == Node::TYPE);
+    const Type& other = (const Type&)_other;
+    if (getKind() != other.getKind())
+        return getKind() < other.getKind();
+    return less(other);
+}
 
-    if (getKind() > _other.getKind())
-        return false;
-
-    return less(_other);
+bool Type::equals(const Node& _other) const {
+    assert(_other.getNodeKind() == Node::TYPE);
+    const Type& other = (const Type&)_other;
+    return getKind() == other.getKind() && !less(other) && !other.less(*this);
 }
 
 static
@@ -277,7 +273,7 @@ RangePtr Subtype::asRange() const {
 }
 
 SubtypePtr Range::asSubtype() const {
-    NamedValuePtr pParam = new NamedValue(L"i", new Type(Type::GENERIC));
+    NamedValuePtr pParam = new NamedValue(L"", new Type(Type::GENERIC));
     BinaryPtr pExpr = new Binary(Binary::BOOL_AND,
         new Binary(Binary::GREATER_OR_EQUALS,
             new VariableReference(pParam),

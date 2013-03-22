@@ -33,7 +33,7 @@ TypePtr Subtype::getMeet(Type &_other) {
     NamedValuePtr pParam = getParam();
 
     if (*other.getParam()->getType() != *getParam()->getType()) {
-        pParam = new NamedValue(getParam()->getName(), getParam()->getType()->getMeet(*other.getParam()->getType()));
+        pParam = new NamedValue(L"", getParam()->getType()->getMeet(*other.getParam()->getType()));
         if (!pParam->getType())
             return NULL;
     }
@@ -43,15 +43,19 @@ TypePtr Subtype::getMeet(Type &_other) {
     cloner.alias(pParam, getParam());
     cloner.alias(pParam, other.getParam());
 
-    ExpressionPtr pExpr;
-    if (Expression::implies(getExpression(), other.getExpression()))
-        pExpr = cloner.get(getExpression());
-    else if (Expression::implies(other.getExpression(), getExpression()))
-        pExpr = cloner.get(other.getExpression());
-    else
-        pExpr = new Binary(Binary::BOOL_AND, cloner.get(getExpression()), cloner.get(other.getExpression()));
+    ExpressionPtr
+        pExprThis = cloner.get(getExpression()),
+        pExprOther = cloner.get(other.getExpression());
 
-    pType->setParam(pParam);
+    ExpressionPtr pExpr;
+    if (Expression::implies(pExprThis, pExprOther))
+        pExpr = pExprThis;
+    else if (Expression::implies(pExprOther, pExprThis))
+        pExpr = pExprOther;
+    else
+        pExpr = new Binary(Binary::BOOL_AND, pExprThis, pExprOther);
+
+    pType->setParam(pNewParam);
     pType->setExpression(pExpr);
     return pType;
 }
@@ -70,7 +74,7 @@ TypePtr Subtype::getJoin(Type &_other) {
     NamedValuePtr pParam = getParam();
 
     if (*other.getParam()->getType() != *getParam()->getType()) {
-        pParam = new NamedValue(getParam()->getName(), getParam()->getType()->getJoin(*other.getParam()->getType()));
+        pParam = new NamedValue(L"", getParam()->getType()->getJoin(*other.getParam()->getType()));
         if (!pParam->getType())
             return NULL;
     }
@@ -80,16 +84,21 @@ TypePtr Subtype::getJoin(Type &_other) {
     cloner.alias(pParam, getParam());
     cloner.alias(pParam, other.getParam());
 
-    ExpressionPtr pExpr;
-    if (Expression::implies(getExpression(), other.getExpression()))
-        pExpr = cloner.get(other.getExpression());
-    else if (Expression::implies(other.getExpression(), getExpression()))
-        pExpr = cloner.get(getExpression());
-    else
-        pExpr = new Binary(Binary::BOOL_OR, cloner.get(getExpression()), cloner.get(other.getExpression()));
+    ExpressionPtr
+        pExprThis = cloner.get(getExpression()),
+        pExprOther = cloner.get(other.getExpression());
 
-    pType->setParam(pParam);
+    ExpressionPtr pExpr;
+    if (Expression::implies(pExprThis, pExprOther))
+        pExpr = pExprOther;
+    else if (Expression::implies(pExprOther, pExprThis))
+        pExpr = pExprThis;
+    else
+        pExpr = new Binary(Binary::BOOL_OR, pExprThis, pExprOther);
+
+    pType->setParam(pNewParam);
     pType->setExpression(pExpr);
+
     return pType;
 }
 

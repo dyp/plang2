@@ -411,9 +411,8 @@ public:
     bool isAntitone(const Type &_var, bool _bStrict = true) const;
 
     // For comparison/sorting only, no subtyping relation is implied.
-    bool operator <(const Type &_other) const;
-    bool operator ==(const Type &_other) const;
-    bool operator !=(const Type &_other) const;
+    virtual bool less(const Node& _other) const;
+    virtual bool equals(const Node& _other) const;
     virtual bool less(const Type &_other) const;
 
     // Perform deep copy.
