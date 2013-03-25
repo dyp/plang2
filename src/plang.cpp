@@ -33,6 +33,7 @@
 #include "predicate_ordering.h"
 #include "cvc3_solver.h"
 #include "name_reset.h"
+#include "predicate_inlining.h"
 
 using namespace lexer;
 
@@ -82,6 +83,9 @@ int main(int _argc, const char ** _argv) {
 
         if (Options::instance().transformation & OT_TRE)
             tailRecursionElimination(*pModule);
+
+        if (Options::instance().transformation & OT_PI)
+            predicateInlining(*pModule);
 
         if (Options::instance().prettyPrint & PP_FLAT)
             prettyPrintFlatTree(*pModule);

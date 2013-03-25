@@ -50,6 +50,7 @@ set(SOURCES
     pp_verification.cpp
     cvc3_solver.cpp
     name_reset.cpp
+    predicate_inlining.cpp
 )
 
 add_definitions(
