@@ -42,6 +42,16 @@ void reduceExpressions(ir::Node &_node) {
                        new ir::Wild(L"a"),
                        new ir::Wild(L"b")));
 
+    // !(a <= b) -> a > b
+    Expression::substitute(&_node,
+        new ir::Unary(ir::Unary::BOOL_NEGATE,
+                      new ir::Binary(ir::Binary::LESS_OR_EQUALS,
+                                     new ir::Wild(L"a"),
+                                     new ir::Wild(L"b"))),
+        new ir::Binary(ir::Binary::GREATER,
+                       new ir::Wild(L"a"),
+                       new ir::Wild(L"b")));
+
     // !(a > b) -> a <= b
     Expression::substitute(&_node,
         new ir::Unary(ir::Unary::BOOL_NEGATE,
@@ -49,6 +59,16 @@ void reduceExpressions(ir::Node &_node) {
                                      new ir::Wild(L"a"),
                                      new ir::Wild(L"b"))),
         new ir::Binary(ir::Binary::LESS_OR_EQUALS,
+                       new ir::Wild(L"a"),
+                       new ir::Wild(L"b")));
+
+    // !(a >= b) -> a < b
+    Expression::substitute(&_node,
+        new ir::Unary(ir::Unary::BOOL_NEGATE,
+                      new ir::Binary(ir::Binary::GREATER_OR_EQUALS,
+                                     new ir::Wild(L"a"),
+                                     new ir::Wild(L"b"))),
+        new ir::Binary(ir::Binary::LESS,
                        new ir::Wild(L"a"),
                        new ir::Wild(L"b")));
 
