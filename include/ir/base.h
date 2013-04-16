@@ -168,6 +168,11 @@ public:
         return m_nodes.front();
     }
 
+    template <class InputIterator>
+    void prepend(InputIterator _first, InputIterator _last) {
+        insert(m_nodes.begin(), _first, _last);
+    }
+
     /// Append elements from another collection.
     /// \param _other Other collection.
     template<typename _OtherNode, typename _OtherBase>
@@ -214,6 +219,11 @@ public:
         m_nodes.reserve(m_nodes.size() + _other.size());
         if (_c <= m_nodes.size())
             m_nodes.insert(m_nodes.begin() + _c, _other.m_nodes.begin(), _other.m_nodes.end());
+    }
+
+    template <class InputIterator>
+    void insert(typename std::vector<Auto<_Node> >::iterator _position, InputIterator _first, InputIterator _last) {
+        m_nodes.insert(_position, _first, _last);
     }
 
     /// Remove element.
@@ -276,6 +286,14 @@ public:
             if (!this->_equals(get(i), other.get(i)))
                 return false;
         return true;
+    }
+
+    typename std::vector<Auto<_Node> >::iterator begin() {
+        return m_nodes.begin();
+    }
+
+    typename std::vector<Auto<_Node> >::iterator end() {
+        return m_nodes.end();
     }
 
     virtual NodePtr clone(Cloner &_cloner) const {
