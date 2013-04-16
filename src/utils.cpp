@@ -45,8 +45,11 @@ std::wstring fmtInt(int64_t _n, const wchar_t * _fmt) {
 std::wstring intToAlpha(int _n) {
     std::wstring strResult = L"";
 
-    for(; _n; _n /= 26)
+    do {
         strResult += 'a' + _n%26;
+        _n /= 26;
+    } while (_n != 0);
+
     std::reverse(strResult.begin(), strResult.end());
 
     return strResult;
