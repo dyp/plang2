@@ -14,6 +14,7 @@
 #include "utils.h"
 #include "llir.h"
 #include "node_analysis.h"
+#include "term_rewriting.h"
 
 using namespace ir;
 using namespace vf;
@@ -1423,14 +1424,349 @@ void ir::getRanges(const ArrayType &_array, Collection<Range> &_ranges) {
     }
 }
 
-ConjunctionPtr getPreConditionForExpression(const ExpressionPtr& _pExpr) {
-    return new Conjunction();
+class Semantics: public Visitor {
+public:
+    Semantics() : m_pPrecondition(new Conjunction()) {}
+
+    void nonZero(const ExpressionPtr& _pExpr);
+    static ExpressionPtr isElement(const SubtypePtr& _pSubtype, const ExpressionPtr& _pExpr);
+    static ExpressionPtr notIntersect(const SubtypePtr& _pSub1, const SubtypePtr& _pSub2);
+    void checkIntersect(const ExpressionPtr& _pExpr1, const ExpressionPtr& _pExpr2);
+    void arrayUnion(const ArrayTypePtr& _pArr1, const ArrayTypePtr& _pArr2);
+    void arrayConstructor(const ArrayType& _type, const ArrayConstructor& _constructor);
+    void subtract(const ExpressionPtr& _pLeft, const ExpressionPtr& _pRight);
+    void add(const ExpressionPtr& _pLeft, const ExpressionPtr& _pRight);
+
+    virtual bool visitBinary(Binary &_bin);
+    virtual bool visitReplacement(Replacement &_rep);
+    virtual bool visitArrayIteration(ArrayIteration &_ai);
+    virtual bool visitArrayPartExpr(ArrayPartExpr& _ap);
+
+    ConjunctionPtr getPrecondition(const ExpressionPtr& _pExpr) {
+        traverseExpression(*_pExpr);
+        return m_pPrecondition;
+    }
+
+private:
+    ConjunctionPtr m_pPrecondition;
+};
+
+void Semantics::nonZero(const ExpressionPtr& _pExpr) {
+    if (!_pExpr)
+        return;
+    m_pPrecondition->addExpression(new Binary(Binary::NOT_EQUALS, _pExpr, new Literal()));
 }
 
-ConjunctionPtr getPreConditionForStatement(const StatementPtr& _pStmt, const PredicatePtr& _pPred, const vf::ContextPtr& _pContext) {
-    return new Conjunction();
+ExpressionPtr Semantics::isElement(const SubtypePtr& _pSubtype, const ExpressionPtr& _pExpr) {
+    if (!_pSubtype || !_pExpr)
+        return NULL;
+    return Expression::substitute(clone(_pSubtype->getExpression()),
+        new VariableReference(_pSubtype->getParam()), _pExpr).as<Expression>();
 }
 
-ConjunctionPtr getPostConditionForStatement(const StatementPtr& _pStmt, const ContextPtr& _pContext) {
-    return new Conjunction();
+ExpressionPtr Semantics::notIntersect(const SubtypePtr& _pSub1, const SubtypePtr& _pSub2) {
+    const VariableReferencePtr
+        pVar = new VariableReference(clone(_pSub1->getParam()));
+
+    const ExpressionPtr pExpr =
+        new Unary(Unary::BOOL_NEGATE,
+            new Binary(Binary::BOOL_AND, isElement(_pSub1, pVar), isElement(_pSub2, pVar)));
+
+    return pExpr;
+}
+
+void Semantics::checkIntersect(const ExpressionPtr& _pExpr1, const ExpressionPtr& _pExpr2) {
+    if (!_pExpr1 || !_pExpr2)
+        return;
+
+    if (_pExpr1->getKind() != Expression::TYPE && _pExpr2 != Expression::TYPE) {
+        m_pPrecondition->addExpression(new Binary(Binary::NOT_EQUALS, _pExpr1, _pExpr2));
+        return;
+    }
+
+    if (_pExpr1->getKind() == Expression::TYPE && _pExpr2->getKind() == Expression::TYPE) {
+        assert(_pExpr1.as<TypeExpr>()->getContents()->getKind() == Type::SUBTYPE);
+        assert(_pExpr2.as<TypeExpr>()->getContents()->getKind() == Type::SUBTYPE);
+
+        m_pPrecondition->addExpression(notIntersect(_pExpr1.as<TypeExpr>()->getContents().as<Subtype>(),
+            _pExpr2.as<TypeExpr>()->getContents().as<Subtype>()));
+
+        return;
+    }
+
+    const ExpressionPtr& pExpr = _pExpr1->getKind() != Expression::TYPE ? _pExpr1 : _pExpr2;
+    const TypePtr& pType = _pExpr1->getKind() == Expression::TYPE
+        ? _pExpr1.as<TypeExpr>()->getContents() : _pExpr2.as<TypeExpr>()->getContents();
+
+    assert(pType->getKind() == Type::SUBTYPE);
+    m_pPrecondition->addExpression(new Unary(Unary::BOOL_NEGATE, isElement(pType.as<Subtype>(), pExpr)));
+}
+
+void Semantics::arrayUnion(const ArrayTypePtr& _pArr1, const ArrayTypePtr& _pArr2) {
+    std::list<TypePtr> dim1, dim2;
+    _pArr1->getDimensions(dim1);
+    _pArr2->getDimensions(dim2);
+
+    if (dim1.size() != dim2.size())
+        return;
+
+    TypePtr dimLeft = NULL, dimRight = NULL;
+    for (std::list<TypePtr>::iterator i = dim1.begin(), j = dim2.begin();
+        i != dim1.end(); ++i, ++j) {
+        if (**i != **j) {
+            if (dimLeft || dimRight)
+                return;
+            dimLeft = *i;
+            dimRight = *j;
+        }
+    }
+
+    if (dimLeft->getKind() != Type::SUBTYPE || dimRight->getKind() != Type::SUBTYPE)
+        return;
+
+    m_pPrecondition->addExpression(na::generalize(notIntersect(dimLeft.as<Subtype>(), dimRight.as<Subtype>())));
+}
+
+void Semantics::arrayConstructor(const ArrayType& _type, const ArrayConstructor& _constructor) {
+    if (_type.getDimensionType()->getKind() != Type::SUBTYPE)
+        return;
+
+    const Subtype& dim = *_type.getDimensionType().as<Subtype>();
+
+    for (size_t i = 0; i < _constructor.size(); ++i) {
+        ElementDefinitionPtr pDef = _constructor.get(i);
+        ExpressionPtr pExpr = isElement(&dim, pDef->getIndex());
+
+        m_pPrecondition->append(Conjunction::getConjunction(pExpr));
+
+        for (size_t j = i + 1; j < _constructor.size(); ++j)
+            m_pPrecondition->addExpression(new Binary(Binary::NOT_EQUALS,
+                pDef->getIndex(), _constructor.get(j)->getIndex()));
+    }
+}
+
+void Semantics::subtract(const ExpressionPtr& _pLeft, const ExpressionPtr& _pRight) {
+    if (!_pLeft || !_pLeft->getType() || !_pRight)
+        return;
+    switch (_pLeft->getType()->getKind()) {
+        case Type::NAT:
+            m_pPrecondition->addExpression(new Binary(Binary::GREATER_OR_EQUALS, _pLeft, _pRight));
+            break;
+        case Type::SUBTYPE: {
+            ExpressionPtr pCondition = isElement(_pLeft->getType().as<Subtype>(),
+                new Binary(Binary::SUBTRACT, _pLeft, _pRight));
+            m_pPrecondition->append(Conjunction::getConjunction(pCondition));
+            break;
+        }
+    }
+}
+
+void Semantics::add(const ExpressionPtr& _pLeft, const ExpressionPtr& _pRight) {
+    if (!_pLeft || !_pRight || !_pLeft->getType() || !_pRight->getType())
+        return;
+    switch (_pLeft->getType()->getKind()) {
+        case Type::ARRAY: {
+            assert(_pRight->getType()->getKind() == Type::ARRAY);
+            arrayUnion(_pLeft->getType().as<ArrayType>(), _pRight->getType().as<ArrayType>());
+            break;
+        }
+    }
+}
+
+bool Semantics::visitBinary(Binary &_bin) {
+    switch (_bin.getOperator()) {
+        case Binary::DIVIDE:
+            nonZero(_bin.getRightSide());
+            break;
+        case Binary::SUBTRACT:
+            subtract(_bin.getLeftSide(), _bin.getRightSide());
+            break;
+        case Binary::ADD:
+            add(_bin.getLeftSide(), _bin.getRightSide());
+            break;
+    }
+    return true;
+}
+
+bool Semantics::visitReplacement(Replacement &_rep) {
+    if (!_rep.getObject() || !_rep.getObject()->getType())
+        return true;
+
+    switch (_rep.getObject()->getType()->getKind()) {
+        case Type::ARRAY:
+            arrayConstructor(*_rep.getObject()->getType().as<ArrayType>(), *_rep.getNewValues().as<ArrayConstructor>());
+            break;
+    }
+
+    return true;
+}
+
+bool Semantics::visitArrayIteration(ArrayIteration &_ai) {
+    for (size_t i = 0; i < _ai.size(); ++i)
+        for (size_t j = i + 1; j < _ai.size(); ++j) {
+            const ArrayPartDefinitionPtr
+                &pDef1 = _ai.get(i),
+                &pDef2 = _ai.get(j);
+
+            for (size_t n = 0; n < pDef1->getConditions().size(); ++n)
+                for (size_t m = 0; m < pDef2->getConditions().size(); ++m) {
+                    const ExpressionPtr
+                        &pExpr1 = pDef1->getConditions().get(n),
+                        &pExpr2 = pDef2->getConditions().get(m);
+
+                    if (pExpr1->getKind() == Expression::CONSTRUCTOR
+                        && pExpr1.as<Constructor>()->getConstructorKind() == Constructor::STRUCT_FIELDS) {
+                        const StructConstructor&
+                            tuple1 = *pExpr1.as<StructConstructor>(),
+                            tuple2 = *pExpr2.as<StructConstructor>();
+
+                        assert(tuple1.size() == tuple2.size());
+
+                        for (size_t k = 0; k < tuple1.size(); ++k)
+                            checkIntersect(tuple1.get(k)->getValue(), tuple2.get(k)->getValue());
+
+                        continue;
+                    }
+
+                    checkIntersect(pExpr1, pExpr2);
+                }
+        }
+    return true;
+}
+
+bool Semantics::visitArrayPartExpr(ArrayPartExpr& _ap) {
+    if (!_ap.getObject() || !_ap.getObject()->getType())
+        return true;
+
+    assert(_ap.getObject()->getType()->getKind() == Type::ARRAY);
+    const ArrayType& array = *_ap.getObject()->getType().as<ArrayType>();
+
+    std::list<TypePtr> dims;
+    array.getDimensions(dims);
+
+    assert(dims.size() == _ap.getIndices().size());
+
+    size_t j = 0;
+    for (std::list<TypePtr>::iterator i = dims.begin(); i != dims.end(); ++i, ++j)
+        m_pPrecondition->append(Conjunction::getConjunction(isElement((*i).as<Subtype>(), _ap.getIndices().get(j))));
+
+    return true;
+}
+
+vf::ConjunctionPtr getPreConditionForExpression(const ExpressionPtr& _pExpr) {
+    return Semantics().getPrecondition(_pExpr);
+}
+
+vf::ConjunctionPtr getPreConditionForStatement(const StatementPtr& _pStmt, const PredicatePtr& _pPred, const vf::ContextPtr& _pContext) {
+    ConjunctionPtr pPre = new Conjunction();
+
+    if (!_pStmt)
+        return pPre;
+
+    switch (_pStmt->getKind()) {
+        case Statement::ASSIGNMENT:
+            pPre->assign(getPreConditionForExpression(_pStmt.as<Assignment>()->getExpression()));
+            break;
+
+        case Statement::CALL: {
+            const Call& call = *_pStmt.as<Call>();
+
+            for (size_t i = 0; i < call.getArgs().size(); ++i)
+                pPre->append(getPreConditionForExpression(call.getArgs().get(i)));
+
+            if (!_pContext)
+                break;
+
+            if (const FormulaDeclarationPtr& pMeasure =_pContext->getMeasure(call))
+                pPre->addExpression(new Binary(Binary::LESS, tr::makeCall(pMeasure, call), tr::makeCall(pMeasure, *_pPred)));
+
+            pPre->addExpression(tr::makeCall(_pContext->getPrecondition(call), call));
+            break;
+        }
+
+        case Statement::IF: {
+            const If& iff = *_pStmt.as<If>();
+            pPre->assign(getPreConditionForExpression(iff.getArg()));
+
+            ConjunctionPtr
+                pBody = getPreConditionForStatement(iff.getBody(), _pPred, _pContext),
+                pElse = getPreConditionForStatement(iff.getElse(), _pPred, _pContext);
+
+            for (std::set<ConjunctPtr>::iterator i = pBody->getConjuncts().begin();
+                i != pBody->getConjuncts().end(); ++i)
+                pPre->addExpression(new Binary(Binary::IMPLIES, iff.getArg(), (*i)->mergeToExpression()));
+
+            for (std::set<ConjunctPtr>::iterator i = pElse->getConjuncts().begin();
+                i != pElse->getConjuncts().end(); ++i)
+                pPre->addExpression(new Binary(Binary::IMPLIES, new Unary(Unary::BOOL_NEGATE, iff.getArg()),
+                    (*i)->mergeToExpression()));
+
+            break;
+        }
+
+        case Statement::PARALLEL_BLOCK:
+            pPre->assign(getPreConditionForStatement(_pStmt.as<Block>()->get(0), _pPred, _pContext));
+            pPre->append(getPreConditionForStatement(_pStmt.as<Block>()->get(1), _pPred, _pContext));
+            break;
+    }
+
+    return pPre;
+}
+
+vf::ConjunctionPtr getPostConditionForStatement(const StatementPtr& _pStmt, const vf::ContextPtr& _pContext) {
+    ConjunctionPtr pPost = new Conjunction();
+
+    if (!_pStmt)
+        return pPost;
+
+    switch (_pStmt->getKind()) {
+        case Statement::ASSIGNMENT:
+            pPost->addExpression(new Binary(Binary::EQUALS, _pStmt.as<Assignment>()->getLValue(),
+                _pStmt.as<Assignment>()->getExpression()));
+            break;
+
+        case Statement::CALL: {
+            if (!_pContext)
+                break;
+
+            const Call& call = *_pStmt.as<Call>();
+            pPost->addExpression(tr::makeCall(_pContext->getPostcondition(call), call));
+
+            const PredicateTypePtr& pType = call.getPredicate()->getType().as<PredicateType>();
+            if (!pType || pType->getOutParams().size() <= 1)
+                break;
+
+            for (size_t i = 0; i < pType->getOutParams().size(); ++i)
+                pPost->addExpression(new Binary(Binary::IMPLIES,
+                    tr::makeCall(_pContext->getPrecondition(call, i + 1), call),
+                    tr::makeCall(_pContext->getPostcondition(call, i + 1), call)));
+            break;
+        }
+
+        case Statement::IF: {
+            const IfPtr pIf = _pStmt.as<If>();
+
+            ConjunctionPtr
+                pBody = getPostConditionForStatement(pIf->getBody(), _pContext),
+                pElse = getPostConditionForStatement(pIf->getElse(), _pContext);
+
+            for (std::set<ConjunctPtr>::iterator i = pBody->getConjuncts().begin();
+                i != pBody->getConjuncts().end(); ++i)
+                pPost->addExpression(new Binary(Binary::IMPLIES, pIf->getArg(), (*i)->mergeToExpression()));
+
+            for (std::set<ConjunctPtr>::iterator i = pElse->getConjuncts().begin();
+                i != pElse->getConjuncts().end(); ++i)
+                pPost->addExpression(new Binary(Binary::IMPLIES, new Unary(Unary::BOOL_NEGATE, pIf->getArg()),
+                    (*i)->mergeToExpression()));
+
+            break;
+        }
+
+        case Statement::PARALLEL_BLOCK:
+            pPost->assign(getPostConditionForStatement(_pStmt.as<Block>()->get(0), _pContext));
+            pPost->append(getPostConditionForStatement(_pStmt.as<Block>()->get(1), _pContext));
+            break;
+    }
+
+    return pPost;
 }
