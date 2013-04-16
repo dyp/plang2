@@ -1093,10 +1093,10 @@ int Collector::handleSwitchCaseValuePost(Node &_node) {
 
     if (m_switches.top()->getArg())
         m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
-            pExpr->getType(), m_switches.top()->getArg()->getType()));
+            _getContentsType(pExpr), m_switches.top()->getArg()->getType()));
     else if (m_switches.top()->getParamDecl())
         m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
-            pExpr->getType(), m_switches.top()->getParamDecl()->getVariable()->getType()));
+            _getContentsType(pExpr), m_switches.top()->getParamDecl()->getVariable()->getType()));
 
     return 0;
 }
