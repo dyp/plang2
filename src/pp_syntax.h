@@ -7,16 +7,45 @@
 #include <iostream>
 #include "ir/base.h"
 #include "prettyprinter.h"
+#include "verification.h"
+
+namespace pp {
+
+class Context : public Counted {
+public:
+    Context() : m_nLastFoundIdentifier(0) {}
+    void collectIdentifiers(ir::Node &_node);
+    void addLabel(const std::wstring& _name);
+    void addNamedValue(const ir::NamedValuePtr& _pVal);
+    std::wstring getNewLabelName(const std::wstring& _name = L"");
+    std::wstring getNamedValueName(ir::NamedValue &_val);
+    void sortModule(ir::Module &_module, std::list<ir::NodePtr>& _sorted);
+
+private:
+    std::set<std::wstring> m_usedLabels;
+    std::map<ir::NamedValuePtr, std::wstring> m_identifiers;
+    std::set<std::wstring> m_usedIdentifiers;
+    int m_nLastFoundIdentifier;
+    std::multimap<ir::NodePtr, ir::NodePtr> m_decls, m_deps;
+
+    void _buildDependencies(ir::NodePtr _pRoot);
+    void _topologicalSort(const ir::NodePtr& _pDecl, std::list<ir::NodePtr>& _sorted);
+};
+typedef Auto<Context> ContextPtr;
 
 class PrettyPrinterSyntax: public PrettyPrinterBase {
 public:
-    PrettyPrinterSyntax(ir::Node &_node, std::wostream &_os) :
+    PrettyPrinterSyntax(ir::Node &_node, std::wostream &_os, ContextPtr _pContext) :
         PrettyPrinterBase(_os), m_pNode(&_node), m_szDepth(0), m_bCompact(false), m_nFlags(0), m_bMergeLines(false), m_bSingleLine(false),
-        m_nLastFoundIdentifier(1)
+        m_pContext(!_pContext ? new Context() : _pContext)
     {}
-    PrettyPrinterSyntax(std::wostream &_os, bool _bCompact = false, int _nFlags = 0) :
+    PrettyPrinterSyntax(ir::Node &_node, std::wostream &_os, size_t nDepth = 0) :
+        PrettyPrinterBase(_os), m_pNode(&_node), m_szDepth(nDepth), m_bCompact(false), m_nFlags(0), m_bMergeLines(false), m_bSingleLine(false),
+        m_pContext(new Context())
+    {}
+    PrettyPrinterSyntax(std::wostream &_os, bool _bCompact = false, int _nFlags = 0, ContextPtr _pContext = NULL) :
         PrettyPrinterBase(_os), m_pNode(NULL), m_szDepth(0), m_bCompact(_bCompact), m_nFlags(_nFlags), m_bMergeLines(false), m_bSingleLine(false),
-        m_nLastFoundIdentifier(1)
+        m_pContext(!_pContext ? new Context() : _pContext)
     {}
 
     void run();
@@ -80,7 +109,6 @@ protected:
     virtual bool traverseLemmaDeclaration(ir::LemmaDeclaration &_stmt);
 
     // NODE / NAMED_VALUE
-    std::wstring getNamedValueName(ir::NamedValue &_val);
     virtual bool visitNamedValue(ir::NamedValue &_val);
 
     // NODE / EXPRESSION
@@ -129,25 +157,26 @@ protected:
     void decTab();
     void mergeLines();
     void separateLines();
-    std::wstring getNewLabelName(const std::wstring& _name = L"");
+
 
 private:
     ir::NodePtr m_pNode;
     size_t m_szDepth;
     int m_nFlags;
     bool m_bMergeLines, m_bCompact, m_bSingleLine;
-    std::set<std::wstring> m_usedLabels;
-    std::map<ir::NamedValuePtr, std::wstring> m_identifiers;
-    std::set<std::wstring> m_usedIdentifiers;
-    int m_nLastFoundIdentifier;
-    std::multimap<ir::NodePtr, ir::NodePtr> m_decls, m_deps;
-
-    void _buildDependencies(ir::NodePtr _pRoot);
-    void _topologicalSort(const ir::NodePtr& _pDecl, std::list<ir::NodePtr>& _sorted);
-
+    ContextPtr m_pContext;
 };
 
-void prettyPrintSyntax(ir::Node &_node, std::wostream & _os = std::wcout);
-void prettyPrintSyntaxCompact(ir::Node &_node, size_t _depth = 3, std::wostream & _os = std::wcout);
+void prettyPrintSyntax(ir::Node &_node, std::wostream & _os = std::wcout, const ContextPtr& _pContext = NULL);
+void prettyPrintSyntax(ir::Node &_node, size_t nDepth, std::wostream & _os = std::wcout);
+
+void prettyPrintCompact(ir::Node &_node, std::wostream &_os, int _nFlags, const ContextPtr& _pContext = NULL);
+
+void prettyPrint(const vf::ConjunctPtr& _pConjunct, std::wostream &_os = std::wcout, const ContextPtr& _pContext = NULL);
+void prettyPrint(const vf::ConjunctionPtr& _pConj, std::wostream &_os = std::wcout, const ContextPtr& _pContext = NULL);
+void prettyPrint(const vf::Condition& _cond, std::wostream &_os = std::wcout, const ContextPtr& _pContext = NULL);
+void prettyPrint(const vf::Context& _context, std::wostream &_os = std::wcout, const ContextPtr& _pContext = NULL);
+
+}
 
 #endif /* PP_SYNTAX_H_ */

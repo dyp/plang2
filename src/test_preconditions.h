@@ -24,7 +24,7 @@ public:
         if (!pExpr)
             return true;
 
-        prettyPrintSyntax(*pExpr, m_os);
+        pp::prettyPrintSyntax(*pExpr, m_os);
         m_os << L"\n";
         return true;
     }
@@ -41,13 +41,13 @@ public:
 
         ir::ExpressionPtr pExpr = pConjPre->mergeToExpression();
         if (!pConjPre->empty() && pExpr) {
-            prettyPrintSyntax(*pExpr, m_os);
+            pp::prettyPrintSyntax(*pExpr, m_os);
             m_os << L"\n";
         }
 
         pExpr = pConjPost->mergeToExpression();
         if (!pConjPost->empty() && pExpr) {
-            prettyPrintSyntax(*pExpr, m_os);
+            pp::prettyPrintSyntax(*pExpr, m_os);
             m_os << L"\n";
         }
 

@@ -43,6 +43,7 @@ set(SOURCES
     statement_tree.cpp
     verification_inference.cpp
     verification_context.cpp
+    pp_verification.cpp
 )
 
 add_definitions(
