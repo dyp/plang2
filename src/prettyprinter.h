@@ -9,6 +9,7 @@
 
 #include "ir/declarations.h"
 #include "typecheck.h"
+#include "verification.h"
 #include "ir/visitor.h"
 
 class PrettyPrinterBase: public ir::Visitor {
@@ -22,7 +23,6 @@ protected:
     std::wstring fmtFreshType(tc::FreshType &_type);
     std::wstring fmtType(int _kind);
 };
-
 
 void prettyPrint(ir::Module &_module, std::wostream &_os);
 void prettyPrint(tc::Context &_constraints, std::wostream &_os);

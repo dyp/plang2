@@ -667,30 +667,30 @@ bool Inference::strategy() {
 }
 
 void Inference::run() {
-    /*if (verifyVerbose()) {
+    if (verifyVerbose()) {
         std::wcout << L"Start inference with:\n\n";
-        prettyPrint(m_context, std::wcout);
+        pp::prettyPrint(m_context, std::wcout);
         std::wcout << L"\n";
     }
 
     size_t cStep = 1;
-*/
+
     while (strategy()) {
-        /*if (verifyVerbose()) {
+        if (verifyVerbose()) {
             std::wcout << L"Step " << cStep++;
-            if (!m_context.m_lastUsedRule.empty())
-                std::wcout << L" (" << m_context.m_lastUsedRule << ")";
+            if (!m_context.m_cLastUsedRule != 0)
+                std::wcout << L" (" << m_context.m_cLastUsedRule << ")";
             std::wcout << ":\n\n";
-            prettyPrint(m_context, std::wcout);
+            pp::prettyPrint(m_context, std::wcout);
             std::wcout << L"\n";
         }
-*/
+
         m_context.fixate();
     }
-/*
+
     if (verifyVerbose())
         std::wcout << (m_context.m_conditions.empty()
-            ? L"Inference complete.\n" : L"Inference incomplete.\n");*/
+            ? L"Inference complete.\n" : L"Inference incomplete.\n");
 }
 
 void verify(vf::Context& _context) {
@@ -716,9 +716,9 @@ bool PredicateTraverser::visitPredicate(Predicate& _pred) {
     if (verifyVerbose()) {
         std::wcout << L"Predicate " << _pred.getName() << L".\n\n";
         std::wcout << L"Original statement:\n\n";
-        prettyPrintSyntax(*_pred.getBlock(), std::wcout);
+        pp::prettyPrintSyntax(*_pred.getBlock(), std::wcout);
         std::wcout << L"\n\nSimplified to:\n\n";
-        prettyPrintSyntax(*pNewBody, std::wcout);
+        pp::prettyPrintSyntax(*pNewBody, std::wcout);
         std::wcout << L"\n\n";
     }
 
@@ -736,7 +736,7 @@ bool PredicateTraverser::visitPredicate(Predicate& _pred) {
         i != context.m_lemmas.end(); ++i) {
         pTheory->getLemmas().add(new LemmaDeclaration((*i).first));
         if (verifyFormulas()) {
-            prettyPrintSyntax(*(*i).first, std::wcout);
+            pp::prettyPrintSyntax(*(*i).first, std::wcout);
             std::wcout << "\n";
         }
     }

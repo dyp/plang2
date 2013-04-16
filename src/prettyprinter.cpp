@@ -342,7 +342,7 @@ void print(ir::Node &_node, std::wostream &_os) {
 }
 
 void prettyPrint(tc::Context &_constraints, std::wostream &_os) {
-    PrettyPrinterSyntax pp(_os, true, 0);
+    pp::PrettyPrinterSyntax pp(_os, true, 0);
 
     _os << L"\n";
 
@@ -373,7 +373,7 @@ void prettyPrint(tc::Context &_constraints, std::wostream &_os) {
 }
 
 void prettyPrint(const tc::Formula &_formula, std::wostream &_os, bool _bNewLine) {
-    PrettyPrinterSyntax pp(_os, true, 0);
+    pp::PrettyPrinterSyntax pp(_os, true, 0);
 
     if (!_formula.is(tc::Formula::COMPOUND)) {
         pp.print(*_formula.getLhs());
@@ -412,11 +412,4 @@ void prettyPrint(const tc::Formula &_formula, std::wostream &_os, bool _bNewLine
 
     if (_bNewLine)
         _os << L"\n";
-}
-
-void prettyPrintCompact(Node &_node, std::wostream &_os, int _nFlags) {
-    std::wstringstream wstringstream;
-    PrettyPrinterSyntax pp(wstringstream, true, _nFlags);
-    pp.traverseNode(_node);
-    _os << removeRedundantSymbols(wstringstream.str(), L"\r\n ");
 }

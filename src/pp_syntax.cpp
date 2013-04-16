@@ -3,7 +3,11 @@
 #include "utils.h"
 #include "options.h"
 
+#include <sstream>
+
 using namespace ir;
+
+namespace pp {
 
 class CollectIdentifiers : public ir::Visitor {
 public:
@@ -16,6 +20,11 @@ public:
             m_identifiers.insert(std::pair<NamedValuePtr, std::wstring>(&_val, _val.getName()));
             m_usedIdentifiers.insert(_val.getName());
         }
+    }
+
+    virtual bool visitVariableReference(VariableReference & _var) {
+        if (_var.getTarget())
+            visitNamedValue(*_var.getTarget());
     }
 
 private:
@@ -173,13 +182,48 @@ private:
     const Graph& m_decls;
 };
 
-// NODE / MODULE
-void PrettyPrinterSyntax::_buildDependencies(NodePtr _pRoot) {
+void Context::collectIdentifiers(Node &_node) {
+    CollectIdentifiers(m_identifiers, m_usedIdentifiers).traverseNode(_node);
+}
+
+void Context::addLabel(const std::wstring& _name) {
+    m_usedLabels.insert(_name);
+}
+
+void Context::addNamedValue(const NamedValuePtr& _pVal) {
+    if (!_pVal->getName().empty()) {
+        m_identifiers.insert(std::make_pair(_pVal, _pVal->getName()));
+        m_usedIdentifiers.insert(_pVal->getName());
+    }
+}
+
+std::wstring Context::getNewLabelName(const std::wstring& _name) {
+    for (size_t i = 1;; ++i) {
+        const std::wstring strName = _name + fmtInt(i, L"%d");
+        if (m_usedLabels.insert(strName).second)
+            return strName;
+    }
+}
+
+std::wstring Context::getNamedValueName(NamedValue &_val) {
+    std::wstring strIdent = m_identifiers[&_val];
+
+    if (strIdent.empty()) {
+        for (m_nLastFoundIdentifier;
+            !m_usedIdentifiers.insert(strIdent = intToAlpha(m_nLastFoundIdentifier)).second;
+            ++m_nLastFoundIdentifier);
+        m_identifiers[&_val] = strIdent;
+    }
+
+    return strIdent;
+}
+
+void Context::_buildDependencies(NodePtr _pRoot) {
     GetDeclarations(m_decls).run(_pRoot);
     GetDeclDependencies(m_decls, m_deps).run(_pRoot);
 }
 
-void PrettyPrinterSyntax::_topologicalSort(const NodePtr& _pDecl, std::list<NodePtr>& _sorted) {
+void Context::_topologicalSort(const NodePtr& _pDecl, std::list<NodePtr>& _sorted) {
     if (std::find(_sorted.begin(), _sorted.end(), _pDecl) != _sorted.end())
         return;
     std::pair<Graph::iterator, Graph::iterator> its = m_deps.equal_range(_pDecl);
@@ -188,19 +232,24 @@ void PrettyPrinterSyntax::_topologicalSort(const NodePtr& _pDecl, std::list<Node
     _sorted.push_back(_pDecl);
 }
 
-void PrettyPrinterSyntax::printDeclarationGroup(Module &_module) {
+void Context::sortModule(Module &_module, std::list<NodePtr>& _sorted) {
     _buildDependencies(&_module);
 
     if (!_module.getPredicates().empty())
         for (size_t i = _module.getPredicates().size() - 1; i > 0; --i)
             m_deps.insert(std::pair<NodePtr, NodePtr>(_module.getPredicates().get(i), _module.getPredicates().get(i-1)));
 
-    std::list<NodePtr> _sorted;
     std::pair<Graph::iterator, Graph::iterator> its = m_decls.equal_range(&_module);
     for (Graph::iterator i = its.first; i != its.second; ++i)
         _topologicalSort(i->second, _sorted);
+}
 
-    for (std::list<NodePtr>::iterator i = _sorted.begin(); i != _sorted.end(); ++i) {
+// NODE / MODULE
+void PrettyPrinterSyntax::printDeclarationGroup(Module &_module) {
+    std::list<NodePtr> sorted;
+    m_pContext->sortModule(_module, sorted);
+
+    for (std::list<NodePtr>::iterator i = sorted.begin(); i != sorted.end(); ++i) {
         m_os << fmtIndent();
         mergeLines();
         traverseNode(**i);
@@ -250,15 +299,13 @@ bool PrettyPrinterSyntax::traverseModule(Module &_module) {
 
 // NODE / LABEL
 bool PrettyPrinterSyntax::visitLabel(ir::Label &_label) {
-    m_usedLabels.insert(_label.getName());
-    if (_label.getName() == L"")
-        _label.setName(getNewLabelName());
+    m_pContext->addLabel(_label.getName());
     m_os << _label.getName() << ": ";
     return true;
 }
 
 // NODE / TYPE
-std::wstring fmtBits(int _bits) {
+static std::wstring fmtBits(int _bits) {
     switch (_bits) {
         case Number::GENERIC: return L"generic"; break;
         case Number::NATIVE:  return L"native";  break;
@@ -795,7 +842,7 @@ bool PrettyPrinterSyntax::traverseCall(Call &_stmt) {
 
     std::vector<std::wstring> names;
     for (size_t i = 0; i < _stmt.getBranches().size(); ++i)
-        names.push_back(getNewLabelName(strGeneralName));
+        names.push_back(m_pContext->getNewLabelName(strGeneralName));
 
     for (size_t i = 0; i < _stmt.getBranches().size(); ++i) {
         CallBranch &br = *_stmt.getBranches().get(i);
@@ -1090,24 +1137,12 @@ bool PrettyPrinterSyntax::traverseLemmaDeclaration(LemmaDeclaration &_stmt) {
     VISITOR_TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
     m_os << "lemma ";
     VISITOR_TRAVERSE(Expression, LemmaDeclBody, _stmt.getProposition(), _stmt, LemmaDeclaration, setProposition);
+    m_os << ";\n";
 
     VISITOR_EXIT();
 }
 
 // NODE / NAMED_VALUE
-std::wstring PrettyPrinterSyntax::getNamedValueName(NamedValue &_val) {
-    std::wstring strIdent = m_identifiers[&_val];
-
-    if (strIdent.empty()) {
-        for (m_nLastFoundIdentifier;
-            !m_usedLabels.insert(strIdent = intToAlpha(m_nLastFoundIdentifier)).second;
-            ++m_nLastFoundIdentifier);
-        m_identifiers[&_val] = strIdent;
-    }
-
-    return strIdent;
-}
-
 bool PrettyPrinterSyntax::visitNamedValue(NamedValue &_val) {
     if (!m_path.empty()) {
         if (getLoc().bPartOfCollection && getLoc().cPosInCollection != 0)
@@ -1124,7 +1159,7 @@ bool PrettyPrinterSyntax::visitNamedValue(NamedValue &_val) {
     if (getRole() != R_EnumValueDecl)
         m_os << L" ";
 
-    m_os << getNamedValueName(_val);
+    m_os << m_pContext->getNamedValueName(_val);
 
     return false;
 }
@@ -1355,7 +1390,7 @@ bool PrettyPrinterSyntax::visitLiteral(ir::Literal &_node) {
 }
 
 bool PrettyPrinterSyntax::visitVariableReference(ir::VariableReference &_node) {
-    m_os << (_node.getTarget() ? getNamedValueName(*_node.getTarget()) : _node.getName());
+    m_os << (_node.getName().empty() ? m_pContext->getNamedValueName(*_node.getTarget()) : _node.getName());
     return false;
 }
 
@@ -1614,7 +1649,7 @@ bool PrettyPrinterSyntax::visitConstructor(Constructor& _expr) {
 
 void PrettyPrinterSyntax::run() {
     if (m_pNode) {
-        CollectIdentifiers(m_identifiers, m_usedIdentifiers).traverseNode(*m_pNode);
+        m_pContext->collectIdentifiers(*m_pNode);
         traverseNode(*m_pNode);
     }
     else if (m_bCompact)
@@ -1625,7 +1660,7 @@ void PrettyPrinterSyntax::print(Node &_node) {
     if (&_node == NULL)
         m_os << "NULL";
     else {
-        CollectIdentifiers(m_identifiers, m_usedIdentifiers).traverseNode(_node);
+        m_pContext->collectIdentifiers(_node);
         traverseNode(_node);
     }
 }
@@ -1661,14 +1696,24 @@ void PrettyPrinterSyntax::separateLines() {
     m_bMergeLines = false;
 }
 
-std::wstring PrettyPrinterSyntax::getNewLabelName(const std::wstring& _name) {
-    for (size_t i = 1;; ++i) {
-        const std::wstring strName = _name + fmtInt(i, L"%d");
-        if (m_usedLabels.insert(strName).second)
-            return strName;
-    }
+void prettyPrintSyntax(ir::Node &_node, std::wostream & _os, const ContextPtr& _pContext) {
+    PrettyPrinterSyntax(_node, _os, _pContext).run();
 }
 
-void prettyPrintSyntax(ir::Node &_node, std::wostream & _os) {
-    PrettyPrinterSyntax(_node, _os).run();
+void prettyPrintSyntax(ir::Node &_node, size_t nDepth, std::wostream & _os) {
+    PrettyPrinterSyntax(_node, _os, nDepth).run();
+}
+
+void prettyPrintCompact(Node &_node, std::wostream &_os, int _nFlags, const ContextPtr& _pContext) {
+    std::wstringstream wstringstream;
+    PrettyPrinterSyntax(wstringstream, true, _nFlags, _pContext).print(_node);
+    _os << removeRedundantSymbols(wstringstream.str(), L"\r\n ");
+}
+
+}
+
+void prettyPrintCompact(Node &_node, std::wostream &_os, int _nFlags) {
+    std::wstringstream wstringstream;
+    pp::PrettyPrinterSyntax(wstringstream, true, _nFlags).print(_node);
+    _os << removeRedundantSymbols(wstringstream.str(), L"\r\n ");
 }
