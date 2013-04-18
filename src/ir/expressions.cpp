@@ -411,14 +411,14 @@ bool PredicateReference::less(const Node& _other) const {
     const PredicateReference& other = (const PredicateReference&)_other;
     if (getName() != other.getName())
         return getName() < other.getName();
-    return _less(getTarget(), other.getTarget());
+    return getTarget() < other.getTarget();
 }
 
 bool PredicateReference::equals(const Node& _other) const {
     if (!Expression::equals(_other))
         return false;
     const PredicateReference& other = (const PredicateReference&)_other;
-    return getName() == other.getName() && _equals(getTarget(), other.getTarget());
+    return getName() == other.getName() && getTarget() != other.getTarget();
 }
 
 bool PredicateReference::matches(const Expression& _other, MatchesPtr _pMatches) const {
@@ -723,8 +723,8 @@ bool FunctionCall::less(const Node& _other) const {
     if (!Expression::equals(_other))
         return Expression::less(_other);
     const FunctionCall& other = (const FunctionCall&)_other;
-    if (getPredicate() != other.getPredicate())
-        return getPredicate() < other.getPredicate();
+    if (!_equals(getPredicate(), other.getPredicate()))
+        return _less(getPredicate(), other.getPredicate());
     return getArgs() < other.getArgs();
 }
 
@@ -732,7 +732,7 @@ bool FunctionCall::equals(const Node& _other) const {
     if (!Expression::equals(_other))
         return false;
     const FunctionCall& other = (const FunctionCall&)_other;
-    return getPredicate() == other.getPredicate() && getArgs() == other.getArgs();
+    return _equals(getPredicate(), other.getPredicate()) && getArgs() == other.getArgs();
 }
 
 bool FunctionCall::matches(const Expression& _other, MatchesPtr _pMatches) const {
