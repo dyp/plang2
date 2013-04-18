@@ -816,6 +816,9 @@ bool Collector::visitArrayConstructor(ArrayConstructor &_cons) {
         }
     }
 
+    if (!pEnumType->getExpression())
+        pEnumType->setExpression(new Literal(true));
+
     const VariableReferencePtr pParam = new VariableReference(new NamedValue(L"", pParamType));
 
     if (_cons.size() == 1) {
