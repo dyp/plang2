@@ -3,7 +3,7 @@
 <test>
     //D/PredicateBody/If/IfElse/If/IfBody/Multiassignment
     //D/PredicateBody/If/IfElse/If/IfBody/Jump
-    //D/PredicateBody/Stmt/StmtLabel = Start
+    //D/PredicateBody/Stmt/StmtLabel
     //D/PredicateBody/If/IfElse/If/IfElse/Call
     //D/PredicateBody/If/IfBody/Call
     //F/PredicateBody/Multiassignment
@@ -38,8 +38,8 @@ F(nat a, nat b: nat c) {
     F(b, a: c);
 }
 
-FF(nat a, nat b: nat c) {
-    a = a;
+FF(nat a, nat b: nat e #1: nat c, nat d #2) {
+    FF(a, b: e: d, c);
 }
 
 G(nat a, nat b: nat c) {

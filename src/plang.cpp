@@ -28,6 +28,7 @@
 #include "options.h"
 #include "generate_semantics.h"
 #include "verification.h"
+#include "tail_recursion_elimination.h"
 
 using namespace lexer;
 
@@ -68,6 +69,9 @@ int main(int _argc, const char ** _argv) {
 
         if (Options::instance().bOptimize)
             optimize(*pModule);
+
+        if (Options::instance().transformation & OT_TRE)
+            tailRecursionElimination(*pModule);
 
         if (Options::instance().prettyPrint & PP_FLAT)
             prettyPrintFlatTree(*pModule);

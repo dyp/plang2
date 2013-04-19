@@ -31,12 +31,21 @@ enum {
     BE_PVS  = 4,
 };
 
+// Optimizing trasformation (tail-recursion elimination, predicate inlining and variable merging).
+enum {
+    OT_NONE = 0,
+    OT_TRE = 1,
+    OT_PI = 2,
+    OT_VM = 4,
+};
+
 struct Options {
     typedef std::vector<std::string> Args;
 
     int prettyPrint;
     int typeCheck;
     int backEnd;
+    int transformation;
     std::string strInputFilename;
     std::string strOutputFilename;
     Args args;
