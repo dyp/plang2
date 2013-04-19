@@ -251,6 +251,8 @@ bool PrettyPrinterSyntax::traverseModule(Module &_module) {
 // NODE / LABEL
 bool PrettyPrinterSyntax::visitLabel(ir::Label &_label) {
     m_usedLabels.insert(_label.getName());
+    if (_label.getName() == L"")
+        _label.setName(getNewLabelName());
     m_os << _label.getName() << ": ";
     return true;
 }
