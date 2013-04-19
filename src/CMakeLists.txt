@@ -38,6 +38,7 @@ set(SOURCES
     verification.cpp
     generate_name.cpp
     type_lattice.cpp
+    tail_recursion_elimination.cpp
 )
 
 add_definitions(
