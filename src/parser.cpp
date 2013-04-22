@@ -160,7 +160,8 @@ public:
         ALLOW_INITIALIZATION = 0x08,
         LOCAL_VARIABLE = 0x10,
         PART_OF_LIST = 0x20,
-        IS_MUTABLE = 0x40
+        IS_MUTABLE = 0x40,
+        SINGLE_TYPE = 0x80,
     };
 
     // Expression parsing constants.
@@ -1635,10 +1636,11 @@ bool Parser::parseParamList(Context &_ctx, Collection<_Param> &_params,
     Collection<_Param> params;
 
     do {
-        const bool bNeedType = !pType
+        const bool bNeedType = (!pType
             || !ctx.is(IDENTIFIER)
             || !(ctx.nextIn(COMMA, RPAREN, COLON, DOT) ||  ctx.nextIn(SEMICOLON, EQ))
-            || ((_nFlags & ALLOW_EMPTY_NAMES) && isTypeName(ctx, ctx.getValue()));
+            || ((_nFlags & ALLOW_EMPTY_NAMES) && isTypeName(ctx, ctx.getValue())))
+            && !(pType && (_nFlags & SINGLE_TYPE));
 
         if (bNeedType) {
             if (ctx.consume(MUTABLE))
@@ -1679,7 +1681,7 @@ bool Parser::parseParamList(Context &_ctx, Collection<_Param> &_params,
 
 StatementPtr Parser::parseVariableDeclarationGroup(Context &_ctx, int _nFlags) {
     Collection<VariableDeclaration> decls;
-    parseParamList(_ctx, decls, &Parser::parseVariableDeclaration, ALLOW_INITIALIZATION | PART_OF_LIST | _nFlags);
+    parseParamList(_ctx, decls, &Parser::parseVariableDeclaration, ALLOW_INITIALIZATION | PART_OF_LIST | SINGLE_TYPE | _nFlags);
 
     if (decls.empty())
         return NULL;
@@ -2831,7 +2833,7 @@ bool Parser::parseDeclarations(Context &_ctx, Module &_module) {
             CASE_BUILTIN_TYPE:
             case MUTABLE: {
                 Collection<VariableDeclaration> decls;
-                parseParamList(*pCtx, decls, &Parser::parseVariableDeclaration, ALLOW_INITIALIZATION | PART_OF_LIST);
+                parseParamList(*pCtx, decls, &Parser::parseVariableDeclaration, ALLOW_INITIALIZATION | PART_OF_LIST | SINGLE_TYPE);
                 if (decls.empty())
                     ERROR(* pCtx, false, L"Failed parsing variable declaration");
                 _module.getVariables().append(decls);

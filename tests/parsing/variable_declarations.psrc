@@ -1,0 +1,11 @@
+/*
+
+<test>
+    ~ Error: Identifier required
+</test>
+
+*/
+
+foo(int a, nat b) {
+    int c, nat d;
+}

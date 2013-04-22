@@ -54,6 +54,7 @@ set(TESTS_PARSING
     parsing/array_subtype.psrc
     parsing/quantifier.psrc
     parsing/replacement.psrc
+    parsing/variable_declarations.psrc
 )
 
 set(TESTS_INFERENCE
