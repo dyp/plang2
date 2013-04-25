@@ -6,6 +6,7 @@
 
 #include <assert.h>
 
+#include "ir/base.h"
 #include "ir/statements.h"
 #include "llir.h"
 #include "utils.h"
@@ -28,7 +29,7 @@ public:
     int resolveLabel(const ir::LabelPtr &);
     void addVariable(const void * _pOrig, Auto<Variable> _pNew, bool _bReference = false);
 
-    void addType(const ir::TypePtr &_pIRType, const Auto<Type> & _pLLIRType);
+    bool addType(const ir::TypePtr &_pIRType, const Auto<Type> & _pLLIRType);
     Auto<Type> resolveType(const ir::NodePtr &_pType);
 
     void addBuiltin(const std::wstring & _strName, const Auto<Function> & _pFunc);
@@ -94,6 +95,7 @@ private:
     typedef std::map<const void *, std::pair<Auto<Variable>, bool> > variable_map_t;
     typedef std::map<ir::LabelPtr, int> label_numbers_t;
     typedef std::map<ir::NodePtr, Auto<Type> > type_map_t;
+    typedef std::set<Auto<Type>, PtrLess<Type> > type_set_t;
     typedef std::map<ir::TypePtr, Auto<Function> > compare_map_t;
     typedef std::map<std::wstring, Auto<Function> > builtin_map_t;
 
@@ -108,6 +110,7 @@ private:
     Args m_ptrs;
     compare_map_t m_comparators;
     builtin_map_t m_builtins;
+    type_set_t m_generatedTypes;
 };
 
 Translator::~Translator() {
@@ -136,11 +139,14 @@ Auto<Variable> Translator::resolveVariable(const void * _pVar, bool & _bReferenc
         return NULL;
 }
 
-void Translator::addType(const ir::TypePtr &_pIRType, const Auto<Type> & _pLLIRType) {
-    if (! m_pParent)
-        m_types[_pIRType] = _pLLIRType;
-    else
-        m_pParent->addType(_pIRType, _pLLIRType);
+bool Translator::addType(const ir::TypePtr &_pIRType, const Auto<Type> & _pLLIRType) {
+    if (! m_pParent) {
+        std::pair<type_set_t::iterator, bool> type = m_generatedTypes.insert(_pLLIRType);
+        m_types[_pIRType] = *type.first;
+        return type.second;
+    }
+
+    return m_pParent->addType(_pIRType, _pLLIRType);
 }
 
 Auto<Type> Translator::resolveType(const ir::NodePtr &_pType) {
@@ -254,10 +260,10 @@ Auto<StructType> Translator::translate(const ir::StructType & _type) {
         for (size_t i = 0; i < _type.getAllFields()[j].size(); ++ i)
             structType->fieldTypes().push_back(translate(*_type.getAllFields()[j].get(i)->getType()));
 
-    m_pModule->types().push_back(structType);
-    addType(& _type, structType);
+    if (addType(&_type, structType))
+        m_pModule->types().push_back(structType);
 
-    return structType;
+    return resolveType(&_type).as<StructType>();
 }
 
 Auto<StructType> Translator::translate(const ir::UnionType & _type) {
@@ -268,12 +274,12 @@ Auto<StructType> Translator::translate(const ir::UnionType & _type) {
         m_unionType = new StructType();
         m_unionType->fieldTypes().push_back(new Type(Type::UINT32));
         m_unionType->fieldTypes().push_back(new PointerType(new Type(Type::VOID)));
-        m_pModule->types().push_back(m_unionType);
-    }
+        if (addType(&_type, m_unionType))
+            m_pModule->types().push_back(m_unionType);
+    } else
+        addType(&_type, m_unionType);
 
-    addType(& _type, m_unionType);
-
-    return m_unionType;
+    return resolveType(&_type).as<StructType>();
 }
 
 Auto<StructType> Translator::translate(const ir::UnionConstructorDeclaration &_cons) {
@@ -1738,8 +1744,10 @@ void Translator::insertUnrefs() {
 */
 void Translator::translate(const ir::Module & _module, Module & _dest) {
     m_pModule = & _dest;
+    const llir::Types tt = m_pModule->types();
 
     for (size_t i = 0; i < _module.getPredicates().size(); ++ i) {
+        const ir::Collection<ir::Predicate> qqq = _module.getPredicates();
         const ir::Predicate & pred = * _module.getPredicates().get(i);
         if (pred.getBlock())
             m_pModule->functions().push_back(translate(pred));
