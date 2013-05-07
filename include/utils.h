@@ -38,7 +38,7 @@ std::wstring fmtAddDetail(const std::wstring & _s);
 std::wstring fmtInt(int64_t _n, const wchar_t * _fmt = L"%lld");
 std::wstring intToAlpha(int _n);
 
-std::wstring removeRedundantSymbols(const std::wstring &_wstring, const std::wstring &_redundant);
+std::wstring removeRedundantSymbols(const std::wstring &_wstring, const std::wstring &_redundant, const std::wstring &_replacement = L" ");
 
 
 // Command-line args.
