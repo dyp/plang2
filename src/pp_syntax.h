@@ -20,6 +20,7 @@ public:
     std::wstring getNewLabelName(const std::wstring& _name = L"");
     std::wstring getNamedValueName(ir::NamedValue &_val);
     void sortModule(ir::Module &_module, std::list<ir::NodePtr>& _sorted);
+    void clear();
 
 private:
     std::set<std::wstring> m_usedLabels;
