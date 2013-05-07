@@ -501,7 +501,7 @@ public:
 
     void setDimensionType(const TypePtr &_pType) { m_pDimensionType = _pType; }
 
-    virtual TypePtr getRootType() {
+    TypePtr getRootType() const {
         return getBaseType()->getKind() == ARRAY
             ? getBaseType().as<ArrayType>()->getRootType()
             : getBaseType();
