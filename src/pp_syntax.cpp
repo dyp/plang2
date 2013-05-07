@@ -244,6 +244,15 @@ void Context::sortModule(Module &_module, std::list<NodePtr>& _sorted) {
         _topologicalSort(i->second, _sorted);
 }
 
+void Context::clear() {
+    m_deps.clear();
+    m_decls.clear();
+    m_usedLabels.clear();
+    m_identifiers.clear();
+    m_usedIdentifiers.clear();
+    m_nLastFoundIdentifier = 0;
+}
+
 // NODE / MODULE
 void PrettyPrinterSyntax::printDeclarationGroup(Module &_module) {
     std::list<NodePtr> sorted;
