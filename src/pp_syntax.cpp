@@ -393,9 +393,7 @@ bool PrettyPrinterSyntax::traverseRange(Range &_type) {
 }
 
 bool PrettyPrinterSyntax::visitArrayType(ArrayType &_type) {
-    TypePtr pBaseType = _type.getBaseType();
-    while (pBaseType->getKind() == Type::ARRAY)
-        pBaseType = pBaseType.as<ArrayType>()->getBaseType();
+    const TypePtr& pBaseType = _type.getRootType();
 
     if (!m_bCompact)
         m_os << L"array(";
