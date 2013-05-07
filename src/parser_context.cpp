@@ -195,6 +195,9 @@ bool Context::getPredicates(const std::wstring &_strName, ir::Predicates &_predi
     if (m_pParent)
         m_pParent->getPredicates(_strName, _predicates);
 
+    if (ir::PredicatePtr pPred = ir::Builtins::instance().find(_strName))
+        _predicates.add(pPred);
+
     return !_predicates.empty();
 }
 
