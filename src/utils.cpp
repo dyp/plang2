@@ -12,13 +12,13 @@
 
 #include "utils.h"
 
-std::wstring removeRedundantSymbols(const std::wstring &_wstring, const std::wstring &_redundant) {
+std::wstring removeRedundantSymbols(const std::wstring &_wstring, const std::wstring &_redundant, const std::wstring &_replacement) {
     std::wstring res;
     size_t cFirst, cLast = 0;
     while ((cFirst = _wstring.find_first_not_of(_redundant, cLast)) != std::wstring::npos) {
         cLast = _wstring.find_first_of(_redundant, cFirst);
         if (!res.empty())
-            res.append(L" ");
+            res.append(_replacement);
         res.append(_wstring, cFirst, (cLast == std::wstring::npos ? _wstring.size() : cLast) - cFirst);
     }
     return res;
