@@ -135,7 +135,7 @@ static ExpressionPtr _getConditionForIndex(const ExpressionPtr& _pIndex, const V
             ? new Unary(Unary::BOOL_NEGATE, clone(*pSubtype->getExpression()))
             : clone(*pSubtype->getExpression());
 
-        Expression::substitute(*pExpr, new VariableReference(pSubtype->getParam()), _pVar);
+        pExpr = Expression::substitute(pExpr, new VariableReference(pSubtype->getParam()), _pVar).as<Expression>();
     }
     else
         pExpr = new Binary(_bEquality ? Binary::EQUALS : Binary::NOT_EQUALS, _pVar, _pIndex);
@@ -1065,7 +1065,7 @@ bool Collector::visitNamedReferenceType(NamedReferenceType &_type) {
     for (size_t i=0; i < pOrigType->getParams().size(); ++i) {
         TypePtr pParamType = pOrigType->getParams().get(i)->getType();
         if (pParamType->getKind() != Type::TYPE)
-            Expression::substitute(*pType, new VariableReference(pOrigType->getParams().get(i)), _type.getArgs().get(i));
+            pType = Expression::substitute(pType, new VariableReference(pOrigType->getParams().get(i)), _type.getArgs().get(i)).as<Type>();
         else
             pType->rewrite(pParamType, _type.getArgs().get(i).as<TypeExpr>()->getContents());
     }
