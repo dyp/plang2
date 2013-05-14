@@ -219,7 +219,7 @@ bool Expression::matches(const Expression& _other, MatchesPtr _pMatches) const {
     if (pPattern && !_matches(pExpr, pPattern))
         return false;
     if (!pPattern)
-        _pMatches->addExpression(wild, *pExpr);
+        _pMatches->addExpression(wild, pExpr);
 
     return true;
 }
