@@ -171,8 +171,8 @@ template<class _Marker>
 class MarkedMap : public Node {
 public:
     MarkedMap() {}
-    void addExpression(const _Marker& _mark, const Expression& _expr) {
-        m_map.insert(std::make_pair(&_mark, &_expr));
+    void addExpression(const _Marker& _mark, const ExpressionPtr& _pExpr) {
+        m_map.insert(std::make_pair(&_mark, _pExpr));
     }
     ExpressionPtr getExpression(const _Marker& _mark) {
         typename std::map<Auto<_Marker>, ExpressionPtr, PtrLess<_Marker> >::iterator it = m_map.find(&_mark);
