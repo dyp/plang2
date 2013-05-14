@@ -345,7 +345,7 @@ bool CollectPreConditions::visitCall(Call &_node) {
                         RangePtr pNewRange = new Range(ranges.get(j)->getMin(), ranges.get(j)->getMax());
 
                         for(int l = 0; l < params.size(); l++) {
-                            Expression::substitute(*pNewRange, new VariableReference(params.get(l)), args.get(l));
+                            pNewRange = Expression::substitute(pNewRange, new VariableReference(params.get(l)), args.get(l)).as<Range>();
                         }
 
                         rangesPred.add(pNewRange);
@@ -508,7 +508,7 @@ bool CollectPreConditions::visitCall(Call &_node) {
                             RangePtr pNewRange = new Range(ranges.get(k)->getMin(), ranges.get(k)->getMax());
 
                             for(int l = 0; l < params.size(); l++) {
-                                Expression::substitute(*pNewRange, new VariableReference(params.get(l)), args.get(l));
+                                pNewRange = Expression::substitute(pNewRange, new VariableReference(params.get(l)), args.get(l)).as<Range>();
                             }
 
                             rangesPred.add(pNewRange);
@@ -1284,7 +1284,7 @@ RangePtr CollectPreConditions::arrayRangeWithCurrentParams(ExpressionPtr _pArray
         pNewRange = new Range(pRange->getMin(), pRange->getMax());
 
         for(int i = 0; i < params.size(); i++) {
-            Expression::substitute(*pNewRange, new VariableReference(params.get(i)), args.get(i));
+            pNewRange = Expression::substitute(pNewRange, new VariableReference(params.get(i)), args.get(i)).as<Range>();
         }
     }
 
@@ -1319,7 +1319,7 @@ Collection<Range> CollectPreConditions::arrayRangesWithCurrentParams(ExpressionP
             RangePtr pNewRange = new Range(ranges.get(j)->getMin(), ranges.get(j)->getMax());
 
             for(int i = 0; i < params.size(); i++) {
-                Expression::substitute(*pNewRange, new VariableReference(params.get(i)), args.get(i));
+                pNewRange = Expression::substitute(pNewRange, new VariableReference(params.get(i)), args.get(i)).as<Range>();
             }
 
             newRanges.add(pNewRange);

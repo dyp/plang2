@@ -254,8 +254,8 @@ void Expression::substitute(ExpressionPtr& _pExpr, Matches& _matches) {
 
 class SubstituteByMask : public Visitor {
 public:
-    SubstituteByMask(ir::Node &_node, const ir::ExpressionPtr &_pFrom, const ir::ExpressionPtr &_pTo) :
-        Visitor(CHILDREN_FIRST), m_pNode(&_node), m_pFrom(_pFrom), m_pTo(_pTo)
+    SubstituteByMask(const NodePtr& _pNode, const ExpressionPtr &_pFrom, const ExpressionPtr &_pTo) :
+        Visitor(CHILDREN_FIRST), m_pRoot(_pNode), m_pFrom(_pFrom), m_pTo(_pTo)
     {}
 
     bool visitExpression(ir::Expression &_expr) {
@@ -263,27 +263,31 @@ public:
         if (!_expr.matches(*m_pFrom, &matches))
             return true;
 
-        ir::ExpressionPtr pNewNode = clone(*m_pTo);
-        Expression::substitute(pNewNode, matches);
+        ExpressionPtr m_pReplacement = clone(*m_pTo);
+        Expression::substitute(m_pReplacement, matches);
 
-        // FIXME If _expr is root node.
-        callSetter(pNewNode);
+        if (m_pRoot.ptr() != &_expr) {
+            callSetter(m_pReplacement);
+            return true;
+        }
 
+        m_pRoot = m_pReplacement;
         return true;
     }
 
-    void substitute() {
-        traverseNode(*m_pNode);
+    NodePtr substitute() {
+        traverseNode(*m_pRoot);
+        return m_pRoot;
     }
 
 private:
-    ir::NodePtr m_pNode;
-    ir::ExpressionPtr m_pFrom, m_pTo;
+    NodePtr m_pRoot;
+    ExpressionPtr m_pFrom, m_pTo;
 
 };
 
-void Expression::substitute(ir::Node &_node, const ir::ExpressionPtr &_pFrom, const ir::ExpressionPtr &_pTo) {
-    SubstituteByMask(_node, _pFrom, _pTo).substitute();
+NodePtr Expression::substitute(const NodePtr &_pNode, const ExpressionPtr &_pFrom, const ExpressionPtr &_pTo) {
+    return SubstituteByMask(_pNode, _pFrom, _pTo).substitute();
 }
 
 bool Expression::less(const Node& _other) const {
