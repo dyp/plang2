@@ -49,6 +49,9 @@ def makeRegExPart(_part):
     return re.sub(r"/([^|/]*)(?=(/|\Z))", r"/([^/=]*\||)\1(\|[^/=]*|)", _part)
 
 def makeRegEx(_test):
+    if not _test:
+        return ""
+
     s = ""
     if not _test.startswith(r"/"):
         _test = r"//" + _test
