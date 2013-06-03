@@ -64,8 +64,8 @@ int main(int _argc, const char ** _argv) {
         if (Options::instance().bCheckSemantics)
             pModule = processPreConditions(*pModule);
 
-        if (Options::instance().bVerify)
-            pModule = verify(*pModule);
+        if (Options::instance().verify != V_NONE)
+            pModule = vf::verify(pModule);
 
         if (Options::instance().bOptimize)
             optimize(*pModule);

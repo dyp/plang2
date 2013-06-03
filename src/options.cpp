@@ -80,6 +80,24 @@ bool _handleTransformation(const std::string &_val, void *_p) {
 }
 
 static
+bool _handleVerify(const std::string &_val, void *_p) {
+    Options &opts = *(Options *)_p;
+
+    if (_val == "none" || _val == "0")
+        opts.verify = V_NONE;
+    else if (_val == "nothing" || _val == "1")
+        opts.verify = V_NOTHING;
+    else if (_val == "formulas" || _val == "2")
+        opts.verify = V_FORMULAS;
+    else if (_val == "verbose" || _val == "3")
+        opts.verify |= V_VERBOSE;
+    else
+        return false;
+
+    return true;
+}
+
+static
 bool _handleNotAnOption(const std::string &_val, void *_p) {
     Options &opts = *(Options *)_p;
     opts.args.push_back(_val);
@@ -95,11 +113,12 @@ void _printUsage() {
         << "    -b, --backend=TYPE            Use backend, where TYPE is 'none' (0), 'pp' (1), 'c' (2), 'pvs' (3)\n"
         << "    -t, --typecheck=TYPE          Do typecheck, where TYPE is 'none' (0), 'on' (1), 'soft' (2)\n"
         << "    -T, --transformation=TYPE     Do optimizing transformation, where TYPE is 'none' (0), 'tailrec' (1), 'predinline' (2), 'varmerge' (3)\n"
+        << "    -e, --verify=TYPE             Generate logical conditions for proving program correctness,\n"
+        << "                                  where TYPE is 'none' (0), 'nothing' (1), 'formulas' (2), 'verbose' (3)\n"
         << "    -o, --output=FILE             Output file name\n"
         << "    -v, --verbose                 Print debug info\n"
         << "    -O, --optimize                Optimize logical expressions\n"
         << "    -s, --check-semantics         Generate logical conditions for proving semantic correctness\n"
-        << "    -e, --verify                  Generate logical conditions for proving programm correctness\n"
         << "        --help                    Show this message\n";
 }
 
@@ -110,17 +129,17 @@ bool Options::init(size_t _cArgs, const char **_pArgs) {
         { "backend",         'b', _handleBackEnd,     NULL,                        NULL,                          true  },
         { "typecheck",       't', _handleTypeCheck,   NULL,                        NULL,                          false },
         { "transformation",  'T', _handleTransformation,NULL,                      NULL,                          true  },
+        { "verify",          'e', _handleVerify,      NULL,                        NULL,                          false },
         { "output",          'o', NULL,               NULL,                        &instance().strOutputFilename, false },
         { "verbose",         'v', NULL,               &instance().bVerbose,        NULL,                          false },
         { "help",            'h', NULL,               &bHelp,                      NULL,                          false },
         { "optimize",        'O', NULL,               &instance().bOptimize,       NULL,                          false },
         { "check-semantics", 's', NULL,               &instance().bCheckSemantics, NULL,                          false },
-        { "verify",          'e', NULL,               &instance().bVerify,         NULL,                          false },
         { NULL,               0,  NULL,               NULL,                        NULL,                          false }
     };
 
     if (parseOptions(_cArgs, _pArgs, options, &instance(), _handleNotAnOption)) {
-        if (instance().bVerify && instance().bCheckSemantics) {
+        if (instance().verify != V_NONE && instance().bCheckSemantics) {
             std::cerr << "--check-semantics and --verify are mutually exclusive" << std::endl;
             return false;
         }
@@ -142,9 +161,9 @@ Options::Options() :
     typeCheck(TC_ON),
     backEnd(BE_NONE),
     transformation(OT_NONE),
+    verify(V_NONE),
     bOptimize(false),
     bCheckSemantics(false),
-    bVerify(false),
     bVerbose(false)
 {
 }
