@@ -1,0 +1,16 @@
+/*
+
+<test>
+
+</test>
+
+*/
+
+bar(nat a: nat b)
+pre a > 0
+{
+    nat c, d;
+    { c = 0 || d = 0 }
+    b = c;
+}
+post b = a;

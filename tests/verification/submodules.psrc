@@ -1,0 +1,34 @@
+/*
+
+<test>
+
+</test>
+
+*/
+
+formula f1(nat a: bool) = a > 0;
+formula f2(nat b: bool) = b = 0;
+
+foo(nat a: nat b)
+pre a > 0
+{
+    if (a > 0)
+        foo(a -1: b)
+    else
+        b = 0;
+    b = 11;
+}
+post f1(b)
+measure a;
+
+bar(nat a: nat b)
+pre a > 0
+{
+    if (a > 0)
+        bar(a -1: b)
+    else 
+        foo(10: b);
+    b = 11;
+}
+post f2(b)
+measure a;
