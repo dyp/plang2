@@ -35,13 +35,14 @@ set(SOURCES
     solve_constraints.cpp
     typecheck.cpp
     generate_semantics.cpp
-    verification.cpp
     generate_name.cpp
     type_lattice.cpp
     tail_recursion_elimination.cpp
     term_rewriting.cpp
     node_analysis.cpp
     statement_tree.cpp
+    verification_inference.cpp
+    verification_context.cpp
 )
 
 add_definitions(

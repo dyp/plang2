@@ -16,6 +16,7 @@
 #include "node_analysis.h"
 
 using namespace ir;
+using namespace vf;
 
 ExpressionPtr CollectPreConditions::collectConditions() {
     ExpressionPtr pExpr;
@@ -1420,4 +1421,16 @@ void ir::getRanges(const ArrayType &_array, Collection<Range> &_ranges) {
                 _ranges.add(NULL);
         }
     }
+}
+
+ConjunctionPtr getPreConditionForExpression(const ExpressionPtr& _pExpr) {
+    return new Conjunction();
+}
+
+ConjunctionPtr getPreConditionForStatement(const StatementPtr& _pStmt, const PredicatePtr& _pPred, const vf::ContextPtr& _pContext) {
+    return new Conjunction();
+}
+
+ConjunctionPtr getPostConditionForStatement(const StatementPtr& _pStmt, const ContextPtr& _pContext) {
+    return new Conjunction();
 }

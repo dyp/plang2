@@ -39,6 +39,14 @@ enum {
     OT_VM = 4,
 };
 
+// Verify.
+enum {
+    V_NONE      = 0,
+    V_NOTHING   = 1,
+    V_FORMULAS  = 2,
+    V_VERBOSE   = 3,
+};
+
 struct Options {
     typedef std::vector<std::string> Args;
 
@@ -46,12 +54,12 @@ struct Options {
     int typeCheck;
     int backEnd;
     int transformation;
+    int verify;
     std::string strInputFilename;
     std::string strOutputFilename;
     Args args;
     bool bOptimize;
     bool bCheckSemantics;
-    bool bVerify;
     bool bVerbose;
 
     Options();

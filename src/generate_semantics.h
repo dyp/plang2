@@ -9,6 +9,7 @@
 #include "ir/visitor.h"
 #include "utils.h"
 #include "generate_name.h"
+#include "verification.h"
 
 namespace ir{
 
@@ -99,6 +100,8 @@ void getRanges(const ArrayType &_array, Collection<Range> &_ranges);
 
 };
 
+vf::ConjunctionPtr getPreConditionForExpression(const ir::ExpressionPtr& _pExpr);
+vf::ConjunctionPtr getPreConditionForStatement(const ir::StatementPtr& _pStmt, const ir::PredicatePtr& _pPred = NULL, const vf::ContextPtr& _pContext = NULL);
+vf::ConjunctionPtr getPostConditionForStatement(const ir::StatementPtr& _pStmt, const vf::ContextPtr& _pContext = NULL);
+
 #endif /* GENERATE_SEMANTICS_H_ */
-
-
