@@ -1,0 +1,18 @@
+/*
+
+<test>
+
+</test>
+
+*/
+
+bar(nat a: nat b)
+pre a > 0
+{
+    switch (a) {
+        case 0..3, 7: b = 0
+        case 4..5, 8: b = 1
+        default: b = 2
+    }
+}
+post b = a;

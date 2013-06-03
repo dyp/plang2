@@ -1,0 +1,19 @@
+/*
+
+<test>
+
+</test>
+
+*/
+
+bar(nat a: nat b)
+pre a > 0
+{
+    if (a > 0)
+        bar(a -1: b)
+    else
+        b = 0;
+    b = 11
+}
+post b = 0
+measure a;

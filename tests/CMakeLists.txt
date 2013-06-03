@@ -116,6 +116,17 @@ macro(run_cond_tests FLAGS TESTS)
     endforeach()
 endmacro()
 
+macro(run_vf_tests FLAGS TESTS)
+    foreach(TEST ${TESTS})
+        add_test(${TEST}
+            ${PROJECT_SOURCE_DIR}/tools/test_vf.sh
+            ${PROJECT_SOURCE_DIR}/tools
+            ${PROJECT_BINARY_DIR}/tests
+            ${PROJECT_SOURCE_DIR}/tests/${TEST}
+            ${FLAGS})
+    endforeach()
+endmacro()
+
 set(TESTS_PARSING
     parsing/logic_mul.psrc
     parsing/logic_gcd.psrc
@@ -199,11 +210,21 @@ set(TESTS_CONDITIONS
     semantics/example.psrc
 )
 
+set(TESTS_VERIFICATION
+    verification/if_call.psrc
+    verification/logic.psrc
+    verification/logic_call.psrc
+    verification/split.psrc
+    verification/submodules.psrc
+    verification/switch.psrc
+)
+
 run_tests("-t0" "${TESTS_PARSING}")
 run_tests("-t2" "${TESTS_INFERENCE}")
 run_tests("-t1" "${TESTS_SEMANTICS}")
 run_pp_tests("-t0" "${TESTS_PRETTYPRINTER}")
 run_cg_tests("-t2" "${TESTS_CALLGRAPH}")
 run_ot_tests("-t2" "${TESTS_TRASFORMATION}")
-run_st_tests("" "${TESTS_STATEMENT_TREE}")
+run_st_tests("-t0" "${TESTS_STATEMENT_TREE}")
 run_cond_tests("" "${TESTS_CONDITIONS}")
+run_vf_tests("-t1" "${TESTS_VERIFICATION}")
