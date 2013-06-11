@@ -13,7 +13,7 @@
 #include "lexer.h"
 #include "utils.h"
 #include "llir.h"
-#include "verification.h"
+#include "node_analysis.h"
 
 using namespace ir;
 
@@ -238,7 +238,7 @@ bool CollectPreConditions::visitLambda(Lambda &_node) {
 
 int CollectPreConditions::handlePredicatePreCondition(Node &_node) {
 
-    m_pNewModule->getFormulas().add(extractFormulaFromPredicate(
+    m_pNewModule->getFormulas().add(na::declareFormula(
         m_nameGen.makeNamePredicatePrecondition(*m_pPredicate),
         *m_pPredicate, (Formula &)_node));
 
@@ -247,7 +247,7 @@ int CollectPreConditions::handlePredicatePreCondition(Node &_node) {
 
 int CollectPreConditions::handlePredicateBranchPreCondition(Node &_node) {
 
-    m_pNewModule->getFormulas().add(extractFormulaFromPredicate(
+    m_pNewModule->getFormulas().add(na::declareFormula(
         m_nameGen.makeNamePredicateBranchPrecondition(*m_pPredicate, getLoc().cPosInCollection),
         *m_pPredicate, (Formula &)_node));
 
@@ -256,7 +256,7 @@ int CollectPreConditions::handlePredicateBranchPreCondition(Node &_node) {
 
 int CollectPreConditions::handlePredicateTypePreCondition(Node &_node) {
 
-    m_pNewModule->getFormulas().add(extractFormulaFromPredicate(
+    m_pNewModule->getFormulas().add(na::declareFormula(
         m_nameGen.makeNameTypePreCondition(),
         *m_pPredicate, (Formula &)_node));
 
@@ -265,7 +265,7 @@ int CollectPreConditions::handlePredicateTypePreCondition(Node &_node) {
 
 int CollectPreConditions::handlePredicateTypeBranchPreCondition(Node &_node) {
 
-    m_pNewModule->getFormulas().add(extractFormulaFromPredicate(
+    m_pNewModule->getFormulas().add(na::declareFormula(
         m_nameGen.makeNameTypeBranchPreCondition(getLoc().cPosInCollection),
         *m_pPredicate, (Formula &)_node));
 
@@ -274,7 +274,7 @@ int CollectPreConditions::handlePredicateTypeBranchPreCondition(Node &_node) {
 
 int CollectPreConditions::handleProcessBranchPreCondition(Node &_node) {
 
-    m_pNewModule->getFormulas().add(extractFormulaFromPredicate(
+    m_pNewModule->getFormulas().add(na::declareFormula(
         m_nameGen.makeNameProcessBranchPreCondition(*m_pProcess, getLoc().cPosInCollection),
         *m_pPredicate, (Formula &)_node));
 
@@ -332,7 +332,7 @@ bool CollectPreConditions::visitCall(Call &_node) {
 
                     Collection<Range> rangesPred, ranges;
 
-//в разных случаях доступ к аргументам может быть и не таким
+//РІ СЂР°Р·РЅС‹С… СЃР»СѓС‡Р°СЏС… РґРѕСЃС‚СѓРї Рє Р°СЂРіСѓРјРµРЅС‚Р°Рј РјРѕР¶РµС‚ Р±С‹С‚СЊ Рё РЅРµ С‚Р°РєРёРј
                     NamedValues params = pTypePred.as<ParameterizedType>()->getParams();
                     ArrayTypePtr pArray = pTypePred.as<ParameterizedType>()->getActualType()
                         .as<DerivedType>().as<ArrayType>();
@@ -405,8 +405,8 @@ bool CollectPreConditions::visitCall(Call &_node) {
             }
 
 //for predicate
-//в леммы подставляются Formula а не Expression
-//посмотреть, что еще тут может быть
+//РІ Р»РµРјРјС‹ РїРѕРґСЃС‚Р°РІР»СЏСЋС‚СЃСЏ Formula Р° РЅРµ Expression
+//РїРѕСЃРјРѕС‚СЂРµС‚СЊ, С‡С‚Рѕ РµС‰Рµ С‚СѓС‚ РјРѕР¶РµС‚ Р±С‹С‚СЊ
             if(((pCallArg->getKind() == Expression::TYPE && 
                 pCallArg.as<TypeExpr>()->getContents()->getKind() == Type::PREDICATE) ||
                 (pCallArg->getKind() == Expression::LAMBDA)) &&
@@ -494,7 +494,7 @@ bool CollectPreConditions::visitCall(Call &_node) {
 
                         Collection<Range> rangesPred, ranges;
 
-//в разных случаях доступ к аргументам может быть и не таким
+//РІ СЂР°Р·РЅС‹С… СЃР»СѓС‡Р°СЏС… РґРѕСЃС‚СѓРї Рє Р°СЂРіСѓРјРµРЅС‚Р°Рј РјРѕР¶РµС‚ Р±С‹С‚СЊ Рё РЅРµ С‚Р°РєРёРј
                         NamedValues params = pTypePred.as<ParameterizedType>()->getParams();
 
                         ArrayTypePtr pArray = pTypePred.as<ParameterizedType>()->getActualType()
@@ -570,7 +570,7 @@ bool CollectPreConditions::visitCall(Call &_node) {
         }
     }
 
-//предикатов ведь не может быть в результатах?********************************************************
+//РїСЂРµРґРёРєР°С‚РѕРІ РІРµРґСЊ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РІ СЂРµР·СѓР»СЊС‚Р°С‚Р°С…?********************************************************
     return true;
 }
 
@@ -601,7 +601,7 @@ bool CollectPreConditions::visitIf(If &_node) {
         pExprElse = _node.getArg().as<Unary>()->getExpression();
     else
         pExprElse = new Unary(Unary::BOOL_NEGATE, _node.getArg());
-//использовать Мишин оптимизатор выражений, когда смержиться
+//РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ РњРёС€РёРЅ РѕРїС‚РёРјРёР·Р°С‚РѕСЂ РІС‹СЂР°Р¶РµРЅРёР№, РєРѕРіРґР° СЃРјРµСЂР¶РёС‚СЊСЃСЏ
 
     if(ExpressionPtr pCond = collectConditions()) {
         pExprIf = new Binary(Binary::BOOL_AND, pCond, _node.getArg());
@@ -611,11 +611,12 @@ bool CollectPreConditions::visitIf(If &_node) {
         pExprIf = _node.getArg();
         //pExprElse already initialized
 
-    NamedValuesPtr params = varCollector(pExprIf);
+    NamedValues params;
+    na::collectValues(pExprIf, params);
     FormulaPtr pFormulaIf = new Formula(Formula::EXISTENTIAL, pExprIf);
     FormulaPtr pFormulaElse = new Formula(Formula::EXISTENTIAL, pExprElse);
-    pFormulaIf->getBoundVariables().append(*params);
-    pFormulaElse->getBoundVariables().append(*params);
+    pFormulaIf->getBoundVariables().append(params);
+    pFormulaElse->getBoundVariables().append(params);
 
     m_pNewModule->getLemmas().add(new LemmaDeclaration(pFormulaIf,
                                                        new Label(m_nameGen.makeNameLemmaIf())));
@@ -774,7 +775,7 @@ bool CollectPreConditions::visitReplacement(Replacement &_node) {
 
 bool CollectPreConditions::visitAssignment(Assignment &_node) {
 
-//для ArrayConstrucor надо в visitArrayIteration
+//РґР»СЏ ArrayConstrucor РЅР°РґРѕ РІ visitArrayIteration
     ExpressionPtr pCond = collectConditions();
 //lemmas for ArrayConstrucor
 //x = for(... var j ...) { case A1 : ... case An : ...}
@@ -1260,7 +1261,7 @@ ExpressionPtr CollectPreConditions::caseNonintersection(ExpressionPtr _pExpr1,Ex
 //into definition of array substitute params from current array
 RangePtr CollectPreConditions::arrayRangeWithCurrentParams(ExpressionPtr _pArray) {
 
-//Никита:    Попробуй разнести по разным функам подстановку аргументов в произвольный параметризованный тип и выдирание диапазонов из массива
+//РќРёРєРёС‚Р°:    РџРѕРїСЂРѕР±СѓР№ СЂР°Р·РЅРµСЃС‚Рё РїРѕ СЂР°Р·РЅС‹Рј С„СѓРЅРєР°Рј РїРѕРґСЃС‚Р°РЅРѕРІРєСѓ Р°СЂРіСѓРјРµРЅС‚РѕРІ РІ РїСЂРѕРёР·РІРѕР»СЊРЅС‹Р№ РїР°СЂР°РјРµС‚СЂРёР·РѕРІР°РЅРЅС‹Р№ С‚РёРї Рё РІС‹РґРёСЂР°РЅРёРµ РґРёР°РїР°Р·РѕРЅРѕРІ РёР· РјР°СЃСЃРёРІР°
     RangePtr pNewRange;
 
     if(_pArray->getKind() == Expression::VAR) {
@@ -1314,7 +1315,7 @@ Collection<Range> CollectPreConditions::arrayRangesWithCurrentParams(ExpressionP
             getType().as<NamedReferenceType>()->getArgs();
 
         //if borders of range is complicated, then /Collection<Range> ranges/ changes
-        //попробовать ranges.clone()
+        //РїРѕРїСЂРѕР±РѕРІР°С‚СЊ ranges.clone()
         for(int j = 0; j < ranges.size(); j++) {
             RangePtr pNewRange = new Range(ranges.get(j)->getMin(), ranges.get(j)->getMax());
 
