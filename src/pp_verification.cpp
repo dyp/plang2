@@ -11,6 +11,33 @@ using namespace na;
 
 namespace pp {
 
+std::wstring fmtRule(size_t _cRuleInd) {
+    switch (_cRuleInd) {
+        case vf::Context::TRANSFER:          return L"Transfer";
+        case vf::Context::SIMPLIFICATION:    return L"Simplification";
+        case vf::Context::SPLIT:             return L"Split";
+        case vf::Context::RP:                return L"RP";
+        case vf::Context::RS:                return L"RS";
+        case vf::Context::RC:                return L"RC";
+        case vf::Context::RB:                return L"RB";
+        case vf::Context::QP:                return L"QP";
+        case vf::Context::QSB:               return L"QSB";
+        case vf::Context::QS:                return L"QS";
+        case vf::Context::QC:                return L"QC";
+        case vf::Context::FP:                return L"FP";
+        case vf::Context::FS:                return L"FS";
+        case vf::Context::FC:                return L"FC";
+        case vf::Context::EP:                return L"EP";
+        case vf::Context::ES:                return L"ES";
+        case vf::Context::EC:                return L"EC";
+        case vf::Context::EB:                return L"EB";
+        case vf::Context::FLS:               return L"FLS";
+        case vf::Context::FLC:               return L"FLC";
+        case vf::Context::FLP:               return L"FLP";
+    }
+    return L"";
+}
+
 void prettyPrint(const ConjunctPtr& _pConjunct, std::wostream &_os, const ContextPtr& _pContext) {
     ContextPtr pContext = !_pContext ? new Context() : _pContext;
     switch (_pConjunct->getKind()) {

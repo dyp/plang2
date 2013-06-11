@@ -693,8 +693,8 @@ void Inference::run() {
     while (strategy()) {
         if (verifyVerbose()) {
             std::wcout << L"Step " << cStep++;
-            if (!m_context.m_cLastUsedRule != 0)
-                std::wcout << L" (" << m_context.m_cLastUsedRule << ")";
+            if (m_context.m_cLastUsedRule != 0)
+                std::wcout << L" (" << pp::fmtRule(m_context.m_cLastUsedRule) << ")";
             std::wcout << ":\n\n";
             pp::prettyPrint(m_context, std::wcout);
             std::wcout << L"\n";
