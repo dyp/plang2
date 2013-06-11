@@ -1,7 +1,10 @@
 /*
 
 <test>
-
+    = forall nat a, nat c. P_bar(a) => (exists . c = 0)
+    = forall nat a, nat d. P_bar(a) => (exists . d = 0)
+    = forall nat b, nat a, nat c, nat d. P_bar(a) & d = 0 & c = 0 => (exists . b = c)
+    = forall nat b, nat a, nat c, nat d. P_bar(a) & b = c & d = 0 & c = 0 => Q_bar(a, b)
 </test>
 
 */
