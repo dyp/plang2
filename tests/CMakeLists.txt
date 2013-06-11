@@ -127,6 +127,17 @@ macro(run_vf_tests FLAGS TESTS)
     endforeach()
 endmacro()
 
+macro(run_pvs_tests FLAGS TESTS)
+    foreach(TEST ${TESTS})
+        add_test(${TEST}
+            ${PROJECT_SOURCE_DIR}/tools/test_pvs.sh
+            ${PROJECT_SOURCE_DIR}/tools
+            ${PROJECT_BINARY_DIR}/src
+            ${PROJECT_SOURCE_DIR}/tests/${TEST}
+            ${FLAGS})
+    endforeach()
+endmacro()
+
 set(TESTS_PARSING
     parsing/logic_mul.psrc
     parsing/logic_gcd.psrc
@@ -219,6 +230,10 @@ set(TESTS_VERIFICATION
     verification/switch.psrc
 )
 
+set(TESTS_PVS
+    backend_pvs/example.psrc
+)
+
 run_tests("-t0" "${TESTS_PARSING}")
 run_tests("-t2" "${TESTS_INFERENCE}")
 run_tests("-t1" "${TESTS_SEMANTICS}")
@@ -228,3 +243,4 @@ run_ot_tests("-t2" "${TESTS_TRASFORMATION}")
 run_st_tests("-t0" "${TESTS_STATEMENT_TREE}")
 run_cond_tests("" "${TESTS_CONDITIONS}")
 run_vf_tests("-t1" "${TESTS_VERIFICATION}")
+run_pvs_tests("-t1" "${TESTS_PVS}")
