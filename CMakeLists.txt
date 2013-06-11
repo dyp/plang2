@@ -18,4 +18,5 @@ add_subdirectory(tests)
 
 if (NOT GMPXXLIB)
     add_dependencies(plang mpir)
+    add_dependencies(verification_tests mpir)
 endif()

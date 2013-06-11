@@ -1,0 +1,24 @@
+/*
+
+<test>
+    == \(!\(b\s*=\s*0\)\)\s*=>\s*b\s*>=\s*1
+    == \(b\s*=\s*0\s*=>\s*c\s*=\s*0\)\s*&\s*\(\(!\(b\s*=\s*0\)\)\s*=>\s*c\s*=\s*d\s*\+\s*Umn\(b\s*-\s*1,\s*d\)\)
+    == b\s*=\s*0
+    == b\s*>=\s*1
+    == b\s*=\s*c\s*\+\s*Umn\(d\s*-\s*1,\s*c\)
+    == b\s*>=\s*1
+    == b\s*>=\s*1
+    == b\s*>=\s*1
+</test>
+
+*/
+
+Umn(nat a, b:  nat c)
+pre a >= 0 & b >= 0
+{
+	if (a = 0)
+		c = 0
+	else
+		c = b + Umn(a - 1, b)
+}
+post c = a * b;

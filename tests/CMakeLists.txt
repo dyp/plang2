@@ -1,5 +1,55 @@
 cmake_minimum_required(VERSION 2.8)
 
+# Tests for statements modification
+
+set(TARGET_ST verification_tests)
+
+set(SOURCES_ST
+    ../src/autoptr.cpp
+    ../src/utils.cpp
+    ../src/ir/base.cpp
+    ../src/ir/builtins.cpp
+    ../src/ir/expressions.cpp
+    ../src/ir/type_derived.cpp
+    ../src/ir/type_predicate.cpp
+    ../src/ir/type_array.cpp
+    ../src/ir/type_subtype.cpp
+    ../src/ir/types.cpp
+    ../src/ir/type_struct.cpp
+    ../src/ir/type_union.cpp
+    ../src/ir/visitor.cpp
+    ../src/lexer.cpp
+    ../src/numbers.cpp
+    ../src/options.cpp
+    ../src/parser_context.cpp
+    ../src/parser.cpp
+    ../src/verification_tests.cpp
+    ../src/pp_flat_tree.cpp
+    ../src/pp_syntax.cpp
+    ../src/prettyprinter.cpp
+    ../src/statement_tree.cpp
+    ../src/node_analysis.cpp
+    ../src/term_rewriting.cpp
+    ../src/typecheck.cpp
+    ../src/solve_constraints.cpp
+    ../src/collect_constraints.cpp
+    ../src/type_lattice.cpp
+    ../src/generate_semantics.cpp
+    ../src/generate_name.cpp
+    ../src/verification_context.cpp
+)
+
+add_executable(${TARGET_ST} ${SOURCES_ST})
+
+include_directories (
+    ../include
+)
+
+target_link_libraries(${TARGET_ST}
+    gmpxx
+    gmp
+)
+
 macro(run_tests FLAGS TESTS)
     foreach(TEST ${TESTS})
         add_test(${TEST}
@@ -39,6 +89,28 @@ macro(run_ot_tests FLAGS TESTS)
             ${PROJECT_SOURCE_DIR}/tools/test_ot.sh
             ${PROJECT_SOURCE_DIR}/tools
             ${PROJECT_BINARY_DIR}/src
+            ${PROJECT_SOURCE_DIR}/tests/${TEST}
+            ${FLAGS})
+    endforeach()
+endmacro()
+
+macro(run_st_tests FLAGS TESTS)
+    foreach(TEST ${TESTS})
+        add_test(${TEST}
+            ${PROJECT_SOURCE_DIR}/tools/test_st.sh
+            ${PROJECT_SOURCE_DIR}/tools
+            ${PROJECT_BINARY_DIR}/tests
+            ${PROJECT_SOURCE_DIR}/tests/${TEST}
+            ${FLAGS})
+    endforeach()
+endmacro()
+
+macro(run_cond_tests FLAGS TESTS)
+    foreach(TEST ${TESTS})
+        add_test(${TEST}
+            ${PROJECT_SOURCE_DIR}/tools/test_cond.sh
+            ${PROJECT_SOURCE_DIR}/tools
+            ${PROJECT_BINARY_DIR}/tests
             ${PROJECT_SOURCE_DIR}/tests/${TEST}
             ${FLAGS})
     endforeach()
@@ -119,9 +191,19 @@ set(TESTS_TRASFORMATION
     transformation/tail_recursion.psrc
 )
 
+set(TESTS_STATEMENT_TREE
+    statement_tree/example.psrc
+)
+
+set(TESTS_CONDITIONS
+    semantics/example.psrc
+)
+
 run_tests("-t0" "${TESTS_PARSING}")
 run_tests("-t2" "${TESTS_INFERENCE}")
 run_tests("-t1" "${TESTS_SEMANTICS}")
 run_pp_tests("-t0" "${TESTS_PRETTYPRINTER}")
 run_cg_tests("-t2" "${TESTS_CALLGRAPH}")
 run_ot_tests("-t2" "${TESTS_TRASFORMATION}")
+run_st_tests("" "${TESTS_STATEMENT_TREE}")
+run_cond_tests("" "${TESTS_CONDITIONS}")
