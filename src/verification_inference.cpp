@@ -183,6 +183,9 @@ bool Inference::ruleRC(const PredicatePtr& _pPred, const If& _if, const Conjunct
         pB = _if.getBody(),
         pC = _if.getElse();
 
+    if (!pB || !pC)
+        return false;
+
     std::map<StatementPtr, std::pair<ConjunctionPtr, ConjunctionPtr> > spec;
     if (!getSubStatementSpecification(_pPred, std::make_pair(pB, pC), spec, &m_context))
         return false;
@@ -320,6 +323,9 @@ bool Inference::ruleQS(const PredicatePtr& _pPred, const Block& _block, const Co
 }
 
 bool Inference::ruleQC(const PredicatePtr& _pPred, const If& _if, const ConjunctionPtr& _pPre, const ConjunctionPtr& _pPost) {
+    if (!_if.getBody() || !_if.getElse())
+        return false;
+
     ConjunctionPtr
         pArg = Conjunction::getConjunction(_if.getArg()),
         pNotArg = new Conjunction();
@@ -376,6 +382,9 @@ bool Inference::ruleFS(const Block& _block, const ConjunctionPtr& _pLeft) {
 }
 
 bool Inference::ruleFC(const If& _if, const ConjunctionPtr& _pLeft) {
+    if (!_if.getBody() || !_if.getElse())
+        return false;
+
     ConjunctionPtr
         pArg = Conjunction::getConjunction(_if.getArg()),
         pNotArg = new Conjunction();
@@ -453,6 +462,9 @@ bool Inference::ruleES(const Block& _block, const ValuesSet& _bounded, const Con
 }
 
 bool Inference::ruleEC(const If& _if, const ValuesSet& _bounded, const ConjunctionPtr& _pLeft) {
+    if (!_if.getBody() || !_if.getElse())
+        return false;
+
     std::pair<ValuesSet, ValuesSet> newBounded;
     splitBoundedValues(newBounded, _bounded, _if.getBody(), _if.getElse());
 
@@ -507,6 +519,9 @@ bool Inference::ruleFLSP(const Block& _block, const ConjunctionPtr& _pTail, cons
 }
 
 bool Inference::ruleFLC(const If& _if, const ConjunctionPtr& _pTail, const ConjunctionPtr& _pRight) {
+    if (!_if.getBody() || !_if.getElse())
+        return false;
+
     ConjunctionPtr
         pArg = Conjunction::getConjunction(_if.getArg()),
         pNotArg = new Conjunction();
