@@ -1,0 +1,19 @@
+bar() {}
+baz() {}
+
+foo() {
+    nat
+        a = 10,
+        b = a + 1;
+
+    nat c, d;
+
+    if (bar(a)) {
+        baz(baz(a + 1): c);
+        c = 0 || d = 0
+    }
+    else {
+        c = baz(11);
+        d = c + 1
+    }
+}

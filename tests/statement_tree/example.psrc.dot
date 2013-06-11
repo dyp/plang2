@@ -1,0 +1,170 @@
+digraph G {
+    subgraph cluster0{
+        node [style=filled];
+        A1 [ label = "{}" ];
+        label = "bar_exp";
+        color = black
+    }
+    subgraph cluster1{
+        node [style=filled];
+        A2 [ label = "{}" ];
+        label = "bar_mod";
+        color = black
+    }
+    subgraph cluster2{
+        node [style=filled];
+        A3 [ label = "{}" ];
+        label = "bar_simp";
+        color = black
+    }
+    subgraph cluster3{
+        node [style=filled];
+        A4 [ label = "{}" ];
+        label = "baz_exp";
+        color = black
+    }
+    subgraph cluster4{
+        node [style=filled];
+        A5 [ label = "{}" ];
+        label = "baz_mod";
+        color = black
+    }
+    subgraph cluster5{
+        node [style=filled];
+        A6 [ label = "{}" ];
+        label = "baz_simp";
+        color = black
+    }
+    subgraph cluster6{
+        node [style=filled];
+        A7 [ label = "{}" ];
+        A7 -> A8 [ label = 1 ];
+        A8 [ label = "var{}" ];
+        A8 -> A9 [ label = 1 ];
+        A9 [ label = "nat b = 10" ];
+        A8 -> A10 [ label = 2 ];
+        A10 [ label = "nat b = c + 1" ];
+        A7 -> A11 [ label = 2 ];
+        A11 [ label = "var{}" ];
+        A11 -> A12 [ label = 1 ];
+        A12 [ label = "nat b" ];
+        A11 -> A13 [ label = 2 ];
+        A13 [ label = "nat b" ];
+        A7 -> A14 [ label = 3 ];
+        A14 [ label = "if" ];
+        A14 -> A15 [ label = 1 ];
+        A15 [ label = "{}" ];
+        A15 -> A16 [ label = 1 ];
+        A16 [ label = "baz(baz(b + 1): c)" ];
+        A15 -> A17 [ label = 2 ];
+        A17 [ label = "||" ];
+        A17 -> A18 [ label = 1 ];
+        A18 [ label = "b = 0" ];
+        A17 -> A19 [ label = 2 ];
+        A19 [ label = "b = 0" ];
+        A14 -> A20 [ label = 2 ];
+        A20 [ label = "{}" ];
+        A20 -> A21 [ label = 1 ];
+        A21 [ label = "b = baz(11)" ];
+        A20 -> A22 [ label = 2 ];
+        A22 [ label = "b = c + 1" ];
+        label = "foo_exp";
+        color = black
+    }
+    subgraph cluster7{
+        node [style=filled];
+        A23 [ label = "{}" ];
+        A23 -> A24 [ label = 1 ];
+        A24 [ label = "{}" ];
+        A24 -> A25 [ label = 1 ];
+        A25 [ label = "nat b = 10" ];
+        A25 -> A26;
+        A26 [ label = "b = 10" ];
+        A24 -> A27 [ label = 2 ];
+        A27 [ label = "nat b = c + 1" ];
+        A27 -> A28;
+        A28 [ label = "b = c + 1" ];
+        A23 -> A29 [ label = 2 ];
+        A29 [ label = "{}" ];
+        A29 -> A30 [ label = 1 ];
+        A30 [ label = "nat b" ];
+        A29 -> A31 [ label = 2 ];
+        A31 [ label = "nat b" ];
+        A23 -> A32 [ label = 3 ];
+        A32 [ label = "{}" ];
+        A32 -> A33 [ label = 1 ];
+        A33 [ label = "bar(b: c)" ];
+        A32 -> A34 [ label = 2 ];
+        A34 [ label = "if" ];
+        A34 -> A35 [ label = 1 ];
+        A35 [ label = "{}" ];
+        A35 -> A36 [ label = 1 ];
+        A36 [ label = "{}" ];
+        A36 -> A37 [ label = 1 ];
+        A37 [ label = "baz(b + 1: c)" ];
+        A36 -> A38 [ label = 2 ];
+        A38 [ label = "baz(b: c)" ];
+        A35 -> A39 [ label = 2 ];
+        A39 [ label = "||" ];
+        A39 -> A40 [ label = 1 ];
+        A40 [ label = "b = 0" ];
+        A39 -> A41 [ label = 2 ];
+        A41 [ label = "b = 0" ];
+        A34 -> A42 [ label = 2 ];
+        A42 [ label = "{}" ];
+        A42 -> A43 [ label = 1 ];
+        A43 [ label = "{}" ];
+        A43 -> A44 [ label = 1 ];
+        A44 [ label = "baz(11: b)" ];
+        A43 -> A45 [ label = 2 ];
+        A45 [ label = "b = c" ];
+        A42 -> A46 [ label = 2 ];
+        A46 [ label = "b = c + 1" ];
+        label = "foo_mod";
+        color = black
+    }
+    subgraph cluster8{
+        node [style=filled];
+        A47 [ label = "{}" ];
+        A47 -> A48 [ label = 1 ];
+        A48 [ label = "nat b = 10" ];
+        A48 -> A49;
+        A49 [ label = "b = 10" ];
+        A47 -> A50 [ label = 2 ];
+        A50 [ label = "nat b = c + 1" ];
+        A50 -> A51;
+        A51 [ label = "b = c + 1" ];
+        A47 -> A52 [ label = 3 ];
+        A52 [ label = "nat b" ];
+        A47 -> A53 [ label = 4 ];
+        A53 [ label = "nat b" ];
+        A47 -> A54 [ label = 5 ];
+        A54 [ label = "bar(b: c)" ];
+        A47 -> A55 [ label = 6 ];
+        A55 [ label = "if" ];
+        A55 -> A56 [ label = 1 ];
+        A56 [ label = "{}" ];
+        A56 -> A57 [ label = 1 ];
+        A57 [ label = "baz(b + 1: c)" ];
+        A56 -> A58 [ label = 2 ];
+        A58 [ label = "baz(b: c)" ];
+        A56 -> A59 [ label = 3 ];
+        A59 [ label = "||" ];
+        A59 -> A60 [ label = 1 ];
+        A60 [ label = "b = 0" ];
+        A59 -> A61 [ label = 2 ];
+        A61 [ label = "b = 0" ];
+        A55 -> A62 [ label = 2 ];
+        A62 [ label = "{}" ];
+        A62 -> A63 [ label = 1 ];
+        A63 [ label = "baz(11: b)" ];
+        A62 -> A64 [ label = 2 ];
+        A64 [ label = "b = c" ];
+        A62 -> A65 [ label = 3 ];
+        A65 [ label = "b = c + 1" ];
+        label = "foo_simp";
+        color = black
+    }
+}
+
+
