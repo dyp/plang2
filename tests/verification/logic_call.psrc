@@ -1,7 +1,14 @@
 /*
 
 <test>
-
+    = forall nat a. P_bar(a) => a > 0 => a >= 1
+    = forall nat a. a > 0 & (a > 0 => a >= 1) => m_bar(a - 1) < m_bar(a) & P_bar(a - 1) & a >= 1
+    = forall nat b, nat a. Q_bar(b) & a > 0 & (a > 0 => a >= 1) => ((!(a > 0)) => b = 0) & (a > 0 => Q_bar(b))
+    = forall nat a, nat b, nat c. c = a - 1 & b = a - 1 & a >= 1 => b = c
+    = forall nat b, nat a. b = 11 & ((!(a > 0)) => b = 0) & (a > 0 => Q_bar(b)) & P_bar(a) => Q_bar(b)
+    = forall nat b, nat a. ((!(a > 0)) => b = 0) & (a > 0 => Q_bar(b)) & P_bar(a) => (exists . b = 11)
+    = forall nat b, nat a. (!(a > 0)) & (a > 0 => a >= 1) & b = 0 => ((!(a > 0)) => b = 0) & (a > 0 => Q_bar(b))
+    = forall nat b, nat a. (!(a > 0)) & (a > 0 => a >= 1) => (exists . b = 0)
 </test>
 
 */

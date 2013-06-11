@@ -121,7 +121,7 @@ macro(run_vf_tests FLAGS TESTS)
         add_test(${TEST}
             ${PROJECT_SOURCE_DIR}/tools/test_vf.sh
             ${PROJECT_SOURCE_DIR}/tools
-            ${PROJECT_BINARY_DIR}/tests
+            ${PROJECT_BINARY_DIR}/src
             ${PROJECT_SOURCE_DIR}/tests/${TEST}
             ${FLAGS})
     endforeach()

@@ -1,7 +1,10 @@
 /*
 
 <test>
-
+    = forall nat a, nat b. b = 0 & P_bar(a) => b < 1 & f(1, 2) & b = 0
+    = forall nat a, nat b. P_bar(a) => (exists . b = 0)
+    = forall nat a, nat c. c = 0 & P_bar(a) => c < 2 & f(1, 2)
+    = forall nat a, nat c. P_bar(a) => (exists . c = 0)
 </test>
 
 */
