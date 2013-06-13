@@ -260,7 +260,6 @@ void PrettyPrinterSyntax::printDeclarationGroup(Module &_module) {
 
     for (std::list<NodePtr>::iterator i = sorted.begin(); i != sorted.end(); ++i) {
         m_os << fmtIndent();
-        mergeLines();
         traverseNode(**i);
         separateLines();
         m_os << ((*i)->getNodeKind() == Node::STATEMENT
@@ -270,6 +269,7 @@ void PrettyPrinterSyntax::printDeclarationGroup(Module &_module) {
 }
 
 bool PrettyPrinterSyntax::_traverseDeclarationGroup(DeclarationGroup &_decl) {
+    VISITOR_TRAVERSE_COL(LemmaDeclaration, LemmaDecl, _decl.getLemmas());
     VISITOR_TRAVERSE_COL(Message, MessageDecl, _decl.getMessages());
     VISITOR_TRAVERSE_COL(Process, ProcessDecl, _decl.getProcesses());
     return true;
@@ -291,7 +291,6 @@ bool PrettyPrinterSyntax::traverseModule(Module &_module) {
         incTab();
     }
 
-    VISITOR_TRAVERSE_COL(Module, ModuleDecl, _module.getModules());
     printDeclarationGroup(_module);
     if (!_traverseDeclarationGroup(_module))
         return false;
