@@ -261,8 +261,8 @@ public:
         if (size() != other.size())
             return size() < other.size();
         for (size_t i=0; i<size(); ++i)
-            if (!_equals(get(i), other.get(i)))
-                return _less(get(i), other.get(i));
+            if (!this->_equals(get(i), other.get(i)))
+                return this->_less(get(i), other.get(i));
         return false;
     }
 
@@ -273,7 +273,7 @@ public:
         if (size() != other.size())
             return false;
         for (size_t i=0; i<size(); ++i)
-            if (!_equals(get(i), other.get(i)))
+            if (!this->_equals(get(i), other.get(i)))
                 return false;
         return true;
     }
