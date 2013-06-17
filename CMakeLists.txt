@@ -3,6 +3,8 @@ project(PLang)
 
 enable_testing()
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+
 find_library(GMPXXLIB gmpxx)
 
 if (NOT GMPXXLIB)
