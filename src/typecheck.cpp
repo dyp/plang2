@@ -567,20 +567,20 @@ public:
     PredicateLinker(ir::Context &_ctx) : Visitor(CHILDREN_FIRST), m_ctx(_ctx) {}
 
     virtual bool visitPredicateReference(ir::PredicateReference &_ref) {
-        ir::Predicates predicetes;
+        ir::Predicates predicates;
 
         if (_ref.getTarget() && _ref.getTarget()->isBuiltin())
             return true;
 
-        m_ctx.getPredicates(_ref.getName(), predicetes);
-        if (predicetes.empty())
+        m_ctx.getPredicates(_ref.getName(), predicates);
+        if (predicates.empty())
             return true;
 
         if (_ref.getTarget())
             _ref.setTarget(NULL);
 
-        for (size_t i=0; i<predicetes.size(); ++i) {
-            ir::PredicatePtr pPredicate = predicetes.get(i);
+        for (size_t i = 0; i < predicates.size(); ++i) {
+            ir::PredicatePtr pPredicate = predicates.get(i);
             ir::TypePtr pType = pPredicate->getType();
 
             const size_t szOrd = _ref.getType()->compare(*pType);
@@ -588,9 +588,15 @@ public:
                 continue;
 
             if (!_ref.getTarget()
-                || _ref.getTarget()->getType()->compare(*pType) == ir::Type::ORD_SUB)
+                || _ref.getTarget()->getType()->compare(*pType) == ir::Type::ORD_SUB
+                || (_ref.getTarget()->getType()->compare(*pType) == ir::Type::ORD_EQUALS &&
+                        !_ref.getTarget()->getBlock()))
                 _ref.setTarget(pPredicate);
+            // Find the most appropriate target. Last subexpression of || : set new target if current one is a forward declaration
+            // (without a body). If we already got the target with declared body, can retarget only to a predicate with more
+            // appropriate signature.
         }
+
         return true;
     }
 

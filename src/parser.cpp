@@ -2909,10 +2909,9 @@ bool Parser::typecheck(Context &_ctx, Node &_node) {
     if (Options::instance().typeCheck == TC_PREPROCESS)
         return true;
 
-    if (tc::solve(constraints, substs)) {
+    if (tc::solve(constraints, substs))
         tc::apply(substs, _node);
-        tc::linkPredicates(_ctx, _node);
-    } else if (Options::instance().typeCheck == TC_FULL)
+    else if (Options::instance().typeCheck == TC_FULL)
         ERROR(_ctx, false, L"Type error");
 
     return true;
@@ -3038,6 +3037,8 @@ ModulePtr Parser::parseMainModule(Context &_ctx) {
         if (!ctx.consume(END_OF_FILE))
             UNEXPECTED(_ctx, "End of module");
     }
+
+    tc::linkPredicates(ctx, *pModule);
 
     _ctx.addModule(pModule);
     _ctx.addModuleCtx(pModule, &ctx);
