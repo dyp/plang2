@@ -427,7 +427,7 @@ bool PredicateReference::equals(const Node& _other) const {
     if (!Expression::equals(_other))
         return false;
     const PredicateReference& other = (const PredicateReference&)_other;
-    return getName() == other.getName() && getTarget() != other.getTarget();
+    return getName() == other.getName() && getTarget() == other.getTarget();
 }
 
 bool PredicateReference::matches(const Expression& _other, MatchesPtr _pMatches) const {
