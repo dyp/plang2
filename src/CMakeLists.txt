@@ -52,6 +52,8 @@ add_definitions(
 
 add_executable(${TARGET} ${SOURCES})
 
+target_link_libraries(${TARGET} ${CVC3LIB_LIBRARIES})
+
 include_directories (
     ../include
 )
