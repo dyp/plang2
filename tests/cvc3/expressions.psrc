@@ -1,0 +1,28 @@
+/*
+
+<test>
+    ~~ \(FORALL \(a\w*: INT\) : NOT \(a\w* = -\(a\w*\)\)\)
+    = Invalid
+    ~~ \(FORALL \(a\w*: INT, b\w*: INT\) : \(\(a\w* \+ b\w*\) = \(b\w* \+ a\w*\)\)\)
+    = Valid
+    ~~ \(FORALL \(a\w*: INT, b\w*: INT\) : NOT \(\(a\w* \+ b\w*\) = \(b\w* \+ a\w*\)\)\)
+    = Invalid
+    ~~ \(FORALL \(a\w*: INT, b\w*: INT, c\w*: INT\) : IF \(a\w* = 0\) THEN \(a\w* > b\w*\) ELSE \(a\w* < c\w*\) ENDIF\)
+    = Invalid
+    ~~ \(FORALL \(a\w*: SUBTYPE\(\(LAMBDA \(x\w*: INT\): \(x\w* >= 0\)\)\)\) : \(LAMBDA \(a\w*: INT\): \(a\w* >= 0\)\)\(a\w*\)\)
+    = Valid
+    ~~ \(FORALL \(peremennaja\w*: INT\) : \(\(peremennaja\w* \+ 1\) = 2\)\)
+</test>
+
+*/
+
+lemma forall int a. a != -a;
+lemma forall int a, b. a + b = b + a;
+lemma forall int a, b. a + b != b + a;
+lemma forall int a, b, c. a = 0 ? a > b : a < c;
+
+formula f(int a: bool) = a >= 0;
+lemma forall nat a. f(a);
+
+lemma forall array(int, 1..10, 1..10) a. a[1, 1] = 1;
+lemma forall int переменная. переменная + 1 = 2;

@@ -1,0 +1,35 @@
+/*
+
+<test>
+    ~~ SUBTYPE\(\(LAMBDA \(x\w*: INT\): \(x\w* >= 0\)\)\)
+    ~~ a: \w*, b: \w*, c: REAL, d: REAL
+    ~ (ARRAY INT OF INT)
+    ~~ SUBTYPE\(\(LAMBDA \(i\w*: INT\): TRUE\)\)
+    ~~ SUBTYPE\(\(LAMBDA \(empty\w*: SUBTYPE\(\(LAMBDA \(x\w*: INT\): \(x\w* >= 0\)\)\)\): \(\(empty\w* >= 1\) AND \(empty\w* <= 10\)\)\)\)
+    ~~ \(\w*, \w*\) -> SUBTYPE\(\(LAMBDA \(x\w*: INT\): \(x\w* >= 0\)\)\)
+    ~~ \(\w*, \w*\) -> \[SUBTYPE\(\(LAMBDA \(x\w*: INT\): \(x\w* >= 0\)\)\), INT\]
+    ~~ \(INT, SUBTYPE\(\(LAMBDA \(x\w*: INT\): \(x\w* >= 0\)\)\)\) -> \w*
+    ~~ INT -> \[\w*, \w*\]
+</test>
+
+*/
+
+type T1 = nat;
+
+type T2 = struct(nat a, b, real c, d);
+
+type int_tree = union (
+    leaf(int val),
+    node(int a, int b)
+);
+
+type T3 = array(int, int);
+
+type T4 = subtype(int i: true);
+
+type T5 = 1..10;
+
+type P1 = predicate(nat a, b: nat c);
+type P2 = predicate(nat a, b: nat c, int d);
+type P3 = predicate(int a, nat b: nat c, nat d #b1 : int e #b2 : bool f #b3);
+type P4 = predicate(int a: bool b, b1);

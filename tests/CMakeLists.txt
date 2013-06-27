@@ -37,6 +37,7 @@ set(SOURCES_ST
     ../src/generate_semantics.cpp
     ../src/generate_name.cpp
     ../src/verification_context.cpp
+    ../src/cvc3_solver.cpp
 )
 
 add_executable(${TARGET_ST} ${SOURCES_ST})
@@ -140,6 +141,17 @@ macro(run_pvs_tests FLAGS TESTS)
     endforeach()
 endmacro()
 
+macro(run_cvc3_tests FLAGS TESTS)
+    foreach(TEST ${TESTS})
+        add_test(${TEST}
+            ${PROJECT_SOURCE_DIR}/tools/test_cvc3.sh
+            ${PROJECT_SOURCE_DIR}/tools
+            ${PROJECT_BINARY_DIR}/tests
+            ${PROJECT_SOURCE_DIR}/tests/${TEST}
+            ${FLAGS})
+    endforeach()
+endmacro()
+
 set(TESTS_PARSING
     parsing/logic_mul.psrc
     parsing/logic_gcd.psrc
@@ -237,6 +249,13 @@ set(TESTS_PVS
     backend_pvs/example.psrc
 )
 
+set(TESTS_CVC3
+    cvc3/literals.psrc
+    cvc3/types.psrc
+    cvc3/expressions.psrc
+    cvc3/replacement.psrc
+)
+
 run_tests("-t0" "${TESTS_PARSING}")
 run_tests("-t2" "${TESTS_INFERENCE}")
 run_tests("-t1" "${TESTS_SEMANTICS}")
@@ -247,3 +266,4 @@ run_st_tests("-t0" "${TESTS_STATEMENT_TREE}")
 run_cond_tests("" "${TESTS_CONDITIONS}")
 run_vf_tests("-t1" "${TESTS_VERIFICATION}")
 run_pvs_tests("-t1" "${TESTS_PVS}")
+run_cvc3_tests("" "${TESTS_CVC3}")

@@ -1,0 +1,14 @@
+/*
+
+<test>
+    ~ FALSE
+    ~ "Hello, world!"
+    ~ 3.1415
+</test>
+
+*/
+
+var
+    a = false,
+    b = "Hello, world!",
+    c = 3.1415;
