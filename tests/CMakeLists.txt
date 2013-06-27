@@ -41,6 +41,8 @@ set(SOURCES_ST
 
 add_executable(${TARGET_ST} ${SOURCES_ST})
 
+target_link_libraries(${TARGET_ST} ${CVC3LIB_LIBRARIES})
+
 include_directories (
     ../include
 )
