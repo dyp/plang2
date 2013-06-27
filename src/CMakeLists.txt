@@ -44,6 +44,7 @@ set(SOURCES
     verification_inference.cpp
     verification_context.cpp
     pp_verification.cpp
+    cvc3_solver.cpp
 )
 
 add_definitions(
