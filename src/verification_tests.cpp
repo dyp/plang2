@@ -10,6 +10,7 @@
 #include "pp_syntax.h"
 #include "test_statement_tree.h"
 #include "test_preconditions.h"
+#include "test_cvc3_solver.h"
 #include "prettyprinter.h"
 #include "options.h"
 #include "utils.h"
@@ -18,7 +19,8 @@ using namespace lexer;
 
 bool
     bStatementTree = false,
-    bPreconditions = false;
+    bPreconditions = false,
+    bCVC3 = false;
 
 std::string strFile;
 
@@ -30,7 +32,8 @@ static bool _handleNotAnOption(const std::string &_strVal, void *_p) {
 static bool _parseTestOptions(size_t _cArgs, const char **_pArgs) {
     Option options[] = {
         { "statement-tree", 's', NULL, &bStatementTree, NULL, false },
-        { "preconditions",  'p', NULL, &bPreconditions, NULL, false }
+        { "preconditions",  'p', NULL, &bPreconditions, NULL, false },
+        { "cvc3",           'c', NULL, &bCVC3,          NULL, false }
     };
 
     if (!parseOptions(_cArgs, _pArgs, options, NULL, &_handleNotAnOption))
@@ -59,7 +62,7 @@ int main(int _argc, const char ** _argv) {
         return EXIT_FAILURE;
     }
 
-    if (bPreconditions)
+    if (bPreconditions || bCVC3)
         Options::instance().typeCheck = TC_ON;
     else
         Options::instance().typeCheck = TC_NONE;
@@ -74,6 +77,8 @@ int main(int _argc, const char ** _argv) {
 
     if (bPreconditions)
         PreconditionsPrinter(std::wcout).traverseNode(*pModule);
+    else if (bCVC3)
+        Cvc3Printer().traverseNode(*pModule);
 
     return EXIT_SUCCESS;
 }
