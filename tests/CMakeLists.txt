@@ -164,6 +164,7 @@ set(TESTS_PARSING
     parsing/replacement.psrc
     parsing/variable_declarations.psrc
     parsing/literal.psrc
+    parsing/lemma_status.psrc
 )
 
 set(TESTS_INFERENCE

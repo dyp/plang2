@@ -428,11 +428,18 @@ private:
 /// Lemma declaration.
 class LemmaDeclaration : public Statement {
 public:
+    /// Lemma status.
+    enum {
+        VALID,
+        INVALID,
+        UNKNOWN,
+    };
+
     /// Default constructor.
     /// \param _pProposition Proposition.
     /// \param _pLabel Statement label.
     LemmaDeclaration(const ExpressionPtr &_pProposition = NULL, const LabelPtr &_pLabel = NULL) :
-        Statement(_pLabel), m_pProposition(_pProposition) {}
+        Statement(_pLabel), m_pProposition(_pProposition), m_cStatus(UNKNOWN) {}
 
     /// Get statement kind.
     /// \returns #LemmaDeclaration.
@@ -446,12 +453,20 @@ public:
     /// \param _pProposition Proposition.
     void setProposition(const ExpressionPtr &_pProposition) { m_pProposition = _pProposition; }
 
+    /// Get lemma status.
+    int getStatus() const { return m_cStatus; }
+
+    /// Set lemma status.
+    /// \param _newStatus New lemma status.
+    void setStatus(int _newStatus) { m_cStatus = _newStatus; }
+
     virtual NodePtr clone(Cloner &_cloner) const {
         return NEW_CLONE(this, _cloner, LemmaDeclaration(_cloner.get(getProposition()), _cloner.get(getLabel())));
     }
 
 private:
     ExpressionPtr m_pProposition;
+    int m_cStatus;
 };
 
 /// Base class for objects containing common declarations.

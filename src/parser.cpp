@@ -2679,6 +2679,16 @@ LemmaDeclarationPtr Parser::parseLemmaDeclaration(Context &_ctx) {
 
     ++ctx;
 
+    int cLemmaStatus;
+    if (ctx.consume(VALID))
+        cLemmaStatus = LemmaDeclaration::VALID;
+    else if (ctx.consume(INVALID))
+        cLemmaStatus = LemmaDeclaration::INVALID;
+    else {
+        ctx.consume(UNKNOWN);
+        cLemmaStatus = LemmaDeclaration::UNKNOWN;
+    }
+
     if (ExpressionPtr pProposition = parseExpression(ctx))
         pLemma->setProposition(pProposition);
     else
@@ -2686,6 +2696,7 @@ LemmaDeclarationPtr Parser::parseLemmaDeclaration(Context &_ctx) {
 
     _ctx.mergeChildren();
 
+    pLemma->setStatus(cLemmaStatus);
     return pLemma;
 }
 

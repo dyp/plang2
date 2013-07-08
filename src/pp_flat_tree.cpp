@@ -92,6 +92,11 @@ public:
         printQuantifier(_node.getQuantifier());
         return true;
     }
+    virtual bool visitLemmaDeclaration(ir::LemmaDeclaration &_node) {
+        printLemmaStatus(_node.getStatus());
+        PrettyPrinterFlatBase::visitLemmaDeclaration(_node);
+        return true;
+    }
 
 protected:
     const void printQuantifier(int _quantifier) {
@@ -102,6 +107,17 @@ protected:
             case ir::Formula::NONE:          std::wcout << L"none\n";    break;
             case ir::Formula::UNIVERSAL:     std::wcout << L"forall\n";  break;
             case ir::Formula::EXISTENTIAL:   std::wcout << L"exists\n";  break;
+        }
+    }
+
+    const void printLemmaStatus(int _status) {
+        for (std::list<std::wstring>::iterator i = m_path.begin(); i != m_path.end(); ++i)
+            m_os << L"/" << *i;
+        m_os << L"/Status = ";
+        switch (_status) {
+            case ir::LemmaDeclaration::VALID:     m_os << L"valid\n";     break;
+            case ir::LemmaDeclaration::INVALID:   m_os << L"invalid\n";   break;
+            case ir::LemmaDeclaration::UNKNOWN:   m_os << L"unknown\n";   break;
         }
     }
 

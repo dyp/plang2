@@ -1141,7 +1141,21 @@ bool PrettyPrinterSyntax::traverseLemmaDeclaration(LemmaDeclaration &_stmt) {
     VISITOR_ENTER(LemmaDeclaration, _stmt);
 
     VISITOR_TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
+
     m_os << "lemma ";
+
+    switch (_stmt.getStatus()) {
+        case LemmaDeclaration::VALID:
+            m_os << "valid ";
+            break;
+        case LemmaDeclaration::INVALID:
+            m_os << "invalid ";
+            break;
+        case LemmaDeclaration::UNKNOWN:
+            m_os << "unknown ";
+            break;
+    }
+
     VISITOR_TRAVERSE(Expression, LemmaDeclBody, _stmt.getProposition(), _stmt, LemmaDeclaration, setProposition);
     m_os << ";\n";
 
