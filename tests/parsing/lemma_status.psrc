@@ -1,0 +1,9 @@
+/*
+
+<test>
+    //Status = valid
+</test>
+
+*/
+
+lemma valid forall nat a, b. a + b = b + a;

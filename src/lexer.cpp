@@ -176,6 +176,9 @@ TokenMap::TokenMap() {
 	_add(L"extends",   EXTENDS);
 	_add(L"pragma",    PRAGMA);
 	_add(L"mutable",   MUTABLE);
+	_add(L"valid",     VALID);
+	_add(L"invalid",   INVALID);
+	_add(L"unknown",   UNKNOWN);
     _add(L"int",       INT_TYPE);
     _add(L"nat",       NAT_TYPE);
     _add(L"real",      REAL_TYPE);
