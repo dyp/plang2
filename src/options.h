@@ -60,6 +60,7 @@ struct Options {
     Args args;
     bool bOptimize;
     bool bCheckSemantics;
+    bool bCheckValidity;
     bool bVerbose;
 
     Options();

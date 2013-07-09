@@ -119,6 +119,7 @@ void _printUsage() {
         << "    -v, --verbose                 Print debug info\n"
         << "    -O, --optimize                Optimize logical expressions\n"
         << "    -s, --check-semantics         Generate logical conditions for proving semantic correctness\n"
+        << "    -a, --check-validity          Check validity of declared lemmas\n"
         << "        --help                    Show this message\n";
 }
 
@@ -135,6 +136,7 @@ bool Options::init(size_t _cArgs, const char **_pArgs) {
         { "help",            'h', NULL,               &bHelp,                      NULL,                          false },
         { "optimize",        'O', NULL,               &instance().bOptimize,       NULL,                          false },
         { "check-semantics", 's', NULL,               &instance().bCheckSemantics, NULL,                          false },
+        { "check-validity",  'a', NULL,               &instance().bCheckValidity,  NULL,                          false },
         { NULL,               0,  NULL,               NULL,                        NULL,                          false }
     };
 
@@ -164,6 +166,7 @@ Options::Options() :
     verify(V_NONE),
     bOptimize(false),
     bCheckSemantics(false),
+    bCheckValidity(false),
     bVerbose(false)
 {
 }
