@@ -20,4 +20,4 @@ pre a > 0
         default: b = 2
     }
 }
-post b = a;
+post b >= 0 & b <= 2;

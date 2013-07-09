@@ -13,7 +13,7 @@ bar(nat a: nat b)
 pre a > 0
 {
     nat c, d;
-    { c = 0 || d = 0 }
+    { c = a || d = a }
     b = c;
 }
 post b = a;
