@@ -12,6 +12,55 @@ using namespace tr;
 
 namespace na {
 
+class BannedNodesFinder : public Visitor {
+public:
+    BannedNodesFinder() : m_bResult(false) {}
+
+    virtual bool traverseFormulaDeclaration(FormulaDeclaration& _formula) {
+        // FIXME Mutual recursion is not detected.
+        m_formulas.insert(&_formula);
+
+        const bool bResult = Visitor::traverseFormulaDeclaration(_formula);
+
+        m_formulas.erase(&_formula);
+
+        return bResult;
+    }
+
+    virtual bool traverseFormulaCall(FormulaCall& _formulaCall) {
+        if (!_formulaCall.getTarget())
+            return true;
+        if (m_formulas.find(_formulaCall.getTarget()) != m_formulas.end()) {
+            m_bResult = true;
+            return false;
+        }
+        return traverseNode(*_formulaCall.getTarget());
+    }
+
+    virtual bool visitFormula(Formula& _formula) {
+        m_bResult |= (_formula.getQuantifier() == Formula::EXISTENTIAL);
+        return !m_bResult;
+    }
+
+    virtual bool visitType(Type& _type) {
+        m_bResult |= (_type.getKind() == Type::FRESH);
+        return !m_bResult;
+    }
+
+    bool run(const NodePtr& _pNode) {
+        traverseNode(*_pNode);
+        return m_bResult;
+    }
+
+private:
+    std::set<FormulaDeclarationPtr> m_formulas;
+    bool m_bResult;
+};
+
+bool containsBannedNodes(const NodePtr& _pNode) {
+    return BannedNodesFinder().run(_pNode);
+}
+
 class FunctionCallFinder : public Visitor {
 public:
     FunctionCallFinder(const Node& _node) :
