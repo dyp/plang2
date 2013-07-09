@@ -122,4 +122,32 @@ FormulaCallPtr makeCall(const ir::FormulaDeclarationPtr& _pFormula, const Call &
     return makeCall(_pFormula, args);
 }
 
+class FormulasCollector : public Visitor {
+public:
+    FormulasCollector(const ModulePtr& _pModule) :
+        m_pModule(_pModule) {}
+    virtual bool traverseFormulaCall(FormulaCall& _call);
+
+private:
+    ModulePtr m_pModule;
+    std::set<FormulaDeclarationPtr> m_pTraversedFormulas;
+};
+
+bool FormulasCollector::traverseFormulaCall(FormulaCall& _call) {
+    if (!_call.getTarget())
+        return true;
+    if (!m_pTraversedFormulas.insert(_call.getTarget()).second)
+        return true;
+
+    m_pModule->getFormulas().add(_call.getTarget());
+    traverseNode(*_call.getTarget());
+
+    return true;
+}
+
+void declareLemma(const ModulePtr& _pModule, const ExpressionPtr& _pProposition) {
+    FormulasCollector(_pModule).traverseNode(*_pProposition);
+    _pModule->getLemmas().add(new LemmaDeclaration(_pProposition));
+}
+
 } // namespace tr
