@@ -260,6 +260,7 @@ void PrettyPrinterSyntax::printDeclarationGroup(Module &_module) {
 
     for (std::list<NodePtr>::iterator i = sorted.begin(); i != sorted.end(); ++i) {
         m_os << fmtIndent();
+        mergeLines();
         traverseNode(**i);
         separateLines();
         m_os << ((*i)->getNodeKind() == Node::STATEMENT
@@ -269,9 +270,12 @@ void PrettyPrinterSyntax::printDeclarationGroup(Module &_module) {
 }
 
 bool PrettyPrinterSyntax::_traverseDeclarationGroup(DeclarationGroup &_decl) {
+    m_os << fmtIndent();
+    mergeLines();
     VISITOR_TRAVERSE_COL(LemmaDeclaration, LemmaDecl, _decl.getLemmas());
     VISITOR_TRAVERSE_COL(Message, MessageDecl, _decl.getMessages());
     VISITOR_TRAVERSE_COL(Process, ProcessDecl, _decl.getProcesses());
+    separateLines();
     return true;
 }
 
@@ -1122,7 +1126,7 @@ bool PrettyPrinterSyntax::traverseFormulaDeclaration(FormulaDeclaration &_node) 
     m_os << "formula " << _node.getName();
 
     if (!_node.getParams().empty() || _node.getResultType()) {
-        m_os << "( ";
+        m_os << "(";
         VISITOR_TRAVERSE_COL(NamedValue, FormulaDeclParams, _node.getParams());
 
         if (_node.getResultType())
