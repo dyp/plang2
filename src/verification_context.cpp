@@ -36,7 +36,7 @@ static ConjunctPtr _releaseAssignment(const ConjunctPtr& _pConj) {
 ExpressionPtr QuantifierConjunct::mergeToExpression() const {
     FormulaPtr pExpression;
     pExpression = new Formula(Formula::EXISTENTIAL, m_pConjunct->mergeToExpression());
-    //pExpression->getBoundVariables().insert(m_bound.begin(), m_bound.end());
+    pExpression->getBoundVariables().prepend(m_bound.begin(), m_bound.end());
     return pExpression;
 }
 
