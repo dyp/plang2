@@ -16,6 +16,7 @@ typedef std::map<ir::LemmaDeclarationPtr, CVC3::QueryResult> QueryResult;
 
 CVC3::QueryResult checkValidity(const ir::ExpressionPtr& _pExpr);
 void checkValidity(const ir::ModulePtr& _pModule, QueryResult& _result);
+void checkValidity(const ir::ModulePtr& _pModule);
 
 std::wstring fmtResult(CVC3::QueryResult _result, bool _bValid = true);
 void printImage(const ir::Expression& _expr, std::ostream& _os);

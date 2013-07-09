@@ -29,6 +29,7 @@
 #include "generate_semantics.h"
 #include "verification.h"
 #include "tail_recursion_elimination.h"
+#include "cvc3_solver.h"
 
 using namespace lexer;
 
@@ -69,6 +70,9 @@ int main(int _argc, const char ** _argv) {
 
         if (Options::instance().bOptimize)
             optimize(*pModule);
+
+        if (Options::instance().bCheckValidity)
+            cvc3::checkValidity(pModule);
 
         if (Options::instance().transformation & OT_TRE)
             tailRecursionElimination(*pModule);

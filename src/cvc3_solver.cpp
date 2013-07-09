@@ -11,6 +11,7 @@
 #include "cvc3/variable.h"
 #include "cvc3/command_line_flags.h"
 #include "ir/visitor.h"
+#include "node_analysis.h"
 #include "utils.h"
 
 namespace CVC3 {
@@ -215,6 +216,7 @@ CVC3::TypePtr Solver::_getNatType() {
             pWitness = NEW(Expr, m_pValidityChecker->ratExpr("1"));
 
         pResult = NEW(Type, m_pValidityChecker->subtypeType(*_makeLambdaExpr(pVar, pPred), *pWitness));
+        pResult = NEW(Type, m_pValidityChecker->createType("NAT", *pResult));
     }
 
     return pResult;
@@ -252,6 +254,8 @@ CVC3::OpPtr Solver::_declareFormula(const FormulaDeclarationPtr& _pFormula) {
     std::map<FormulaDeclarationPtr, CVC3::OpPtr>::iterator it = m_formulas.find(_pFormula);
     if (it != m_formulas.end())
         return it->second;
+
+
 
     CVC3::TypePtr
         pTypeRan = NEW(Type, *translateType(*_pFormula->getResultType(), true));
@@ -848,26 +852,50 @@ CVC3::QueryResult checkValidity(const ExpressionPtr& _pExpr) {
 
 class ModuleChecker : public Visitor, Solver {
 public:
-    ModuleChecker(QueryResult& _result) :
-        m_result(_result), Visitor(CHILDREN_FIRST), Solver()
+    ModuleChecker(QueryResult& _result, bool _bRewriteStatus = false) :
+        m_result(_result), m_bRewriteStatus(_bRewriteStatus), Visitor(CHILDREN_FIRST), Solver()
     {}
 
     virtual bool visitLemmaDeclaration(LemmaDeclaration& _lemma) {
-        if (!_lemma.getProposition())
+        if (!_lemma.getProposition() || na::containsBannedNodes(_lemma.getProposition()))
             return true;
+
         CVC3::ExprPtr pExpr = translateExpr(*_lemma.getProposition());
-        m_result.insert({&_lemma, getContext().query(*pExpr)});
+        CVC3::QueryResult result = getContext().query(*pExpr);
+
+        m_result.insert({&_lemma, result});
+
+        if (!m_bRewriteStatus)
+            return true;
+
+        switch (result) {
+            case CVC3::VALID:
+                _lemma.setStatus(LemmaDeclaration::VALID);
+                break;
+            case CVC3::INVALID:
+                _lemma.setStatus(LemmaDeclaration::INVALID);
+                break;
+        }
+
         return true;
     }
 
 private:
     QueryResult & m_result;
+    bool m_bRewriteStatus;
 };
 
 void checkValidity(const ir::ModulePtr& _pModule, QueryResult& _result) {
     if (!_pModule)
         return;
     ModuleChecker(_result).traverseNode(*_pModule);
+}
+
+void checkValidity(const ir::ModulePtr& _pModule) {
+    if (!_pModule)
+        return;
+    QueryResult result;
+    ModuleChecker(result, true).traverseNode(*_pModule);
 }
 
 void printImage(const ir::Expression& _expr, std::ostream& _os) {
