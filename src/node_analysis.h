@@ -11,6 +11,9 @@
 
 namespace na {
 
+// Check existence of recursive formulas, existential quantifiers and fresh types.
+bool containsBannedNodes(const ir::NodePtr& _pNode);
+
 // Analyze call existing.
 bool containsCall(ir::NodePtr _pNode);
 
