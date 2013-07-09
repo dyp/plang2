@@ -749,9 +749,9 @@ bool PredicateTraverser::visitPredicate(Predicate& _pred) {
 
     for (std::list<std::pair<ir::ExpressionPtr, bool> >::iterator i = context.m_lemmas.begin();
         i != context.m_lemmas.end(); ++i) {
-        pTheory->getLemmas().add(new LemmaDeclaration((*i).first));
+        declareLemma(pTheory, i->first);
         if (verifyFormulas()) {
-            pp::prettyPrintSyntax(*(*i).first, std::wcout);
+            pp::prettyPrintSyntax(*i->first, std::wcout);
             std::wcout << "\n";
         }
     }

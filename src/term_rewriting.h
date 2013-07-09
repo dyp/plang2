@@ -20,6 +20,8 @@ ir::FormulaCallPtr makeCall(const ir::FormulaDeclarationPtr& _pFormula, const ir
 ir::FormulaCallPtr makeCall(const ir::FormulaDeclarationPtr& _pFormula, const ir::FormulaCall &_call);
 ir::FormulaCallPtr makeCall(const ir::FormulaDeclarationPtr& _pFormula, const ir::Call &_call);
 
+void declareLemma(const ir::ModulePtr& _pModule, const ir::ExpressionPtr& _pProposition);
+
 } // namespace tr
 
 #endif // TERM_REWRITING_H_
