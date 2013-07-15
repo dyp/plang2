@@ -145,7 +145,7 @@ private:
     TypePtr m_pType;
 };
 
-// Wild expression
+// Wild expression.
 class Wild : public Expression {
 public:
     Wild(const std::wstring &_name) : m_strName(_name) {}
