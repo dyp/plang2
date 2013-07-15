@@ -202,7 +202,7 @@ public:
     void setDeclaration(const VariableDeclarationPtr &_pDeclaration) { m_pDeclaration = _pDeclaration; }
 
     virtual bool less(const Node& _other) const {
-        return !NamedValue::equals(_other)
+        return NamedValue::equals(_other)
             ? !isMutable() && ((const Variable&)_other).isMutable()
             : NamedValue::less(_other);
     }
