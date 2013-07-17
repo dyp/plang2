@@ -196,7 +196,7 @@ std::wstring Number::toString() const {
         case GENERIC: return strWiden(m_qValue.get_str());
         case SINGLE:  swprintf(s, sz, L"%.*f", FLT_DIG, (float) m_qValue.get_d()); break;
         case DOUBLE:  swprintf(s, sz, L"%.*f", DBL_DIG, (double) m_qValue.get_d()); break;
-        case QUAD:    swprintf(s, sz, L"%.*llf", LDBL_DIG, m_qValue.get_d()); break;
+        case QUAD:    swprintf(s, sz, L"%.*llf", LDBL_DIG, (long double) m_qValue.get_d()); break;
     }
 
     wchar_t *cs = wcschrnul(s, L'.');
