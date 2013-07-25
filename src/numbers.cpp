@@ -8,10 +8,11 @@
 
 #include <stdlib.h>
 #include <float.h>
+#include <math.h>
 
-#ifdef _MSC_VER
 #include <limits>
 
+#ifdef _MSC_VER
 #define INFINITY std::numeric_limits<float>::infinity()
 #define NAN std::numeric_limits<float>::quiet_NaN()
 #define isfinite(_X) (_finite(_X))
@@ -157,9 +158,22 @@ Number Number::makeReal(long double _f) {
         return n;
     }
 
-    char s[128];
-    snprintf(s, 128, "%.*llf", LDBL_DIG, _f);
-    return Number(s, Number::REAL);
+    int nExp;
+    long double fSign = frexpl(_f, &nExp);
+    const size_t cBuffSize = LDBL_MANT_DIG + 4;
+    char str[cBuffSize];
+
+    snprintf(str, cBuffSize, "%.*Lf", LDBL_MANT_DIG + 1, fSign);
+    assert(str[LDBL_MANT_DIG + 2] == '0');
+
+    Number result(str, Number::REAL);
+
+    if (nExp > 0)
+        result.m_qValue <<= abs(nExp);
+    else
+        result.m_qValue >>= abs(nExp);
+
+    return result;
 }
 
 bool Number::isInt() const {
@@ -214,15 +228,31 @@ long double Number::getFloat() const {
     if (!isfinite(m_fSpecial))
         return m_fSpecial;
 
-    long double num, den;
-    std::string strNum = m_qValue.get_num().get_str(10);
-    std::string strDen = m_qValue.get_den().get_str(10);
-    char buf[128];
+    const double
+        fApproximation = m_qValue.get_d();
 
-    sscanf(strNum.c_str(), "%llf", &num);
-    sscanf(strDen.c_str(), "%llf", &den);
+    long double
+        fValue = 0,
+        fLeft = nextafter(fApproximation, -std::numeric_limits<double>::infinity()),
+        fRight = nextafter(fApproximation, std::numeric_limits<double>::infinity());
 
-    return num/den;
+    while (nextafterl(fLeft, fRight) < fRight) {
+        fValue = (fRight + fLeft) / 2;
+
+        mpq_class fraction = makeReal(fValue).getRational();
+        if (fraction == m_qValue)
+            return fValue;
+
+        if (fraction > m_qValue)
+            fRight = fValue;
+        if (fraction < m_qValue)
+            fLeft = fValue;
+    }
+
+    assert(makeReal(fLeft).getRational() <= m_qValue
+        && makeReal(fRight).getRational() >= m_qValue);
+
+    return fLeft;
 }
 
 int64_t Number::getInt() const {
