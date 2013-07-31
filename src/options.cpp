@@ -124,6 +124,7 @@ void _printUsage() {
         << "    -O, --optimize                Optimize logical expressions\n"
         << "    -s, --check-semantics         Generate logical conditions for proving semantic correctness\n"
         << "    -a, --check-validity          Check validity of declared lemmas\n"
+        << "    -k, --keep-names              Keep names of variables\n"
         << "        --help                    Show this message\n";
 }
 
@@ -141,6 +142,7 @@ bool Options::init(size_t _cArgs, const char **_pArgs) {
         { "optimize",        'O', NULL,               &instance().bOptimize,       NULL,                          false },
         { "check-semantics", 's', NULL,               &instance().bCheckSemantics, NULL,                          false },
         { "check-validity",  'a', NULL,               &instance().bCheckValidity,  NULL,                          false },
+        { "keep-names",      'k', NULL,               &instance().bKeepNames,      NULL,                          false },
         { NULL,               0,  NULL,               NULL,                        NULL,                          false }
     };
 
@@ -171,7 +173,8 @@ Options::Options() :
     bOptimize(false),
     bCheckSemantics(false),
     bCheckValidity(false),
-    bVerbose(false)
+    bVerbose(false),
+    bKeepNames(false)
 {
 }
 

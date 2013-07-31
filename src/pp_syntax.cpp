@@ -247,6 +247,18 @@ std::wstring Context::getNewLabelName(const std::wstring& _name) {
     return L"";
 }
 
+std::wstring Context::getLabelName(ir::Label &_label) {
+    if (!_label.getName().empty())
+        return _label.getName();
+    else {
+        auto &strIndentifier = m_labelIdentifiers[&_label];
+        if (!strIndentifier.empty())
+            return strIndentifier;
+        else
+            return m_labelIdentifiers[&_label] = getNewLabelName();
+    }
+}
+
 std::wstring Context::getNamedValueName(NamedValue &_val) {
     std::wstring strIdent = m_identifiers[&_val];
 
@@ -376,7 +388,7 @@ void PrettyPrinterSyntax::printPath(const NodePtr& _pNode) {
 // NODE / LABEL
 bool PrettyPrinterSyntax::visitLabel(ir::Label &_label) {
     m_pContext->addLabel(_label.getName());
-    m_os << _label.getName() << ": ";
+    m_os << m_pContext->getLabelName(_label) << ": ";
     return true;
 }
 
@@ -756,7 +768,7 @@ bool PrettyPrinterSyntax::traverseStatement(Statement &_stmt) {
 bool PrettyPrinterSyntax::traverseJump(Jump &_stmt) {
     VISITOR_ENTER(Jump, _stmt);
     VISITOR_TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
-    m_os << L"#" << _stmt.getDestination()->getName();
+    m_os << L"#" << m_pContext->getLabelName(*_stmt.getDestination());
     VISITOR_EXIT();
 }
 

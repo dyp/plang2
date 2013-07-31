@@ -12,7 +12,7 @@ RESULT=`mktemp`
 EXPECTED2=`mktemp`
 cp $EXPECTED $EXPECTED2
 
-$BIN_DIR/plang -pcg $@ $TEST > $RESULT
+$BIN_DIR/plang -pcg -k $@ $TEST > $RESULT
 sccmap -d -S $TEST.dot >> $EXPECTED2
 $CUR_DIR/test_cg_sort.py $RESULT
 $CUR_DIR/test_cg_sort.py $EXPECTED2

@@ -5,5 +5,5 @@ BIN_DIR=$2
 TEST=$3
 
 shift 3
-$BIN_DIR/plang -T1 -pflat $@ $TEST |$CUR_DIR/test.py $TEST
+$BIN_DIR/plang -T1 -pflat -k $@ $TEST |$CUR_DIR/test.py $TEST
 

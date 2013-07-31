@@ -49,6 +49,7 @@ set(SOURCES
     verification_context.cpp
     pp_verification.cpp
     cvc3_solver.cpp
+    name_reset.cpp
 )
 
 add_definitions(

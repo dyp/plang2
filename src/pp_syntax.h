@@ -19,6 +19,7 @@ public:
     void addLabel(const std::wstring& _name);
     void addNamedValue(const ir::NamedValuePtr& _pVal);
     std::wstring getNewLabelName(const std::wstring& _name = L"");
+    std::wstring getLabelName(ir::Label &_label);
     std::wstring getNamedValueName(ir::NamedValue &_val);
     void getPath(const ir::NodePtr& _pNode, std::list<ir::ModulePtr>& _container);
     void sortModule(ir::Module &_module, std::list<ir::NodePtr>& _sorted);
@@ -26,6 +27,7 @@ public:
 
 private:
     std::set<std::wstring> m_usedLabels;
+    std::map<ir::LabelPtr, std::wstring> m_labelIdentifiers;
     std::map<ir::NamedValuePtr, std::wstring> m_identifiers;
     std::set<std::wstring> m_usedIdentifiers;
     int m_nLastFoundIdentifier;

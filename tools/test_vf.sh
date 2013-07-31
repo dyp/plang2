@@ -5,4 +5,4 @@ BIN_DIR=$2
 TEST=$3
 
 shift 3
-$BIN_DIR/plang -e2 $@ $TEST |$CUR_DIR/test.py $TEST
+$BIN_DIR/plang -e2 -k $@ $TEST |$CUR_DIR/test.py $TEST

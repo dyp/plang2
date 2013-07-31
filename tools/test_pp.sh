@@ -12,9 +12,9 @@ PP=`mktemp`
 TEMP=`mktemp`
 NEWTEST=`mktemp`
 
-$BIN_DIR/plang -past $@ $TEST |sort > $ORIG
-$BIN_DIR/plang -pp $@ $TEST > $TEMP
-$BIN_DIR/plang -past $@ $TEMP |sort > $PP
+$BIN_DIR/plang -past -k $@ $TEST |sort > $ORIG
+$BIN_DIR/plang -pp -k $@ $TEST > $TEMP
+$BIN_DIR/plang -past -k $@ $TEMP |sort > $PP
 
 DIFFRESULT="`diff -u $ORIG $PP`"
 rm $ORIG $TEMP $PP $NEWTEST

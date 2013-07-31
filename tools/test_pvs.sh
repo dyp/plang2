@@ -10,7 +10,7 @@ echo "[ Test   ]" `basename $TEST`
 EXPECTED=$TEST.pvs
 RESULT=`mktemp`
 
-$BIN_DIR/plang -b3 $TEST |sort > $RESULT
+$BIN_DIR/plang -b3 -k $TEST |sort > $RESULT
 
 sort $EXPECTED| diff -b -B $RESULT - >/dev/null 2>&1
 

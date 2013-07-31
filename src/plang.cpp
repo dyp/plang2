@@ -32,6 +32,7 @@
 #include "tail_recursion_elimination.h"
 #include "predicate_ordering.h"
 #include "cvc3_solver.h"
+#include "name_reset.h"
 
 using namespace lexer;
 
@@ -64,6 +65,9 @@ int main(int _argc, const char ** _argv) {
     }
 
     if (ir::ModulePtr pModule = parse(tokens)) {
+        if (!Options::instance().bKeepNames)
+            resetNames(*pModule);
+
         if (Options::instance().bCheckSemantics)
             pModule = processPreConditions(*pModule);
 
