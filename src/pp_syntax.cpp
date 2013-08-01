@@ -35,6 +35,35 @@ private:
 typedef std::multimap<NodePtr, NodePtr> Graph;
 typedef std::pair<const NodePtr, NodePtr> Edge;
 
+class CollectPaths : public ir::Visitor {
+public:
+    CollectPaths(std::map<NodePtr, std::list<ModulePtr>>& _paths) :
+        m_paths(_paths)
+    {}
+
+    void makePath(const NodePtr& _pNode) {
+        std::list<ModulePtr> path;
+        for(auto& i: m_path) {
+            if (i.pNode && i.pNode->getNodeKind() == Node::MODULE)
+                path.push_back(NodePtr(i.pNode).as<Module>());
+        }
+        m_paths.insert({_pNode, path});
+    }
+
+#define DECLARATION(_TYPE, _METHOD)              \
+    virtual bool visit##_TYPE(_TYPE & _node) {   \
+        makePath(_METHOD);                       \
+        return true;                             \
+    }
+
+    DECLARATION(TypeDeclaration, &_node)
+    DECLARATION(FormulaDeclaration, &_node)
+    DECLARATION(VariableDeclaration, _node.getVariable())
+
+private:
+    std::map<NodePtr, std::list<ModulePtr>>& m_paths;
+};
+
 class GetDeclarations : public ir::Visitor {
 public:
     GetDeclarations(Graph& _decls) :
@@ -190,6 +219,10 @@ void Context::collectIdentifiers(Node &_node) {
     CollectIdentifiers(m_identifiers, m_usedIdentifiers).traverseNode(_node);
 }
 
+void Context::collectPaths(ir::Node &_node) {
+    CollectPaths(m_paths).traverseNode(_node);
+}
+
 void Context::addLabel(const std::wstring& _name) {
     m_usedLabels.insert(_name);
 }
@@ -220,6 +253,13 @@ std::wstring Context::getNamedValueName(NamedValue &_val) {
     }
 
     return strIdent;
+}
+
+void Context::getPath(const ir::NodePtr& _pNode, std::list<ir::ModulePtr>& _container) {
+    auto i = m_paths.find(_pNode);
+    if (i == m_paths.end())
+        return;
+    _container = i->second;
 }
 
 void Context::_buildDependencies(NodePtr _pRoot) {
@@ -282,6 +322,9 @@ bool PrettyPrinterSyntax::_traverseDeclarationGroup(DeclarationGroup &_decl) {
 bool PrettyPrinterSyntax::traverseModule(Module &_module) {
     VISITOR_ENTER(Module, _module);
 
+    const ModulePtr pOldCurrModule = m_pCurrentModule;
+    m_pCurrentModule = &_module;
+
     const bool bNeedsIndent = !_module.getName().empty();
 
     if (bNeedsIndent) {
@@ -306,7 +349,22 @@ bool PrettyPrinterSyntax::traverseModule(Module &_module) {
         m_os << fmtIndent(L"}");
     }
 
+    m_pCurrentModule = pOldCurrModule;
+
     VISITOR_EXIT();
+}
+
+void PrettyPrinterSyntax::printPath(const NodePtr& _pNode) {
+    std::list<ir::ModulePtr> container;
+    m_pContext->getPath(_pNode, container);
+
+    bool bCanPrint = false;
+    for (auto& i: container) {
+        if (bCanPrint)
+            m_os << i->getName() << L".";
+        if (i == m_pCurrentModule)
+            bCanPrint = true;
+    }
 }
 
 // NODE / LABEL
@@ -358,6 +416,7 @@ bool PrettyPrinterSyntax::visitTypeType(TypeType &_type) {
 }
 
 bool PrettyPrinterSyntax::visitNamedReferenceType(NamedReferenceType &_type) {
+    printPath(_type.getDeclaration());
     m_os << _type.getName();
     return true;
 }
@@ -1415,6 +1474,7 @@ bool PrettyPrinterSyntax::visitLiteral(ir::Literal &_node) {
 }
 
 bool PrettyPrinterSyntax::visitVariableReference(ir::VariableReference &_node) {
+    printPath(_node.getTarget());
     m_os << (_node.getName().empty() ? m_pContext->getNamedValueName(*_node.getTarget()) : _node.getName());
     return false;
 }
@@ -1511,6 +1571,7 @@ bool PrettyPrinterSyntax::traverseFunctionCall(ir::FunctionCall &_expr) {
 }
 
 bool PrettyPrinterSyntax::traverseFormulaCall(ir::FormulaCall &_node) {
+    printPath(_node.getTarget());
     m_os << _node.getName() << L"(";
     const bool bResult = Visitor::traverseFormulaCall(_node);
     m_os << ")";
@@ -1675,6 +1736,7 @@ bool PrettyPrinterSyntax::visitConstructor(Constructor& _expr) {
 void PrettyPrinterSyntax::run() {
     if (m_pNode) {
         m_pContext->collectIdentifiers(*m_pNode);
+        m_pContext->collectPaths(*m_pNode);
         traverseNode(*m_pNode);
     }
     else if (m_bCompact)
@@ -1686,6 +1748,7 @@ void PrettyPrinterSyntax::print(Node &_node) {
         m_os << "NULL";
     else {
         m_pContext->collectIdentifiers(_node);
+        m_pContext->collectPaths(_node);
         traverseNode(_node);
     }
 }
