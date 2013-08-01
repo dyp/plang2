@@ -168,7 +168,7 @@ private:
     ContextPtr m_pContext;
 };
 
-void prettyPrintSyntax(ir::Node &_node, std::wostream & _os = std::wcout, const ContextPtr& _pContext = NULL);
+void prettyPrintSyntax(ir::Node &_node, std::wostream & _os = std::wcout, const ContextPtr& _pContext = NULL,  bool _bNewLine = false);
 void prettyPrintSyntax(ir::Node &_node, size_t nDepth, std::wostream & _os = std::wcout);
 
 void prettyPrintCompact(ir::Node &_node, std::wostream &_os, int _nFlags, const ContextPtr& _pContext = NULL);

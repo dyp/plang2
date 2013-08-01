@@ -84,7 +84,7 @@ int main(int _argc, const char ** _argv) {
             prettyPrint(*pModule, std::wcout);
 
         if (Options::instance().prettyPrint & PP_SYNTAX)
-            pp::prettyPrintSyntax(*pModule, std::wcout);
+            pp::prettyPrintSyntax(*pModule, std::wcout, NULL, true);
 
         if (Options::instance().backEnd == BE_NONE)
             return EXIT_SUCCESS;
