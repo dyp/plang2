@@ -52,6 +52,10 @@ public:
         return bResult;                                                 \
     }
 
+    virtual bool traverseTypeType(TypeType& _node) {
+        return true;
+    }
+
     TRAVERSE_GROUP(Module)
     TRAVERSE_GROUP(TypeDeclaration)
     TRAVERSE_GROUP(Predicate)
