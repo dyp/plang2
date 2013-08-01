@@ -303,7 +303,7 @@ bool PrettyPrinterSyntax::traverseModule(Module &_module) {
 
     if (bNeedsIndent) {
         decTab();
-        m_os << fmtIndent(L"}\n");
+        m_os << fmtIndent(L"}");
     }
 
     VISITOR_EXIT();
@@ -1354,6 +1354,7 @@ bool PrettyPrinterSyntax::needsParen() {
     switch (nChildKind) {
         case ir::Expression::FORMULA_CALL:
         case ir::Expression::FUNCTION_CALL:
+        case ir::Expression::COMPONENT:
         case ir::Expression::LITERAL:
         case ir::Expression::VAR:
             return false;
