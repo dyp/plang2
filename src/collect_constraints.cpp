@@ -99,7 +99,11 @@ tc::FreshTypePtr Collector::createFresh(const TypePtr &_pCurrent) {
 void Collector::collectParam(const NamedValuePtr &_pParam, int _nFlags) {
     TypePtr pType = _pParam->getType();
 
-    if (pType->getKind() == Type::TYPE) {
+    if (pType->getKind() == Type::FRESH)
+        return;
+
+    if (pType->getKind() == Type::TYPE
+        && !pType.as<TypeType>()->getDeclaration()->getType()) {
         TypeTypePtr pTypeType = pType.as<TypeType>();
         pTypeType->getDeclaration()->setType(new tc::FreshType());
         return;
@@ -1052,7 +1056,10 @@ bool Collector::visitNamedReferenceType(NamedReferenceType &_type) {
     if (pSetter == NULL)
         return true;
 
-    TypePtr pDeclType = ((TypeDeclarationPtr)_type.getDeclaration())->getType();
+    if (!_type.getDeclaration()->getType())
+        _type.getDeclaration()->setType(createFresh());
+
+    TypePtr pDeclType = _type.getDeclaration()->getType();
     if (_type.getArgs().empty()) {
         pSetter->set(pDeclType);
         return true;
