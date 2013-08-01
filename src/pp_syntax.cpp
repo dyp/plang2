@@ -259,23 +259,19 @@ void PrettyPrinterSyntax::printDeclarationGroup(Module &_module) {
     m_pContext->sortModule(_module, sorted);
 
     for (std::list<NodePtr>::iterator i = sorted.begin(); i != sorted.end(); ++i) {
-        m_os << fmtIndent();
-        mergeLines();
         traverseNode(**i);
-        separateLines();
-        m_os << ((*i)->getNodeKind() == Node::STATEMENT
-            && (*i).as<Statement>()->getKind() != Statement::PREDICATE_DECLARATION
-            ? L";\n" : L"\n");
+        if ((*i)->getNodeKind() == Node::STATEMENT &&
+                !(*i).as<Statement>()->isBlockLike())
+            m_os << L";";
+        if (i != sorted.end())
+            m_os << L"\n";
     }
 }
 
 bool PrettyPrinterSyntax::_traverseDeclarationGroup(DeclarationGroup &_decl) {
-    m_os << fmtIndent();
-    mergeLines();
     VISITOR_TRAVERSE_COL(LemmaDeclaration, LemmaDecl, _decl.getLemmas());
     VISITOR_TRAVERSE_COL(Message, MessageDecl, _decl.getMessages());
     VISITOR_TRAVERSE_COL(Process, ProcessDecl, _decl.getProcesses());
-    separateLines();
     return true;
 }
 
