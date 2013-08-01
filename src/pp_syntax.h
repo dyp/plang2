@@ -15,10 +15,12 @@ class Context : public Counted {
 public:
     Context() : m_nLastFoundIdentifier(0) {}
     void collectIdentifiers(ir::Node &_node);
+    void collectPaths(ir::Node &_node);
     void addLabel(const std::wstring& _name);
     void addNamedValue(const ir::NamedValuePtr& _pVal);
     std::wstring getNewLabelName(const std::wstring& _name = L"");
     std::wstring getNamedValueName(ir::NamedValue &_val);
+    void getPath(const ir::NodePtr& _pNode, std::list<ir::ModulePtr>& _container);
     void sortModule(ir::Module &_module, std::list<ir::NodePtr>& _sorted);
     void clear();
 
@@ -28,6 +30,7 @@ private:
     std::set<std::wstring> m_usedIdentifiers;
     int m_nLastFoundIdentifier;
     std::multimap<ir::NodePtr, ir::NodePtr> m_decls, m_deps;
+    std::map<ir::NodePtr, std::list<ir::ModulePtr>> m_paths;
 
     void _buildDependencies(ir::NodePtr _pRoot);
     void _topologicalSort(const ir::NodePtr& _pDecl, std::list<ir::NodePtr>& _sorted);
@@ -58,6 +61,7 @@ protected:
     virtual bool _traverseDeclarationGroup(ir::DeclarationGroup &_decl);
     void printDeclarationGroup(ir::Module &_module);
     virtual bool traverseModule(ir::Module &_module);
+    void printPath(const ir::NodePtr& _pNode);
 
     // NODE / LABEL
     virtual bool visitLabel(ir::Label &_label);
@@ -162,6 +166,7 @@ protected:
 
 private:
     ir::NodePtr m_pNode;
+    ir::ModulePtr m_pCurrentModule;
     size_t m_szDepth;
     int m_nFlags;
     bool m_bMergeLines, m_bCompact, m_bSingleLine;
