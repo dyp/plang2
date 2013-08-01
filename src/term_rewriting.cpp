@@ -150,4 +150,95 @@ void declareLemma(const ModulePtr& _pModule, const ExpressionPtr& _pProposition)
     _pModule->getLemmas().add(new LemmaDeclaration(_pProposition));
 }
 
+class Instantiate : public Visitor {
+public:
+    Instantiate(const NamedValues& _params, const Collection<Expression>& _args) :
+        m_params(_params), m_args(_args), Visitor(CHILDREN_FIRST)
+    {}
+
+    ExpressionPtr getExpression(const NamedValuePtr& _pValue);
+    TypePtr getFromType(const TypeDeclarationPtr& _pType);
+    TypePtr getFromFreshType(const TypePtr& _pType);
+
+    virtual bool visitVariableReference(VariableReference& _var);
+    virtual bool visitNamedReferenceType(NamedReferenceType& _type);
+    virtual bool visitType(Type& _type);
+
+    virtual bool traverseNamedValue(NamedValue& _node);
+
+private:
+    const NamedValues& m_params;
+    const Collection<Expression>& m_args;
+};
+
+ExpressionPtr Instantiate::getExpression(const NamedValuePtr& _pValue) {
+    for (size_t i = 0; i < m_params.size(); ++i)
+        if (m_params.get(i) == _pValue)
+            return m_args.get(i);
+    return NULL;
+}
+
+TypePtr Instantiate::getFromType(const TypeDeclarationPtr& _pType) {
+    for (size_t i = 0; i < m_params.size(); ++i) {
+        if (m_params.get(i)->getType()
+            && m_params.get(i)->getType()->getKind() == Type::TYPE
+            && m_params.get(i)->getType().as<TypeType>()->getDeclaration() == _pType)
+            return m_args.get(i).as<TypeExpr>()->getContents();
+    }
+    return NULL;
+}
+
+TypePtr Instantiate::getFromFreshType(const TypePtr& _pType) {
+    for (size_t i = 0; i < m_params.size(); ++i) {
+        if (m_params.get(i)->getType()
+            && m_params.get(i)->getType()->getKind() == Type::TYPE
+            && m_params.get(i)->getType().as<TypeType>()->getDeclaration()
+            && m_params.get(i)->getType().as<TypeType>()->getDeclaration()->getType() == _pType)
+            return m_args.get(i).as<TypeExpr>()->getContents();
+    }
+    return NULL;
+}
+
+bool Instantiate::visitVariableReference(VariableReference& _var) {
+    if (!_var.getTarget())
+        return true;
+    const ExpressionPtr pExpr = getExpression(_var.getTarget());
+    if (!pExpr)
+        return true;
+    callSetter(pExpr);
+    return true;
+}
+
+bool Instantiate::visitNamedReferenceType(NamedReferenceType& _type) {
+    if (!_type.getDeclaration())
+        return true;
+    const TypePtr pType = getFromType(_type.getDeclaration());
+    if (!pType)
+        return true;
+    callSetter(pType);
+    return true;
+}
+
+bool Instantiate::visitType(Type& _type) {
+    if (_type.getKind() != Type::FRESH)
+        return true;
+    const TypePtr pType = getFromFreshType(&_type);
+    if (!pType)
+        return true;
+    callSetter(pType);
+    return true;
+}
+
+bool Instantiate::traverseNamedValue(NamedValue& _node) {
+    if (getLoc().role != R_ModuleParam)
+        return Visitor::traverseNamedValue(_node);
+    return true;
+}
+
+void instantiateModule(const ModulePtr& _pModule, const Collection<Expression>& _args) {
+    if (_pModule->getParams().empty())
+        return;
+    Instantiate(_pModule->getParams(), _args).traverseNode(*_pModule);
+}
+
 } // namespace tr
