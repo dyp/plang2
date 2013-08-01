@@ -20,7 +20,11 @@ ir::FormulaCallPtr makeCall(const ir::FormulaDeclarationPtr& _pFormula, const ir
 ir::FormulaCallPtr makeCall(const ir::FormulaDeclarationPtr& _pFormula, const ir::FormulaCall &_call);
 ir::FormulaCallPtr makeCall(const ir::FormulaDeclarationPtr& _pFormula, const ir::Call &_call);
 
+// Declare lemma and required formulas.
 void declareLemma(const ir::ModulePtr& _pModule, const ir::ExpressionPtr& _pProposition);
+
+// Make instance for parametrized module.
+void instantiateModule(const ir::ModulePtr& _pModule, const ir::Collection<ir::Expression>& _args);
 
 } // namespace tr
 
