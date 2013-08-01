@@ -1,15 +1,15 @@
 /*
 
 <test>
-	/Module = Foo
-	/Foo/ModuleDecl = Bar
-	/Foo/Bar/VarDecl/VarDeclVar = i
-	/Foo/ModuleDecl = Baz
-	/Foo/Baz/ModuleParam = Quux
-	/Foo/Baz/ModuleParam = j
-	/Foo/Baz/VarDecl/VarDeclVar = q
-	/Foo/Baz/VarDecl/VarDeclVar/Type = Quux
-	/Foo/Bar/VarDecl/VarDeclVar = k
+	/Module ~ Foo
+	/Foo/ModuleDecl ~ Bar
+	/Foo/Bar/VarDecl/VarDeclVar ~ i
+	/Foo/ModuleDecl ~ Baz
+	/Foo/Baz/ModuleParam ~ Quux
+	/Foo/Baz/ModuleParam ~ j
+	/Foo/Baz/VarDecl/VarDeclVar ~ q
+	/Foo/Baz/VarDecl/VarDeclVar/Type ~ Quux
+	/Foo/Baz/VarDecl/VarDeclVar ~ k
 </test>
 
 */
@@ -17,10 +17,11 @@
 module Foo;
 
 module Bar {
-	int i;
+    int i;
 }
 
 module Baz(type Quux, int j) {
-	Quux q;
-	int k = Bar.i;
+    import Bar;
+    Quux q;
+    int k = Bar.i;
 }
