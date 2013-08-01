@@ -2974,6 +2974,8 @@ ModulePtr parse(Tokens &_tokens) {
         ctx.mergeChildren(true);
         DEBUG(L"Done.");
 
+        tr::normalizeExpressions(pModule);
+
         return pModule;
     }
 
