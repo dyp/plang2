@@ -107,6 +107,8 @@ public:
           m_modulesCtxs(NULL), m_flags(_flags)
     {}
 
+    Context(const ModulePtr& _pModule);
+
     ~Context();
 
     Context *getParent() const { return m_pParent; }
