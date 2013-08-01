@@ -96,6 +96,7 @@ class Parser {
 public:
     Parser(Tokens &_tokens) : m_tokens(_tokens) { initOps(); }
 
+    ModulePtr parseMainModule(Context &_ctx);
     ModulePtr parseModule(Context &_ctx, bool _bTopLevel);
     bool parseImport(Context &_ctx, Module &_module);
 
@@ -2984,32 +2985,12 @@ bool Parser::parseDeclarations(Context &_ctx, Module &_module) {
     return true;
 }
 
-ModulePtr Parser::parseModule(Context &_ctx, bool _bTopLevel) {
+ModulePtr Parser::parseMainModule(Context &_ctx) {
     Context &ctx = *_ctx.createChild(true);
-    int endToken = END_OF_FILE;
-    ModulePtr pModule;
 
-    if (ctx.consume(MODULE)) {
-        if (!ctx.is(IDENTIFIER))
-            ERROR(ctx, NULL, L"Identifier expected");
+    ModulePtr pModule = parseModule(ctx, true);
 
-        pModule = new Module(ctx.scan());
-
-        if (ctx.consume(LPAREN)) {
-            if (!parseParamList(ctx, pModule->getParams(), &Parser::parseVariableName))
-                return NULL;
-
-            if (!ctx.consume(RPAREN))
-                UNEXPECTED(ctx, ")");
-        }
-
-        if (ctx.consume(LBRACE))
-            endToken = RBRACE;
-        else if (!_bTopLevel)
-            ERROR(ctx, NULL, L"Expected \"{\", got: %ls", TOK_S(ctx));
-        else if (!ctx.consume(SEMICOLON))
-            ERROR(ctx, NULL, L"Expected \";\", got: %ls", TOK_S(ctx));
-    } else
+    if (!pModule)
         pModule = new Module();
 
     while (ctx.is(IMPORT))
@@ -3018,17 +2999,65 @@ ModulePtr Parser::parseModule(Context &_ctx, bool _bTopLevel) {
             return NULL;
         }
 
-    if (!ctx.consume(endToken)) {
+    if (!ctx.consume(END_OF_FILE)) {
         if (!parseDeclarations(ctx, *pModule))
             return NULL;
-
-        if (!ctx.consume(endToken))
+        if (!ctx.consume(END_OF_FILE))
             UNEXPECTED(_ctx, "End of module");
     }
 
     _ctx.addModule(pModule);
     _ctx.addModuleCtx(pModule, &ctx);
+
+    _ctx.loc() = ctx.loc();
     _ctx.setChild(NULL);
+    ctx.setParent(NULL);
+
+    return pModule;
+}
+
+ModulePtr Parser::parseModule(Context &_ctx, bool _bTopLevel) {
+    Context &ctx = *_ctx.createChild(true);
+
+    if (!ctx.consume(MODULE))
+        UNEXPECTED(ctx, "module");
+    if (!ctx.is(IDENTIFIER))
+        ERROR(ctx, NULL, L"Identifier expected");
+
+    ModulePtr pModule = new Module(ctx.scan());
+
+    if (ctx.consume(LPAREN)) {
+        if (!parseParamList(ctx, pModule->getParams(), &Parser::parseVariableName))
+            return NULL;
+        if (!ctx.consume(RPAREN))
+            UNEXPECTED(ctx, ")");
+    }
+
+    if (_bTopLevel && !ctx.consume(SEMICOLON))
+        UNEXPECTED(ctx, ";");
+    if (!_bTopLevel && !ctx.consume(LBRACE))
+        UNEXPECTED(ctx, "{");
+
+    if (!_bTopLevel && !ctx.consume(RBRACE)) {
+        while (ctx.is(IMPORT))
+            if (!parseImport(ctx, *pModule)) {
+                ctx.fmtError(L"Invalid import statement");
+                return NULL;
+            }
+
+        if (!parseDeclarations(ctx, *pModule))
+            return NULL;
+        if (!ctx.consume(RBRACE))
+            UNEXPECTED(_ctx, "End of module");
+
+        _ctx.addModule(pModule);
+        _ctx.addModuleCtx(pModule, &ctx);
+
+        ctx.setParent(NULL);
+        _ctx.setChild(NULL);
+    }
+
+    _ctx.loc() = ctx.loc();
 
     return pModule;
 }
@@ -3038,7 +3067,7 @@ ModulePtr parse(Tokens &_tokens) {
     Parser parser(_tokens);
     Context ctx(loc, true);
 
-    if (ModulePtr pModule = parser.parseModule(ctx, true)) {
+    if (ModulePtr pModule = parser.parseMainModule(ctx)) {
         ctx.mergeChildren(true);
         DEBUG(L"Done.");
 
