@@ -164,6 +164,7 @@ TokenMap::TokenMap() {
     _add(L"exists",    EXISTS);
 	_add(L"module",    MODULE);
 	_add(L"import",    IMPORT);
+	_add(L"as",        AS);
 	_add(L"type",      TYPE);
 	_add(L"predicate", PREDICATE);
 	_add(L"formula",   FORMULA);

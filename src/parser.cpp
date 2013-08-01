@@ -17,6 +17,8 @@
 #include "options.h"
 #include "term_rewriting.h"
 
+#include "term_rewriting.h"
+
 #include <iostream>
 #include <algorithm>
 #include <map>
@@ -120,6 +122,7 @@ public:
     ExpressionPtr parseAtom(Context &_ctx);
     ExpressionPtr parseComponent(Context &_ctx, Expression &_base);
     FormulaPtr parseFormula(Context &_ctx);
+    Context* parseModuleCall(Context &_ctx);
     ArrayIterationPtr parseArrayIteration(Context &_ctx);
     ArrayPartExprPtr parseArrayPart(Context &_ctx, Expression &_base);
     FunctionCallPtr parseFunctionCall(Context &_ctx, Expression &_base);
@@ -612,6 +615,30 @@ FormulaPtr Parser::parseFormula(Context &_ctx) {
     return pFormula;
 }
 
+Context* Parser::parseModuleCall(Context &_ctx) {
+    Context &ctx = *_ctx.createChild(false, _ctx.getFlags());
+    Context *pModuleCtx = &_ctx;
+
+    ModulePtr pModule;
+    while (1) {
+        if (!ctx.is(IDENTIFIER))
+            ERROR(ctx, NULL, L"Identifier expected, got: %ls", TOK_S(ctx));
+
+        if (!pModuleCtx->getModule(ctx.getValue()))
+            break;
+
+        pModuleCtx = pModuleCtx->getModuleCtx(ctx.scan());
+        assert((bool)pModuleCtx);
+
+        if (!ctx.consume(DOT))
+            ERROR(ctx, NULL, L"Dot expected, got: %ls", TOK_S(ctx));
+    }
+
+    _ctx.mergeChildren();
+
+    return pModuleCtx;
+}
+
 ExpressionPtr Parser::parseAtom(Context &_ctx) {
     Context &ctx = *_ctx.createChild(false, _ctx.getFlags());
     ExpressionPtr pExpr;
@@ -719,25 +746,10 @@ ExpressionPtr Parser::parseAtom(Context &_ctx) {
     }
 
     if (!pExpr && ctx.is(IDENTIFIER)) {
-        std::wstring str = ctx.getValue();
-        Context *pModuleCtx = &ctx;
+        Context *pCtx = parseModuleCall(ctx);
+        Context &moduleCtx = pCtx ? *pCtx : ctx;
 
-        // TODO Module args.
-        ModulePtr pModule;
-        while (!pExpr && (pModule = pModuleCtx->getModule(str)) && ctx.nextIs(DOT)) {
-            ctx.skip(2);
-
-            if (!ctx.is(IDENTIFIER))
-                ERROR(ctx, NULL, L"Identifier expected");
-
-            Context *pContext = pModuleCtx->getModuleCtx(str);
-            assert(pContext != NULL);
-            pModuleCtx = pContext;
-
-            str = ctx.getValue();
-
-        }
-        Context &moduleCtx = *pModuleCtx;
+        std::wstring str = ctx.scan();
 
         NamedValuePtr pVar;
         bool bLinkedIdentifier = false;
@@ -749,7 +761,8 @@ ExpressionPtr Parser::parseAtom(Context &_ctx) {
 
         if ((pVar = moduleCtx.getVariable(str)) && (!bAllowTypes || !isTypeVariable(pVar))) {
             pExpr = new VariableReference(pVar);
-            ctx.skip(bLinkedIdentifier ? 2 : 1);
+            if (bLinkedIdentifier)
+                ++ctx;
         }
 
         if (bLinkedIdentifier && !pExpr)
@@ -765,17 +778,13 @@ ExpressionPtr Parser::parseAtom(Context &_ctx) {
 
         PredicatePtr pPred;
 
-        if (!pExpr && (pPred = moduleCtx.getPredicate(str))) {
+        if (!pExpr && (pPred = moduleCtx.getPredicate(str)))
             pExpr = new PredicateReference(str);
-            ++ctx;
-        }
 
         FormulaDeclarationPtr pFormula;
 
         if (!pExpr && (ctx.getFlags() & ALLOW_FORMULAS) && (pFormula = moduleCtx.getFormula(str))) {
             FormulaCallPtr pCall = new FormulaCall();
-
-            ++ctx;
 
             if (ctx.is(LPAREN, RPAREN))
                 ctx.skip(2);
@@ -796,7 +805,7 @@ ExpressionPtr Parser::parseAtom(Context &_ctx) {
         if (!pExpr && pRealType && pRealType->getKind() == Type::UNION && ctx.nextIs(DOT, IDENTIFIER)) {
             // It's ok since we always know the UnionType in UnionType.ConstructorName expression even
             // before type inference.
-            ctx.skip(2);
+            ++ctx;
             pExpr = parseConstructor(ctx, pRealType.as<UnionType>());
             if (!pExpr)
                 return NULL;
@@ -1217,12 +1226,66 @@ VariableDeclarationPtr Parser::parseVariableDeclaration(Context &_ctx, int _nFla
 }
 
 bool Parser::parseImport(Context &_ctx, Module &_module) {
-    if (_ctx.is(IMPORT, IDENTIFIER, SEMICOLON)) {
-        _module.getImports().push_back(_ctx.scan(3, 1));
-        return true;
+    Context &ctx = *_ctx.createChild(false);
+    if (!ctx.consume(IMPORT))
+        return false;
+
+    if (!ctx.is(IDENTIFIER))
+        ERROR(ctx, NULL, L"Identifier expected, got: %ls", TOK_S(ctx));
+
+    const std::wstring strModuleName = ctx.scan();
+    const ModulePtr pModule = ctx.getModule(strModuleName);
+
+    // TODO Include module from file.
+
+    if (!pModule)
+        ERROR(ctx, NULL, L"Module '%ls' is not defined", strModuleName.c_str());
+
+    if (!pModule->getParams().empty() && !ctx.is(LPAREN))
+        ERROR(ctx, NULL, L"'(' expected, got: %ls", TOK_S(ctx));
+
+    Collection<Expression> args;
+    if (ctx.is(LPAREN)) {
+        if (pModule->getParams().empty())
+            ERROR(ctx, NULL, L"Dot, semicolon or 'as' expected, got: %ls", TOK_S(ctx));
+        if (!parseActualParameterList(ctx, args))
+            return false;
     }
 
-    return false;
+    if (args.size() != pModule->getParams().size())
+        ERROR(ctx, NULL, L"Parameter count mismatch trying to import module '%ls': expected %d, got %d",
+            strModuleName.c_str(), pModule->getParams().size(), args.size());
+
+    std::wstring strAlternativeModuleName;
+    if (ctx.consume(AS)) {
+        if (!ctx.is(IDENTIFIER))
+            ERROR(ctx, NULL, L"Identifier expected, got: %ls", TOK_S(ctx));
+        strAlternativeModuleName = ctx.getValue();
+        if (ctx.getModule(strAlternativeModuleName))
+            ERROR(ctx, NULL, L"Module '%ls' already defined", strAlternativeModuleName.c_str());
+        ++ctx;
+    }
+
+    ModulePtr pInstanceModule = clone(pModule);
+
+    if (!strAlternativeModuleName.empty())
+        pInstanceModule->setName(strAlternativeModuleName);
+
+    // TODO Typecheck instantiated module.
+    if (!args.empty())
+        tr::instantiateModule(pInstanceModule, args);
+
+    pInstanceModule->getParams().clear();
+    _module.getModules().add(pInstanceModule);
+
+    if (!ctx.consume(SEMICOLON))
+        ERROR(ctx, NULL, L"Semicolon expected, got: %ls", TOK_S(ctx));
+
+    _ctx.addModule(pInstanceModule);
+    _ctx.addModuleCtx(pInstanceModule, new Context(pInstanceModule));
+    _ctx.mergeChildren();
+
+    return true;
 }
 
 TypePtr Parser::parseDerivedTypeParameter(Context &_ctx) {
@@ -1332,8 +1395,12 @@ NamedReferenceTypePtr Parser::parseTypeReference(Context &_ctx) {
     if (!ctx.is(IDENTIFIER))
         UNEXPECTED(ctx, "identifier");
 
-    const std::wstring &str = ctx.scan();
-    TypeDeclarationPtr pDecl = ctx.getType(str);
+    Context *pCtx = parseModuleCall(ctx);
+    Context &moduleCtx = pCtx ? *pCtx : ctx;
+
+    const std::wstring str = ctx.scan();
+
+    TypeDeclarationPtr pDecl = moduleCtx.getType(str);
 
     if (!pDecl)
         ERROR(ctx, NULL, L"Unknown type identifier: %ls", str.c_str());
