@@ -607,8 +607,8 @@ public:
 
     virtual NodePtr clone(Cloner &_cloner) const {
         ModulePtr pCopy = NEW_CLONE(this, _cloner, Module(getName()));
-        cloneTo(*pCopy, _cloner);
         pCopy->getParams().appendClones(getParams(), _cloner);
+        cloneTo(*pCopy, _cloner);
         pCopy->getImports() = getImports();
         pCopy->getClasses().appendClones(getClasses(), _cloner);
         pCopy->getModules().appendClones(getModules(), _cloner);
