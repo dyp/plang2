@@ -26,6 +26,9 @@ void declareLemma(const ir::ModulePtr& _pModule, const ir::ExpressionPtr& _pProp
 // Make instance for parametrized module.
 void instantiateModule(const ir::ModulePtr& _pModule, const ir::Collection<ir::Expression>& _args);
 
+// Make expression an ordered.
+void normalizeExpressions(const ir::NodePtr& _pNode);
+
 } // namespace tr
 
 #endif // TERM_REWRITING_H_
