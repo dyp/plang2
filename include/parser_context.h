@@ -98,7 +98,6 @@ public:
     typedef std::map<std::wstring, ir::ProcessPtr> ProcessMap;
     typedef std::map<std::wstring, ir::FormulaDeclarationPtr> FormulaMap;
     typedef std::multimap<std::wstring, ir::UnionConstructorDeclarationPtr> ConsMap;
-    typedef std::list<ir::NodePtr> Nodes;
 
 public:
     Context(lexer::Loc _loc, bool _bScope = false, int _flags = 0)
