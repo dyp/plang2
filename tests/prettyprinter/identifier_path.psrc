@@ -1,0 +1,16 @@
+module A;
+
+module B {
+    module C {
+        module D {
+            nat a;
+        }
+        nat b = D.a;
+    }
+    nat c = C.b;
+    nat d = C.D.a;
+}
+
+nat e = B.c;
+nat f = B.C.b;
+nat g = B.C.D.a;
