@@ -203,6 +203,7 @@ set(TESTS_PRETTYPRINTER
     prettyprinter/union_constructor.psrc
     prettyprinter/union_element.psrc
     prettyprinter/decls_order.psrc
+    prettyprinter/identifier_path.psrc
 )
 
 set(TESTS_CALLGRAPH
