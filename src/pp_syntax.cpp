@@ -1720,8 +1720,10 @@ void PrettyPrinterSyntax::separateLines() {
     m_bMergeLines = false;
 }
 
-void prettyPrintSyntax(ir::Node &_node, std::wostream & _os, const ContextPtr& _pContext) {
+void prettyPrintSyntax(ir::Node &_node, std::wostream & _os, const ContextPtr& _pContext, bool _bNewLine) {
     PrettyPrinterSyntax(_node, _os, _pContext).run();
+    if (_bNewLine)
+        _os << L"\n";
 }
 
 void prettyPrintSyntax(ir::Node &_node, size_t nDepth, std::wostream & _os) {
