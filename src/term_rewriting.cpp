@@ -241,4 +241,64 @@ void instantiateModule(const ModulePtr& _pModule, const Collection<Expression>& 
     Instantiate(_pModule->getParams(), _args).traverseNode(*_pModule);
 }
 
+class Normalizer : public Visitor {
+public:
+    Normalizer() : Visitor(CHILDREN_FIRST) {}
+
+    static void extractBinaryOperands(const BinaryPtr& _pBinary, int _nOperator, std::set<ExpressionPtr, PtrLess<Expression>>& _container);
+    virtual bool traverseExpression(Expression& _expr);
+};
+
+void Normalizer::extractBinaryOperands(const BinaryPtr& _pBinary, int _nOperator, std::set<ExpressionPtr, PtrLess<Expression>>& _container) {
+    if (!_pBinary)
+        return;
+    if (_pBinary->getOperator() != _nOperator) {
+        _container.insert(_pBinary);
+        return;
+    }
+
+    if (_pBinary->getLeftSide()) {
+        if (_pBinary->getLeftSide()->getKind() == Expression::BINARY)
+            extractBinaryOperands(_pBinary->getLeftSide().as<Binary>(), _nOperator, _container);
+        else
+            _container.insert(_pBinary->getLeftSide());
+    }
+
+    if (_pBinary->getRightSide()) {
+        if (_pBinary->getRightSide()->getKind() == Expression::BINARY)
+            extractBinaryOperands(_pBinary->getRightSide().as<Binary>(), _nOperator, _container);
+        else
+            _container.insert(_pBinary->getRightSide());
+    }
+}
+
+bool Normalizer::traverseExpression(Expression& _expr) {
+    if (_expr.getKind() != Expression::BINARY || !((const Binary&)_expr).isSymmetrical())
+        return Visitor::traverseExpression(_expr);
+
+    BinaryPtr pBin(&_expr);
+
+    std::set<ExpressionPtr, PtrLess<Expression>> container;
+    extractBinaryOperands(pBin, pBin->getOperator(), container);
+
+    auto i = container.begin();
+    while (1) {
+        pBin->setLeftSide(*i);
+        if (std::next(++i) == container.end()) {
+            pBin->setRightSide(*i);
+            break;
+        }
+        pBin->setRightSide(new Binary(pBin->getOperator()));
+        pBin = pBin->getRightSide().as<Binary>();
+    }
+
+    return true;
+}
+
+void normalizeExpressions(const NodePtr& _pNode) {
+    if (!_pNode)
+        return;
+    Normalizer().traverseNode(*_pNode);
+}
+
 } // namespace tr
