@@ -1351,6 +1351,8 @@ private:
     ExpressionPtr m_pMeasure;
 };
 
+typedef Auto<AnonymousPredicate> AnonymousPredicatePtr;
+
 /// Anonymous predicate.
 class Lambda : public Expression {
 public:
