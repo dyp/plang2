@@ -341,35 +341,117 @@ void print(ir::Node &_node, std::wostream &_os) {
     pp.traverseNode(_node);
 }
 
+class PrettyPrinterTcContext : public pp::PrettyPrinterSyntax {
+public:
+    PrettyPrinterTcContext(std::wostream &_os) :
+        PrettyPrinterSyntax(_os, true, 0), m_cInd(1)
+    {}
+
+    template<class T>
+    void collectConditions(T _constraints) {
+        for (auto& i: _constraints.getConditions())
+            m_conditions.insert({m_cInd, i});
+
+        if (!_constraints.getConditions().empty()) {
+            m_os << L" [" << m_cInd << L"]";
+            ++m_cInd;
+        }
+    }
+
+    void print(const tc::CompoundFormula& _formula) {
+        for (size_t i = 0; i < _formula.size(); ++i) {
+            if (i > 0)
+                m_os << L"\n  or ";
+
+            m_os << L"(";
+
+            const tc::Formulas &part = _formula.getPart(i);
+            tc::ContextStack::push(_formula.getPartPtr(i));
+
+            for (tc::Formulas::iterator j = part.begin(); j != part.end(); ++j) {
+                tc::Formula &g = **j;
+
+                assert(!g.is(tc::Formula::COMPOUND));
+
+                if (j != part.begin())
+                    m_os << L" and ";
+
+                PrettyPrinterSyntax::print(*g.getLhs());
+                m_os << L" " << fmtTypeFormulaOp(g.getKind()) << L" ";
+                PrettyPrinterSyntax::print(*g.getRhs());
+
+                collectConditions(g);
+            }
+
+            tc::ContextStack::pop();
+            m_os << L")";
+
+            collectConditions(part);
+        }
+    }
+
+    void print(const tc::Formula &_formula) {
+        if (!_formula.is(tc::Formula::COMPOUND)) {
+            PrettyPrinterSyntax::print(*_formula.getLhs());
+            m_os << L" " << fmtTypeFormulaOp(_formula.getKind()) << L" ";
+            PrettyPrinterSyntax::print(*_formula.getRhs());
+        } else
+            print((const tc::CompoundFormula&)_formula);
+
+        collectConditions(_formula);
+
+        m_os << L"\n";
+    }
+
+    void print(tc::Context &_constraints) {
+        m_os << L"\n";
+
+        size_t c = 0;
+
+        for (tc::Formulas::iterator i = _constraints->begin(); i != _constraints->end(); ++i, ++c) {
+            tc::Formula &f = **i;
+
+            if (!f.is(tc::Formula::COMPOUND))
+                m_os << c << L":  ";
+
+            print(f);
+        }
+
+        for (auto& i: _constraints.getConditions())
+            m_conditions.insert({0, i});
+
+        if (!m_conditions.empty())
+            m_os << L"----------\n";
+
+        for (auto& i: m_conditions) {
+            if (i.first != 0)
+                m_os << L"[" << i.first << L"] ";
+            PrettyPrinterSyntax::print(*i.second);
+            m_os << L"\n";
+        }
+
+        m_os << L"----------\n";
+
+        for (tc::Formulas::iterator i = _constraints.pSubsts->begin(); i != _constraints.pSubsts->end(); ++i) {
+            tc::Formula &f = **i;
+
+            assert(f.getLhs());
+            assert(f.getRhs());
+
+            PrettyPrinterSyntax::print(*f.getLhs());
+            m_os << L" -> ";
+            PrettyPrinterSyntax::print(*f.getRhs());
+            m_os << L"\n";
+        }
+    }
+
+private:
+    std::multimap<size_t, ExpressionPtr> m_conditions;
+    size_t m_cInd;
+};
+
 void prettyPrint(tc::Context &_constraints, std::wostream &_os) {
-    pp::PrettyPrinterSyntax pp(_os, true, 0);
-
-    _os << L"\n";
-
-    size_t c = 0;
-
-    for (tc::Formulas::iterator i = _constraints->begin(); i != _constraints->end(); ++i, ++c) {
-        tc::Formula &f = **i;
-
-        if (!f.is(tc::Formula::COMPOUND))
-            _os << c << ":  ";
-
-        prettyPrint(f, _os);
-    }
-
-    _os << L"----------\n";
-
-    for (tc::Formulas::iterator i = _constraints.pSubsts->begin(); i != _constraints.pSubsts->end(); ++i) {
-        tc::Formula &f = **i;
-
-        assert(f.getLhs());
-        assert(f.getRhs());
-
-        pp.print(*f.getLhs());
-        _os << L" -> ";
-        pp.print(*f.getRhs());
-        _os << L"\n";
-    }
+    PrettyPrinterTcContext(_os).print(_constraints);
 }
 
 void prettyPrint(const tc::Formula &_formula, std::wostream &_os, bool _bNewLine) {
