@@ -215,6 +215,8 @@ bool Solver::runCompound(Operation _operation, int &_result) {
     if (iCF == context()->end())
         return false;
 
+    m_iLastCF = context()->end();
+
     for (tc::Formulas::iterator i = iCF; i != context()->end(); ++i) {
         tc::CompoundFormula &cf = (tc::CompoundFormula &)**i;
         bool bFormulaModified = false;
@@ -271,6 +273,8 @@ bool Solver::runCompound(Operation _operation, int &_result) {
             replaced.push_back(i);
             bModified = true;
         }
+
+        m_iLastCF = i;
     }
 
     for (std::list<tc::Formulas::iterator>::iterator i = replaced.begin(); i != replaced.end(); ++i)
@@ -331,11 +335,11 @@ bool Solver::guess(int & _result) {
     const bool bCompound = m_nCurrentCFPart >= 0;
     tc::Formulas::iterator iBegin, iEnd;
 
-    if (m_nCurrentCFPart <= 0)
+    // Clear ignored list if processing any normal or the first compound formula in context.
+    if (!bCompound || m_iLastCF == context().pParent->pFormulas->end())
         m_guessIgnored.clear();
 
     if (!bCompound) {
-        m_iLastCF = context()->end();
         iBegin = context()->beginCompound();
         iEnd = context()->end();
     } else {
