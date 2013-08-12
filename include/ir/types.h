@@ -640,6 +640,16 @@ public:
     PredicateType(const FormulaPtr &_pPreCond = NULL, const FormulaPtr &_pPostCond = NULL) :
         m_pPreCond(_pPreCond), m_pPostCond(_pPostCond) {}
 
+    /// Make predicate type from anonymous predicate.
+    /// \param _pPred Predicate.
+    PredicateType(const AnonymousPredicatePtr &_pPred) {
+        Cloner cloner;
+        m_paramsIn.appendClones(_pPred->getInParams(), cloner);
+        m_paramsOut.appendClones(_pPred->getOutParams(), cloner);
+        m_pPreCond = cloner.get(_pPred->getPreCondition());
+        m_pPostCond = cloner.get(_pPred->getPostCondition());
+    }
+
     /// Get type kind.
     /// \returns #Predicate.
     virtual int getKind() const { return PREDICATE; }
