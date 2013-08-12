@@ -786,7 +786,7 @@ bool Collector::visitArrayConstructor(ArrayConstructor &_cons) {
         m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
             _cons.get(i)->getValue()->getType(), pArray->getBaseType()));
 
-    const tc::FreshTypePtr pParamType = new tc::FreshType(tc::FreshType::PARAM_IN);
+    const tc::FreshTypePtr pParamType = new tc::FreshType(tc::FreshType::PARAM_OUT);
     SubtypePtr pEnumType = new Subtype(new NamedValue(L"", pParamType));
     const VariableReferencePtr pVar = new VariableReference(pEnumType->getParam());
 
@@ -804,12 +804,19 @@ bool Collector::visitArrayConstructor(ArrayConstructor &_cons) {
             pEnumType->setExpression(pEnumType->getExpression()
                 ? new Binary(Binary::BOOL_AND, pEnumType->getExpression(), pExpr)
                 : pExpr);
+
+            if (pIndexType->getKind() == Type::SUBTYPE)
+                m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                    pIndexType.as<Subtype>()->getParam()->getType(), pEnumType->getParam()->getType()));
         }
         else {
             PredicatePtr pIndexer = Builtins::instance().find(bFirst ? L"zero" : L"inc");
             assert(pIndexer);
 
-            FunctionCallPtr pCallIndexer = new FunctionCall(new PredicateReference(pIndexer));
+            PredicateReferencePtr pReference = new PredicateReference(pIndexer);
+            pReference->setType(new PredicateType(pIndexer.as<AnonymousPredicate>()));
+
+            FunctionCallPtr pCallIndexer = new FunctionCall(pReference);
             pCallIndexer->getArgs().add(new TypeExpr(pEnumType1));
 
             if (!bFirst)
