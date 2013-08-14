@@ -1,0 +1,94 @@
+digraph G {
+    node [ shape = record, height = .1 ];
+    compound=true;
+    splines = "ortho";
+
+    start [ label = "P lang file", shape = "ellipse" ]
+
+    subgraph cluster0 {
+        node [ style = filled ];
+        label = "Parse module"
+
+        parse_import [ label = "Parse import section (module instantiation)" ]
+
+        subgraph cluster1 {
+            label = "Parse declaration"
+
+            recursive [ label = "Parse module (recursive call)" ]
+            parse_expr [ label = "Parse expression"]
+            sort_expr [ label = "Make expression oredered"]
+
+            parse_expr -> sort_expr
+        }
+
+        parse_import -> parse_expr [ lhead = cluster1, minlen = 2 ]
+
+        typecheck [ label = "Typecheck"]
+
+        parse_expr -> typecheck [ ltail = cluster1, minlen = 2 ]
+    }
+
+    start -> parse_import [ lhead = cluster0, minlen = 2 ]
+
+    ir [ label = "IR", shape = "ellipse" ]
+
+    typecheck -> ir [ ltail = cluster0, minlen = 2 ]
+
+    subgraph cluster2 {
+        node [ style = filled ];
+        label = "Term rewriting"
+
+        predicates_inst [ label = "Template predicates instantiation" ]
+        types_subst [ label = "Types substitution (subtypes, named reference types)" ]
+
+        predicates_inst -> types_subst
+    }
+
+    module [ label = "Rewritten module", shape = "ellipse" ]
+
+    ir -> predicates_inst [ lhead = cluster2, minlen = 2 ]
+    types_subst -> module [ ltail = cluster2, minlen = 2 ]
+
+    subgraph cluster3 {
+        node [ style = filled ];
+        label = "Research processes"
+
+        semantics [label = "Semantic conditions generator"]
+        verif [ label = "Generator formulas of correctness" ]
+    }
+
+    module -> semantics [ lhead = cluster3, minlen = 2 ]
+
+    result_res [ label = "Result of research", shape = "ellipse" ]
+    semantics -> result_res [ ltail = cluster3, minlen = 2 ]
+
+    subgraph cluster4 {
+        node [ style = filled ];
+        trans [ label = "Transformation" ]
+        optim [ label = "Optimization" ]
+        cvc3 [ label = "CVC3 solver" ]
+
+        optim -> cvc3 -> trans
+    }
+
+    subgraph cluster5 {
+        node [ style = filled ];
+        label = "Backend"
+
+        pvs [ label = "PVS" ]
+        cpp [ label = "C++" ]
+        plang [ label = "P lang" ]
+        russel [ label = "Russel" ]
+    }
+
+    module -> optim [ lhead = cluster4, minlen = 2 ]
+    result_res -> optim [ lhead = cluster4, minlen = 2 ]
+
+    result [ label = "IR of result program", shape = "ellipse" ]
+
+    module -> result
+    result_res -> result
+    trans -> result [ ltail = cluster4, minlen = 2 ]
+
+    result -> pvs [ lhead = cluster5, minlen = 2 ]
+}
