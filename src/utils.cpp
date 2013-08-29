@@ -283,10 +283,11 @@ bool parseOptions(size_t _cArgs, const char **_pArgs, Option *_pOptions, void *_
 }
 
 std::wstring cyrillicToASCII(const std::wstring &_str) {
-    std::wstring sRussia = L"абвгдеёжзийклмнопрстуфцчшщъыьэюя";
-    std::wstring sTranslit[] = { L"a", L"b", L"v", L"g", L"d", L"e", L"jo", L"zh", L"z", L"i", L"j",
+    std::wstring sRussia = L"абвгдеёжзийклмнопрстуфхцчшщъыьэюя";
+    // Like ISO 9 but with identifier chars only.
+    std::wstring sTranslit[] = { L"a", L"b", L"v", L"g", L"d", L"e", L"yo", L"zh", L"z", L"i", L"j",
                                  L"k", L"l", L"m", L"n", L"o", L"p", L"r", L"s", L"t", L"u", L"f",
-                                 L"x", L"cz", L"ch", L"sh", L"shh", L"\"", L"y'", L"'", L"e'", L"ju", L"ja" };
+                                 L"x", L"cz", L"ch", L"sh", L"shh", L"_", L"y", L"_", L"e", L"ju", L"ja" };
     std::wstring sResult = L"";
 
     for (int i=0; i<_str.size(); ++i) {
