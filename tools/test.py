@@ -11,8 +11,11 @@ def extractTest(_fileName):
     for ln in open(_fileName):
         lc = False  # Line comment
         tc = False  # In-test comment
+        esc = True # Need to check escaping
         while ln:
-            if t and ln.startswith("\\"):
+            if ln.startswith("==") or ln.startswith("~~"):
+                esc = False
+            if esc and t and ln.startswith("\\"):
                 # Handle simple escaping
                 if len(ln) > 1:
                     s += ln[1]
@@ -88,14 +91,18 @@ for test in extractTest(sys.argv[1]).split('\n'):
     idx = -1
     op = ""
     match = re.search("[=~]", test)
-    #idx = test.find('=')
     val = None
     cond = test
 
     if match:
-        op = test[match.start()]
         idx = match.start()
-        val = test[idx + 1:].strip()
+        op = test[idx]
+
+        # Handle ~~ and == operators.
+        if idx + 1 < len(test) and test[idx] == test[idx + 1]:
+            op += test[idx + 1]
+
+        val = test[idx + len(op):].strip()
         cond = test[:idx].strip()
 
     if cond.startswith("!"):
@@ -108,8 +115,9 @@ for test in extractTest(sys.argv[1]).split('\n'):
     gots = set()
 
     if val:
-        val = re.escape(val)
-        if op == "~":
+        if len(op) != 2:
+            val = re.escape(val)
+        if op == "~" or op == "~~":
             val = r"(.*\b|.*\B|^)" + val + r"(\b.*|\B.*|$)"
 
     for ln in lns:
