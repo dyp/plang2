@@ -15,6 +15,7 @@
 #include "typecheck.h"
 #include "prettyprinter.h"
 #include "options.h"
+#include "term_rewriting.h"
 
 #include <iostream>
 #include <algorithm>
