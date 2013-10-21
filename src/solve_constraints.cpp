@@ -281,7 +281,7 @@ bool Solver::runCompound(Operation _operation, int &_result) {
         context()->erase(*i);
 
     if (bModified) {
-        context()->insert(formulas.begin(), formulas.end());
+        context().insert(formulas.begin(), formulas.end());
         flags.mergeTo(context().flags());
     }
 
@@ -1093,6 +1093,8 @@ bool Solver::run() {
             prettyPrint(context(), std::wcout);
         }
     }
+
+    context().applySubsts();
 
     if (Options::instance().bVerbose) {
         switch (result) {

@@ -547,12 +547,20 @@ bool Context::add(int _kind, const ir::TypePtr &_pLhs, const ir::TypePtr &_pRhs)
     return add(new Formula(_kind, _pLhs, _pRhs));
 }
 
+void Context::applySubsts() {
+    for (auto& i: m_conditions)
+        apply(*pSubsts, *i);
+}
+
 class PredicateLinker : public ir::Visitor {
 public:
     PredicateLinker(ir::Context &_ctx) : Visitor(CHILDREN_FIRST), m_ctx(_ctx) {}
 
     virtual bool visitPredicateReference(ir::PredicateReference &_ref) {
         ir::Predicates predicetes;
+
+        if (_ref.getTarget() && _ref.getTarget()->isBuiltin())
+            return true;
 
         m_ctx.getPredicates(_ref.getName(), predicetes);
         if (predicetes.empty())
@@ -630,7 +638,8 @@ Context::Context(const Auto<Formulas> &_pFormulas, const Auto<Context> &_pParent
     pFormulas(_pFormulas),
     pSubsts(ptr(new Formulas())),
     pParent(_pParent),
-    pTypes(new Lattice(this))
+    pTypes(new Lattice(this)),
+    m_conditions(_pParent->m_conditions)
 {
 }
 

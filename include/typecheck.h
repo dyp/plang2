@@ -9,6 +9,7 @@
 
 #include <ir/types.h>
 #include "parser_context.h"
+#include "ir/expressions.h"
 
 #include <vector>
 #include <list>
@@ -127,11 +128,18 @@ public:
         TRUE,
     };
 
-    Formula(int _kind, const ir::TypePtr &_pLhs = NULL, const ir::TypePtr &_pRhs = NULL) :
-        m_kind(_kind), m_pLhs(_pLhs), m_pRhs(_pRhs) {}
+    Formula(int _kind, const ir::TypePtr &_pLhs = NULL, const ir::TypePtr &_pRhs = NULL, const ir::ExpressionPtr& _pCond = NULL) :
+        m_kind(_kind), m_pLhs(_pLhs), m_pRhs(_pRhs)
+    {
+        if (_pCond)
+            m_conditions.insert(_pCond);
+    }
 
     Formula(const Formula &_other) :
-        m_kind(_other.m_kind), m_pLhs(_other.m_pLhs), m_pRhs(_other.m_pRhs) {}
+        m_kind(_other.m_kind), m_pLhs(_other.m_pLhs), m_pRhs(_other.m_pRhs), m_conditions(_other.m_conditions) {}
+
+    const std::set<ir::ExpressionPtr>& getConditions() const { return m_conditions; }
+    std::set<ir::ExpressionPtr>& getConditions() { return m_conditions; }
 
     bool is(int _kind) const { return (m_kind & _kind) != 0; }
 
@@ -171,6 +179,7 @@ public:
 private:
     int m_kind;
     ir::TypePtr m_pLhs, m_pRhs;
+    std::set<ir::ExpressionPtr> m_conditions;
 };
 
 struct FormulaCmp {
@@ -193,7 +202,11 @@ struct Formulas : public std::set<FormulaPtr, FormulaCmp> {
     bool implies(Formula &_f) const;
     iterator beginCompound();
     iterator findSubst(const ir::TypePtr &_pType) const;
+    const std::set<ir::ExpressionPtr>& getConditions() const { return m_conditions; }
+    std::set<ir::ExpressionPtr>& getConditions() { return m_conditions; }
 
+private:
+    std::set<ir::ExpressionPtr> m_conditions;
 };
 
 struct Context : public Counted {
@@ -214,9 +227,22 @@ struct Context : public Counted {
     bool add(const FormulaPtr &_pFormula);
     bool add(int _kind, const ir::TypePtr &_pLhs, const ir::TypePtr &_pRhs);
     Flags &flags() { return *pFormulas->pFlags; }
+    const std::set<ir::ExpressionPtr>& getConditions() const { return m_conditions; }
+    std::set<ir::ExpressionPtr>& getConditions() { return m_conditions; }
+    void applySubsts();
 
     Formulas &operator *() const { return *pFormulas; }
     Formulas *operator ->() const { return pFormulas.ptr(); }
+
+    template<typename T>
+    void insert(T _begin, T _end) {
+        pFormulas->insert(_begin, _end);
+        for(T i = _begin; i != _end; ++i)
+            m_conditions.insert((*i)->getConditions().begin(), (*i)->getConditions().end());
+    }
+
+private:
+    std::set<ir::ExpressionPtr> m_conditions;
 };
 
 typedef Auto<Context> ContextPtr;
