@@ -548,8 +548,18 @@ bool Context::add(int _kind, const ir::TypePtr &_pLhs, const ir::TypePtr &_pRhs)
 }
 
 void Context::applySubsts() {
-    for (auto& i: m_conditions)
+    for (auto& i: getConditions())
         apply(*pSubsts, *i);
+}
+
+void Formulas::insertFormulas(const tc::Formulas& _formulas) {
+    insert(_formulas.begin(), _formulas.end());
+    getConditions().insert(_formulas.getConditions().begin(), _formulas.getConditions().end());
+}
+
+void Context::insertFormulas(const tc::Formulas& _formulas) {
+    insert(_formulas.begin(), _formulas.end());
+    getConditions().insert(_formulas.getConditions().begin(), _formulas.getConditions().end());
 }
 
 class PredicateLinker : public ir::Visitor {
@@ -638,8 +648,7 @@ Context::Context(const Auto<Formulas> &_pFormulas, const Auto<Context> &_pParent
     pFormulas(_pFormulas),
     pSubsts(ptr(new Formulas())),
     pParent(_pParent),
-    pTypes(new Lattice(this)),
-    m_conditions(_pParent->m_conditions)
+    pTypes(new Lattice(this))
 {
 }
 

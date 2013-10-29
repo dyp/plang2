@@ -66,14 +66,14 @@ bool Solver::fork() {
 
     tc::ContextPtr pCopy = clone(context());
 
-    context()->insert(pCF->getPart(0).begin(), pCF->getPart(0).end());
+    context().insertFormulas(pCF->getPart(0));
     pCF->getPart(0).pFlags->mergeTo(context().flags());
 
     if (pCF->size() > 2) {
         pCF->removePart(0);
         (*pCopy)->insert(pCF);
     } else {
-        (*pCopy)->insert(pCF->getPart(1).begin(), pCF->getPart(1).end());
+        pCopy->insertFormulas(pCF->getPart(1));
         pCF->getPart(1).pFlags->mergeTo(pCopy->flags());
     }
 
@@ -1057,7 +1057,7 @@ bool Solver::run() {
                 tc::Formulas &part = pCF->addPart();
 
                 CS::push(*i);
-                part.insert(ctx.pFormulas->begin(), ctx.pFormulas->end());
+                part.insertFormulas(*ctx.pFormulas);
 
                 for (tc::Formulas::iterator j = ctx.pSubsts->begin(); j != ctx.pSubsts->end(); ++j) {
                     tc::FormulaPtr pSubst = *j;
