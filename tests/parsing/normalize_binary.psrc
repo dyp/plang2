@@ -1,0 +1,17 @@
+/*
+
+<test>
+    //VariableDeclaration = q = a * b
+    //VariableDeclaration = w = a * b * c * d
+    //VariableDeclaration = e = a * a * a
+    //VariableDeclaration = r = a * b * c * d
+</test>
+
+*/
+
+var a, b, c, d;
+var q = a*b;
+var w = b*a*d*c;
+var e = a*a*a;
+var r = c*(b*a)*d;
+

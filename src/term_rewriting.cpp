@@ -243,13 +243,17 @@ void instantiateModule(const ModulePtr& _pModule, const Collection<Expression>& 
 
 class Normalizer : public Visitor {
 public:
+    typedef std::multiset<ExpressionPtr, PtrLess<Expression> > Operands;
     Normalizer() : Visitor(CHILDREN_FIRST) {}
 
-    static void extractBinaryOperands(const BinaryPtr& _pBinary, int _nOperator, std::set<ExpressionPtr, PtrLess<Expression>>& _container);
+    static void extractBinaryOperands(const BinaryPtr& _pBinary, int _nOperator,
+            Operands& _container);
     virtual bool traverseExpression(Expression& _expr);
 };
 
-void Normalizer::extractBinaryOperands(const BinaryPtr& _pBinary, int _nOperator, std::set<ExpressionPtr, PtrLess<Expression>>& _container) {
+void Normalizer::extractBinaryOperands(const BinaryPtr& _pBinary,
+        int _nOperator, Operands& _container)
+{
     if (!_pBinary)
         return;
     if (_pBinary->getOperator() != _nOperator) {
@@ -277,19 +281,25 @@ bool Normalizer::traverseExpression(Expression& _expr) {
         return Visitor::traverseExpression(_expr);
 
     BinaryPtr pBin(&_expr);
+    Operands operands;
 
-    std::set<ExpressionPtr, PtrLess<Expression>> container;
-    extractBinaryOperands(pBin, pBin->getOperator(), container);
+    extractBinaryOperands(pBin, pBin->getOperator(), operands);
 
-    auto i = container.begin();
-    while (1) {
-        pBin->setLeftSide(*i);
-        if (std::next(++i) == container.end()) {
-            pBin->setRightSide(*i);
-            break;
-        }
-        pBin->setRightSide(new Binary(pBin->getOperator()));
-        pBin = pBin->getRightSide().as<Binary>();
+    if (!operands.empty()) {
+        auto iLast = std::prev(operands.end());
+
+        pBin->setLeftSide(*operands.begin());
+
+        if (iLast != operands.begin()) {
+            for (auto i = std::next(operands.begin()); i != iLast; ++i) {
+                pBin->setRightSide(new Binary(pBin->getOperator()));
+                pBin = pBin->getRightSide().as<Binary>();
+                pBin->setLeftSide(*i);
+            }
+
+            pBin->setRightSide(*iLast);
+        } else
+            pBin->setRightSide(nullptr);
     }
 
     return true;
