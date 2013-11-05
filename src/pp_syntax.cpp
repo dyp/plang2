@@ -415,10 +415,14 @@ bool PrettyPrinterSyntax::visitTypeType(TypeType &_type) {
     return false;
 }
 
-bool PrettyPrinterSyntax::visitNamedReferenceType(NamedReferenceType &_type) {
+bool PrettyPrinterSyntax::traverseNamedReferenceType(NamedReferenceType &_type) {
+    VISITOR_ENTER(NamedReferenceType, _type);
     printPath(_type.getDeclaration());
     m_os << _type.getName();
-    return true;
+    m_os << L"(";
+    VISITOR_TRAVERSE_COL(Expression, NamedTypeArg, _type.getArgs());
+    m_os << L")";
+    VISITOR_EXIT();
 }
 
 bool PrettyPrinterSyntax::visitSetType(SetType &_type) {

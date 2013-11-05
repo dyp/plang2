@@ -70,7 +70,7 @@ protected:
     virtual bool traverseType(ir::Type &_type);
     virtual bool visitType(ir::Type &_type);
     virtual bool visitTypeType(ir::TypeType &_type);
-    virtual bool visitNamedReferenceType(ir::NamedReferenceType &_type);
+    virtual bool traverseNamedReferenceType(ir::NamedReferenceType &_type);
     virtual bool visitSetType(ir::SetType &_type);
     virtual bool visitListType(ir::ListType &_type);
     virtual bool traverseMapType(ir::MapType &_type);
