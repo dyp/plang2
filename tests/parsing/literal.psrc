@@ -1,11 +1,21 @@
 /*
 
 <test>
-    //Literal// = 3.1415
+    //Literal = 3.1415
+    //Literal = 0.00001
+    //Literal = -0.03
+    //Literal = 42
+    //Literal = 0
+    //Literal = 1
+    //Literal = -1
 </test>
 
 */
 
-pragma(real_bitness: 128);
-
 real a = 3.1415;
+real b = 0.00001;
+real c = -0.03;
+real d = 42;
+real e = 0;
+real f = 1;
+real g = -1;

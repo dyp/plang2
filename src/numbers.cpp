@@ -160,11 +160,11 @@ Number Number::makeReal(long double _f) {
 
     int nExp;
     long double fSign = frexpl(_f, &nExp);
-    const size_t cBuffSize = LDBL_MANT_DIG + 4;
+    const size_t cBuffSize = LDBL_MANT_DIG + (fSign < 0 ? 5 : 4);
     char str[cBuffSize];
 
     snprintf(str, cBuffSize, "%.*Lf", LDBL_MANT_DIG + 1, fSign);
-    assert(str[LDBL_MANT_DIG + 2] == '0');
+    assert(str[cBuffSize - 2] == '0');
 
     Number result(str, Number::REAL);
 
@@ -207,7 +207,7 @@ std::wstring Number::toString() const {
     }
 
     switch (countBits()) {
-        case GENERIC: return strWiden(m_qValue.get_str());
+        case GENERIC: return strWiden(qToDecimalStr(m_qValue));
         case SINGLE:  swprintf(s, sz, L"%.*f", FLT_DIG, (float) m_qValue.get_d()); break;
         case DOUBLE:  swprintf(s, sz, L"%.*f", DBL_DIG, (double) m_qValue.get_d()); break;
         case QUAD:    swprintf(s, sz, L"%.*llf", LDBL_DIG, (long double) m_qValue.get_d()); break;

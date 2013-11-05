@@ -3,6 +3,7 @@
 
 #include <locale>
 #include <iostream>
+#include <memory>
 
 #include <string.h>
 #include <wchar.h>
@@ -34,6 +35,47 @@ std::string natToStr(uint64_t _n) {
     char buf[64];
     snprintf(buf, 64, "%llu", (long long int) _n);
     return buf;
+}
+
+std::string qToDecimalStr(const mpq_class &_q) {
+    if (_q == 0)
+        return "0";
+
+    const mpz_class denom = _q.get_den();
+    mpz_class z = 1;
+    mpz_class r = z%denom;
+
+    while (r != 0) {
+        z *= 10;
+        r = z%denom;
+    }
+
+    mpz_class num = _q.get_num()*z/denom;
+    std::string strResult;
+
+    if (_q < 0) {
+        strResult += "-";
+        assert(denom > 0 && "Denominator is expected to be positive.");
+        num *= -1;
+    }
+
+    const std::string strNum = num.get_str(10);
+    const std::string strDenom = z.get_str(10);
+
+    if (abs(num) < z) {
+        // 0.(0)*31415
+        strResult += "0.";
+        strResult += std::string(strDenom.size() - strNum.size() - 1, '0');
+        strResult += strNum;
+    } else {
+        // 314.15(0)*
+        const size_t cDigits = strNum.size() - strDenom.size() + 1;
+        strResult += strNum.substr(0, cDigits);
+        strResult += ".";
+        strResult += strNum.substr(cDigits);
+    }
+
+    return strResult;
 }
 
 std::wstring fmtInt(int64_t _n, const wchar_t * _fmt) {
