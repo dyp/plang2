@@ -30,18 +30,21 @@ TypePtr Subtype::getMeet(Type &_other) {
     const Subtype &other = (const Subtype &)_other;
 
     SubtypePtr pType = new Subtype();
-    NamedValuePtr pParam = getParam();
+    NamedValuePtr pParam;
+    Cloner cloner;
+
+    cloner.alias(getParam(), other.getParam());
 
     if (*other.getParam()->getType() != *getParam()->getType()) {
-        pParam = new NamedValue(L"", getParam()->getType()->getMeet(*other.getParam()->getType()));
-        if (!pParam->getType())
+        if (auto pMeet = getParam()->getType()->getMeet(*other.getParam()->getType())) {
+            pParam = new NamedValue(L"", pMeet);
+            cloner.inject(pParam, getParam());
+        } else
             return NULL;
     }
 
-    Cloner cloner;
-    NamedValuePtr pNewParam = cloner.get(pParam);
-    cloner.alias(pParam, getParam());
-    cloner.alias(pParam, other.getParam());
+    if (!pParam)
+        pParam = cloner.get(getParam());
 
     ExpressionPtr
         pExprThis = cloner.get(getExpression()),
@@ -55,7 +58,7 @@ TypePtr Subtype::getMeet(Type &_other) {
     else
         pExpr = new Binary(Binary::BOOL_AND, pExprThis, pExprOther);
 
-    pType->setParam(pNewParam);
+    pType->setParam(pParam);
     pType->setExpression(pExpr);
     return pType;
 }
@@ -72,17 +75,20 @@ TypePtr Subtype::getJoin(Type &_other) {
 
     SubtypePtr pType = new Subtype();
     NamedValuePtr pParam = getParam();
+    Cloner cloner;
+
+    cloner.alias(getParam(), other.getParam());
 
     if (*other.getParam()->getType() != *getParam()->getType()) {
-        pParam = new NamedValue(L"", getParam()->getType()->getJoin(*other.getParam()->getType()));
-        if (!pParam->getType())
+        if (auto pJoin = getParam()->getType()->getJoin(*other.getParam()->getType())) {
+            pParam = new NamedValue(L"", pJoin);
+            cloner.inject(pParam, getParam());
+        } else
             return NULL;
     }
 
-    Cloner cloner;
-    NamedValuePtr pNewParam = cloner.get(pParam);
-    cloner.alias(pParam, getParam());
-    cloner.alias(pParam, other.getParam());
+    if (!pParam)
+        pParam = cloner.get(getParam());
 
     ExpressionPtr
         pExprThis = cloner.get(getExpression()),
@@ -96,7 +102,7 @@ TypePtr Subtype::getJoin(Type &_other) {
     else
         pExpr = new Binary(Binary::BOOL_OR, pExprThis, pExprOther);
 
-    pType->setParam(pNewParam);
+    pType->setParam(pParam);
     pType->setExpression(pExpr);
 
     return pType;

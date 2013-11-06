@@ -184,11 +184,13 @@ public:
         if (_bKeepOriginal)
             return _pObj;
 
-        Auto<_Obj> pClone = _pObj->clone(*this).template as<_Obj>();
+        return _pObj->clone(*this).template as<_Obj>();
+    }
 
-        pClone.m_pObj->unref();
-
-        return pClone;
+    ~Cloner() {
+        for (const auto& i: m_cache)
+            if (i.second != NULL && !i.second->unref())
+                delete i.second;
     }
 
     template<class _Obj>
@@ -199,6 +201,20 @@ public:
     template<class _Obj>
     void alias(const Auto<_Obj> &_pObj, const Auto<_Obj> &_pOther) {
         _mergeHandles(_getHandle(_pObj.ptr()), _getHandle(_pOther.ptr()));
+    }
+
+    template<class _Obj>
+    void inject(const Auto<_Obj> &_pNew) {
+        m_cache[_getHandle(_pNew.ptr())] = _pNew.m_pObj;
+        Counted::ref(_pNew.m_pObj);
+    }
+
+    template<class _Obj>
+    void inject(const Auto<_Obj> &_pNew, const Auto<_Obj> &_pOld) {
+        const int nHandle = _getHandle(_pNew.ptr());
+        _mergeHandles(nHandle, _getHandle(_pOld.ptr()));
+        m_cache[nHandle] = _pNew.m_pObj;
+        Counted::ref(_pNew.m_pObj);
     }
 
     void *allocate(size_t _cSize, const void *_pOriginal);
