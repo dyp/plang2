@@ -1,10 +1,10 @@
 /*
 
 <test>
-    //VariableDeclaration = q = a * b
-    //VariableDeclaration = w = a * b * c * d
-    //VariableDeclaration = e = a * a * a
-    //VariableDeclaration = r = a * b * c * d
+    //q/VarDeclInit = a * b
+    //w/VarDeclInit = a * b * c * d
+    //e/VarDeclInit = a * a * a
+    //r/VarDeclInit = a * b * c * d
 </test>
 
 */

@@ -1,15 +1,15 @@
 /*
 
 <test>
-	/Module ~ Foo
-	/Foo/ModuleDecl ~ Bar
-	/Foo/Bar/VarDecl/VarDeclVar ~ i
-	/Foo/ModuleDecl ~ Baz
-	/Foo/Baz/ModuleParam ~ Quux
-	/Foo/Baz/ModuleParam ~ j
-	/Foo/Baz/VarDecl/VarDeclVar ~ q
-	/Foo/Baz/VarDecl/VarDeclVar/Type ~ Quux
-	/Foo/Baz/VarDecl/VarDeclVar ~ k
+	/Module/Name = Foo
+	/Foo/ModuleDecl/Name = Bar
+	/Foo/Bar/VarDecl/VarDeclVar/Name = i
+	/Foo/ModuleDecl/Name = Baz
+	/Foo/Baz/ModuleParam/Name = Quux
+	/Foo/Baz/ModuleParam/Name = j
+	/Foo/Baz/VarDecl/VarDeclVar/Name = q
+	/Foo/Baz/VarDecl/VarDeclVar/Type/Name = Quux
+	/Foo/Baz/VarDecl/VarDeclVar/Name = k
 </test>
 
 */

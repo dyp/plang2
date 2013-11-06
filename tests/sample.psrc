@@ -1,7 +1,7 @@
 /*
 
 <test>
-    /Module = Array
+    /Module/Name = Array
     ! Type =
     b/ParamType = int[]
     //foo/PredicateBody//Assignment

@@ -63,11 +63,12 @@ public:
         print();
     }
 
-#define NAMED(_NODE, _PROP)                             \
-    virtual bool visit##_NODE(_NODE &_node) {    \
+#define NAMED(_NODE, _PROP)                         \
+    virtual bool visit##_NODE(_NODE &_node) {       \
         PrettyPrinterFlatBase::visit##_NODE(_node); \
-        m_path.back() += L"|"; \
-        m_path.back() += _node.get##_PROP(); \
+        m_path.back() += L"|";                      \
+        m_path.back() += _node.get##_PROP();        \
+        printName(_node.get##_PROP());              \
         return true;                                \
     }
 
@@ -78,6 +79,7 @@ public:
     NAMED(Process, Name);
     NAMED(TypeDeclaration, Name);
     NAMED(FormulaDeclaration, Name);
+    NAMED(VariableDeclaration, Name);
     NAMED(Class, Name);
     NAMED(Module, Name);
     NAMED(VariableReference, Name);
@@ -86,6 +88,7 @@ public:
     NAMED(UnionAlternativeExpr, Name);
     NAMED(StructFieldDefinition, Name);
     NAMED(UnionConstructorDeclaration, Name);
+    NAMED(NamedReferenceType, Name);
 
     virtual bool visitFormula(ir::Formula &_node) {
         PrettyPrinterFlatBase::visitFormula(_node);
@@ -121,6 +124,11 @@ protected:
         }
     }
 
+    const void printName(const std::wstring &_strName) {
+        for (std::list<std::wstring>::iterator i = m_path.begin(); i != m_path.end(); ++i)
+            std::wcout << L"/" << *i;
+        std::wcout << "/Name = " << _strName << "\n";
+    }
 };
 
 void prettyPrintFlatTree(ir::Node &_node, std::wostream &_os) {

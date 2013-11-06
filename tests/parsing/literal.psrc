@@ -1,13 +1,13 @@
 /*
 
 <test>
-    //Literal = 3.1415
-    //Literal = 0.00001
-    //Literal = -0.03
-    //Literal = 42
-    //Literal = 0
-    //Literal = 1
-    //Literal = -1
+    //a/Literal = 3.1415
+    //b/Literal = 0.00001
+    //c/Literal = -0.03
+    //d/Literal = 42
+    //e/Literal = 0
+    //f/Literal = 1
+    //g/Literal = -1
 </test>
 
 */

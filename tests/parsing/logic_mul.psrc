@@ -1,13 +1,13 @@
 /*
 
 <test>
-	//PredicateDecl = Умн
+	//PredicateDecl/Name = Умн
 	//Умн/PredicatePreCondition = Formula
 	//Умн/PredicatePostCondition = Formula
 	//Умн/PredicateMeasure = a
-	//FormulaDecl = P
-	//FormulaDecl = Q
-	//FormulaDecl = m
+	//FormulaDecl/Name = P
+	//FormulaDecl/Name = Q
+	//FormulaDecl/Name = m
 	//LemmaDecl
 </test>
 
