@@ -316,8 +316,12 @@ bool Collector::visitUnary(Unary &_unary) {
     _unary.setType(createFresh(_unary.getType()));
 
     switch (_unary.getOperator()) {
-        case Unary::PLUS:
         case Unary::MINUS:
+            // Must contain negative values.
+            m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                    new Type(Type::INT, 1), _unary.getType()));
+            // no break;
+        case Unary::PLUS:
             m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
                     _unary.getExpression()->getType(), _unary.getType()));
             m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
