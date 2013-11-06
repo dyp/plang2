@@ -45,6 +45,8 @@ protected:
     bool expandMap(int _kind, const MapTypePtr &_pLhs, const MapTypePtr &_pRhs, tc::FormulaList &_formulas);
     bool expandArray(int _kind, const ArrayTypePtr &_pLhs, const ArrayTypePtr &_pRhs, tc::FormulaList &_formulas);
     bool expandType(int _kind, const TypeTypePtr &_pLhs, const TypeTypePtr &_pRhs, tc::FormulaList &_formulas);
+    bool expandSubtype(int _kind, const SubtypePtr &_pLhs, const SubtypePtr &_pRhs, tc::FormulaList &_formulas);
+    bool expandSubtypeWithType(int _kind, const TypePtr &_pLhs, const TypePtr &_pRhs, tc::FormulaList &_formulas);
     bool runCompound(Operation _op, int &_result);
 
 private:
@@ -765,6 +767,63 @@ bool Solver::expandType(int _kind, const TypeTypePtr &_pLhs, const TypeTypePtr &
     return true;
 }
 
+bool Solver::expandSubtype(int _kind, const SubtypePtr &_pLhs, const SubtypePtr &_pRhs, tc::FormulaList &_formulas) {
+    const tc::FreshTypePtr
+        pMinType = new tc::FreshType(tc::FreshType::PARAM_IN);
+
+    const NamedValuePtr
+        pParam = new NamedValue(L"", pMinType);
+
+    Cloner cloner;
+    cloner.inject(pParam, _pLhs->getParam());
+    cloner.inject(pParam, _pRhs->getParam());
+
+    const ExpressionPtr
+        pImplication = new Binary(Binary::IMPLIES,
+            _pLhs->getExpression(), _pRhs->getExpression()),
+        pCondition = na::generalize(cloner.get(pImplication));
+
+    const ExpressionPtr
+        pImplGen = na::generalize(pImplication),
+        pE1 = cloner.get(pImplGen);
+
+    _formulas.push_back(new tc::Formula(tc::Formula::SUBTYPE,
+        pMinType, _pLhs->getParam()->getType(), pCondition));
+    _formulas.push_back(new tc::Formula(tc::Formula::SUBTYPE,
+        pMinType, _pRhs->getParam()->getType(), pCondition));
+
+    return true;
+}
+
+bool Solver::expandSubtypeWithType(int _kind, const TypePtr &_pLhs, const TypePtr &_pRhs, tc::FormulaList &_formulas) {
+    assert(_pLhs->getKind() == Type::SUBTYPE
+        || _pRhs->getKind() == Type::SUBTYPE);
+
+    if (_pLhs->getKind() == Type::SUBTYPE) {
+        _formulas.push_back(new tc::Formula(tc::Formula::SUBTYPE,
+            _pLhs.as<Subtype>()->getParam()->getType(), _pRhs));
+        return true;
+    }
+
+    const SubtypePtr& pSubtype = _pRhs.as<Subtype>();
+    const TypePtr& pType = _pLhs;
+
+    Cloner cloner;
+
+    const NamedValuePtr
+        pParam = new NamedValue(L"", pType);
+
+    cloner.inject(pParam, pSubtype->getParam());
+
+    const ExpressionPtr pCondition = cloner.get(pSubtype->getExpression());
+
+    _formulas.push_back(new tc::Formula(tc::Formula::SUBTYPE,
+        pType, pSubtype->getParam()->getType(), na::generalize(pCondition)));
+
+    return true;
+
+}
+
 bool Solver::expand(int &_result) {
     tc::FormulaList formulas;
     bool bModified = false;
@@ -797,6 +856,10 @@ bool Solver::expand(int &_result) {
                 bResult = expandArray(f.getKind(), pLhs.as<ArrayType>(), pRhs.as<ArrayType>(), formulas);
             else if (pLhs->getKind() == Type::TYPE && pRhs->getKind() == Type::TYPE)
                 bResult = expandType(f.getKind(), pLhs.as<TypeType>(), pRhs.as<TypeType>(), formulas);
+            else if (f.getKind() == tc::Formula::SUBTYPE && pLhs->getKind() == Type::SUBTYPE && pRhs->getKind() == Type::SUBTYPE)
+                bResult = expandSubtype(f.getKind(), pLhs.as<Subtype>(), pRhs.as<Subtype>(), formulas);
+            else if (f.getKind() == tc::Formula::SUBTYPE && (pLhs->getKind() == Type::SUBTYPE || pRhs->getKind() == Type::SUBTYPE))
+                bResult = expandSubtypeWithType(f.getKind(), pLhs, pRhs, formulas);
             else
                 bFormulaModified = false;
 
