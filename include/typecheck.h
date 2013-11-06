@@ -205,6 +205,8 @@ struct Formulas : public std::set<FormulaPtr, FormulaCmp> {
     const std::set<ir::ExpressionPtr>& getConditions() const { return m_conditions; }
     std::set<ir::ExpressionPtr>& getConditions() { return m_conditions; }
 
+    void insertFormulas(const tc::Formulas& _formulas);
+
 private:
     std::set<ir::ExpressionPtr> m_conditions;
 };
@@ -227,8 +229,8 @@ struct Context : public Counted {
     bool add(const FormulaPtr &_pFormula);
     bool add(int _kind, const ir::TypePtr &_pLhs, const ir::TypePtr &_pRhs);
     Flags &flags() { return *pFormulas->pFlags; }
-    const std::set<ir::ExpressionPtr>& getConditions() const { return m_conditions; }
-    std::set<ir::ExpressionPtr>& getConditions() { return m_conditions; }
+    const std::set<ir::ExpressionPtr>& getConditions() const { return pFormulas->getConditions(); }
+    std::set<ir::ExpressionPtr>& getConditions() { return pFormulas->getConditions(); }
     void applySubsts();
 
     Formulas &operator *() const { return *pFormulas; }
@@ -238,11 +240,10 @@ struct Context : public Counted {
     void insert(T _begin, T _end) {
         pFormulas->insert(_begin, _end);
         for(T i = _begin; i != _end; ++i)
-            m_conditions.insert((*i)->getConditions().begin(), (*i)->getConditions().end());
+            getConditions().insert((*i)->getConditions().begin(), (*i)->getConditions().end());
     }
 
-private:
-    std::set<ir::ExpressionPtr> m_conditions;
+    void insertFormulas(const tc::Formulas& _formulas);
 };
 
 typedef Auto<Context> ContextPtr;
