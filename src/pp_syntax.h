@@ -75,6 +75,7 @@ protected:
     virtual bool traverseNamedReferenceType(ir::NamedReferenceType &_type);
     virtual bool visitSetType(ir::SetType &_type);
     virtual bool visitListType(ir::ListType &_type);
+    virtual bool visitRefType(ir::RefType &_type);
     virtual bool traverseMapType(ir::MapType &_type);
     virtual bool traverseSubtype(ir::Subtype &_type);
     virtual bool traverseRange(ir::Range &_type);

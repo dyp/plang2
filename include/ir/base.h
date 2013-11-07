@@ -390,6 +390,8 @@ public:
         NAMED_REFERENCE,
         /// Tuple type (for typechecking purposes). Can be cast to tc::TupleType.
         TUPLE,
+        /// Reference type (for variable merging). Can be cast to RefType.
+        REFERENCE,
     };
 
     /// Initialize with kind.

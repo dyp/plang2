@@ -63,6 +63,28 @@ TypePtr SetType::getJoin(Type &_other) {
     return pJoin ? new SetType(pJoin) : NULL;
 }
 
+// References.
+
+TypePtr RefType::getMeet(Type &_other) {
+    SideType meet = _getMeet(_other);
+    if (meet.first || meet.second || _other.getKind() == FRESH)
+        return meet.first;
+
+    TypePtr pMeet = getBaseType()->getMeet(*((const RefType &)_other).getBaseType());
+
+    return pMeet ? new RefType(pMeet) : NULL;
+}
+
+TypePtr RefType::getJoin(Type &_other) {
+    SideType join = _getJoin(_other);
+    if (join.first || join.second || _other.getKind() == FRESH)
+        return join.first;
+
+    TypePtr pJoin = getBaseType()->getJoin(*((const RefType &)_other).getBaseType());
+
+    return pJoin ? new RefType(pJoin) : NULL;
+}
+
 // Lists.
 
 TypePtr ListType::getMeet(Type &_other) {

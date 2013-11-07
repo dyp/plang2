@@ -85,6 +85,8 @@ bool Visitor::traverseType(Type &_type) {
             return traverseParameterizedType((ParameterizedType &)_type);
         case Type::NAMED_REFERENCE:
             return traverseNamedReferenceType((NamedReferenceType &)_type);
+        case Type::REFERENCE:
+            return traverseRefType((RefType &)_type);
     }
 
     ENTER(Type, _type);
@@ -140,6 +142,12 @@ bool Visitor::traverseMapType(MapType &_type) {
 bool Visitor::traverseListType(ListType &_type) {
     ENTER(ListType, _type);
     TRAVERSE(Type, ListBaseType, _type.getBaseType(), _type, DerivedType, setBaseType);
+    EXIT();
+}
+
+bool Visitor::traverseRefType(RefType &_type) {
+    ENTER(RefType, _type);
+    TRAVERSE(Type, RefBaseType, _type.getBaseType(), _type, DerivedType, setBaseType);
     EXIT();
 }
 

@@ -644,6 +644,25 @@ public:
     }
 };
 
+/// Reference type.
+class RefType : public DerivedType {
+public:
+    /// Initialize with base type.
+    /// \param _pType Base type.
+    RefType(const TypePtr &_pType = NULL) : DerivedType(_pType) {}
+
+    /// Get type kind.
+    /// \returns #Reference.
+    virtual int getKind() const { return REFERENCE; }
+
+    virtual TypePtr getMeet(Type &_other);
+    virtual TypePtr getJoin(Type &_other);
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, RefType(_cloner.get(getBaseType())));
+    }
+};
+
 /// Predicate type.
 class PredicateType : public Type {
 public:

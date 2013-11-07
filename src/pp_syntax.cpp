@@ -461,6 +461,13 @@ bool PrettyPrinterSyntax::visitListType(ListType &_type) {
     return false;
 }
 
+bool PrettyPrinterSyntax::visitRefType(RefType &_type) {
+    m_os << L"ref(";
+    traverseType(*_type.getBaseType());
+    m_os << L")";
+    return false;
+}
+
 bool PrettyPrinterSyntax::traverseMapType(MapType &_type) {
     VISITOR_ENTER(MapType, _type);
     m_os << (m_bCompact ? L"{" : L"map(");
