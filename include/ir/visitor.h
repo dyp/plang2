@@ -27,6 +27,7 @@ enum NodeRole {
 
 class NodeSetter {
 public:
+    virtual ~NodeSetter() {}
     virtual void set(const NodePtr &_pValue) {}
 };
 
@@ -68,6 +69,7 @@ public:
     };
 
     Visitor(int _order = PARENTS_FIRST) : m_bStopped(false), m_order(_order) {}
+    virtual ~Visitor() {}
 
     struct Loc {
         Node *pNode; // Never NULL.

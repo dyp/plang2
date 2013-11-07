@@ -48,7 +48,7 @@ set(SOURCES
 )
 
 add_definitions(
-    -fmessage-length=0
+    -fmessage-length=0 -Wall -Werror
 )
 
 add_executable(${TARGET} ${SOURCES})

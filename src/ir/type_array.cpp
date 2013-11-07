@@ -80,18 +80,18 @@ int ArrayType::compare(const Type &_other) const {
 
     const ArrayType& other = (const ArrayType&)_other;
 
-    const size_t
-        szBaseOrd = getBaseType()->compare(*other.getBaseType()),
-        szDimOrd = getDimensionType()->compare(*other.getDimensionType());
+    const int
+        nBaseOrd = getBaseType()->compare(*other.getBaseType()),
+        nDimOrd = getDimensionType()->compare(*other.getDimensionType());
 
-    if (szDimOrd == ORD_NONE || szBaseOrd == ORD_NONE)
+    if (nDimOrd == ORD_NONE || nBaseOrd == ORD_NONE)
         return ORD_NONE;
-    if (szDimOrd == ORD_UNKNOWN || szBaseOrd == ORD_UNKNOWN)
+    if (nDimOrd == ORD_UNKNOWN || nBaseOrd == ORD_UNKNOWN)
         return ORD_UNKNOWN;
-    if (szBaseOrd == ORD_EQUALS)
-        return inverse(szDimOrd);
-    if (szDimOrd == ORD_EQUALS || szBaseOrd == inverse(szDimOrd))
-        return szBaseOrd;
+    if (nBaseOrd == ORD_EQUALS)
+        return inverse(nDimOrd);
+    if (nDimOrd == ORD_EQUALS || nBaseOrd == inverse(nDimOrd))
+        return nBaseOrd;
 
     return ORD_NONE;
 }

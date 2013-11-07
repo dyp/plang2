@@ -16,11 +16,9 @@ namespace backend {
 class DebugGenerator {
 public:
     DebugGenerator(std::wostream & _os) :
-        m_pParent(NULL), m_os(_os), m_nLevel(0), m_pChild(NULL), m_nParam(0),
-        m_nVar(0), m_nConst(0), m_nLabel(0) {}
+        m_os(_os) {}
     DebugGenerator(DebugGenerator & _parent) :
-        m_pParent(& _parent), m_os(_parent.m_os), m_nLevel(_parent.m_nLevel + 1),
-        m_pChild(NULL), m_nParam(0), m_nVar(0), m_nConst(0), m_nLabel(0) {}
+        m_os(_parent.m_os), m_pParent(& _parent), m_nLevel(_parent.m_nLevel + 1) {}
     ~DebugGenerator();
 
     DebugGenerator * addChild();
@@ -53,15 +51,15 @@ public:
     std::wstring resolveLabel(const Label & _label);
 
 private:
-    DebugGenerator * m_pParent;
     std::wostream & m_os;
-    int m_nLevel;
-    DebugGenerator * m_pChild;
-    int m_nParam;
-    int m_nVar;
-    int m_nConst;
-    int m_nLabel;
-    const Instruction * m_pCurrentInstr;
+    DebugGenerator * m_pParent = nullptr;
+    int m_nLevel = 0;
+    DebugGenerator * m_pChild = nullptr;
+    int m_nParam = 0;
+    int m_nVar = 0;
+    int m_nConst = 0;
+    int m_nLabel = 0;
+    const Instruction * m_pCurrentInstr = nullptr;
 
     typedef std::map<const void *, std::wstring> name_map_t;
     name_map_t m_vars;

@@ -10,11 +10,7 @@
 using namespace lexer;
 using namespace ir;
 
-Context::Context(const ModulePtr& _pModule) : m_pChild(NULL), m_pParent(NULL), m_pFailed(NULL),
-    m_modules(NULL), m_predicates(NULL), m_variables(NULL), m_types(NULL), m_labels(NULL),
-    m_processes(NULL), m_formulas(NULL), m_constructors(NULL), m_bFailed(false), m_pCons(NULL),
-    m_modulesCtxs(NULL)
-{
+Context::Context(const ModulePtr& _pModule) {
     for (auto i: _pModule->getPredicates())
         addPredicate(i);
 

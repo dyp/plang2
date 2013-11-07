@@ -101,10 +101,7 @@ public:
 
 public:
     Context(lexer::Loc _loc, bool _bScope = false, int _flags = 0)
-        : m_loc(_loc), m_bScope(_bScope), m_pChild(NULL), m_pParent(NULL), m_pFailed(NULL),
-          m_modules(NULL), m_predicates(NULL), m_variables(NULL), m_types(NULL), m_labels(NULL),
-          m_processes(NULL), m_formulas(NULL), m_constructors(NULL), m_bFailed(false), m_pCons(NULL),
-          m_modulesCtxs(NULL), m_flags(_flags)
+        : m_loc(_loc), m_bScope(_bScope), m_flags(_flags)
     {}
 
     Context(const ModulePtr& _pModule);
@@ -209,18 +206,18 @@ public:
 private:
     lexer::Loc m_loc;
     bool m_bScope;
-    Context *m_pChild, *m_pParent, *m_pFailed;
+    Context *m_pChild = nullptr, *m_pParent = nullptr, *m_pFailed = nullptr;
     StatusMessages m_messages;
-    ModuleMap *m_modules;
-    ModuleContextMap *m_modulesCtxs;
-    PredicateMap *m_predicates;
-    VariableMap *m_variables;
-    TypeMap *m_types;
-    LabelMap *m_labels;
-    ProcessMap *m_processes;
-    FormulaMap *m_formulas;
-    ConsMap *m_constructors;
-    bool m_bFailed;
+    ModuleMap *m_modules = nullptr;
+    ModuleContextMap *m_modulesCtxs = nullptr;
+    PredicateMap *m_predicates = nullptr;
+    VariableMap *m_variables = nullptr;
+    TypeMap *m_types = nullptr;
+    LabelMap *m_labels = nullptr;
+    ProcessMap *m_processes = nullptr;
+    FormulaMap *m_formulas = nullptr;
+    ConsMap *m_constructors = nullptr;
+    bool m_bFailed = false;
     Pragma m_pragma;
     ir::UnionConstructorPtr m_pCons;
     int m_flags;

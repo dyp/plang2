@@ -40,15 +40,15 @@ typedef Auto<Context> ContextPtr;
 class PrettyPrinterSyntax: public PrettyPrinterBase {
 public:
     PrettyPrinterSyntax(ir::Node &_node, std::wostream &_os, ContextPtr _pContext) :
-        PrettyPrinterBase(_os), m_pNode(&_node), m_szDepth(0), m_bCompact(false), m_nFlags(0), m_bMergeLines(false), m_bSingleLine(false),
+        PrettyPrinterBase(_os), m_pNode(&_node), m_szDepth(0), m_nFlags(0), m_bMergeLines(false), m_bCompact(false), m_bSingleLine(false),
         m_pContext(!_pContext ? new Context() : _pContext)
     {}
     PrettyPrinterSyntax(ir::Node &_node, std::wostream &_os, size_t nDepth = 0) :
-        PrettyPrinterBase(_os), m_pNode(&_node), m_szDepth(nDepth), m_bCompact(false), m_nFlags(0), m_bMergeLines(false), m_bSingleLine(false),
+        PrettyPrinterBase(_os), m_pNode(&_node), m_szDepth(nDepth), m_nFlags(0), m_bMergeLines(false), m_bCompact(false), m_bSingleLine(false),
         m_pContext(new Context())
     {}
     PrettyPrinterSyntax(std::wostream &_os, bool _bCompact = false, int _nFlags = 0, ContextPtr _pContext = NULL) :
-        PrettyPrinterBase(_os), m_pNode(NULL), m_szDepth(0), m_bCompact(_bCompact), m_nFlags(_nFlags), m_bMergeLines(false), m_bSingleLine(false),
+        PrettyPrinterBase(_os), m_pNode(NULL), m_szDepth(0), m_nFlags(_nFlags), m_bMergeLines(false), m_bCompact(_bCompact), m_bSingleLine(false),
         m_pContext(!_pContext ? new Context() : _pContext)
     {}
 

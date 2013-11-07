@@ -54,9 +54,9 @@ protected:
 private:
     Function & m_func;
     Auto<Instruction> m_pInstr;
-    const Instruction * m_pNext, * m_pPrev;
+    const Instruction * m_pNext = nullptr, * m_pPrev = nullptr;
     Instructions::iterator m_iInstr, m_iNext;
-    Instructions * m_pInstructions;
+    Instructions * m_pInstructions = nullptr;
 };
 
 class MarkEOLs : public ProcessLL {
@@ -105,7 +105,7 @@ public:
     virtual void processInstructions(Instructions & _instrs);
 
 private:
-    bool m_bFirstPass;
+    bool m_bFirstPass = true;
     Operand m_target;
     Instructions::iterator m_iStart;
     typedef std::set<Label *> Labels;

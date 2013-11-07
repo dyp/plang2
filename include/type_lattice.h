@@ -13,13 +13,14 @@ typedef std::set<class RelationPtrPair> RelationPtrPairs;
 
 class Relation : public Formula {
 public:
+    // Doesn't affect sorting order, so can be made mutable.
+    mutable bool bUsed = true, bFlag = false;
     RelationPtrPairs inferedFrom;
-    mutable bool bUsed, bFlag; // Doesn't affect sorting order, so can be made mutable.
 
-    Relation() : Formula(SUBTYPE, NULL, NULL), bUsed(true), bFlag(false) {}
+    Relation() : Formula(SUBTYPE, NULL, NULL) {}
 
     Relation(const Formula &_formula, const RelationPtrPairs &_inferedFrom = RelationPtrPairs()) :
-        Formula(_formula), inferedFrom(_inferedFrom), bUsed(true), bFlag(false) {}
+        Formula(_formula), inferedFrom(_inferedFrom) {}
 
     Relation(const ir::TypePtr &_pLhs, const ir::TypePtr &_pRhs, bool _bStrict = false,
             bool _bUsed = true, const RelationPtrPairs &_inferedFrom = RelationPtrPairs());

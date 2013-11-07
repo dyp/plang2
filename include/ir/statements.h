@@ -56,19 +56,19 @@ public:
     /// \returns #Assignment.
     virtual int getKind() const { return ASSIGNMENT; }
 
-    /// Get left hand side of the assignemnt.
+    /// Get left hand side of the assignment.
     /// \return Expression that can be assigned to.
     const ExpressionPtr &getLValue() const { return m_pLValue; }
 
-    /// Set left hand side of the assignemnt.
+    /// Set left hand side of the assignment.
     /// \param _pExpression Expression that can be assigned to.
     void setLValue(const ExpressionPtr &_pExpression) { m_pLValue = _pExpression; }
 
-    /// Get right hand side of the assignemnt.
+    /// Get right hand side of the assignment.
     /// \return Expression.
     const ExpressionPtr &getExpression() const { return m_pExpression; }
 
-    /// Set right hand side of the assignemnt.
+    /// Set right hand side of the assignment.
     /// \param _pExpression Expression.
     void setExpression(const ExpressionPtr &_pExpression) { m_pExpression = _pExpression; }
 

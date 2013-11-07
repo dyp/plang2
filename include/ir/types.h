@@ -354,7 +354,7 @@ private:
 };
 
 /// Optional type.
-/// Values of optional type are either of it's base nype or \c nil.
+/// Values of optional type are either of it's base type or \c nil.
 class OptionalType : public DerivedType {
 public:
     /// Initialize with base type.

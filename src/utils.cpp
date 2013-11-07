@@ -332,7 +332,7 @@ std::wstring cyrillicToASCII(const std::wstring &_str) {
                                  L"x", L"cz", L"ch", L"sh", L"shh", L"_", L"y", L"_", L"e", L"ju", L"ja" };
     std::wstring sResult = L"";
 
-    for (int i=0; i<_str.size(); ++i) {
+    for (size_t i = 0; i < _str.size(); ++i) {
         const wchar_t symbol = towlower(_str[i]);
         const wchar_t *c = std::lower_bound(sRussia.c_str(), sRussia.c_str() + sRussia.size(), symbol);
         if (*c != symbol) {

@@ -367,6 +367,9 @@ bool Literal::less(const Node& _other) const {
         case STRING:   return getString() < other.getString();
         case NUMBER:   return getNumber().toString() < other.getNumber().toString();
     }
+
+    assert(false && "Unreachable");
+    return false;
 }
 
 bool Literal::equals(const Node& _other) const {
@@ -382,6 +385,9 @@ bool Literal::equals(const Node& _other) const {
         case STRING:   return getString() == other.getString();
         case NUMBER:   return getNumber().toString() == other.getNumber().toString();
     }
+
+    assert(false && "Unreachable");
+    return false;
 }
 
 bool Literal::matches(const Expression& _other, MatchesPtr _pMatches) const {
@@ -931,8 +937,8 @@ bool ArrayPartDefinition::equals(const Node& _other) const {
 }
 
 bool ArrayIteration::less(const Node& _other) const {
-    if (!Collection::equals(_other))
-        return Collection::less(_other);
+    if (!Base::equals(_other))
+        return Base::less(_other);
     const ArrayIteration& other = (const ArrayIteration&)_other;
     if (!_equals(getDefault(), other.getDefault()))
         return _less(getDefault(), other.getDefault());
@@ -940,7 +946,7 @@ bool ArrayIteration::less(const Node& _other) const {
 }
 
 bool ArrayIteration::equals(const Node& _other) const {
-    if (!Collection::equals(_other))
+    if (!Base::equals(_other))
         return false;
     const ArrayIteration& other = (const ArrayIteration&)_other;
     return _equals(getDefault(), other.getDefault()) && getIterators() == other.getIterators();

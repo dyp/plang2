@@ -12,11 +12,10 @@
 using namespace tc;
 
 Relation::Relation(const ir::TypePtr &_pLhs, const ir::TypePtr &_pRhs, bool _bStrict, bool _bUsed, const RelationPtrPairs &_inferedFrom) :
-    Formula(_bStrict ? SUBTYPE_STRICT : SUBTYPE, _pLhs, _pRhs), bUsed(_bUsed), bFlag(false), inferedFrom(_inferedFrom)
+    Formula(_bStrict ? SUBTYPE_STRICT : SUBTYPE, _pLhs, _pRhs), bUsed(_bUsed), inferedFrom(_inferedFrom)
 {
 }
 
-static const Relations g_emptyRelations(Relations::ANY);
 static const TypeNode g_emptyNode(NULL);
 
 const Relations &Lattice::lowers(const ir::TypePtr &_pType) {
@@ -266,7 +265,6 @@ void Lattice::makeNodes(TypeNodeQueue &_nodes) {
 
     // Insert non-fresh types that aren't in m_types yet.
     for (TypeNodes::iterator i = m_types.begin(); i != m_types.end(); ++i) {
-        const TypeNode *pNode = &*i;
         Relations &lowers = i->lowers;
         Relations &uppers = i->uppers;
 
@@ -357,9 +355,7 @@ Lattice::MergeResult Lattice::_merge(std::list<RelationPtr> &_added, RelationHan
 }
 
 void Lattice::update(RelationHandler _handler, void *_pParam) {
-    bool bModified = false;
     TypeMap substs;
-    size_t cStep = 0;
 
     m_types.clear();
     m_relations.clear();

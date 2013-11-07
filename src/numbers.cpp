@@ -67,7 +67,7 @@ mpq_class _floatToRational(const std::string &_s) {
             l = std::string(s, n);
             s += n;
 
-            for (size_t i = 0; i < n; ++i)
+            for (size_t i = 0; i < (size_t)n; ++i)
                 ld += "0";
         }
 
@@ -256,23 +256,22 @@ long double Number::getFloat() const {
 }
 
 int64_t Number::getInt() const {
-    int64_t num;
+    long long nNum = 0;
     std::string strNum = m_qValue.get_num().get_str(10);
-    char buf[128];
 
-    sscanf(strNum.c_str(), "%lld", &num);
+    // GMP doesn't like 64-bit integers, work around it.
+    sscanf(strNum.c_str(), "%lld", &nNum);
 
-    return num;
+    return nNum;
 }
 
 uint64_t Number::getUInt() const {
-    uint64_t num;
+    unsigned long long cNum;
     std::string strNum = m_qValue.get_num().get_str(10);
-    char buf[128];
 
-    sscanf(strNum.c_str(), "%llu", &num);
+    sscanf(strNum.c_str(), "%llu", &cNum);
 
-    return num;
+    return cNum;
 }
 
 mpq_class Number::getRational() const {

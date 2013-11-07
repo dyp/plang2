@@ -262,7 +262,7 @@ private:
     std::locale m_loc;
     std::mbstate_t m_state;
     const wc2mbcs_t & m_facet;
-    wc2mbcs_t::result m_cvtresult;
+    wc2mbcs_t::result m_cvtresult = wc2mbcs_t::error;
     int m_mbcLen;
     char m_mbcBuf[32];
     const wctype_t & m_ctype;

@@ -317,6 +317,7 @@ Auto<Type> Translator::translateType(const ir::Type & _type) {
                     if (nBits <= 64) return new Type(Type::INT64);
                     return new Type(Type::GMP_Z);
             }
+            break;
         case ir::Type::NAT:
             switch (nBits) {
                 case Number::GENERIC: return new Type(Type::GMP_Z);
@@ -328,6 +329,7 @@ Auto<Type> Translator::translateType(const ir::Type & _type) {
                     if (nBits <= 64) return new Type(Type::UINT64);
                     return new Type(Type::GMP_Z);
             }
+            break;
         case ir::Type::REAL:
             switch (nBits) {
                 case Number::NATIVE: return new Type(Type::DOUBLE);
@@ -338,6 +340,7 @@ Auto<Type> Translator::translateType(const ir::Type & _type) {
                     if (nBits <= (int) sizeof(long double)) return new Type(Type::QUAD);
                     return new Type(Type::GMP_Q);
             }
+            break;
         case ir::Type::BOOL: return new Type(Type::BOOL);
         case ir::Type::CHAR: return new Type(Type::WCHAR);
         case ir::Type::STRING: return new PointerType(new Type(Type::WCHAR));
@@ -647,7 +650,8 @@ Operand Translator::translateComponent(const ir::Component & _expr, Instructions
             return translateUnionAlternativeExpr((ir::UnionAlternativeExpr &) _expr, _instrs);
     }
 
-    assert(false);
+    assert(false && "Unreachable");
+    return Operand();
 }
 
 Operand Translator::translateFieldExpr(const ir::FieldExpr & _expr, Instructions & _instrs) {
@@ -916,7 +920,8 @@ Operand Translator::translateConstructor(const ir::Constructor & _expr, Instruct
             return translateUnionConstructor((ir::UnionConstructor &) _expr, _instrs);
     }
 
-    assert(false);
+    assert(false && "Unreachable");
+    return Operand();
 }
 
 Operand Translator::translateExpression(const ir::Expression & _expr, Instructions & _instrs) {
@@ -1081,10 +1086,9 @@ void Translator::translatePrintExpr(const ir::Expression & _expr, Instructions &
             return generate(_os, (llir::StructType &) _type);*/
 
         case llir::Type::POINTER:
-            if (((PointerType &) * type).getBase()->getKind() == Type::WCHAR) {
+            if (((PointerType &) * type).getBase()->getKind() == Type::WCHAR)
                 strFunc = L"__p_printWString";
-                break;
-            }
+            break;
         default:
             strFunc = L"__p_printPtr";
     }

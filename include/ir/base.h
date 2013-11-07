@@ -133,6 +133,8 @@ public:
     /// Copy constructor
     Collection(const Collection &_other) : m_nodes(_other.m_nodes) {}
 
+    virtual ~Collection() {}
+
     virtual int getNodeKind() const {
         if (_Base::getNodeKind() != Node::NONE)
             return _Base::getNodeKind();

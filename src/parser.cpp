@@ -804,7 +804,7 @@ ExpressionPtr Parser::parseAtom(Context &_ctx) {
         }
 
         if (!pExpr && pRealType && pRealType->getKind() == Type::UNION && ctx.nextIs(DOT, IDENTIFIER)) {
-            // It's ok since we always know the UnionType in UnionType.ConstructorName expression even
+            // It's OK since we always know the UnionType in UnionType.ConstructorName expression even
             // before type inference.
             ++ctx;
             pExpr = parseConstructor(ctx, pRealType.as<UnionType>());
@@ -899,7 +899,7 @@ ExpressionPtr Parser::parseSubexpression(Context &_ctx, const ExpressionPtr &_pL
                     pRhs->getKind() == Expression::LITERAL &&
                     pRhs.as<Literal>()->getLiteralKind() == Literal::NUMBER)
             {
-                // Ok, handle unary plus/minus here.
+                // OK, handle unary plus/minus here.
                 if (unaryOp == Unary::MINUS) {
                     Number num = pRhs.as<Literal>()->getNumber();
                     num.negate();
@@ -2973,6 +2973,7 @@ bool Parser::parseDeclarations(Context &_ctx, Module &_module) {
                         ERROR(*pCtx, false, L"Semicolon or opening brace expected");
                 } else
                     ERROR(*pCtx, false, L"Failed parsing compiler directive");
+                break;
             default:
                 ERROR(*pCtx, false, L"Declaration expected");
         }

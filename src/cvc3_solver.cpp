@@ -136,12 +136,14 @@ CVC3::ExprPtr Solver::translateExpr(const Expression& _expr) {
         default:
             assert(false);
     }
+
+    return nullptr;
 }
 
 CVC3::TypePtr Solver::translateType(const Type& _type, bool _bNativeBool) {
-    CVC3::TypePtr pType;
+    CVC3::TypePtr pType = _getType(&_type);
 
-    if (pType = _getType(&_type))
+    if (pType)
         return pType;
 
     switch (_type.getKind()) {
@@ -325,6 +327,8 @@ CVC3::ExprPtr Solver::_translateLiteral(const Literal& _expr) {
         default:
             assert(false);
     }
+
+    return nullptr;
 }
 
 CVC3::ExprPtr Solver::_translateVariableReference(const VariableReference& _expr) {
@@ -345,6 +349,8 @@ CVC3::ExprPtr Solver::_translateUnary(const Unary& _expr) {
         default:
             assert(false);
     }
+
+    return nullptr;
 }
 
 CVC3::ExprPtr Solver::_translateBinary(const Binary& _expr) {
@@ -399,6 +405,8 @@ CVC3::ExprPtr Solver::_translateBinary(const Binary& _expr) {
         default:
             assert(false);
     }
+
+    return nullptr;
 }
 
 CVC3::ExprPtr Solver::_translateTernary(const Ternary& _expr) {
@@ -516,6 +524,8 @@ CVC3::ExprPtr Solver::_translateReplacement(const Replacement& _expr) {
         default:
             assert(false);
     }
+
+    return nullptr;
 }
 
 CVC3::ExprPtr Solver::_translateComponent(const Component& _expr) {
@@ -534,6 +544,8 @@ CVC3::ExprPtr Solver::_translateComponent(const Component& _expr) {
         default:
             assert(false);
     }
+
+    return nullptr;
 }
 
 CVC3::ExprPtr Solver::_translateFormula(const Formula& _expr) {
@@ -651,6 +663,8 @@ CVC3::ExprPtr Solver::_translateConstructor(const Constructor& _expr) {
         default:
             assert(false);
     }
+
+    return nullptr;
 }
 
 CVC3::TypePtr Solver::_translateEnumType(const EnumType& _enum) {
@@ -834,14 +848,16 @@ CVC3::TypePtr Solver::_translateNamedReferenceType(const NamedReferenceType& _ty
 std::wstring fmtResult(CVC3::QueryResult _result, bool _bValid) {
     switch (_result) {
         case CVC3::SATISFIABLE:
-            return (_bValid ? L"Invalid" : L"Satisfable");
+            return (_bValid ? L"Invalid" : L"Satisfiable");
         case CVC3::UNSATISFIABLE:
-            return (_bValid ? L"Valid\n" : L"Unsatisfable\n");
+            return (_bValid ? L"Valid\n" : L"Unsatisfiable\n");
         case CVC3::ABORT:
             return L"Abort\n";
         case CVC3::UNKNOWN:
             return L"Unknown\n";
     }
+
+    return L"";
 }
 
 CVC3::QueryResult checkValidity(const ExpressionPtr& _pExpr) {
@@ -853,7 +869,7 @@ CVC3::QueryResult checkValidity(const ExpressionPtr& _pExpr) {
 class ModuleChecker : public Visitor, Solver {
 public:
     ModuleChecker(QueryResult& _result, bool _bRewriteStatus = false) :
-        m_result(_result), m_bRewriteStatus(_bRewriteStatus), Visitor(CHILDREN_FIRST), Solver()
+        Visitor(CHILDREN_FIRST), m_bRewriteStatus(_bRewriteStatus), m_result(_result)
     {}
 
     virtual bool visitLemmaDeclaration(LemmaDeclaration& _lemma) {
@@ -875,14 +891,16 @@ public:
             case CVC3::INVALID:
                 _lemma.setStatus(LemmaDeclaration::INVALID);
                 break;
+            default:
+                break;
         }
 
         return true;
     }
 
 private:
-    QueryResult & m_result;
     bool m_bRewriteStatus;
+    QueryResult &m_result;
 };
 
 void checkValidity(const ir::ModulePtr& _pModule, QueryResult& _result) {

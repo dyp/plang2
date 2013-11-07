@@ -31,7 +31,7 @@ enum {
     BE_PVS  = 4,
 };
 
-// Optimizing trasformation (tail-recursion elimination, predicate inlining and variable merging).
+// Optimizing transformation (tail-recursion elimination, predicate inlining and variable merging).
 enum {
     OT_NONE = 0,
     OT_TRE = 1,

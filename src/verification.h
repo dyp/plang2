@@ -196,8 +196,8 @@ public:
     void makeSequent(std::list<ConditionPtr>& _container) const;
 
 private:
-    ir::StatementPtr m_pStmt;
     ir::PredicatePtr m_pPredicate;
+    ir::StatementPtr m_pStmt;
     ConjunctionPtr m_pPre, m_pPost;
 };
 typedef Auto<Correctness> CorrectnessPtr;
@@ -221,8 +221,6 @@ struct Context : public Counted {
         FLS, FLP, FLC,
     };
 
-    Context() : m_nPreCondType(0), m_nPostCondType(0) {}
-
     std::list<std::pair<ConditionPtr, bool> > m_conditions;
     std::list<std::pair<ir::ExpressionPtr, bool> > m_lemmas;
 
@@ -230,9 +228,9 @@ struct Context : public Counted {
     std::map<ir::PredicateTypePtr, std::vector<ir::FormulaDeclarationPtr> > m_preCondTypeMap, m_postCondTypeMap;
     std::set<std::wstring> m_usedNames;
 
-    size_t m_cLastUsedRule;
+    size_t m_cLastUsedRule = 0;
 
-    int m_nPreCondType, m_nPostCondType;
+    int m_nPreCondType = 0, m_nPostCondType = 0;
 
     void fixate();
 

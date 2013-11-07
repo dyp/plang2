@@ -16,15 +16,13 @@ namespace ir{
 class CollectPreConditions : public Visitor {
     Module &m_module;
     NameGenerator m_nameGen;
-    Predicate *m_pPredicate;
-    Process *m_pProcess;
+    Predicate *m_pPredicate = nullptr;
+    Process *m_pProcess = nullptr;
     Auto<Module> m_pNewModule;
     Collection<LemmaDeclaration> m_lemmas;
 
 public:
-    CollectPreConditions(Module &_module) : m_module(_module), m_pNewModule(NULL), m_nameGen() {}
-
-    CollectPreConditions();
+    CollectPreConditions(Module &_module) : m_module(_module) {}
 
     ///collecting preconditions, conditions from If's and Switch's for generating lemmas
     ExpressionPtr collectConditions();

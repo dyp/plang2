@@ -20,11 +20,15 @@ public:
             m_identifiers.insert(std::pair<NamedValuePtr, std::wstring>(&_val, _val.getName()));
             m_usedIdentifiers.insert(_val.getName());
         }
+
+        return true;
     }
 
     virtual bool visitVariableReference(VariableReference & _var) {
         if (_var.getTarget())
             visitNamedValue(*_var.getTarget());
+
+        return true;
     }
 
 private:
@@ -66,9 +70,7 @@ private:
 
 class GetDeclarations : public ir::Visitor {
 public:
-    GetDeclarations(Graph& _decls) :
-        m_decls(_decls), m_pKey(NULL)
-    {}
+    GetDeclarations(Graph& _decls) : m_decls(_decls) {}
 
 #define TRAVERSE_GROUP(_TYPE)                                           \
     virtual bool traverse##_TYPE(_TYPE& _node) {                        \
@@ -139,7 +141,7 @@ static bool _hasLoops(const Graph& _graph, const Edge& _edge) {
 class GetDeclDependencies : public ir::Visitor {
 public:
     GetDeclDependencies(const Graph& _decls, Graph& _graph) :
-        m_decls(_decls), m_graph(_graph), m_pRoot(NULL), m_pSuper(NULL)
+        m_graph(_graph), m_decls(_decls)
     {}
 
 #define TRAVERSE_DECLARATION(_TYPE)                             \
@@ -240,15 +242,18 @@ std::wstring Context::getNewLabelName(const std::wstring& _name) {
         if (m_usedLabels.insert(strName).second)
             return strName;
     }
+
+    return L"";
 }
 
 std::wstring Context::getNamedValueName(NamedValue &_val) {
     std::wstring strIdent = m_identifiers[&_val];
 
     if (strIdent.empty()) {
-        for (m_nLastFoundIdentifier;
-            !m_usedIdentifiers.insert(strIdent = intToAlpha(m_nLastFoundIdentifier)).second;
-            ++m_nLastFoundIdentifier);
+        do
+            strIdent = intToAlpha(m_nLastFoundIdentifier++);
+        while (!m_usedIdentifiers.insert(strIdent).second);
+
         m_identifiers[&_val] = strIdent;
     }
 
@@ -542,6 +547,8 @@ bool PrettyPrinterSyntax::needsIndent() {
         case R_PredicateCallArgs:
         case R_PredicateCallBranchResults:
             return false;
+        default:
+            break;
     }
     return !m_bCompact && !m_bSingleLine;
 }
@@ -943,14 +950,6 @@ bool PrettyPrinterSyntax::traverseCall(Call &_stmt) {
     }
 
     m_os << L")";
-
-    bool bHasHandlers = false;
-    for (size_t i = 0; i < _stmt.getBranches().size(); ++i)
-        if (_stmt.getBranches().get(i)->getHandler()) {
-            bHasHandlers = true;
-            break;
-        }
-
 
     for (size_t i = 0; i < _stmt.getBranches().size(); ++i) {
         CallBranch &br = *_stmt.getBranches().get(i);

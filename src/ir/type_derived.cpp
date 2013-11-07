@@ -126,6 +126,7 @@ int MapType::compare(const Type &_other) const {
                 case ORD_SUPER:
                     return ORD_SUPER;
             }
+            break;
         case ORD_SUPER:
             switch (getBaseType()->compare(*((const MapType &)_other).getBaseType())) {
                 case ORD_UNKNOWN:

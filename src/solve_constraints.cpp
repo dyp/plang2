@@ -159,7 +159,7 @@ bool Solver::infer(int & _result) {
         }
     }
 
-    // Add infered formulas.
+    // Add inferred formulas.
     for (tc::Relations::iterator i = relations.begin(); i != relations.end(); ++i) {
         tc::Relation &f = **i;
 
@@ -494,7 +494,7 @@ bool Solver::prune(int &_result) {
     tc::CompoundFormula &cf = (tc::CompoundFormula &)**m_iCurrentCF;
 
     for (size_t k = 0; k < cf.size(); ++k) {
-        if (k != m_nCurrentCFPart) {
+        if ((int)k != m_nCurrentCFPart) {
             tc::Formulas &other = cf.getPart(k);
             bool bRedundant = true;
 
@@ -656,7 +656,6 @@ bool Solver::expandPredicate(int _kind, const PredicateTypePtr &_pLhs,
 bool Solver::expandStruct(int _kind, const StructTypePtr &_pLhs, const StructTypePtr &_pRhs,
         tc::FormulaList & _formulas, bool _bAllowCompound)
 {
-    size_t cSub = 0, cSuper = 0, cUnknown = 0;
     const size_t cOrdFieldsL = _pLhs->getNamesOrd().size() + _pLhs->getTypesOrd().size();
     const size_t cOrdFieldsR = _pRhs->getNamesOrd().size() + _pRhs->getTypesOrd().size();
     tc::CompoundFormulaPtr pStrict = _kind == tc::Formula::SUBTYPE_STRICT ? new tc::CompoundFormula() : NULL;
@@ -891,17 +890,10 @@ bool Solver::explode(int & /* _result */) {
     for (tc::Formulas::iterator iFormula = context()->begin(); iFormula != iCF; ++iFormula) {
         tc::Formula &f = **iFormula;
         TypePtr pLhs = f.getLhs(), pRhs = f.getRhs();
-        bool bSwapped = false;
-        bool bFormulaModified = false;
         TypePtr pType;
 
-        if (pLhs->getKind() != Type::FRESH) {
-            if (pRhs->getKind() != Type::FRESH)
-                continue;
-
+        if (pLhs->getKind() != Type::FRESH && pRhs->getKind() == Type::FRESH)
             std::swap(pLhs, pRhs);
-            bSwapped = true;
-        }
 
         if (processed.find(pLhs) != processed.end())
             continue;

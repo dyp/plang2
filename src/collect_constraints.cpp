@@ -305,6 +305,8 @@ bool Collector::visitLiteral(Literal &_lit) {
         case Literal::STRING:
             _lit.setType(new Type(Type::STRING));
             break;
+        default:
+            break;
     }
 
     return true;
@@ -858,7 +860,8 @@ bool Collector::visitArrayIteration(ArrayIteration& _iter) {
     std::vector<TypePtr> dimensions;
     const bool bUnknownDimensionType = _iter.getDefault();
     for (size_t i = 0; i < _iter.getIterators().size(); ++i)
-        dimensions.push_back(!bUnknownDimensionType ? new tc::FreshType(tc::FreshType::PARAM_OUT) : new Type(Type::TOP));
+        dimensions.push_back(TypePtr(!bUnknownDimensionType ?
+                new tc::FreshType(tc::FreshType::PARAM_OUT) : new Type(Type::TOP)));
 
     TypePtr pBaseType = new tc::FreshType(tc::FreshType::PARAM_OUT);
 

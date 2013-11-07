@@ -103,7 +103,7 @@ FormulaCallPtr makeCall(const ir::FormulaDeclarationPtr& _pFormula, const Predic
     FormulaCallPtr pCall = new FormulaCall(_pFormula);
     for (size_t i = 0; i < _pFormula->getParams().size(); ++i) {
         size_t cIdx = params.findIdx(*_pFormula->getParams().get(i));
-        assert(cIdx != -1);
+        assert(cIdx != (size_t)-1);
         pCall->getArgs().add(new VariableReference(params.get(cIdx)));
     }
 
@@ -153,7 +153,7 @@ void declareLemma(const ModulePtr& _pModule, const ExpressionPtr& _pProposition)
 class Instantiate : public Visitor {
 public:
     Instantiate(const NamedValues& _params, const Collection<Expression>& _args) :
-        m_params(_params), m_args(_args), Visitor(CHILDREN_FIRST)
+        Visitor(CHILDREN_FIRST), m_params(_params), m_args(_args)
     {}
 
     ExpressionPtr getExpression(const NamedValuePtr& _pValue);
@@ -167,8 +167,8 @@ public:
     virtual bool traverseNamedValue(NamedValue& _node);
 
 private:
-    const NamedValues& m_params;
-    const Collection<Expression>& m_args;
+    const NamedValues &m_params;
+    const Collection<Expression> &m_args;
 };
 
 ExpressionPtr Instantiate::getExpression(const NamedValuePtr& _pValue) {

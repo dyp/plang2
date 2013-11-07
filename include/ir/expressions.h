@@ -213,13 +213,12 @@ public:
     };
 
     /// Default constructor.
-    Literal() : m_literalKind(UNIT) {}
+    Literal() {}
 
     /// Copy constructor.
     Literal(const Literal &_other) :
-        m_literalKind(_other.m_literalKind), m_string(_other.m_string), m_char(_other.m_char),
-        m_number(_other.m_number), m_bool(_other.m_bool)
-    {}
+        m_literalKind(_other.m_literalKind), m_string(_other.m_string),
+        m_char(_other.m_char), m_number(_other.m_number), m_bool(_other.m_bool) {}
 
     /// Initialize the literal with numeric value (sets kind to #Number).
     /// \param _number Value.
@@ -299,11 +298,11 @@ public:
     virtual NodePtr clone(Cloner &_cloner) const { return NEW_CLONE(this, _cloner, Literal(*this)); }
 
 private:
-    int m_literalKind;
+    int m_literalKind = UNIT;
     std::wstring m_string;
-    wchar_t m_char;
+    wchar_t m_char = 0;
     Number m_number;
-    bool m_bool;
+    bool m_bool = false;
 };
 
 /// Expression containing reference to a variable or a parameter.
@@ -793,7 +792,7 @@ public:
     void setQuantifier(int _quantifier) { m_quantifier = _quantifier; }
 
     /// Get list of bound variables.
-    /// \return Refernce to bound variables list.
+    /// \return Reference to bound variables list.
     NamedValues &getBoundVariables() { return m_boundVariables; }
     const NamedValues &getBoundVariables() const { return m_boundVariables; }
 
@@ -1748,6 +1747,8 @@ public:
 private:
     ExpressionPtr m_pDefault;
     NamedValues m_iterators;
+
+    typedef Collection<ArrayPartDefinition, Constructor> Base;
 };
 
 } // namespace ir

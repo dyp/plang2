@@ -155,6 +155,9 @@ int Subtype::compare(const Type &_other) const {
         case ORD_EQUALS:
             return ORD_SUB;
     }
+
+    assert(false && "Unreachable");
+    return ORD_UNKNOWN;
 }
 
 int Subtype::getMonotonicity(const Type &_var) const {

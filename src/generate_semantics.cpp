@@ -143,10 +143,10 @@ ExpressionPtr CollectPreConditions::collectConditions() {
                 Collection<VariableReference> vars;
                 ExpressionPtr pExpr1;
 
-                for(int j = 0; j < iterators.size(); j++)
+                for (size_t j = 0; j < iterators.size(); j++)
                     vars.add(new VariableReference(iterators.get(j)));
 
-                for(int i = 0; i < conditions.size(); i++) {
+                for (size_t i = 0; i < conditions.size(); i++) {
                     ExpressionPtr pExpr2;
                     ExpressionPtr pCurrent = conditions.get(i);
 
@@ -176,11 +176,11 @@ ExpressionPtr CollectPreConditions::collectConditions() {
                 Collection<VariableReference> vars;
                 ExpressionPtr pExpr1;
 
-                for(int j = 0; j < iterators.size(); j++)
+                for (size_t j = 0; j < iterators.size(); j++)
                     vars.add(new VariableReference(iterators.get(j)));
 
-                for(int i = 0; i < pArrayIt->size(); i++) {
-                    for(int j = 0; j < pArrayIt->get(i)->getConditions().size(); j++) {
+                for (size_t i = 0; i < pArrayIt->size(); i++) {
+                    for (size_t j = 0; j < pArrayIt->get(i)->getConditions().size(); j++) {
 
                         ExpressionPtr pCurrent = pArrayIt->get(i)->getConditions().get(j);
 
@@ -197,6 +197,9 @@ ExpressionPtr CollectPreConditions::collectConditions() {
                 }
                 break;
             }
+
+            default:
+                break;
         }
     }
 
@@ -309,7 +312,7 @@ bool CollectPreConditions::visitCall(Call &_node) {
     if(_node.getPredicate()->getKind() == Expression::PREDICATE) {
 
 //compatibility of arguments
-        for(int i = 0; i < _node.getArgs().size(); i++) {
+        for (size_t i = 0; i < _node.getArgs().size(); i++) {
 
             ExpressionPtr pCallArg = _node.getArgs().get(i);
             ParamPtr pPredParam = _node.getPredicate().as<PredicateReference>()->getTarget().as<Predicate>()->getInParams().get(i);
@@ -343,10 +346,10 @@ bool CollectPreConditions::visitCall(Call &_node) {
 
                     Collection<Expression> args = pPredParam->getType().as<NamedReferenceType>()->getArgs();
 
-                    for(int j = 0; j < ranges.size(); j++) {
+                    for (size_t j = 0; j < ranges.size(); j++) {
                         RangePtr pNewRange = new Range(ranges.get(j)->getMin(), ranges.get(j)->getMax());
 
-                        for(int l = 0; l < params.size(); l++) {
+                        for (size_t l = 0; l < params.size(); l++) {
                             pNewRange = Expression::substitute(pNewRange, new VariableReference(params.get(l)), args.get(l)).as<Range>();
                         }
 
@@ -354,7 +357,7 @@ bool CollectPreConditions::visitCall(Call &_node) {
                     }
 
                     if(rangesCall.size() == rangesPred.size()) {
-                        for(int l = 0; l < rangesCall.size(); l++) {
+                        for (size_t l = 0; l < rangesCall.size(); l++) {
                             if(l == 0)
                                 pExpr = new Binary(Binary::BOOL_AND,
                                     new Binary(Binary::EQUALS, rangesCall.get(0)->getMin(), rangesPred.get(0)->getMin()),
@@ -469,8 +472,8 @@ bool CollectPreConditions::visitCall(Call &_node) {
         }
 
 //compatibility of results
-        for(int i = 0; i < _node.getBranches().size(); i++) {
-            for(int j = 0; j < _node.getBranches().get(i)->size(); j++) {
+        for (size_t i = 0; i < _node.getBranches().size(); i++) {
+            for (size_t j = 0; j < _node.getBranches().get(i)->size(); j++) {
 
                 ExpressionPtr pCallArg = _node.getBranches().get(i)->get(j);   //kind = VAR
                 ParamPtr pPredParam = _node.getPredicate().as<PredicateReference>()->getTarget()
@@ -506,10 +509,10 @@ bool CollectPreConditions::visitCall(Call &_node) {
 
                         Collection<Expression> args = pPredParam->getType().as<NamedReferenceType>()->getArgs();
 
-                        for(int k = 0; k < ranges.size(); k++) {
+                        for (size_t k = 0; k < ranges.size(); k++) {
                             RangePtr pNewRange = new Range(ranges.get(k)->getMin(), ranges.get(k)->getMax());
 
-                            for(int l = 0; l < params.size(); l++) {
+                            for (size_t l = 0; l < params.size(); l++) {
                                 pNewRange = Expression::substitute(pNewRange, new VariableReference(params.get(l)), args.get(l)).as<Range>();
                             }
 
@@ -517,7 +520,7 @@ bool CollectPreConditions::visitCall(Call &_node) {
                         }
 
                         if(rangesCall.size() == rangesPred.size()) {
-                            for(int l = 0; l < rangesCall.size(); l++) {
+                            for (size_t l = 0; l < rangesCall.size(); l++) {
                                 if(l == 0)
                                     pExpr = new Binary(Binary::BOOL_AND,
                                         new Binary(Binary::EQUALS, rangesCall.get(0)->getMin(), rangesPred.get(0)->getMin()),
@@ -652,7 +655,7 @@ bool CollectPreConditions::visitArrayPartExpr(ArrayPartExpr &_node) {
     ExpressionPtr pExpr;
     Collection<Range> pArrayRanges = arrayRangesWithCurrentParams(_node.getObject());
 
-    for(int i = 0; i < _node.getIndices().size(); i++) {
+    for (size_t i = 0; i < _node.getIndices().size(); i++) {
 
         if(_node.getIndices().get(i)->getKind() != Expression::TYPE) {
             pExpr = new Binary(Binary::BOOL_AND,
@@ -692,7 +695,7 @@ bool CollectPreConditions::visitReplacement(Replacement &_node) {
 
     //case 1 dimension
     if(pRangeArrays.size() == 1) {
-        for(int i = 0; i < _node.getNewValues().as<ArrayConstructor>()->size(); i++) {
+        for (size_t i = 0; i < _node.getNewValues().as<ArrayConstructor>()->size(); i++) {
 
             ExpressionPtr pExpr1 = _node.getNewValues().as<ArrayConstructor>()->get(i).as<ElementDefinition>()->getIndex();
 
@@ -708,7 +711,7 @@ bool CollectPreConditions::visitReplacement(Replacement &_node) {
                 m_pNewModule->getLemmas().add(new LemmaDeclaration(pExpr,
                     new Label(m_nameGen.makeNameLemmaArrayMod())));
 
-            for(int j = i+1; j < _node.getNewValues().as<ArrayConstructor>()->size(); j++) {
+            for (size_t j = i + 1; j < _node.getNewValues().as<ArrayConstructor>()->size(); j++) {
 
                 ExpressionPtr pExpr2 = _node.getNewValues().as<ArrayConstructor>()->get(j).as<ElementDefinition>()->getIndex();
 
@@ -720,7 +723,7 @@ bool CollectPreConditions::visitReplacement(Replacement &_node) {
     }
     //case several dimensions
     else {
-        for(int i = 0; i < _node.getNewValues().as<ArrayConstructor>()->size(); i++) {
+        for (size_t i = 0; i < _node.getNewValues().as<ArrayConstructor>()->size(); i++) {
 
             ExpressionPtr pExpr;
             ExpressionPtr pExpr1 = _node.getNewValues().as<ArrayConstructor>()->get(i).as<ElementDefinition>()->getIndex();
@@ -728,7 +731,7 @@ bool CollectPreConditions::visitReplacement(Replacement &_node) {
             if(pExpr1->getKind() == Expression::CONSTRUCTOR &&
                 pExpr1.as<Constructor>()->getConstructorKind() == Constructor::STRUCT_FIELDS) {
 
-                for(int j = 0; j < pExpr1.as<Constructor>().as<StructConstructor>()->size(); j++) {
+                for (size_t j = 0; j < pExpr1.as<Constructor>().as<StructConstructor>()->size(); j++) {
 
                     ExpressionPtr pExpr2 = pExpr1.as<Constructor>().as<StructConstructor>()->get(j)->getValue();
 
@@ -745,7 +748,7 @@ bool CollectPreConditions::visitReplacement(Replacement &_node) {
                             new Label(m_nameGen.makeNameLemmaArrayMod())));
                 }
 
-                for(int j = i+1; j < _node.getNewValues().as<ArrayConstructor>()->size(); j++) {
+                for (size_t j = i + 1; j < _node.getNewValues().as<ArrayConstructor>()->size(); j++) {
 
                     ExpressionPtr pExpr2 = _node.getNewValues().as<ArrayConstructor>()->get(j).as<ElementDefinition>()->getIndex();
 
@@ -754,7 +757,7 @@ bool CollectPreConditions::visitReplacement(Replacement &_node) {
                         pExpr1.as<Constructor>().as<StructConstructor>()->size() ==
                         pExpr2.as<Constructor>().as<StructConstructor>()->size()) {
 
-                        for(int j = 0; j < pExpr1.as<Constructor>().as<StructConstructor>()->size(); j++) {
+                        for (size_t j = 0; j < pExpr1.as<Constructor>().as<StructConstructor>()->size(); j++) {
 
                             ExpressionPtr pExpr3 = pExpr1.as<Constructor>().as<StructConstructor>()->get(j)->getValue();
                             ExpressionPtr pExpr4 = pExpr2.as<Constructor>().as<StructConstructor>()->get(j)->getValue();
@@ -811,7 +814,7 @@ bool CollectPreConditions::visitAssignment(Assignment &_node) {
                                pExpr1.as<Constructor>()->getConstructorKind() == Constructor::STRUCT_FIELDS &&
                                pExpr2.as<Constructor>()->getConstructorKind() == Constructor::STRUCT_FIELDS) {
 
-                                for(int m = 0; m < pArrayIt->getIterators().size(); m++) {
+                                for (size_t m = 0; m < pArrayIt->getIterators().size(); m++) {
 
                                      ExpressionPtr pExpr4 = pExpr1.as<Constructor>().as<StructConstructor>()->get(m)->getValue();
                                      ExpressionPtr pExpr5 = pExpr2.as<Constructor>().as<StructConstructor>()->get(m)->getValue();
@@ -862,7 +865,7 @@ bool CollectPreConditions::visitAssignment(Assignment &_node) {
                     if(pExpr1->getKind() == Expression::CONSTRUCTOR &&
                        pExpr1.as<Constructor>()->getConstructorKind() == Constructor::STRUCT_FIELDS) {
 
-                        for(int m = 0; m < pArrayIt->getIterators().size(); m++) {
+                        for (size_t m = 0; m < pArrayIt->getIterators().size(); m++) {
 
                             ExpressionPtr pExpr3 = pExpr1.as<Constructor>().as<StructConstructor>()->get(m)->getValue();
                             ExpressionPtr pExpr4;
@@ -931,7 +934,7 @@ bool CollectPreConditions::visitAssignment(Assignment &_node) {
                     if(pExpr2->getKind() == Expression::CONSTRUCTOR &&
                        pExpr2.as<Constructor>()->getConstructorKind() == Constructor::STRUCT_FIELDS) {
 
-                        for(int m = 0; m < pArrayIt->getIterators().size(); m++) {
+                        for (size_t m = 0; m < pArrayIt->getIterators().size(); m++) {
 
                             VariableReferencePtr pVar = new VariableReference(pArrayIt->getIterators().get(m));
                             ExpressionPtr pExpr3 = pExpr2.as<Constructor>().as<StructConstructor>()->get(m)->getValue();
@@ -965,7 +968,7 @@ bool CollectPreConditions::visitAssignment(Assignment &_node) {
                 }
             }
 
-            for(int m = 0; m < pArrayIt->getIterators().size(); m++) {
+            for (size_t m = 0; m < pArrayIt->getIterators().size(); m++) {
 
                 VariableReferencePtr pVar = new VariableReference(pArrayIt->getIterators().get(m));
                 if(m == 0)
@@ -1032,7 +1035,7 @@ bool CollectPreConditions::visitAssignment(Assignment &_node) {
             ExpressionPtr pExpr;
 
             if(rangesL.size() == rangesR.size()) {
-                for(int i = 0; i < rangesL.size(); i++) {
+                for (size_t i = 0; i < rangesL.size(); i++) {
                     if(i == 0)
                         pExpr = new Binary(Binary::BOOL_AND,
                             new Binary(Binary::EQUALS, rangesL.get(0)->getMin(), rangesR.get(0)->getMin()),
@@ -1080,7 +1083,7 @@ bool CollectPreConditions::visitAssignment(Assignment &_node) {
         bool bArrays = true;
         size_t dim;
 
-        for(int i = 0; i < exprs.size(); i++) {
+        for (size_t i = 0; i < exprs.size(); i++) {
 
             TypePtr pType = exprs.get(i)->getType();
 
@@ -1101,11 +1104,11 @@ bool CollectPreConditions::visitAssignment(Assignment &_node) {
         }
 
         if(bArrays) {
-            for(int i = exprs.size() - 1; i >= 0 ; i--) {
+            for (size_t i = exprs.size(); i > 0 ; i--) {
 
-                Collection<Range> ranges = arrayRangesWithCurrentParams(exprs.get(i));
+                Collection<Range> ranges = arrayRangesWithCurrentParams(exprs.get(i - 1));
 
-                for(int j = 0; j < ranges.size(); j++) {
+                for (size_t j = 0; j < ranges.size(); j++) {
 
                     std::wstring strName = fmtInt(j+1, L"i%u");
                     VariableReferencePtr pVar = new VariableReference(strName);
@@ -1121,17 +1124,17 @@ bool CollectPreConditions::visitAssignment(Assignment &_node) {
                             new Binary(Binary::LESS_OR_EQUALS, pVar, ranges.get(j)->getMax())));
                 }
 
-                if(i == exprs.size() - 1)
+                if (i == exprs.size())
                     pExprEqual = pExpr1;
                 else
                     pExprEqual = new Binary(Binary::BOOL_OR, pExprEqual, pExpr1);
 
                 //nonintersection
-                for(int j = i-1; j >= 0 ; j--) {
+                for (size_t j = i - 1; j > 0 ; j--) {
 
-                    Collection<Range> ranges1 = arrayRangesWithCurrentParams(exprs.get(j));
+                    Collection<Range> ranges1 = arrayRangesWithCurrentParams(exprs.get(j - 1));
 
-                    for(int k = 0; k < ranges.size(); k++) {
+                    for (size_t k = 0; k < ranges.size(); k++) {
 
                         if(k == 0)
                             pExprNonintersect = new Binary(Binary::BOOL_OR,
@@ -1151,7 +1154,7 @@ bool CollectPreConditions::visitAssignment(Assignment &_node) {
 
             Collection<Range> ranges = arrayRangesWithCurrentParams(_node.getLValue());
 
-            for(int j = 0; j < ranges.size(); j++) {
+            for (size_t j = 0; j < ranges.size(); j++) {
 
                 std::wstring strName = fmtInt(j+1, L"i%u");
                 VariableReferencePtr pVar = new VariableReference(strName);
@@ -1206,7 +1209,7 @@ bool CollectPreConditions::visitNamedValue(NamedValue &_node) {
             NamedValues paramTypeParams(pType.as<ParameterizedType>()->getParams());
             TypePtr paramTypeActualType(pType.as<ParameterizedType>()->getActualType());
 
-            for(int i = 0; i < namedRefArgs.size() && i < paramTypeParams.size(); i++) {
+            for (size_t i = 0; i < namedRefArgs.size() && i < paramTypeParams.size(); i++) {
                 if(namedRefArgs.get(i)->getKind() == Expression::TYPE)
                     pType = namedRefArgs.get(i).as<TypeExpr>()->getContents();
 
@@ -1286,7 +1289,7 @@ RangePtr CollectPreConditions::arrayRangeWithCurrentParams(ExpressionPtr _pArray
 
         pNewRange = new Range(pRange->getMin(), pRange->getMax());
 
-        for(int i = 0; i < params.size(); i++) {
+        for (size_t i = 0; i < params.size(); i++) {
             pNewRange = Expression::substitute(pNewRange, new VariableReference(params.get(i)), args.get(i)).as<Range>();
         }
     }
@@ -1318,10 +1321,10 @@ Collection<Range> CollectPreConditions::arrayRangesWithCurrentParams(ExpressionP
 
         //if borders of range is complicated, then /Collection<Range> ranges/ changes
         //попробовать ranges.clone()
-        for(int j = 0; j < ranges.size(); j++) {
+        for (size_t j = 0; j < ranges.size(); j++) {
             RangePtr pNewRange = new Range(ranges.get(j)->getMin(), ranges.get(j)->getMax());
 
-            for(int i = 0; i < params.size(); i++) {
+            for (size_t i = 0; i < params.size(); i++) {
                 pNewRange = Expression::substitute(pNewRange, new VariableReference(params.get(i)), args.get(i)).as<Range>();
             }
 
@@ -1358,7 +1361,7 @@ ExpressionPtr CollectPreConditions::varsBelongSetSeveralDimensions(Collection<Va
     if(_pExpr->getKind() == Expression::CONSTRUCTOR &&
         _pExpr.as<Constructor>()->getConstructorKind() == Constructor::STRUCT_FIELDS) {
 
-        for(int m = 0; m < _vars.size(); m++) {
+        for (size_t m = 0; m < _vars.size(); m++) {
 
             ExpressionPtr pExpr1 = _pExpr.as<Constructor>().as<StructConstructor>()->get(m)->getValue();
             ExpressionPtr pExpr2;
@@ -1414,7 +1417,7 @@ void ir::getRanges(const ArrayType &_array, Collection<Range> &_ranges) {
         switch (pType->getKind()) {
             case Type::SUBTYPE:
                 pType = pType.as<Subtype>()->asRange();
-                // no brake.
+                // no break;
             case Type::RANGE:
                 _ranges.add(pType.as<Range>());
                 break;

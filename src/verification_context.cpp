@@ -31,6 +31,9 @@ static ConjunctPtr _releaseAssignment(const ConjunctPtr& _pConj) {
             return new FormulaConjunct(new Binary(Binary::EQUALS, assignment.getLValue(), assignment.getExpression()));
         }
     }
+
+    assert(false && "Unreachable");
+    return nullptr;
 }
 
 ExpressionPtr QuantifierConjunct::mergeToExpression() const {

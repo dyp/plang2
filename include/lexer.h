@@ -66,7 +66,7 @@ public:
 private:
     int m_kind, m_line, m_col;
     std::wstring m_value;
-    bool m_bHasLeadingSpace;
+    bool m_bHasLeadingSpace = false;
 };
 
 typedef std::list<Token> Tokens;
