@@ -695,9 +695,9 @@ bool Visitor::traversePredicate(Predicate &_stmt) {
 }
 
 bool Visitor::traverseVariableDeclarationGroup(VariableDeclarationGroup &_stmt) {
-    ENTER(Block, _stmt);
+    ENTER(VariableDeclarationGroup, _stmt);
     TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
-    TRAVERSE_COL(VariableDeclarationGroup, VariableDeclarationGroupElement, _stmt);
+    TRAVERSE_COL(VariableDeclaration, VarDeclGroupElement, _stmt);
     EXIT();
 }
 
