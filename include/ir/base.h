@@ -249,8 +249,7 @@ public:
     /// \param _pNode Pointer to element to remove.
     /// \return True if node was successfully removed, false if not found.
     bool remove(const Auto<_Node> &_pNode) {
-        std::vector<void *>::iterator iNode =
-            std::find(m_nodes.begin(), m_nodes.end(), _pNode);
+        auto iNode = std::find(m_nodes.begin(), m_nodes.end(), _pNode);
         if (iNode == m_nodes.end())
             return false;
         m_nodes.erase(iNode);
