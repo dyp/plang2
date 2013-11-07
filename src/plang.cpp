@@ -34,6 +34,7 @@
 #include "cvc3_solver.h"
 #include "name_reset.h"
 #include "predicate_inlining.h"
+#include "check_assignments.h"
 
 using namespace lexer;
 
@@ -68,6 +69,13 @@ int main(int _argc, const char ** _argv) {
     if (ir::ModulePtr pModule = parse(tokens)) {
         if (!Options::instance().bKeepNames)
             resetNames(*pModule);
+
+        try {
+            ir::CheckAssignments().traverseNode(*pModule);
+        } catch (std::runtime_error &e) {
+            std::cerr << strFile << ": " << e.what() << std::endl;
+            return EXIT_FAILURE;
+        }
 
         if (Options::instance().bCheckSemantics)
             pModule = processPreConditions(*pModule);
