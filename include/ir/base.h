@@ -235,6 +235,11 @@ public:
             m_nodes.insert(m_nodes.begin() + _c, _other.m_nodes.begin(), _other.m_nodes.end());
     }
 
+    void insert(size_t _c, const Auto<_Node> &_pNode) {
+        if (_c <= m_nodes.size())
+            m_nodes.insert(m_nodes.begin() + _c, _pNode);
+    }
+
     template <class InputIterator>
     void insert(typename std::vector<Auto<_Node> >::iterator _position, InputIterator _first, InputIterator _last) {
         m_nodes.insert(_position, _first, _last);
