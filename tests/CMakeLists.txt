@@ -172,6 +172,7 @@ set(TESTS_INFERENCE
     sample.psrc
     inference/literals.psrc
     inference/literals_structured.psrc
+    inference/literals_array.psrc
     inference/literals_negative.psrc
     inference/param_array.psrc
     inference/procedure_call.psrc
