@@ -794,55 +794,75 @@ bool Collector::visitArrayConstructor(ArrayConstructor &_cons) {
 
     const tc::FreshTypePtr pParamType = new tc::FreshType(tc::FreshType::PARAM_OUT);
     SubtypePtr pEnumType = new Subtype(new NamedValue(L"", pParamType));
-    const VariableReferencePtr pVar = new VariableReference(pEnumType->getParam());
+    bool bHaveIndices = false;
 
-    const tc::FreshTypePtr pEnumType1 = createFresh();
-    m_constraints.insert(new tc::Formula(tc::Formula::EQUALS, pEnumType1, pEnumType));
-
-    bool bFirst = true;
-    size_t nInc = 0;
-    for (size_t i = 0; i < _cons.size(); ++i) {
+    for (size_t i = 0; i < _cons.size(); ++i)
         if (_cons.get(i)->getIndex()) {
-            const TypePtr pIndexType = _getContentsType(_cons.get(i)->getIndex());
-            m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE, pIndexType, pParamType));
-            ExpressionPtr pExpr = _getConditionForIndex(_cons.get(i)->getIndex(), pVar, false);
-
-            pEnumType->setExpression(pEnumType->getExpression()
-                ? new Binary(Binary::BOOL_AND, pEnumType->getExpression(), pExpr)
-                : pExpr);
-
-            if (pIndexType->getKind() == Type::SUBTYPE)
-                m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                    pIndexType.as<Subtype>()->getParam()->getType(), pEnumType->getParam()->getType()));
+            bHaveIndices = true;
+            break;
         }
-        else {
-            PredicatePtr pIndexer = Builtins::instance().find(bFirst ? L"zero" : L"inc");
-            assert(pIndexer);
 
-            PredicateReferencePtr pReference = new PredicateReference(pIndexer);
-            pReference->setType(new PredicateType(pIndexer.as<AnonymousPredicate>()));
+    if (!bHaveIndices) {
+        LiteralPtr pUpperBound = new Literal(Number::makeNat(_cons.size()));
 
-            FunctionCallPtr pCallIndexer = new FunctionCall(pReference);
-            pCallIndexer->getArgs().add(new TypeExpr(pEnumType1));
+        pUpperBound->setType(new Type(Type::NAT,
+                pUpperBound->getNumber().countBits(false)));
+        m_constraints.insert(new tc::Formula(tc::Formula::EQUALS,
+                pParamType, pUpperBound->getType()));
+        pEnumType->setExpression(new Binary(Binary::LESS,
+                new VariableReference(pEnumType->getParam()), pUpperBound));
 
-            if (!bFirst)
-                pCallIndexer->getArgs().add(new Literal(Number(intToStr(++nInc), Number::INTEGER)));
-
-            bFirst = false;
-            _cons.get(i)->setIndex(pCallIndexer);
+        for (size_t i = 0; i < _cons.size(); ++i) {
+            LiteralPtr pIndex = new Literal(Number::makeNat(i));
+            pIndex->setType(new Type(Type::NAT, pIndex->getNumber().countBits(false)));
+            _cons.get(i)->setIndex(pIndex);
         }
+    } else {
+        bool bFirst = true;
+        size_t nInc = 0;
+        for (size_t i = 0; i < _cons.size(); ++i) {
+            if (_cons.get(i)->getIndex()) {
+                const TypePtr pIndexType = _getContentsType(_cons.get(i)->getIndex());
+                m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE, pIndexType, pParamType));
+                ExpressionPtr pExpr = _getConditionForIndex(_cons.get(i)->getIndex(),
+                        new VariableReference(pEnumType->getParam()), false);
+
+                pEnumType->setExpression(pEnumType->getExpression()
+                    ? new Binary(Binary::BOOL_AND, pEnumType->getExpression(), pExpr)
+                    : pExpr);
+
+                if (pIndexType->getKind() == Type::SUBTYPE)
+                    m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                        pIndexType.as<Subtype>()->getParam()->getType(), pEnumType->getParam()->getType()));
+            }
+            else {
+                PredicatePtr pIndexer = Builtins::instance().find(bFirst ? L"zero" : L"inc");
+                assert(pIndexer);
+
+                PredicateReferencePtr pReference = new PredicateReference(pIndexer);
+                pReference->setType(new PredicateType(pIndexer.as<AnonymousPredicate>()));
+
+                FunctionCallPtr pCallIndexer = new FunctionCall(pReference);
+                pCallIndexer->getArgs().add(new TypeExpr(pEnumType));
+
+                if (!bFirst)
+                    pCallIndexer->getArgs().add(new Literal(Number(intToStr(++nInc), Number::INTEGER)));
+
+                bFirst = false;
+                _cons.get(i)->setIndex(pCallIndexer);
+            }
+        }
+
+        if (!pEnumType->getExpression())
+            pEnumType->setExpression(new Literal(true));
     }
 
-    if (!pEnumType->getExpression())
-        pEnumType->setExpression(new Literal(true));
-
-    const VariableReferencePtr pParam = new VariableReference(new NamedValue(L"", pParamType));
-
-    if (_cons.size() == 1) {
+    if (_cons.size() == 1 && _cons.get(0)->getIndex()->getType()) {
         pArray->setDimensionType(_cons.get(0)->getIndex()->getType());
         return true;
     }
 
+    const VariableReferencePtr pParam = new VariableReference(new NamedValue(L"", pParamType));
     SubtypePtr pSubtype = new Subtype(pParam->getTarget());
     pArray->setDimensionType(pSubtype);
 

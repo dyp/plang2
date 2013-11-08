@@ -3,7 +3,7 @@
 <test>
     /Module/Name = Array
     ! Type =
-    b/ParamType = int[]
+    b/ParamType/ArrayBaseType = int
     //foo/PredicateBody//Assignment
     Assignment/RValue = Constructor
 </test>
