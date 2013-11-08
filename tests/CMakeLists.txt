@@ -181,6 +181,7 @@ set(TESTS_INFERENCE
     inference/array_part.psrc
     inference/array_constructor.psrc
     inference/array_iterator.psrc
+    inference/arithmetic_overflow.psrc
 )
 
 set(TESTS_PRETTYPRINTER

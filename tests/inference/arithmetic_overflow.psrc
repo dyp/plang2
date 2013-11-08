@@ -1,0 +1,13 @@
+/*
+
+<test>
+	a/Type = nat(1)
+	b/Type = nat(2)
+	c/Type = nat(3)
+</test>
+
+*/
+
+var a = 1;
+var b = 3;
+var c = a + b;
