@@ -1147,9 +1147,9 @@ bool Solver::run() {
             std::wcout << std::endl << L"Solution:" << std::endl;
             prettyPrint(context(), std::wcout);
         }
-    }
 
-    context().applySubsts();
+        context().applySubsts();
+    }
 
     if (Options::instance().bVerbose) {
         switch (result) {
