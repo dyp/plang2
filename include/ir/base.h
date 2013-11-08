@@ -92,6 +92,10 @@ public:
     /// Default constructor.
     Node() {}
 
+    /// Override Counted's deleted copy constructor to allow copying of nodes
+    /// preserving Counted's internal fields.
+    Node(const Node &_other) {}
+
     /// Destructor.
     virtual ~Node() {}
 

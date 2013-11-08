@@ -13,6 +13,11 @@
 // Smart pointer.
 
 struct Counted {
+    // Delete copy constructor and operator so that private fields won't get
+    // accidentally overwritten.
+    Counted(const Counted &_other) = delete;
+    Counted &operator =(const Counted &_other) = delete;
+
     virtual ~Counted() {}
 
     // Increment ref count (if dynamically allocated.)

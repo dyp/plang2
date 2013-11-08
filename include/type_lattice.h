@@ -93,6 +93,23 @@ struct TypeNode : public Counted {
 
     TypeNode(const ir::TypePtr &_pType = NULL, bool _bNonFresh = false) :
         pType(_pType), lowers(Relations::LOWERS), uppers(Relations::UPPERS), pPrev(NULL), bPrevStrict(false), nWeight(0), bNonFresh(_bNonFresh) {}
+
+    TypeNode(const TypeNode &_other) :
+        pType(_other.pType), lowers(_other.lowers), uppers(_other.uppers),
+        pPrev(_other.pPrev), bPrevStrict(_other.bPrevStrict), nWeight(_other.nWeight),
+        bNonFresh(_other.bNonFresh)
+    {}
+
+    TypeNode &operator =(const TypeNode &_other) {
+        pType = _other.pType;
+        lowers = _other.lowers;
+        uppers = _other.uppers;
+        pPrev = _other.pPrev;
+        bPrevStrict = _other.bPrevStrict;
+        nWeight = _other.nWeight;
+        bNonFresh = _other.bNonFresh;
+        return *this;
+    }
 };
 
 struct TypeNodeTypeCmp {

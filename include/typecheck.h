@@ -23,6 +23,9 @@ typedef Auto<class Flags> FlagsPtr;
 
 class Flags : public Counted {
 public:
+    Flags() = default;
+    Flags(const Flags &_other) : m_flags(_other.m_flags) {}
+
     int get(size_t _cIdx) const;
     void set(size_t _cIdx, int _flags);
     int add(size_t _cIdx, int _flags);
@@ -137,6 +140,14 @@ public:
 
     Formula(const Formula &_other) :
         m_kind(_other.m_kind), m_pLhs(_other.m_pLhs), m_pRhs(_other.m_pRhs), m_conditions(_other.m_conditions) {}
+
+    Formula &operator =(const Formula &_other) {
+        m_kind = _other.m_kind;
+        m_pLhs = _other.m_pLhs;
+        m_pRhs = _other.m_pRhs;
+        m_conditions = _other.m_conditions;
+        return *this;
+    }
 
     const std::set<ir::ExpressionPtr>& getConditions() const { return m_conditions; }
     std::set<ir::ExpressionPtr>& getConditions() { return m_conditions; }

@@ -19,7 +19,16 @@ inline void freeList(std::list<T *> & _list) {
     _list.clear();
 }
 
-class Type : public Counted {
+class Base : public Counted {
+protected:
+    // Override Counted's deleted copy constructor to allow copying
+    // preserving Counted's internal fields.
+    Base(const Base &_other) {}
+    Base &operator =(const Base &_other) { return *this; }
+    Base() = default;
+};
+
+class Type : public Base {
 public:
     enum {
         UNDEFINED,
@@ -183,7 +192,7 @@ private:
 
 class Instruction;
 
-class Variable : public Counted {
+class Variable : public Base {
 public:
     Variable() : m_bAlive(true), m_bUsed(false) {}
     Variable(const Auto<Type> & _type) : m_type(_type), m_bAlive(true), m_bUsed(false) {}
@@ -220,7 +229,7 @@ class Literal;
 
 typedef std::list<Auto<Literal> > Literals;
 
-class Literal : public Counted {
+class Literal : public Base {
 public:
     enum {
         NUMBER,
@@ -296,7 +305,7 @@ private:
 
 typedef std::list<Auto<Constant> > Consts;
 
-class Label : public Counted {
+class Label : public Base {
 public:
     Label() : m_cUsageCount(0) {}
 
@@ -313,7 +322,7 @@ private:
     size_t m_cUsageCount;
 };
 
-class Instruction : public Counted {
+class Instruction : public Base {
 public:
     enum {
         UNDEFINED,
@@ -385,7 +394,7 @@ private:
 
 typedef std::list<Auto<Function> > Functions;
 
-class Module : public Counted {
+class Module : public Base {
 public:
 
     Functions & functions() { return m_functions; }
@@ -407,7 +416,7 @@ private:
     Consts m_consts;
 };
 
-class Operand : public Counted {
+class Operand : public Base {
 public:
     enum {
         EMPTY,
