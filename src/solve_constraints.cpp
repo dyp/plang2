@@ -431,6 +431,62 @@ bool Solver::guess(int & _result) {
         else if ((pType->getFlags() & tc::FreshType::PARAM_OUT) != 0 && infCount == 1 && !(*infs.begin())->isStrict())
             pLower = infs.getType(infs.begin());
 
+        // Matching the following patterns:
+        //    A2,0(IN) <= B0,2(OUT)  ->  AB1,1
+        // ensure that sup and inf holds order.
+
+        if ((pType->getFlags() & tc::FreshType::PARAM_IN)
+            && supCount == 2 && !pLower && !pUpper)
+        {
+            TypePtr
+                pSup1 = sups.getType(sups.begin()),
+                pSup2 = sups.getType(std::next(sups.begin(), 1));
+
+            auto canBeUpper = [&](TypePtr _pType) {
+                return _pType->getKind() == Type::FRESH &&
+                    (_pType.as<tc::FreshType>()->getFlags() & tc::FreshType::PARAM_OUT) &&
+                    context().pTypes->lowers(_pType).size() == 2;
+            };
+
+            std::list<std::pair<TypePtr, TypePtr> > candidates;
+
+            if (canBeUpper(pSup1))
+                candidates.push_back({pSup1, pSup2});
+
+            if (canBeUpper(pSup2))
+                candidates.push_back({pSup2, pSup1});
+
+            for (auto &candidate : candidates) {
+                const TypePtr
+                    pFresh = candidate.first,
+                    pSup = clone(candidate.second);
+
+                const auto& lowers = context().pTypes->lowers(pFresh);
+
+                // pInf <= pFresh => pType <= pSup
+                TypePtr pInf = lowers.getType(lowers.begin());
+                if (pInf == pType)
+                    pInf = lowers.getType(std::next(lowers.begin(), 1));
+
+                pInf = clone(pInf);
+
+                pSup->rewrite(pType, pFresh);
+                pInf->rewrite(pType, pFresh);
+
+                tc::RelationPtr pRelation = new tc::Relation(tc::Formula(tc::Formula::SUBTYPE, pInf, pSup));
+
+                auto &relations = context().pTypes->relations();
+
+                // Ensure that pInf <= pSup
+                if (pRelation->eval() == tc::Formula::TRUE ||
+                    relations.find(pRelation) != relations.end()) {
+                    pFresh.as<tc::FreshType>()->setFlags(0);
+                    pUpper = pFresh;
+                    break;
+                }
+            }
+        }
+
         // Types with both flags set cannot choose between non-fresh bounds.
         if (pType->getFlags() == (tc::FreshType::PARAM_IN | tc::FreshType::PARAM_OUT)) {
             if (pUpper && pUpper->getKind() != Type::FRESH && infCount > 0)

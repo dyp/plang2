@@ -66,6 +66,11 @@ public:
         return m_kind == LOWERS ? (*_iNode)->getLhs() : (*_iNode)->getRhs();
     }
 
+    ir::TypePtr getType(const RelationPtr& _pNode) const {
+        assert(m_kind != ANY);
+        return m_kind == LOWERS ? _pNode->getLhs() : _pNode->getRhs();
+    }
+
     void setType(iterator _iNode, const ir::TypePtr &_pType) const {
         assert(m_kind != ANY);
         if (m_kind == LOWERS)
