@@ -532,8 +532,16 @@ void PrettyPrinterSyntax::printStructNamedValues(const NamedValues& _nvs, std::s
             m_os << L", ";
         if (_bNeedsIndent)
             m_os << L"\n" << fmtIndent();
-        traverseNamedValue(*_nvs.get(i));
-        _usedNames.insert(_nvs.get(i)->getName());
+
+        NamedValuePtr pField = _nvs.get(i);
+
+        traverseType(*pField->getType());
+
+        if (!pField->getName().empty()) {
+            m_os << L" " << pField->getName();
+            _usedNames.insert(_nvs.get(i)->getName());
+        }
+
         _bIsFirst = false;
     }
 }
@@ -582,6 +590,7 @@ std::wstring getNewFieldName(std::set<std::wstring>& _usedNames) {
 bool PrettyPrinterSyntax::traverseStructType(StructType &_type) {
     VISITOR_ENTER(StructType, _type);
 
+    // Order of fields: ordered names, unordered names, ordered types.
     m_os << (!m_bCompact ? L"struct(" : L"(");
 
     INDENT();
@@ -589,6 +598,11 @@ bool PrettyPrinterSyntax::traverseStructType(StructType &_type) {
     bool bIsFirst = true;
     std::set<std::wstring> usedNames;
     printStructNamedValues(_type.getNamesOrd(), usedNames, bIsFirst, bNeedsIndent);
+
+    if (m_bCompact && !(_type.getNamesSet().empty() && _type.getTypesOrd().empty())) {
+        m_os << L"; ";
+        bIsFirst = true;
+    }
 
     if (!_type.getNamesSet().empty()) {
         // Ensure sorting for debug purposes (don't reorder source collection though).
@@ -603,15 +617,16 @@ bool PrettyPrinterSyntax::traverseStructType(StructType &_type) {
             sortedFields.add(i->second);
 
         printStructNamedValues(sortedFields, usedNames, bIsFirst, bNeedsIndent);
-        if (m_bCompact) {
-            m_os << L"; ";
-            bIsFirst = true;
-        }
+    }
+
+    if (m_bCompact && !_type.getTypesOrd().empty()) {
+        m_os << L"; ";
+        bIsFirst = true;
     }
 
     NamedValues typeFields;
     for (size_t i = 0; i < _type.getTypesOrd().size(); ++i) {
-        if (_type.getTypesOrd().get(i)->getName().empty())
+        if (_type.getTypesOrd().get(i)->getName().empty() && !m_bCompact)
             typeFields.add(new NamedValue(getNewFieldName(usedNames), _type.getTypesOrd().get(i)->getType()));
         else
             typeFields.add(_type.getTypesOrd().get(i));

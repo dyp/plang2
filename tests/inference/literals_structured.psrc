@@ -1,7 +1,7 @@
 /*
 
 <test>
-	s1/Type = (nat(1), nat(2))
+	s1/Type = (; ; nat(1), nat(2))
 	s2/Type = (; nat(1) a, nat(2) b)
 	s3/Type = nil
 	s4/Type = nat(1)
@@ -9,13 +9,13 @@
 
 	l1/Type = [[nat(2)]]
 	l2/Type =
-	l3/Type = [[(char, char)]]
+	l3/Type = [[(; ; char, char)]]
 
 	set1/Type = {string}
 	set2/Type =
 	set3/Type = nil
 
-	map1/Type = {string:nat(7)}
+	map1/Type = {string : nat(7)}
 	map2/Type =
 	map3/Type =
 	map4/Type = nil
