@@ -902,8 +902,14 @@ bool Collector::visitArrayIteration(ArrayIteration& _iter) {
                 for (size_t k = 0; k < constructor.size(); ++k) {
                     m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
                         _getContentsType(constructor.get(k)->getValue()), dimensions[k]));
-                    m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                        _getContentsType(constructor.get(k)->getValue()), _iter.getIterators().get(k)->getType()));
+
+                    auto pIterType = _iter.getIterators().get(k)->getType();
+
+                    if (pIterType->getKind() != Type::GENERIC)
+                        m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                            _getContentsType(constructor.get(k)->getValue()), pIterType));
+                    else
+                        _iter.getIterators().get(k)->setType(dimensions[k]);
                 }
 
                 continue;
@@ -913,8 +919,14 @@ bool Collector::visitArrayIteration(ArrayIteration& _iter) {
 
             m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
                 _getContentsType(conds.get(j)), dimensions[0]));
-            m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                _getContentsType(conds.get(j)), _iter.getIterators().get(0)->getType()));
+
+            auto pIterType = _iter.getIterators().get(0)->getType();
+
+            if (pIterType->getKind() != Type::GENERIC)
+                m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                    _getContentsType(conds.get(j)), pIterType));
+            else
+                _iter.getIterators().get(0)->setType(dimensions[0]);
         }
 
         m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
