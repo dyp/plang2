@@ -123,7 +123,7 @@ public:
     ExpressionPtr parseAtom(Context &_ctx);
     ExpressionPtr parseComponent(Context &_ctx, Expression &_base);
     FormulaPtr parseFormula(Context &_ctx);
-    Context* parseModuleCall(Context &_ctx);
+    Context* parseModuleReference(Context &_ctx);
     ArrayIterationPtr parseArrayIteration(Context &_ctx);
     ArrayPartExprPtr parseArrayPart(Context &_ctx, Expression &_base);
     FunctionCallPtr parseFunctionCall(Context &_ctx, Expression &_base);
@@ -616,7 +616,7 @@ FormulaPtr Parser::parseFormula(Context &_ctx) {
     return pFormula;
 }
 
-Context* Parser::parseModuleCall(Context &_ctx) {
+Context* Parser::parseModuleReference(Context &_ctx) {
     Context &ctx = *_ctx.createChild(false, _ctx.getFlags());
     Context *pModuleCtx = &_ctx;
 
@@ -747,7 +747,7 @@ ExpressionPtr Parser::parseAtom(Context &_ctx) {
     }
 
     if (!pExpr && ctx.is(IDENTIFIER)) {
-        Context *pCtx = parseModuleCall(ctx);
+        Context *pCtx = parseModuleReference(ctx);
         Context &moduleCtx = pCtx ? *pCtx : ctx;
 
         std::wstring str = ctx.getValue();
@@ -1399,7 +1399,7 @@ NamedReferenceTypePtr Parser::parseTypeReference(Context &_ctx) {
     if (!ctx.is(IDENTIFIER))
         UNEXPECTED(ctx, "identifier");
 
-    Context *pCtx = parseModuleCall(ctx);
+    Context *pCtx = parseModuleReference(ctx);
     Context &moduleCtx = pCtx ? *pCtx : ctx;
 
     const std::wstring str = ctx.scan();
