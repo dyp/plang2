@@ -750,7 +750,7 @@ ExpressionPtr Parser::parseAtom(Context &_ctx) {
         Context *pCtx = parseModuleCall(ctx);
         Context &moduleCtx = pCtx ? *pCtx : ctx;
 
-        std::wstring str = ctx.scan();
+        std::wstring str = ctx.getValue();
 
         NamedValuePtr pVar;
         bool bLinkedIdentifier = false;
@@ -762,8 +762,7 @@ ExpressionPtr Parser::parseAtom(Context &_ctx) {
 
         if ((pVar = moduleCtx.getVariable(str)) && (!bAllowTypes || !isTypeVariable(pVar))) {
             pExpr = new VariableReference(pVar);
-            if (bLinkedIdentifier)
-                ++ctx;
+            ctx.skip(bLinkedIdentifier ? 2 : 1);
         }
 
         if (bLinkedIdentifier && !pExpr)
@@ -779,13 +778,17 @@ ExpressionPtr Parser::parseAtom(Context &_ctx) {
 
         PredicatePtr pPred;
 
-        if (!pExpr && (pPred = moduleCtx.getPredicate(str)))
+        if (!pExpr && (pPred = moduleCtx.getPredicate(str))) {
+            ++ctx;
             pExpr = new PredicateReference(str);
+        }
 
         FormulaDeclarationPtr pFormula;
 
         if (!pExpr && (ctx.getFlags() & ALLOW_FORMULAS) && (pFormula = moduleCtx.getFormula(str))) {
             FormulaCallPtr pCall = new FormulaCall();
+
+            ++ctx;
 
             if (ctx.is(LPAREN, RPAREN))
                 ctx.skip(2);
@@ -806,7 +809,7 @@ ExpressionPtr Parser::parseAtom(Context &_ctx) {
         if (!pExpr && pRealType && pRealType->getKind() == Type::UNION && ctx.nextIs(DOT, IDENTIFIER)) {
             // It's OK since we always know the UnionType in UnionType.ConstructorName expression even
             // before type inference.
-            ++ctx;
+            ctx.skip(2);
             pExpr = parseConstructor(ctx, pRealType.as<UnionType>());
             if (!pExpr)
                 return NULL;
