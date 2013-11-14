@@ -2,6 +2,7 @@
 #include "prettyprinter.h"
 #include "utils.h"
 #include "options.h"
+#include "pp_syntax.h"
 
 #include <sstream>
 
@@ -424,9 +425,13 @@ bool PrettyPrinterSyntax::traverseNamedReferenceType(NamedReferenceType &_type) 
     VISITOR_ENTER(NamedReferenceType, _type);
     printPath(_type.getDeclaration());
     m_os << _type.getName();
-    m_os << L"(";
-    VISITOR_TRAVERSE_COL(Expression, NamedTypeArg, _type.getArgs());
-    m_os << L")";
+
+    if (!_type.getArgs().empty()) {
+        m_os << L"(";
+        VISITOR_TRAVERSE_COL(Expression, NamedTypeArg, _type.getArgs());
+        m_os << L")";
+    }
+
     VISITOR_EXIT();
 }
 
