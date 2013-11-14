@@ -29,11 +29,11 @@
 #include "generate_semantics.h"
 #include "verification.h"
 #include "generate_callgraph.h"
-#include "tail_recursion_elimination.h"
 #include "predicate_ordering.h"
+#include "transformations/tail_recursion_elimination.h"
+#include "transformations/predicate_inlining.h"
 #include "cvc3_solver.h"
 #include "name_reset.h"
-#include "predicate_inlining.h"
 #include "check_assignments.h"
 
 using namespace lexer;

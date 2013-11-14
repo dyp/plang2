@@ -17,6 +17,8 @@ set(SOURCES
     ir/type_union.cpp
     ir/visitor.cpp
     ir/declarations.cpp
+    transformations/tail_recursion_elimination.cpp
+    transformations/predicate_inlining.cpp
     backend_c.cpp
     backend_debug.cpp
     backend_pvs.cpp
@@ -38,10 +40,6 @@ set(SOURCES
     generate_semantics.cpp
     generate_name.cpp
     type_lattice.cpp
-    callgraph.cpp
-    generate_callgraph.cpp
-    tail_recursion_elimination.cpp
-    predicate_ordering.cpp
     term_rewriting.cpp
     node_analysis.cpp
     statement_tree.cpp
@@ -50,7 +48,9 @@ set(SOURCES
     pp_verification.cpp
     cvc3_solver.cpp
     name_reset.cpp
-    predicate_inlining.cpp
+    predicate_ordering.cpp
+    callgraph.cpp
+    generate_callgraph.cpp
 )
 
 add_definitions(
@@ -63,6 +63,7 @@ target_link_libraries(${TARGET} ${CVC3LIB_LIBRARIES})
 
 include_directories (
     ../include
+    ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 target_link_libraries(${TARGET}
