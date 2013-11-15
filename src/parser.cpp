@@ -1127,6 +1127,7 @@ bool Parser::parsePredicateParamsAndBody(Context &_ctx, AnonymousPredicate &_pre
             pBranch->setLabel(_ctx.createLabel(strLabel));
 
             pBranch->getLabel()->setLoc(&*locLabel);
+            _ctx.addLabel(pBranch->getLabel());
         }
     }
 
