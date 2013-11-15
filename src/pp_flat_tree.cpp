@@ -83,7 +83,6 @@ public:
     NAMED(Class, Name);
     NAMED(Module, Name);
     NAMED(VariableReference, Name);
-    NAMED(PredicateReference, Name);
     NAMED(FieldExpr, FieldName);
     NAMED(UnionAlternativeExpr, Name);
     NAMED(StructFieldDefinition, Name);
@@ -98,6 +97,30 @@ public:
     virtual bool visitLemmaDeclaration(ir::LemmaDeclaration &_node) {
         printLemmaStatus(_node.getStatus());
         PrettyPrinterFlatBase::visitLemmaDeclaration(_node);
+        return true;
+    }
+
+    virtual bool visitNode(ir::Node &_node) {
+        if (_node.getLoc() && m_path.size() > 1)
+            printLine(_node.getLoc());
+        return true;
+    }
+
+    virtual bool visitJump(ir::Jump &_node) {
+        PrettyPrinterFlatBase::visitJump(_node);
+        if (_node.getDestination()->getLoc())
+            printDestination(_node.getDestination()->getLoc());
+        return true;
+    }
+
+    virtual bool visitPredicateReference(ir::PredicateReference &_node) {
+        PrettyPrinterFlatBase::visitPredicateReference(_node);
+        m_path.back() += L"|";
+        m_path.back() += _node.getName();
+        printName(_node.getName());
+
+        if (_node.getTarget()->getLoc())
+            printDestination(_node.getTarget()->getLoc());
         return true;
     }
 
@@ -128,6 +151,18 @@ protected:
         for (std::list<std::wstring>::iterator i = m_path.begin(); i != m_path.end(); ++i)
             std::wcout << L"/" << *i;
         std::wcout << "/Name = " << _strName << "\n";
+    }
+
+    const void printLine(const lexer::Token *_pLoc) {
+        for (std::list<std::wstring>::iterator i = m_path.begin(); i != m_path.end(); ++i)
+            std::wcout << L"/" << *i;
+        std::wcout << "/Line = " << _pLoc->getLine() << "\n";
+    }
+
+    const void printDestination(const lexer::Token *_pLoc) {
+        for (std::list<std::wstring>::iterator i = m_path.begin(); i != m_path.end(); ++i)
+            std::wcout << L"/" << *i;
+        std::wcout << "/Destination/Line = " << _pLoc->getLine() << "\n";
     }
 };
 

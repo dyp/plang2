@@ -1114,6 +1114,8 @@ bool Parser::parsePredicateParamsAndBody(Context &_ctx, AnonymousPredicate &_pre
 
             std::wstring strLabel = _ctx.getValue();
 
+            lexer::Loc locLabel = _ctx.loc();
+
             if (_ctx.is(INTEGER) && wcstoul(strLabel.c_str(), NULL, 10) != _pred.getOutParams().size())
                 ERROR(_ctx, false, L"Numbers of numeric branch labels should correspond to branch order");
 
@@ -1123,6 +1125,8 @@ bool Parser::parsePredicateParamsAndBody(Context &_ctx, AnonymousPredicate &_pre
                 ERROR(_ctx, false, L"Duplicate branch name \"%ls\"", strLabel.c_str());
 
             pBranch->setLabel(_ctx.createLabel(strLabel));
+
+            pBranch->getLabel()->setLoc(&*locLabel);
         }
     }
 
@@ -1182,6 +1186,8 @@ PredicatePtr Parser::parsePredicate(Context &_ctx) {
     pCtx->addPredicate(pPred);
     pCtx = pCtx->createChild(true);
 
+    pPred->setLoc(&*_ctx.loc());
+
     if (!parsePredicateParamsAndBody(*pCtx, *pPred))
         return NULL;
 
@@ -1222,6 +1228,9 @@ VariableDeclarationPtr Parser::parseVariableDeclaration(Context &_ctx, int _nFla
         else
             return NULL;
     }
+
+    pDecl->getVariable()->setLoc(&*_ctx.loc());
+    pDecl->setLoc(&*_ctx.loc());
 
     _ctx.mergeChildren();
     _ctx.addVariable(pDecl->getVariable());
@@ -1284,6 +1293,8 @@ bool Parser::parseImport(Context &_ctx, Module &_module) {
 
     if (!ctx.consume(SEMICOLON))
         ERROR(ctx, NULL, L"Semicolon expected, got: %ls", TOK_S(ctx));
+
+    pInstanceModule->setLoc(&*_ctx.loc());
 
     _ctx.addModule(pInstanceModule);
     _ctx.addModuleCtx(pInstanceModule, new Context(pInstanceModule));
@@ -1822,6 +1833,8 @@ NamedValuePtr Parser::parseNamedValue(Context &_ctx) {
 
     NamedValuePtr pVar = new NamedValue(ctx.scan(), pType);
 
+    pVar->setLoc(&*_ctx.loc());
+
     _ctx.mergeChildren();
     _ctx.addVariable(pVar);
 
@@ -1985,6 +1998,8 @@ UnionConstructorDeclarationPtr Parser::parseConstructorDeclaration(Context &_ctx
             UNEXPECTED(ctx, ")");
     }
 
+    pCons->setLoc(&*_ctx.loc());
+
     _ctx.mergeChildren();
     _ctx.addConstructor(pCons);
 
@@ -2000,6 +2015,8 @@ EnumValuePtr Parser::parseEnumValue(Context &_ctx) {
 
     _ctx.addVariable(pVar);
 
+    pVar->setLoc(&*::prev(_ctx.loc()));
+
     return pVar;
 }
 
@@ -2010,6 +2027,8 @@ NamedValuePtr Parser::parseVariableName(Context &_ctx, int /* _nFlags */) {
     NamedValuePtr pVar = new NamedValue(_ctx.scan());
 
     _ctx.addVariable(pVar);
+
+    pVar->setLoc(&*::prev(_ctx.loc()));
 
     return pVar;
 }
@@ -2033,6 +2052,8 @@ TypeDeclarationPtr Parser::parseTypeDeclaration(Context &_ctx) {
     }
 
     _ctx.addType(pDecl); // So that recursive definitions would work.
+
+    pDecl->setLoc(&*_ctx.loc());
 
     if (pCtx->consume(EQ)) {
         TypePtr pType = parseType(* pCtx);
@@ -2434,6 +2455,7 @@ ExpressionPtr Parser::parseCallResult(Context &_ctx, VariableDeclarationPtr &_pD
         _pDecl->getVariable()->setMutable(false);
         pExpr = new VariableReference(_pDecl->getVariable());
         _ctx.addVariable(_pDecl->getVariable());
+        _pDecl->getVariable()->setLoc(&*_ctx.loc());
     }
 
     if (!pExpr) {
@@ -2658,6 +2680,8 @@ ProcessPtr Parser::parseProcess(Context &_ctx) {
 
     ProcessPtr pProcess = new Process(ctx.scan());
 
+    pProcess->setLoc(&*_ctx.loc());
+
     if (!ctx.consume(LPAREN))
         UNEXPECTED(ctx, "(");
 
@@ -2705,6 +2729,8 @@ FormulaDeclarationPtr Parser::parseFormulaDeclaration(Context &_ctx) {
 
     Context *pCtx = _ctx.createChild(false, ALLOW_FORMULAS);
     FormulaDeclarationPtr pDecl = new FormulaDeclaration(pCtx->scan(2, 1));
+
+    pDecl->setLoc(&*_ctx.loc());
 
     pCtx->addFormula(pDecl);
     pCtx = pCtx->createChild(true, ALLOW_FORMULAS);
@@ -3032,6 +3058,8 @@ ModulePtr Parser::parseModule(Context &_ctx, bool _bTopLevel) {
         ERROR(ctx, NULL, L"Identifier expected");
 
     ModulePtr pModule = new Module(ctx.scan());
+
+    pModule->setLoc(&*_ctx.loc());
 
     if (ctx.consume(LPAREN)) {
         if (!parseParamList(ctx, pModule->getParams(), &Parser::parseVariableName))

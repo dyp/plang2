@@ -26,6 +26,7 @@
 #include <functional>
 
 #include "autoptr.h"
+#include "lexer.h"
 
 namespace ir {
 
@@ -103,6 +104,9 @@ public:
 
     virtual NodesPtr getChildren() const;
 
+    void setLoc(lexer::Token *_pLoc) { m_pLoc = _pLoc; }
+    const lexer::Token *getLoc() const { return m_pLoc; }
+
     bool operator<(const Node& _other) const { return less(_other); }
     bool operator>(const Node& _other) const { return _other < *this; }
     bool operator==(const Node& _other) const { return equals(_other); }
@@ -117,6 +121,10 @@ public:
 protected:
     static bool _less(const NodePtr& _pLeft, const NodePtr& _pRight) { return (_pLeft && _pRight) ? *_pLeft < *_pRight : !_pLeft && _pRight; }
     static bool _equals(const NodePtr& _pLeft, const NodePtr& _pRight) { return (_pLeft && _pRight) ? *_pLeft == *_pRight : (bool)_pLeft == (bool)_pRight; }
+
+private:
+    lexer::Token *m_pLoc = nullptr;
+    // TODO: assignment of m_pLoc for all Nodes.
 };
 
 /// Collection of homogeneous nodes.
