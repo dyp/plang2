@@ -63,7 +63,7 @@ int main(int _argc, const char ** _argv) {
     }
 
     if (bPreconditions || bCVC3)
-        Options::instance().typeCheck = TC_ON;
+        Options::instance().typeCheck = TC_FULL;
     else
         Options::instance().typeCheck = TC_NONE;
 

@@ -18,9 +18,10 @@ enum {
 
 // Type check.
 enum {
-    TC_NONE = 0,
-    TC_ON   = 1,
-    TC_SOFT = 2,
+    TC_NONE       = 0,
+    TC_FULL       = 1,
+    TC_SOFT       = 2,
+    TC_PREPROCESS = 3,
 };
 
 // Back end.

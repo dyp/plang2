@@ -52,9 +52,11 @@ bool _handleTypeCheck(const std::string &_val, void *_p) {
     if (_val == "none" || _val == "0")
         opts.typeCheck = TC_NONE;
     else if (_val == "on" || _val == "1")
-        opts.typeCheck = TC_ON;
+        opts.typeCheck = TC_FULL;
     else if (_val == "soft" || _val == "2")
         opts.typeCheck = TC_SOFT;
+    else if (_val == "preprocess" || _val == "3")
+        opts.typeCheck = TC_PREPROCESS;
     else
         return false;
 
@@ -111,7 +113,7 @@ void _printUsage() {
         << "Options\n\n"
         << "    -p, --prettyprint=TYPE        Pretty-printer mode, where TYPE is 'none' (0), 'flat' (1), 'ast' (2), 'lex' (3), 'p' (4)\n"
         << "    -b, --backend=TYPE            Use backend, where TYPE is 'none' (0), 'pp' (1), 'c' (2), 'pvs' (3)\n"
-        << "    -t, --typecheck=TYPE          Do typecheck, where TYPE is 'none' (0), 'on' (1), 'soft' (2)\n"
+        << "    -t, --typecheck=TYPE          Do typecheck, where TYPE is 'none' (0), 'on' (1), 'soft' (2), 'preprocess' (3)\n"
         << "    -T, --transformation=TYPE     Do optimizing transformation, where TYPE is 'none' (0), 'tailrec' (1), 'predinline' (2), 'varmerge' (3)\n"
         << "    -e, --verify=TYPE             Generate logical conditions for proving program correctness,\n"
         << "                                  where TYPE is 'none' (0), 'nothing' (1), 'formulas' (2), 'verbose' (3)\n"
@@ -160,7 +162,7 @@ bool Options::init(size_t _cArgs, const char **_pArgs) {
 
 Options::Options() :
     prettyPrint(PP_NONE),
-    typeCheck(TC_ON),
+    typeCheck(TC_FULL),
     backEnd(BE_NONE),
     transformation(OT_NONE),
     verify(V_NONE),

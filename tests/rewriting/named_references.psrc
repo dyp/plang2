@@ -1,0 +1,26 @@
+/*
+
+<test>
+    Q/TypeDeclBody = nat
+    W/TypeDeclBody = nat
+    E/TypeDeclBody//SubtypeParam/Type/Name = _T
+    R/TypeDeclBody//SubtypeParam/Type = nat
+    T/TypeDeclBody//SubtypeParam/Type = real
+    Y/TypeDeclBody//SubtypeParam/Type/Name = _T
+    Y/TypeDeclBody//SubtypeCond//VariableReference = _n
+    U/TypeDeclBody//SubtypeParam/Type = int
+    U/TypeDeclBody//SubtypeCond//Literal = 10
+    I/TypeDeclBody//SubtypeParam//Subtype//SubtypeParam/Type = real
+    I/TypeDeclBody//SubtypeCond//Literal = 10
+</test>
+
+*/
+
+type Q = nat;
+type W = Q;
+type E(type _T) = subtype(_T t : t > 0);
+type R = E(W);
+type T = E(real);
+type Y(type _T, nat _n) = subtype(_T t : t > _n);
+type U = Y(int, 10);
+type I = Y(T, 10);

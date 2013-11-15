@@ -222,6 +222,11 @@ public:
         Counted::ref(_pNew.m_pObj);
     }
 
+    template<class _Obj>
+    bool isKnown(const Auto<_Obj> &_pObj) const {
+        return m_handles.find(_pObj.ptr()) != m_handles.cend();
+    }
+
     void *allocate(size_t _cSize, const void *_pOriginal);
     void *allocate(size_t _cSize, const Counted *_pOriginal);
 

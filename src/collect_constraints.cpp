@@ -9,6 +9,7 @@
 #include "typecheck.h"
 #include "prettyprinter.h"
 #include "pp_syntax.h"
+#include "options.h"
 
 #include <ir/statements.h>
 #include <ir/builtins.h>
@@ -53,8 +54,6 @@ public:
 
     virtual bool visitTypeExpr(TypeExpr &_expr);
 
-    virtual bool visitNamedReferenceType(NamedReferenceType &_type);
-
     virtual int handlePredicateInParam(Node &_node);
     virtual int handlePredicateOutParam(Node &_node);
     virtual int handleParameterizedTypeParam(Node &_node);
@@ -64,8 +63,9 @@ public:
 
     virtual bool traverseSwitch(Switch &_stmt);
 
-protected:
     tc::FreshTypePtr createFresh(const TypePtr &_pCurrent = NULL);
+
+protected:
     tc::FreshTypePtr getKnownType(const TypePtr &_pType);
     void collectParam(const NamedValuePtr &_pParam, int _nFlags);
 
@@ -1097,36 +1097,6 @@ int Collector::handleParameterizedTypeParam(Node &_node) {
     return 0;
 }
 
-bool Collector::visitNamedReferenceType(NamedReferenceType &_type) {
-    NodeSetter *pSetter = getNodeSetter();
-    if (pSetter == NULL)
-        return true;
-
-    if (!_type.getDeclaration()->getType())
-        _type.getDeclaration()->setType(createFresh());
-
-    TypePtr pDeclType = _type.getDeclaration()->getType();
-    if (_type.getArgs().empty()) {
-        pSetter->set(pDeclType);
-        return true;
-    }
-
-    assert(pDeclType->getKind() == Type::PARAMETERIZED);
-    ParameterizedTypePtr pOrigType = pDeclType.as<ParameterizedType>();
-    TypePtr pType = clone(*pOrigType->getActualType());
-
-    for (size_t i=0; i < pOrigType->getParams().size(); ++i) {
-        TypePtr pParamType = pOrigType->getParams().get(i)->getType();
-        if (pParamType->getKind() != Type::TYPE)
-            pType = Expression::substitute(pType, new VariableReference(pOrigType->getParams().get(i)), _type.getArgs().get(i)).as<Type>();
-        else
-            pType->rewrite(pParamType, _type.getArgs().get(i).as<TypeExpr>()->getContents());
-    }
-
-    pSetter->set(pType);
-    return true;
-}
-
 bool Collector::visitTypeExpr(TypeExpr &_expr) {
     TypeTypePtr pType = new TypeType();
     pType->setDeclaration(new TypeDeclaration(L"", _expr.getContents()));
@@ -1154,8 +1124,94 @@ int Collector::handleSwitchCaseValuePost(Node &_node) {
     return 0;
 }
 
+namespace {
+
+struct Resolver : public Visitor {
+    Collector &m_collector;
+    Cloner &m_cloner;
+    bool &m_bModified;
+
+    Resolver(Collector &_collector, Cloner &_cloner, bool _bModified) :
+        Visitor(CHILDREN_FIRST), m_collector(_collector), m_cloner(_cloner),
+        m_bModified(_bModified)
+    {
+    }
+
+    virtual bool visitNamedReferenceType(NamedReferenceType &_type) {
+        NodeSetter *pSetter = getNodeSetter();
+        if (pSetter == NULL)
+            return true;
+
+        TypePtr pDeclType = _type.getDeclaration()->getType();
+
+        if (!pDeclType && Options::instance().typeCheck == TC_PREPROCESS)
+            return true;
+
+        m_bModified = true;
+
+        if (!pDeclType || (pDeclType->getKind() == Type::FRESH &&
+                !m_cloner.isKnown(pDeclType)))
+        {
+            TypePtr pFresh = m_collector.createFresh();
+
+            _type.getDeclaration()->setType(pFresh);
+
+            if (pDeclType)
+                m_cloner.inject(pFresh, pDeclType);
+            else {
+                m_cloner.inject(pFresh);
+                pDeclType = pFresh;
+            }
+        }
+
+        if (_type.getArgs().empty()) {
+            pSetter->set(m_cloner.get(pDeclType));
+            return true;
+        }
+
+        assert(pDeclType->getKind() == Type::PARAMETERIZED);
+        ParameterizedTypePtr pOrigType = pDeclType.as<ParameterizedType>();
+        TypePtr pType = m_cloner.get(pOrigType->getActualType());
+
+        for (size_t i = 0; i < pOrigType->getParams().size(); ++i) {
+            TypePtr pParamType = pOrigType->getParams().get(i)->getType();
+            if (pParamType->getKind() != Type::TYPE) {
+                ExpressionPtr pParamReference = new VariableReference(
+                        pOrigType->getParams().get(i));
+                ExpressionPtr pArgument = _type.getArgs().get(i);
+                pType = Expression::substitute(pType, pParamReference, pArgument).as<Type>();
+            } else {
+                TypePtr pParamReference = new NamedReferenceType(
+                        pParamType.as<TypeType>()->getDeclaration());
+                TypePtr pArgument = _type.getArgs().get(i).as<TypeExpr>()->getContents();
+                pType->rewrite(pParamReference, pArgument);
+            }
+        }
+
+        pSetter->set(pType);
+        return true;
+    }
+};
+
+}
+
+static
+void _resolveNamedReferenceTypes(Node &_node, Collector &_collector) {
+    Cloner cloner;
+    bool bModified = false;
+
+    do
+        Resolver(_collector, cloner, bModified).traverseNode(_node);
+    while (bModified);
+}
+
 void tc::collect(tc::Formulas &_constraints, Node &_node, ir::Context &_ctx) {
     Collector collector(_constraints, _ctx);
+
+    _resolveNamedReferenceTypes(_node, collector);
+
+    if (Options::instance().typeCheck == TC_PREPROCESS)
+        return;
 
     tc::ContextStack::push(::ref(&_constraints));
     collector.traverseNode(_node);

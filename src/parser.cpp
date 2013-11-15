@@ -2876,16 +2876,17 @@ bool Parser::typecheck(Context &_ctx, Node &_node) {
 
     try {
         tc::collect(constraints, _node, _ctx);
-    }
-    catch (const std::exception &_e) {
+    } catch (const std::exception &_e) {
         ERROR(_ctx, false, L"Type error: %s", _e.what());
     }
+
+    if (Options::instance().typeCheck == TC_PREPROCESS)
+        return true;
 
     if (tc::solve(constraints, substs)) {
         tc::apply(substs, _node);
         tc::linkPredicates(_ctx, _node);
-    }
-    else if (Options::instance().typeCheck != TC_SOFT)
+    } else if (Options::instance().typeCheck == TC_FULL)
         ERROR(_ctx, false, L"Type error");
 
     return true;

@@ -185,6 +185,10 @@ set(TESTS_INFERENCE
     inference/arithmetic_overflow.psrc
 )
 
+set(TESTS_REWRITING
+    rewriting/named_references.psrc
+)
+
 set(TESTS_PRETTYPRINTER
     prettyprinter/simply_formulas.psrc
     prettyprinter/call_branch_label_after_branch_arg.psrc
@@ -263,6 +267,7 @@ set(TESTS_CVC3
 
 run_tests("-t0" "${TESTS_PARSING}")
 run_tests("-t2" "${TESTS_INFERENCE}")
+run_tests("-t3" "${TESTS_REWRITING}")
 run_tests("-t1" "${TESTS_SEMANTICS}")
 run_pp_tests("-t0" "${TESTS_PRETTYPRINTER}")
 run_cg_tests("-t2" "${TESTS_CALLGRAPH}")
