@@ -2622,7 +2622,7 @@ StatementPtr Parser::parseStatement(Context &_ctx) {
         return pStmt;
     }
 
-    if (_ctx.getType(_ctx.getValue()))
+    if (_ctx.getType(_ctx.getValue()) || _ctx.getModule(_ctx.getValue()))
         return parseVariableDeclarationGroup(_ctx, LOCAL_VARIABLE);
 
     Context &ctx = *_ctx.createChild(false);
@@ -2904,7 +2904,9 @@ bool Parser::parseDeclarations(Context &_ctx, Module &_module) {
                     ERROR(*pCtx, false, L"Failed parsing submodule");
                 break;
             case IDENTIFIER:
-                if (! pCtx->getType(pCtx->getValue())) {
+                if (!pCtx->getType(pCtx->getValue()) &&
+                        !pCtx->getModule(pCtx->getValue()))
+                {
                     if (PredicatePtr pPred = parsePredicate(*pCtx)) {
                         _module.getPredicates().add(pPred);
                         if (!typecheck(*pCtx, *pPred))
