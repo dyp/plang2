@@ -1,0 +1,19 @@
+module Matrix(type T, int n, int m) {
+    type M = array(T, 0 .. (n - 1), 0 .. (m - 1));
+
+    formula isSquare(:bool) = (n = m);
+
+    add(M a, b: M c) {
+        c = for (nat i, j) {
+            case (0 .. (n - 1), 0 .. (m - 1)): a[i, j] + b[i, j]
+        }
+    }
+}
+
+module A {
+    import Matrix(nat, 3, 3) as M;
+
+    M.M a, b;
+
+    M.M c = M.add(a, b);
+}

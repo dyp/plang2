@@ -166,6 +166,7 @@ set(TESTS_PARSING
     parsing/literal.psrc
     parsing/lemma_status.psrc
     parsing/normalize_binary.psrc
+    parsing/import.psrc
 )
 
 set(TESTS_INFERENCE
