@@ -1,0 +1,11 @@
+/*
+
+<test>
+    //Jump/Destination/Line = 9
+</test>
+
+*/
+
+baz(int a: int b #1: #2) {
+    #1
+}
