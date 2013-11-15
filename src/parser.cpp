@@ -769,8 +769,8 @@ ExpressionPtr Parser::parseAtom(Context &_ctx) {
         if (bLinkedIdentifier && !pExpr)
             ERROR(ctx, NULL, L"Parameter with name %ls not found", str.c_str());
 
-        if (!pExpr && _ctx.getConstructor(str)) {
-            if (moduleCtx.nextIs(QUESTION) && !moduleCtx.nextLoc()->hasLeadingSpace()) {
+        if (!pExpr && moduleCtx.getConstructor(str)) {
+            if (ctx.nextIs(QUESTION) && !ctx.nextLoc()->hasLeadingSpace()) {
                 assert(false && "Unimplemented");
                 // ParseRecognizer?
             } else
