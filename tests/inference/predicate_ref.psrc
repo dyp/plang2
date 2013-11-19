@@ -1,0 +1,15 @@
+/*
+
+<test>
+    //Call/bar/Destination/Line = 15
+</test>
+
+*/
+
+bar(int a: int b);
+
+baz(int a: int b) {
+    bar(a: b);
+}
+
+bar(int a: int b) { b = a }
