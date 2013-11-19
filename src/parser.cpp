@@ -2515,10 +2515,9 @@ CallPtr Parser::parseCall(Context &_ctx) {
     std::wstring name = ctx.getValue();
     ExpressionPtr pExpr;
 
-    if (PredicatePtr pPred = ctx.getPredicate(name)) {
+    if (ctx.getPredicate(name)) {
         ++ctx;
-        pExpr = new PredicateReference(pPred);
-        pExpr->setType(pPred->getType());
+        pExpr = new PredicateReference(name);
     } else {
         pExpr = parseAtom(ctx);
 
