@@ -49,7 +49,9 @@ def extractTest(_fileName):
     return s
 
 def makeRegExPart(_part):
-    return re.sub(r"/([^|/]*)(?=(/|\Z))", r"/([^/=]*\||)\1(\|[^/=]*|)", _part)
+    _part = re.sub(r"([$.^*+?\\{}()\[\]])", r"[\1]", _part)
+    _part = re.sub(r"/([^|/]*)(?=(/|\Z))", r"/([^/=]*\||)\1(\|[^/=]*|)", _part)
+    return _part
 
 def makeRegEx(_test):
     if not _test:
