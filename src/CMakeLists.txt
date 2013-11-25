@@ -16,6 +16,7 @@ set(SOURCES
     ir/type_struct.cpp
     ir/type_union.cpp
     ir/visitor.cpp
+    ir/declarations.cpp
     backend_c.cpp
     backend_debug.cpp
     backend_pvs.cpp

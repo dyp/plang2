@@ -32,21 +32,8 @@ public:
 
     bool isBuiltin() const { return m_bBuiltin; }
 
-    virtual bool less(const Node& _other) const {
-        if (!AnonymousPredicate::equals(_other))
-            return AnonymousPredicate::less(_other);
-        const Predicate& other = (const Predicate&)_other;
-        if (isBuiltin() != other.isBuiltin())
-            return !isBuiltin() && other.isBuiltin();
-        return getName() < other.getName();
-    }
-
-    virtual bool equals(const Node& _other) const {
-        if (!AnonymousPredicate::equals(_other))
-            return false;
-        const Predicate& other = (const Predicate&)_other;
-        return isBuiltin() == other.isBuiltin() && getName() == other.getName();
-    }
+    virtual bool less(const Node& _other) const;
+    virtual bool equals(const Node& _other) const;
 
     virtual NodePtr clone(Cloner &_cloner) const {
         PredicatePtr pCopy = NEW_CLONE(this, _cloner, Predicate(getName(), isBuiltin()));
@@ -265,21 +252,8 @@ public:
 
     std::wstring getName() const;
 
-    virtual bool less(const Node& _other) const {
-        if (!Statement::equals(_other))
-            return Statement::less(_other);
-        const VariableDeclaration& other = (const VariableDeclaration&)_other;
-        if (!_equals(getVariable(), other.getVariable()))
-            return _less(getVariable(), other.getVariable());
-        return _less(getValue(), other.getValue());
-    }
-
-    virtual bool equals(const Node& _other) const {
-        if (!Statement::equals(_other))
-            return false;
-        const VariableDeclaration& other = (const VariableDeclaration&)_other;
-        return _equals(getVariable(), other.getVariable()) && _equals(getValue(), other.getValue());
-    }
+    virtual bool less(const Node& _other) const;
+    virtual bool equals(const Node& _other) const;
 
     virtual NodePtr clone(Cloner &_cloner) const {
         return NEW_CLONE(this, _cloner, VariableDeclaration(_cloner.get(getVariable()), _cloner.get(getValue()), _cloner.get(getLabel())));
@@ -392,25 +366,8 @@ public:
     /// \param _pFormula Formula.
     void setFormula(const ExpressionPtr &_pFormula) { m_pFormula = _pFormula; }
 
-    virtual bool less(const Node& _other) const {
-        if (!Statement::equals(_other))
-            return Statement::less(_other);
-        const FormulaDeclaration& other = (const FormulaDeclaration&)_other;
-        if (getName() != other.getName())
-            return getName() < other.getName();
-        if (!_equals(getResultType(), other.getResultType()))
-            return _less(getResultType(), other.getResultType());
-        if (!_equals(getFormula(), other.getFormula()))
-            return _less(getFormula(), other.getFormula());
-        return getParams() < other.getParams();
-    }
-
-    virtual bool equals(const Node& _other) const {
-        const FormulaDeclaration& other = (const FormulaDeclaration&)_other;
-        return getName() == other.getName()
-            && _equals(getResultType(), other.getResultType())
-            && getParams() == other.getParams();
-    }
+    virtual bool less(const Node& _other) const;
+    virtual bool equals(const Node& _other) const;
 
     virtual NodePtr clone(Cloner &_cloner) const {
         FormulaDeclarationPtr pCopy = NEW_CLONE(this, _cloner, FormulaDeclaration(getName(), _cloner.get(getResultType()), _cloner.get(getFormula()), _cloner.get(getLabel())));
@@ -459,6 +416,9 @@ public:
     /// Set lemma status.
     /// \param _newStatus New lemma status.
     void setStatus(int _newStatus) { m_cStatus = _newStatus; }
+
+    virtual bool less(const Node& _other) const;
+    virtual bool equals(const Node& _other) const;
 
     virtual NodePtr clone(Cloner &_cloner) const {
         return NEW_CLONE(this, _cloner, LemmaDeclaration(_cloner.get(getProposition()), _cloner.get(getLabel())));
@@ -509,6 +469,9 @@ public:
     /// \return List of lemmas.
     Collection<LemmaDeclaration> &getLemmas() { return m_lemmas; }
     const Collection<LemmaDeclaration> &getLemmas() const { return m_lemmas; }
+
+    virtual bool less(const Node& _other) const;
+    virtual bool equals(const Node& _other) const;
 
     void cloneTo(DeclarationGroup &_dg, Cloner &_cloner) const {
         _dg.getPredicates().appendClones(getPredicates(), _cloner);
@@ -604,6 +567,9 @@ public:
     /// \return List of declared submodules.
     Collection<Module> &getModules() { return m_modules; }
     const Collection<Module> &getModules() const { return m_modules; }
+
+    virtual bool less(const Node& _other) const;
+    virtual bool equals(const Node& _other) const;
 
     virtual NodePtr clone(Cloner &_cloner) const {
         ModulePtr pCopy = NEW_CLONE(this, _cloner, Module(getName()));
