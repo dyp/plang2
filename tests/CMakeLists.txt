@@ -184,6 +184,7 @@ set(TESTS_INFERENCE
     inference/array_constructor.psrc
     inference/array_iterator.psrc
     inference/arithmetic_overflow.psrc
+    inference/pragmas.psrc
 )
 
 set(TESTS_REWRITING

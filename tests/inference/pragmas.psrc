@@ -1,0 +1,17 @@
+/*
+
+<test>
+	i/Type = int(32)
+	! j/Type = nat(9)
+</test>
+
+*/
+
+pragma(int_bitness: 32) {
+	int i = 10;
+}
+
+pragma(int_bitness: 8) {
+	nat j = 300; // Type error since 'j' is nat(8) and doesn't fit literal '300'.
+}
+
