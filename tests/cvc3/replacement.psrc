@@ -1,8 +1,16 @@
 /*
 
 <test>
+    # lemma a = a.[1: 0, 2 : 3];
+    # Example: (a_1 = ((a_1 WITH [1] := 0) WITH [2] := 3))
     ~~ \(\(a\w* WITH \[1\] := 0\) WITH \[2\] := 3\)
+
+    # lemma m = m.[1: 1];
+    # Example: (m_1 = (m_1 WITH [1] := 1))
     ~~ \(m\w* WITH \[1\] := 1\)
+
+    # lemma s = s.(a: 1);
+    # Example: (s_1 = (# a := 1, b := (s_1).b, c := (s_1).c #))
     ~~ a := 1, b := \(s\w*\).b, c := \(s\w*\).c
 </test>
 
