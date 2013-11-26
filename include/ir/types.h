@@ -84,6 +84,7 @@ public:
     Collection<Expression> &getArgs() { return m_args; }
     const Collection<Expression> &getArgs() const { return m_args; }
 
+    virtual bool rewrite(const TypePtr &_pOld, const TypePtr &_pNew, bool _bRewriteFlags = true);
     virtual bool less(const Type &_other) const;
     virtual bool equals(const Type &_other) const;
 
