@@ -155,6 +155,10 @@ public:
     NamedValues *getAllFields() { return m_fields; }
     const NamedValues *getAllFields() const { return m_fields; }
 
+    size_t size() const { return m_namesOrd.size() + m_typesOrd.size() + m_namesSet.size(); }
+
+    NamedValuesPtr mergeFields() const;
+
     virtual bool hasFresh() const;
     virtual bool rewrite(const TypePtr &_pOld, const TypePtr &_pNew, bool _bRewriteFlags = true);
     virtual int compare(const Type &_other) const;

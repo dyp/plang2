@@ -19,6 +19,14 @@ bool StructType::empty() const {
     return m_fields[0].empty() && m_fields[1].empty() && m_fields[2].empty();
 }
 
+NamedValuesPtr StructType::mergeFields() const {
+    NamedValuesPtr pMerged = new NamedValues();
+    pMerged->append(getNamesOrd());
+    pMerged->append(getTypesOrd());
+    pMerged->append(getNamesSet());
+    return pMerged;
+}
+
 bool StructType::hasFresh() const {
     for (size_t j = 0; j < 3; ++j)
         for (size_t i = 0; i < m_fields[j].size(); ++i)
