@@ -299,8 +299,6 @@ public:
     UnionConstructorDeclarations &getConstructors() { return m_constructors; }
     const UnionConstructorDeclarations &getConstructors() const { return m_constructors; }
 
-    UnionFieldIdx findField(const std::wstring &_strName) const;
-
     virtual int compare(const Type &_other) const;
 
     virtual bool hasFresh() const;
