@@ -323,8 +323,6 @@ bool Visitor::traverseComponent(Component &_expr) {
             return traverseArrayPartExpr((ArrayPartExpr &)_expr);
         case Component::STRUCT_FIELD:
             return traverseFieldExpr((FieldExpr &)_expr);
-        case Component::UNION_ALTERNATIVE:
-            return traverseUnionAlternativeExpr((UnionAlternativeExpr &)_expr);
         case Component::MAP_ELEMENT:
             return traverseMapElementExpr((MapElementExpr &)_expr);
         case Component::LIST_ELEMENT:
@@ -346,12 +344,6 @@ bool Visitor::traverseArrayPartExpr(ArrayPartExpr &_expr) {
 bool Visitor::traverseFieldExpr(FieldExpr &_expr) {
     ENTER(FieldExpr, _expr);
     TRAVERSE(Expression, FieldObject, _expr.getObject(), _expr, Component, setObject);
-    EXIT();
-}
-
-bool Visitor::traverseUnionAlternativeExpr(UnionAlternativeExpr &_expr) {
-    ENTER(UnionAlternativeExpr, _expr);
-    TRAVERSE(Expression, UnionAlternativeObject, _expr.getObject(), _expr, Component, setObject);
     EXIT();
 }
 

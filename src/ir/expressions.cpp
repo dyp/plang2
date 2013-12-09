@@ -42,29 +42,6 @@ std::wstring VariableDeclaration::getName() const {
     return m_pVar ? m_pVar->getName() : L"";
 }
 
-UnionFieldIdx UnionType::findField(const std::wstring &_strName) const {
-    for (size_t i = 0; i < m_constructors.size(); ++i) {
-        size_t cIdx = m_constructors.get(i)->getFields().findByNameIdx(_strName);
-        if (cIdx != (size_t) -1)
-            return UnionFieldIdx(i, cIdx);
-    }
-
-    return UnionFieldIdx((size_t) -1, (size_t) -1);
-}
-
-UnionAlternativeExpr::UnionAlternativeExpr(const UnionTypePtr &_pType, const UnionFieldIdx &_idx) :
-    m_strName(_pType->getConstructors().get(_idx.first)->getFields().get(_idx.second)->getName()), m_pType(_pType), m_idx(_idx)
-{
-}
-
-UnionConstructorDeclarationPtr UnionAlternativeExpr::getConstructor() const {
-    return getUnionType()->getConstructors().get(m_idx.first);
-}
-
-NamedValuePtr UnionAlternativeExpr::getField() const {
-    return getConstructor()->getFields().get(m_idx.second);
-}
-
 static std::map<std::pair<int, int>, int> g_precMap;
 
 #define ADD_PRECEDENCE(_KIND, _PREC, _OPERATOR) \
@@ -646,29 +623,6 @@ bool FieldExpr::equals(const Node& _other) const {
 }
 
 bool FieldExpr::matches(const Expression& _other, MatchesPtr _pMatches) const {
-    if (!Component::equals(_other))
-        return Component::matches(_other, _pMatches);
-    return *this == _other;
-}
-
-bool UnionAlternativeExpr::less(const Node& _other) const {
-    if (!Component::equals(_other))
-        return Component::less(_other);
-    const UnionAlternativeExpr& other = (const UnionAlternativeExpr&)_other;
-    if (getName() != other.getName())
-        return getName() < other.getName();
-    return getIdx() < other.getIdx();
-}
-
-bool UnionAlternativeExpr::equals(const Node& _other) const {
-    if (!Component::equals(_other))
-        return false;
-    const UnionAlternativeExpr& other = (const UnionAlternativeExpr&)_other;
-    return getName() == other.getName()
-        && getIdx() == other.getIdx();
-}
-
-bool UnionAlternativeExpr::matches(const Expression& _other, MatchesPtr _pMatches) const {
     if (!Component::equals(_other))
         return Component::matches(_other, _pMatches);
     return *this == _other;
