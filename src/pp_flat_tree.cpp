@@ -108,7 +108,7 @@ public:
 
     virtual bool visitJump(ir::Jump &_node) {
         PrettyPrinterFlatBase::visitJump(_node);
-        if (_node.getDestination()->getLoc())
+        if (_node.getDestination() && _node.getDestination()->getLoc())
             printDestination(_node.getDestination()->getLoc());
         return true;
     }
@@ -119,7 +119,7 @@ public:
         m_path.back() += _node.getName();
         printName(_node.getName());
 
-        if (_node.getTarget()->getLoc())
+        if (_node.getTarget() && _node.getTarget()->getLoc())
             printDestination(_node.getTarget()->getLoc());
         return true;
     }
