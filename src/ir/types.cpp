@@ -388,6 +388,20 @@ bool UnionConstructorDeclaration::equals(const Node& _other) const {
         && getFields() == other.getFields();
 }
 
+bool NamedReferenceType::rewrite(const TypePtr &_pOld, const TypePtr &_pNew, bool _bRewriteFlags) {
+    bool bResult = false;
+    for (size_t i = 0; i < m_args.size(); ++i) {
+        if (m_args.get(i)->getKind() != Expression::TYPE)
+            continue;
+        TypePtr pType = m_args.get(i).as<TypeExpr>()->getContents();
+        if (tc::rewriteType(pType, _pOld, _pNew, _bRewriteFlags)) {
+            m_args.get(i).as<TypeExpr>()->setContents(pType);
+            bResult = true;
+        }
+    }
+    return bResult;
+}
+
 bool NamedReferenceType::less(const Type &_other) const {
     assert(_other.getKind() == Type::NAMED_REFERENCE);
     const NamedReferenceType &other = (const NamedReferenceType &)_other;
