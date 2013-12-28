@@ -585,6 +585,9 @@ bool Inference::split(const Sequent& _sequent) {
         else
             pTail->addConjunct(*i);
 
+    // A |- B & L(C) =>
+    //    A |- B
+    //    A |- L(C)
     m_context.addCondition(new Sequent(_sequent.left(), pTail));
 
     m_context.m_cLastUsedRule = Context::SPLIT;
