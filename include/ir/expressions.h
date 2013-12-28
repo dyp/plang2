@@ -183,6 +183,9 @@ public:
     void swap(MarkedMap& _other) {
         m_map.swap(_other.m_map);
     }
+    size_t size() const {
+        return m_map.size();
+    }
 protected:
     std::map<Auto<_Marker>, ExpressionPtr, PtrLess<_Marker> > m_map;
 };
