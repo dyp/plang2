@@ -822,7 +822,7 @@ bool PrettyPrinterSyntax::_traverseAnonymousPredicate(AnonymousPredicate &_decl)
     bHavePreConditions = bHavePreConditions || _decl.getPreCondition();
     bHavePostConditions = bHavePostConditions || _decl.getPostCondition();
 
-    m_os << L") ";
+    m_os << L")";
 
     if (bHavePreConditions) {
         m_os << L"\n";
@@ -843,6 +843,8 @@ bool PrettyPrinterSyntax::_traverseAnonymousPredicate(AnonymousPredicate &_decl)
     else
         mergeLines();
 
+    if (_decl.getBlock())
+        m_os << L" ";
     traverseStatement(*_decl.getBlock());
 
     if (bHavePostConditions) {
