@@ -55,11 +55,14 @@ public:
     }
 
     const size_t getOrder() const {
+        assert(!m_nodePredicates.empty());
         return m_nodePredicates.begin()->second;
     }
 
     const size_t getOrder(AnonymousPredicate *_pPred) const {
-        return m_nodePredicates.find(_pPred)->second;
+        auto iPred = m_nodePredicates.find(_pPred);
+        assert(iPred != m_nodePredicates.end());
+        return iPred->second;
     }
 
     bool isRecursive() const {
@@ -122,13 +125,14 @@ public:
     CallGraph() {}
 
     CallGraph(const CallGraph &_graph) {
-        for (const auto &i: _graph.getNodes())
-            addNode(i.getPredicate(), i.getOrder());
+        for (const auto &node: _graph.getNodes())
+            addNode(node.getPredicate(), node.getOrder());
 
-        for (const auto &i: _graph.getNodes())
-            for (const auto &j: i.getCallees()) {
-                m_nodes.find(i)->addCallee(&*m_nodes.find(*j));
-                m_nodes.find(*j)->setCalled();
+        for (const auto &node: _graph.getNodes())
+            for (const auto &pCallee: node.getCallees()) {
+                auto iCallee = m_nodes.find(*pCallee);
+                m_nodes.find(node)->addCallee(&*iCallee);
+                iCallee->setCalled();
             }
     }
 
@@ -150,18 +154,18 @@ public:
     void addCall(AnonymousPredicate *_pCaller, AnonymousPredicate *_pCallee) {
         const CallGraphNode *pFirst = nullptr, *pSecond = nullptr;
 
-        for (const auto &i: m_nodes) {
-            if (i.getPredicates().find(_pCaller) != i.getPredicates().end())
-                pFirst = &i;
-            if (i.getPredicates().find(_pCallee) != i.getPredicates().end())
-                pSecond = &i;
+        for (const auto &node: m_nodes) {
+            if (node.getPredicates().find(_pCaller) != node.getPredicates().end())
+                pFirst = &node;
+            if (node.getPredicates().find(_pCallee) != node.getPredicates().end())
+                pSecond = &node;
         }
 
         if (pFirst && pSecond) {
             pFirst->addCallee(pSecond);
             pSecond->setCalled();
         } else
-            throw std::logic_error("Caller or callee not found in graph nodes.");
+            throw std::logic_error("Caller or callee not found among graph nodes.");
     }
 
 private:

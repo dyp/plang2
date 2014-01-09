@@ -30,6 +30,7 @@
 #include "verification.h"
 #include "generate_callgraph.h"
 #include "tail_recursion_elimination.h"
+#include "predicate_ordering.h"
 #include "cvc3_solver.h"
 
 using namespace lexer;
@@ -88,7 +89,7 @@ int main(int _argc, const char ** _argv) {
             pp::prettyPrintSyntax(*pModule, std::wcout, NULL, true);
 
         if (Options::instance().prettyPrint & PP_CALLGRAPH)
-            printModuleCallGraph(*pModule, std::wcout);
+            printModuleSCCCallGraph(*pModule, std::wcout);
 
         if (Options::instance().backEnd == BE_NONE)
             return EXIT_SUCCESS;

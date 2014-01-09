@@ -40,6 +40,7 @@ set(SOURCES
     callgraph.cpp
     generate_callgraph.cpp
     tail_recursion_elimination.cpp
+    predicate_ordering.cpp
     term_rewriting.cpp
     node_analysis.cpp
     statement_tree.cpp
