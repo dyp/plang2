@@ -615,6 +615,13 @@ public:
         return pCopy;
     }
 
+    bool isTrivial() const {
+        return getPredicates().empty() && getTypes().empty() && getVariables().empty()
+            && getMessages().empty() && getProcesses().empty() && getFormulas().empty()
+            && getLemmas().empty() && m_imports.empty() && m_classes.empty() && m_strName.empty()
+            && m_modules.size() == 1;
+    }
+
 private:
     NamedValues m_params;
     std::vector<std::wstring> m_imports;

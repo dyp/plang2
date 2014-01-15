@@ -3038,6 +3038,9 @@ ModulePtr Parser::parseMainModule(Context &_ctx) {
             UNEXPECTED(_ctx, "End of module");
     }
 
+    if (pModule->isTrivial())
+        pModule = pModule->getModules().get(0);
+
     tc::linkPredicates(ctx, *pModule);
 
     _ctx.addModule(pModule);
