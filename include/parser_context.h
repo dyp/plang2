@@ -93,6 +93,7 @@ public:
     enum {
         ALLOW_FORMULAS =      0x01,
         RESTRICT_TYPES =      0x02,
+        MERGE_CONSTRUCTORS =  0x04,
     };
 
     typedef std::map<std::wstring, ir::ModulePtr> ModuleMap;

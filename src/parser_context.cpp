@@ -64,6 +64,13 @@ void Context::mergeTo(Context *_pCtx, bool _bMergeFailed) {
     _pCtx->m_messages.splice(_pCtx->m_messages.end(), m_messages);
     _pCtx->m_bFailed = m_bFailed;
 
+    if (m_constructors && (!m_bScope || (m_flags & MERGE_CONSTRUCTORS))) {
+        if (!_pCtx->m_constructors)
+            std::swap(_pCtx->m_constructors, m_constructors);
+        else
+            _pCtx->m_constructors->insert(m_constructors->begin(), m_constructors->end());
+    }
+
     if (m_bScope)
         return;
 
@@ -121,13 +128,6 @@ void Context::mergeTo(Context *_pCtx, bool _bMergeFailed) {
             std::swap(_pCtx->m_formulas, m_formulas);
         else
             _pCtx->m_formulas->insert(m_formulas->begin(), m_formulas->end());
-    }
-
-    if (m_constructors) {
-        if (!_pCtx->m_constructors)
-            std::swap(_pCtx->m_constructors, m_constructors);
-        else
-            _pCtx->m_constructors->insert(m_constructors->begin(), m_constructors->end());
     }
 }
 
