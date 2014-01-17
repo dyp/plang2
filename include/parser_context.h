@@ -89,6 +89,12 @@ namespace ir {
 
 class Context {
 public:
+    // Parsing constants.
+    enum {
+        ALLOW_FORMULAS =      0x01,
+        RESTRICT_TYPES =      0x02,
+    };
+
     typedef std::map<std::wstring, ir::ModulePtr> ModuleMap;
     typedef std::map<std::wstring, Context*> ModuleContextMap;
     typedef std::multimap<std::wstring, ir::PredicatePtr> PredicateMap;

@@ -169,12 +169,6 @@ public:
         SINGLE_TYPE = 0x80,
     };
 
-    // Expression parsing constants.
-    enum {
-        ALLOW_FORMULAS = 0x01,
-        RESTRICT_TYPES = 0x02,
-    };
-
     template<class _Param>
     bool parseParamList(Context &_ctx, Collection<_Param> &_params,
             PARSER_FN(_Param,_parser,int), int _nFlags = 0);
@@ -542,7 +536,7 @@ void Parser::initOps() {
 
 ExpressionPtr Parser::parseCastOrTypeReference(Context &_ctx, const TypePtr &_pType) {
     ExpressionPtr pExpr;
-    Context &ctx = *_ctx.createChild(false, RESTRICT_TYPES);
+    Context &ctx = *_ctx.createChild(false, Context::RESTRICT_TYPES);
 
     if (ctx.in(LPAREN, LBRACKET, MAP_LBRACKET, LBRACE, LIST_LBRACKET)) {
         switch (_pType->getKind()) {
@@ -588,7 +582,7 @@ LambdaPtr Parser::parseLambda(Context &_ctx) {
 }
 
 FormulaPtr Parser::parseFormula(Context &_ctx) {
-    Context &ctx = *_ctx.createChild(true, ALLOW_FORMULAS);
+    Context &ctx = *_ctx.createChild(true, Context::ALLOW_FORMULAS);
 
     if (!ctx.in(FORALL, EXISTS))
         ERROR(ctx, NULL, L"Quantifier expected");
@@ -643,10 +637,10 @@ Context* Parser::parseModuleReference(Context &_ctx) {
 ExpressionPtr Parser::parseAtom(Context &_ctx) {
     Context &ctx = *_ctx.createChild(false, _ctx.getFlags());
     ExpressionPtr pExpr;
-    const bool bAllowTypes = !(ctx.getFlags() & RESTRICT_TYPES);
+    const bool bAllowTypes = !(ctx.getFlags() & Context::RESTRICT_TYPES);
     int token = ctx.getToken();
 
-    ctx.setFlags(ctx.getFlags() & ~RESTRICT_TYPES);
+    ctx.setFlags(ctx.getFlags() & ~Context::RESTRICT_TYPES);
 
     if (ctx.is(LPAREN, RPAREN) || ctx.is(LBRACKET, RBRACKET) || ctx.is(LBRACE, RBRACE) ||
             ctx.is(LIST_LBRACKET, LIST_RBRACKET) || ctx.is(MAP_LBRACKET, MAP_RBRACKET))
@@ -741,7 +735,7 @@ ExpressionPtr Parser::parseAtom(Context &_ctx) {
             break;
         case FORALL:
         case EXISTS:
-            if (ctx.getFlags() & ALLOW_FORMULAS)
+            if (ctx.getFlags() & Context::ALLOW_FORMULAS)
                 pExpr = parseFormula(ctx);
             break;
     }
@@ -785,7 +779,7 @@ ExpressionPtr Parser::parseAtom(Context &_ctx) {
 
         FormulaDeclarationPtr pFormula;
 
-        if (!pExpr && (ctx.getFlags() & ALLOW_FORMULAS) && (pFormula = moduleCtx.getFormula(str))) {
+        if (!pExpr && (ctx.getFlags() & Context::ALLOW_FORMULAS) && (pFormula = moduleCtx.getFormula(str))) {
             FormulaCallPtr pCall = new FormulaCall();
 
             ++ctx;
@@ -958,7 +952,7 @@ bool Parser::parsePreconditions(Context &_ctx, _Pred &_pred, branch_map_t &_bran
     if (!_ctx.consume(PRE))
         return false;
 
-    Context &ctx = *_ctx.createChild(false, ALLOW_FORMULAS);
+    Context &ctx = *_ctx.createChild(false, Context::ALLOW_FORMULAS);
 
     branch_map_t::iterator iBranch = _branches.end();
 
@@ -1013,7 +1007,7 @@ bool Parser::parsePostconditions(Context &_ctx, _Pred &_pred, branch_map_t &_bra
     if (!_ctx.is(POST))
         return false;
 
-    Context &ctx = *_ctx.createChild(false, ALLOW_FORMULAS);
+    Context &ctx = *_ctx.createChild(false, Context::ALLOW_FORMULAS);
 
     if (_pred.isHyperFunction()) {
         while (ctx.consume(POST)) {
@@ -1443,7 +1437,7 @@ NamedReferenceTypePtr Parser::parseTypeReference(Context &_ctx) {
 }
 
 RangePtr Parser::parseRange(Context &_ctx) {
-    Context &ctx = *_ctx.createChild(false, RESTRICT_TYPES);
+    Context &ctx = *_ctx.createChild(false, Context::RESTRICT_TYPES);
     ExpressionPtr pMin = parseSubexpression(ctx, parseAtom(ctx), 0);
 
     if (!pMin)
@@ -1918,7 +1912,7 @@ StructFieldDefinitionPtr Parser::parseFieldDefinition(Context &_ctx) {
 }
 
 StructFieldDefinitionPtr Parser::parseConstructorField(Context &_ctx) {
-    Context &ctx = *_ctx.createChild(false, RESTRICT_TYPES);
+    Context &ctx = *_ctx.createChild(false, Context::RESTRICT_TYPES);
     StructFieldDefinitionPtr pField = new StructFieldDefinition();
     std::wstring strIdent;
 
@@ -2043,7 +2037,7 @@ TypeDeclarationPtr Parser::parseTypeDeclaration(Context &_ctx) {
     ParameterizedTypePtr pParamType;
 
     if (pCtx->consume(LPAREN)) {
-        pCtx = pCtx->createChild(true);
+        pCtx = pCtx->createChild(true, Context::MERGE_CONSTRUCTORS);
         pParamType = new ParameterizedType();
         pDecl->setType(pParamType);
         if (!parseParamList(*pCtx, pParamType->getParams(), &Parser::parseVariableName))
@@ -2727,19 +2721,19 @@ FormulaDeclarationPtr Parser::parseFormulaDeclaration(Context &_ctx) {
     if (!_ctx.is(FORMULA, IDENTIFIER))
         return NULL;
 
-    Context *pCtx = _ctx.createChild(false, ALLOW_FORMULAS);
+    Context *pCtx = _ctx.createChild(false, Context::ALLOW_FORMULAS);
     FormulaDeclarationPtr pDecl = new FormulaDeclaration(pCtx->scan(2, 1));
 
     pDecl->setLoc(&*_ctx.loc());
 
     pCtx->addFormula(pDecl);
-    pCtx = pCtx->createChild(true, ALLOW_FORMULAS);
+    pCtx = pCtx->createChild(true, Context::ALLOW_FORMULAS);
 
     if (!pCtx->consume(LPAREN))
         UNEXPECTED(*pCtx, "(");
 
     if (!pCtx->consume(RPAREN)) {
-        pCtx = pCtx->createChild(true, ALLOW_FORMULAS);
+        pCtx = pCtx->createChild(true, Context::ALLOW_FORMULAS);
 
         if (!parseParamList(*pCtx, pDecl->getParams(), &Parser::parseVariableName))
             return NULL;
@@ -2772,7 +2766,7 @@ LemmaDeclarationPtr Parser::parseLemmaDeclaration(Context &_ctx) {
     if (!_ctx.is(LEMMA))
         return NULL;
 
-    Context &ctx = *_ctx.createChild(false, ALLOW_FORMULAS);
+    Context &ctx = *_ctx.createChild(false, Context::ALLOW_FORMULAS);
     LemmaDeclarationPtr pLemma = new LemmaDeclaration();
 
     ++ctx;
