@@ -842,6 +842,10 @@ public:
         LIST_ELEMENT,
         /// Replacement of a part of compound value.
         REPLACEMENT,
+        /// Union recognizer.
+        RECOGNIZER,
+        /// Union accessor.
+        ACCESSOR,
     };
 
     /// Default constructor.
@@ -1000,6 +1004,74 @@ public:
 
 private:
     ExpressionPtr m_pIndex;
+};
+
+/// Accessor base.
+class AccessorBase : public Component {
+public:
+    /// Default constructor.
+    /// \param _pConstructor Union constructor.
+    /// \param _pObject Expression of union type.
+    AccessorBase(const UnionConstructorDeclarationPtr& _pConstructor, const ExpressionPtr &_pObject = NULL) :
+        Component(_pObject), m_pConstructor(_pConstructor)
+    {}
+    AccessorBase(const std::wstring& _strName = L"", const ExpressionPtr &_pObject = NULL) :
+        Component(_pObject), m_pConstructor(NULL), m_strName(_strName)
+    {}
+
+    const UnionConstructorDeclarationPtr &getConstructor() const { return m_pConstructor; }
+    void setConstructor(const UnionConstructorDeclarationPtr& _pNewConstrucotr) { m_pConstructor = _pNewConstrucotr; }
+
+    const std::wstring& getConstructorName() const { return m_strName; }
+    void setConstructorName(const std::wstring& _strName) { m_strName = _strName; }
+
+    virtual bool less(const Node& _other) const;
+    virtual bool equals(const Node& _other) const;
+    virtual bool matches(const Expression& _other, MatchesPtr _pMatches = NULL) const;
+
+protected:
+    UnionConstructorDeclarationPtr m_pConstructor;
+    std::wstring m_strName;
+};
+
+/// Recognizer.
+class RecognizerExpr : public AccessorBase {
+public:
+    /// Default constructor.
+    /// \param _pConstructor Union constructor.
+    /// \param _pObject Expression of union type.
+    RecognizerExpr(const UnionConstructorDeclarationPtr& _pConstructor, const ExpressionPtr &_pObject = NULL) :
+        AccessorBase(_pConstructor, _pObject) {}
+    RecognizerExpr(const std::wstring& _strName = L"", const ExpressionPtr &_pObject = NULL) :
+        AccessorBase(_strName, _pObject) {}
+
+    /// Get component kind.
+    /// \return #Recognizer.
+    virtual int getComponentKind() const { return RECOGNIZER; }
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, RecognizerExpr(m_pConstructor, _cloner.get(getObject())));
+    }
+};
+
+/// Accessor.
+class AccessorExpr : public AccessorBase {
+public:
+    /// Default constructor.
+    /// \param _pConstructor Union constructor.
+    /// \param _pObject Expression of union type.
+    AccessorExpr(const UnionConstructorDeclarationPtr& _pConstructor, const ExpressionPtr &_pObject = NULL) :
+        AccessorBase(_pConstructor, _pObject) {}
+    AccessorExpr(const std::wstring& _strName = L"", const ExpressionPtr &_pObject = NULL) :
+        AccessorBase(_strName, _pObject) {}
+
+    /// Get component kind.
+    /// \return #Accessor.
+    virtual int getComponentKind() const { return ACCESSOR; }
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        return NEW_CLONE(this, _cloner, AccessorExpr(m_pConstructor, _cloner.get(getObject())));
+    }
 };
 
 // Declared below.

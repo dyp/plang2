@@ -683,6 +683,32 @@ bool Replacement::matches(const Expression& _other, MatchesPtr _pMatches) const 
     return _matches(getNewValues(), ((const Replacement&)_other).getNewValues(), _pMatches);
 }
 
+bool AccessorBase::less(const Node& _other) const {
+    if (!Component::equals(_other))
+        return Component::less(_other);
+    const AccessorBase& other = (const AccessorBase&)_other;
+    if (getConstructorName() != other.getConstructorName())
+        return getConstructorName() < other.getConstructorName();
+    return _less(getConstructor(), other.getConstructor());
+}
+
+bool AccessorBase::equals(const Node& _other) const {
+    if (!Component::equals(_other))
+        return false;
+    const AccessorBase& other = (const AccessorBase&)_other;
+    return getConstructorName() == other.getConstructorName() &&
+        _equals(getConstructor(), other.getConstructor());
+}
+
+bool AccessorBase::matches(const Expression& _other, MatchesPtr _pMatches) const {
+    if (!Component::equals(_other))
+        return Component::matches(_other, _pMatches);
+    const AccessorBase& other = (const AccessorBase&)_other;
+    if  (getConstructor() && other.getConstructor())
+        return _equals(getConstructor(), ((const AccessorBase&)_other).getConstructor());
+    return getConstructorName() == other.getConstructorName();
+}
+
 bool FunctionCall::less(const Node& _other) const {
     if (!Expression::equals(_other))
         return Expression::less(_other);
