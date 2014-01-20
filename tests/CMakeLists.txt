@@ -180,6 +180,7 @@ set(TESTS_PARSING
     parsing/normalize_binary.psrc
     parsing/import.psrc
     parsing/jumps.psrc
+    parsing/predicate_type.psrc
 )
 
 set(TESTS_INFERENCE

@@ -1,0 +1,9 @@
+/*
+
+<test>
+    foo//Type = predicate(nat arg: var result)
+</test>
+
+*/
+
+predicate(nat arg: var result) foo;
