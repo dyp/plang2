@@ -179,25 +179,23 @@ typedef Auto<Sequent> SequentPtr;
 class Correctness : public Condition {
 public:
     Correctness() :
-        m_pPredicate(NULL), m_pStmt(NULL), m_pPre(NULL), m_pPost(NULL)
+        m_pStmt(NULL), m_pPre(NULL), m_pPost(NULL)
     {}
-    Correctness(const ir::PredicatePtr& _pPred, const ir::StatementPtr& _pStmt,
+    Correctness(const ir::StatementPtr& _pStmt,
         const ConjunctionPtr& _pPre, const ConjunctionPtr& _pPost) :
-        m_pPredicate(_pPred), m_pStmt(_pStmt), m_pPre(_pPre), m_pPost(_pPost)
+        m_pStmt(_pStmt), m_pPre(_pPre), m_pPost(_pPost)
     {}
 
     virtual int getKind() const { return CORRECTNESS; }
 
     const ConjunctionPtr& getPrecondition() const { return m_pPre; }
     const ConjunctionPtr& getPostcondition() const { return m_pPost; }
-    const ir::PredicatePtr& getPredicate() const { return m_pPredicate; }
     const ir::StatementPtr& getStatement() const { return m_pStmt; }
 
     void makeSequent(std::list<SequentPtr>& _container) const;
     void makeSequent(std::list<ConditionPtr>& _container) const;
 
 private:
-    ir::PredicatePtr m_pPredicate;
     ir::StatementPtr m_pStmt;
     ConjunctionPtr m_pPre, m_pPost;
 };
@@ -229,6 +227,7 @@ struct Context : public Counted {
     std::map<ir::PredicateTypePtr, std::vector<ir::FormulaDeclarationPtr> > m_preCondTypeMap, m_postCondTypeMap;
     std::set<std::wstring> m_usedNames;
 
+    ir::PredicatePtr m_pPredicate;
     size_t m_cLastUsedRule = 0;
 
     int m_nPreCondType = 0, m_nPostCondType = 0;

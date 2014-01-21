@@ -32,16 +32,16 @@ public:
     ConditionPtr singledValue(const StatementPtr& _pStmt);
 
     // R system.
-    bool ruleRP(const PredicatePtr& _pPred, const ParallelBlock& _block, const ConjunctionPtr& _pPre, const ConjunctionPtr& _pPost);
-    bool ruleRS(const PredicatePtr& _pPred, const Block& _block, const ConjunctionPtr& _pPre, const ConjunctionPtr& _pPost);
-    bool ruleRC(const PredicatePtr& _pPred, const If& _if, const ConjunctionPtr& _pPre, const ConjunctionPtr& _pPost);
-    bool ruleRB(const PredicatePtr& _pPred, const Call& _call, const ConjunctionPtr& _pPre, const ConjunctionPtr& _pPost);
+    bool ruleRP(const ParallelBlock& _block, const ConjunctionPtr& _pPre, const ConjunctionPtr& _pPost);
+    bool ruleRS(const Block& _block, const ConjunctionPtr& _pPre, const ConjunctionPtr& _pPost);
+    bool ruleRC(const If& _if, const ConjunctionPtr& _pPre, const ConjunctionPtr& _pPost);
+    bool ruleRB(const Call& _call, const ConjunctionPtr& _pPre, const ConjunctionPtr& _pPost);
 
     // Q system.
-    bool ruleQP(const PredicatePtr& _pPred, const ParallelBlock& _block, const ConjunctionPtr& _pPre, const ConjunctionPtr& _pPost);
-    bool ruleQSB(const PredicatePtr& _pPred, const Block& _block, const ConjunctionPtr& _pPre, const ConjunctionPtr& _pPost);
-    bool ruleQS(const PredicatePtr& _pPred, const Block& _block, const ConjunctionPtr& _pPre, const ConjunctionPtr& _pPost);
-    bool ruleQC(const PredicatePtr& _pPred, const If& _if, const ConjunctionPtr& _pPre, const ConjunctionPtr& _pPost);
+    bool ruleQP(const ParallelBlock& _block, const ConjunctionPtr& _pPre, const ConjunctionPtr& _pPost);
+    bool ruleQSB(const Block& _block, const ConjunctionPtr& _pPre, const ConjunctionPtr& _pPost);
+    bool ruleQS(const Block& _block, const ConjunctionPtr& _pPre, const ConjunctionPtr& _pPost);
+    bool ruleQC(const If& _if, const ConjunctionPtr& _pPre, const ConjunctionPtr& _pPost);
 
     // F system.
     bool ruleFP(const ParallelBlock& _block, const ConjunctionPtr& _pLeft);
@@ -109,20 +109,20 @@ static bool getSubStatementSpecification(const PredicatePtr& _pPred, const std::
     return !pPre1->empty() && !pPre2->empty() && !pPost1->empty() && !pPost2->empty();
 }
 
-bool Inference::ruleRP(const PredicatePtr& _pPred, const ParallelBlock& _block, const ConjunctionPtr& _pPre, const ConjunctionPtr& _pPost) {
+bool Inference::ruleRP(const ParallelBlock& _block, const ConjunctionPtr& _pPre, const ConjunctionPtr& _pPost) {
     const StatementPtr&
         pB = _block.get(0),
         pC = _block.get(1);
 
     std::map<StatementPtr, std::pair<ConjunctionPtr, ConjunctionPtr> > spec;
-    if (!getSubStatementSpecification(_pPred, std::make_pair(pB, pC), spec, &m_context))
+    if (!getSubStatementSpecification(m_context.m_pPredicate, std::make_pair(pB, pC), spec, &m_context))
         return false;
 
     // Corr(A, B, P_B, Q_B)
-    m_context.addCondition(new Correctness(_pPred, pB, spec[pB].first, spec[pB].second));
+    m_context.addCondition(new Correctness(pB, spec[pB].first, spec[pB].second));
 
     // Corr(A, C, P_C, Q_C)
-    m_context.addCondition(new Correctness(_pPred, pC, spec[pC].first, spec[pC].second));
+    m_context.addCondition(new Correctness(pC, spec[pC].first, spec[pC].second));
 
     ConjunctionPtr pConj = new Conjunction();
     pConj->assign(spec[pB].first);
@@ -142,20 +142,20 @@ bool Inference::ruleRP(const PredicatePtr& _pPred, const ParallelBlock& _block, 
     return true;
 }
 
-bool Inference::ruleRS(const PredicatePtr& _pPred, const Block& _block, const ConjunctionPtr& _pPre, const ConjunctionPtr& _pPost) {
+bool Inference::ruleRS(const Block& _block, const ConjunctionPtr& _pPre, const ConjunctionPtr& _pPost) {
     const StatementPtr&
         pB = _block.get(0),
         pC = _block.get(1);
 
     std::map<StatementPtr, std::pair<ConjunctionPtr, ConjunctionPtr> > spec;
-    if (!getSubStatementSpecification(_pPred, std::make_pair(pB, pC), spec, &m_context))
+    if (!getSubStatementSpecification(m_context.m_pPredicate, std::make_pair(pB, pC), spec, &m_context))
         return false;
 
     // Corr(A, B, P_B, Q_B)
-    m_context.addCondition(new Correctness(_pPred, pB, spec[pB].first, spec[pB].second));
+    m_context.addCondition(new Correctness(pB, spec[pB].first, spec[pB].second));
 
     // Corr(A, C, P_C, Q_C)
-    m_context.addCondition(new Correctness(_pPred, pC, spec[pC].first, spec[pC].second));
+    m_context.addCondition(new Correctness(pC, spec[pC].first, spec[pC].second));
 
     // P |- P_B*
     m_context.addCondition(new Sequent(_pPre, spec[pB].first));
@@ -178,7 +178,7 @@ bool Inference::ruleRS(const PredicatePtr& _pPred, const Block& _block, const Co
     return true;
 }
 
-bool Inference::ruleRC(const PredicatePtr& _pPred, const If& _if, const ConjunctionPtr& _pPre, const ConjunctionPtr& _pPost) {
+bool Inference::ruleRC(const If& _if, const ConjunctionPtr& _pPre, const ConjunctionPtr& _pPost) {
     const StatementPtr&
         pB = _if.getBody(),
         pC = _if.getElse();
@@ -187,14 +187,14 @@ bool Inference::ruleRC(const PredicatePtr& _pPred, const If& _if, const Conjunct
         return false;
 
     std::map<StatementPtr, std::pair<ConjunctionPtr, ConjunctionPtr> > spec;
-    if (!getSubStatementSpecification(_pPred, std::make_pair(pB, pC), spec, &m_context))
+    if (!getSubStatementSpecification(m_context.m_pPredicate, std::make_pair(pB, pC), spec, &m_context))
         return false;
 
     // Corr(A, B, P_B, Q_B)
-    m_context.addCondition(new Correctness(_pPred, pB, spec[pB].first, spec[pB].second));
+    m_context.addCondition(new Correctness(pB, spec[pB].first, spec[pB].second));
 
     // Corr(A, C, P_C, Q_C)
-    m_context.addCondition(new Correctness(_pPred, pC, spec[pC].first, spec[pC].second));
+    m_context.addCondition(new Correctness(pC, spec[pC].first, spec[pC].second));
 
     ConjunctionPtr
         pArg = Conjunction::getConjunction(_if.getArg()),
@@ -235,9 +235,9 @@ bool Inference::ruleRC(const PredicatePtr& _pPred, const If& _if, const Conjunct
     return true;
 }
 
-bool Inference::ruleRB(const PredicatePtr& _pPred, const Call& _call, const ConjunctionPtr& _pPre, const ConjunctionPtr& _pPost) {
+bool Inference::ruleRB(const Call& _call, const ConjunctionPtr& _pPre, const ConjunctionPtr& _pPost) {
     // P |- P_B & P_C*
-    m_context.addCondition(new Sequent(_pPre, getPreConditionForStatement(&_call, _pPred, &m_context)));
+    m_context.addCondition(new Sequent(_pPre, getPreConditionForStatement(&_call, m_context.m_pPredicate, &m_context)));
 
     ConjunctionPtr pConj1 = new Conjunction();
     pConj1->assign(_pPre);
@@ -255,7 +255,7 @@ bool Inference::ruleRB(const PredicatePtr& _pPred, const Call& _call, const Conj
     return true;
 }
 
-bool Inference::ruleQP(const PredicatePtr& _pPred, const ParallelBlock& _block, const ConjunctionPtr& _pPre, const ConjunctionPtr& _pPost) {
+bool Inference::ruleQP(const ParallelBlock& _block, const ConjunctionPtr& _pPre, const ConjunctionPtr& _pPost) {
     ValuesSet valuesB, valuesC;
     getResults(_block.get(0), valuesB);
     getResults(_block.get(1), valuesC);
@@ -268,16 +268,16 @@ bool Inference::ruleQP(const PredicatePtr& _pPred, const ParallelBlock& _block, 
         return false;
 
     // Corr(A, B, P, Q_B);
-    m_context.addCondition(new Correctness(_pPred, _block.get(0), _pPre, pQB));
+    m_context.addCondition(new Correctness(_block.get(0), _pPre, pQB));
 
     // Corr(A, B, P, Q_B);
-    m_context.addCondition(new Correctness(_pPred, _block.get(1), _pPre, pQC));
+    m_context.addCondition(new Correctness(_block.get(1), _pPre, pQC));
 
     m_context.m_cLastUsedRule = Context::QP;
     return true;
 }
 
-bool Inference::ruleQSB(const PredicatePtr& _pPred, const Block& _block, const ConjunctionPtr& _pPre, const ConjunctionPtr& _pPost) {
+bool Inference::ruleQSB(const Block& _block, const ConjunctionPtr& _pPre, const ConjunctionPtr& _pPost) {
     ConjunctionPtr
         pPreB = getPreConditionForStatement(_block.get(0), &m_context),
         pPostB = getPostConditionForStatement(_block.get(0), &m_context);
@@ -289,20 +289,20 @@ bool Inference::ruleQSB(const PredicatePtr& _pPred, const Block& _block, const C
     m_context.addCondition(new Sequent(_pPre, pPreB));
 
     // Corr(A, B, P_B, Q_B);
-    m_context.addCondition(new Correctness(_pPred, _block.get(0), pPreB, pPostB));
+    m_context.addCondition(new Correctness(_block.get(0), pPreB, pPostB));
 
     ConjunctionPtr pConj = new Conjunction();
     pConj->assign(_pPre);
     pConj->append(pPostB);
 
     // Corr(A, C, P & Q_B, Q)
-    m_context.addCondition(new Correctness(_pPred, _block.get(1), pConj, _pPost));
+    m_context.addCondition(new Correctness(_block.get(1), pConj, _pPost));
 
     m_context.m_cLastUsedRule = Context::QSB;
     return true;
 }
 
-bool Inference::ruleQS(const PredicatePtr& _pPred, const Block& _block, const ConjunctionPtr& _pPre, const ConjunctionPtr& _pPost) {
+bool Inference::ruleQS(const Block& _block, const ConjunctionPtr& _pPre, const ConjunctionPtr& _pPost) {
     ValuesSet results;
     getResults(_block.get(0), results);
 
@@ -316,13 +316,13 @@ bool Inference::ruleQS(const PredicatePtr& _pPred, const Block& _block, const Co
     pConj->addConjunct(pLogic);
 
     // Corr(A, C, P(x) & L(B(x, y)), Q)
-    m_context.addCondition(new Correctness(_pPred, _block.get(1), pConj, _pPost));
+    m_context.addCondition(new Correctness(_block.get(1), pConj, _pPost));
 
     m_context.m_cLastUsedRule = Context::QS;
     return true;
 }
 
-bool Inference::ruleQC(const PredicatePtr& _pPred, const If& _if, const ConjunctionPtr& _pPre, const ConjunctionPtr& _pPost) {
+bool Inference::ruleQC(const If& _if, const ConjunctionPtr& _pPre, const ConjunctionPtr& _pPost) {
     if (!_if.getBody() || !_if.getElse())
         return false;
 
@@ -338,14 +338,14 @@ bool Inference::ruleQC(const PredicatePtr& _pPred, const If& _if, const Conjunct
     pConj1->append(pArg);
 
     // Corr(A, B, P & E, Q)
-    m_context.addCondition(new Correctness(_pPred, _if.getBody(), pConj1, _pPost));
+    m_context.addCondition(new Correctness(_if.getBody(), pConj1, _pPost));
 
     ConjunctionPtr pConj2 = new Conjunction();
     pConj2->assign(_pPre);
     pConj2->append(pNotArg);
 
     // Corr(A, C, P & !E, Q)
-    m_context.addCondition(new Correctness(_pPred, _if.getElse(), pConj2, _pPost));
+    m_context.addCondition(new Correctness(_if.getElse(), pConj2, _pPost));
 
     m_context.m_cLastUsedRule = Context::QC;
     return true;
@@ -555,17 +555,17 @@ bool Inference::strategy(const Correctness& _corr) {
 
     switch (_corr.getStatement()->getKind()) {
         case Statement::PARALLEL_BLOCK:
-            return ruleRP(_corr.getPredicate(), *_corr.getStatement().as<ParallelBlock>(), _corr.getPrecondition(), _corr.getPostcondition())
-                || ruleQP(_corr.getPredicate(), *_corr.getStatement().as<ParallelBlock>(), _corr.getPrecondition(), _corr.getPostcondition());
+            return ruleRP(*_corr.getStatement().as<ParallelBlock>(), _corr.getPrecondition(), _corr.getPostcondition())
+                || ruleQP(*_corr.getStatement().as<ParallelBlock>(), _corr.getPrecondition(), _corr.getPostcondition());
         case Statement::BLOCK:
-            return ruleRS(_corr.getPredicate(), *_corr.getStatement().as<Block>(), _corr.getPrecondition(), _corr.getPostcondition())
-                || ruleQSB(_corr.getPredicate(), *_corr.getStatement().as<Block>(), _corr.getPrecondition(), _corr.getPostcondition())
-                || ruleQS(_corr.getPredicate(), *_corr.getStatement().as<Block>(), _corr.getPrecondition(), _corr.getPostcondition());
+            return ruleRS(*_corr.getStatement().as<Block>(), _corr.getPrecondition(), _corr.getPostcondition())
+                || ruleQSB(*_corr.getStatement().as<Block>(), _corr.getPrecondition(), _corr.getPostcondition())
+                || ruleQS(*_corr.getStatement().as<Block>(), _corr.getPrecondition(), _corr.getPostcondition());
         case Statement::IF:
-            return ruleRC(_corr.getPredicate(), *_corr.getStatement().as<If>(), _corr.getPrecondition(), _corr.getPostcondition())
-                || ruleQC(_corr.getPredicate(), *_corr.getStatement().as<If>(), _corr.getPrecondition(), _corr.getPostcondition());
+            return ruleRC(*_corr.getStatement().as<If>(), _corr.getPrecondition(), _corr.getPostcondition())
+                || ruleQC(*_corr.getStatement().as<If>(), _corr.getPrecondition(), _corr.getPostcondition());
         case Statement::CALL:
-            return ruleRB(_corr.getPredicate(), *_corr.getStatement().as<Call>(), _corr.getPrecondition(), _corr.getPostcondition());
+            return ruleRB(*_corr.getStatement().as<Call>(), _corr.getPrecondition(), _corr.getPostcondition());
     }
 
     return false;
@@ -738,7 +738,8 @@ bool PredicateTraverser::visitPredicate(Predicate& _pred) {
     }
 
     Context context;
-    context.m_conditions.push_back(std::make_pair(new Correctness(&_pred, pNewBody,
+    context.m_pPredicate = &_pred;
+    context.m_conditions.push_back(std::make_pair(new Correctness(pNewBody,
         Conjunction::getConjunction(makeCall(context.getPrecondition(_pred), _pred)),
         Conjunction::getConjunction(makeCall(context.getPostcondition(_pred), _pred))), true));
 
