@@ -168,6 +168,7 @@ public:
 
     bool hasLogic() const
         { return (m_pLeft && m_pLeft->hasLogic()) || (m_pRight && m_pRight->hasLogic()); }
+    bool releaseAssignments();
     ir::ExpressionPtr mergeToExpression() const;
 
 private:
