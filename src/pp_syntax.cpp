@@ -659,7 +659,10 @@ bool PrettyPrinterSyntax::traverseStructType(StructType &_type) {
 bool PrettyPrinterSyntax::traverseUnionConstructorDeclaration(UnionConstructorDeclaration &_cons) {
     VISITOR_ENTER(UnionConstructorDeclaration, _cons);
     m_os << _cons.getName() << L"(";
-    VISITOR_TRAVERSE_COL(NamedValue, UnionConsField, _cons.getFields());
+    if (_cons.getStructFields())
+        printStructType(*_cons.getStructFields(), false, false);
+    else if (_cons.getFields())
+        traverseType(*_cons.getFields());
     m_os << ")";
     VISITOR_EXIT();
 }

@@ -249,15 +249,27 @@ class UnionType;
 
 class UnionConstructorDeclaration : public Node {
 public:
-    UnionConstructorDeclaration(const std::wstring &_strName, size_t _ord = 0, const UnionTypePtr &_pUnion = NULL) :
-        m_strName(_strName), m_pUnion(_pUnion), m_ord(_ord) {}
+    UnionConstructorDeclaration(const std::wstring &_strName, size_t _ord = 0,
+        const UnionTypePtr &_pUnion = NULL, const TypePtr _pFields = NULL) :
+        m_strName(_strName), m_pUnion(_pUnion), m_ord(_ord)
+    {
+        m_pFields = !_pFields ? new StructType() : _pFields;
+    }
 
     virtual int getNodeKind() const { return Node::UNION_CONSTRUCTOR_DECLARATION; }
 
-    /// Get list of constructor fields.
-    /// \return List of fields.
-    NamedValues &getFields() { return m_fields; }
-    const NamedValues &getFields() const { return m_fields; }
+    /// Get constructor's type. Only Fresh and Struct types are allowed.
+    /// \return Type of constructor.
+    TypePtr &getFields();
+    const TypePtr &getFields() const;
+
+    /// Get constructor's Struct type, if valid.
+    /// \return Struct type of constructor
+    StructTypePtr getStructFields() const;
+
+    /// Set constructor's type. Only Fresh and Struct types are allowed.
+    /// \param _pField Field type.
+    void setFields(const TypePtr& _pFields);
 
     const UnionTypePtr &getUnion() const { return m_pUnion; }
     void setUnion(const UnionTypePtr &_pUnion) { m_pUnion = _pUnion; }
@@ -272,16 +284,14 @@ public:
     virtual bool equals(const Node& _other) const;
 
     virtual NodePtr clone(Cloner &_cloner) const {
-        UnionConstructorDeclarationPtr pCopy = NEW_CLONE(this, _cloner, UnionConstructorDeclaration(getName(), getOrdinal(),
-                _cloner.get(getUnion())));
-        pCopy->getFields().appendClones(getFields(), _cloner);
-        return pCopy;
+        return NEW_CLONE(this, _cloner, UnionConstructorDeclaration(getName(), getOrdinal(),
+                _cloner.get(getUnion()), _cloner.get(getFields())));
     }
 
 private:
     std::wstring m_strName;
-    NamedValues m_fields;
     UnionTypePtr m_pUnion;
+    TypePtr m_pFields;
     size_t m_ord;
 };
 

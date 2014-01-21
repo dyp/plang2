@@ -739,7 +739,7 @@ bool Collector::visitUnionConstructor(UnionConstructor &_cons) {
         NamedValuePtr pField = new NamedValue(pDef->getName());
 
         pField->setType(pDef->getValue()->getType());
-        pCons->getFields().add(pField);
+        pCons->getStructFields()->getNamesOrd().add(pField);
         pDef->setField(pField);
     }
 

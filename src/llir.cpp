@@ -487,7 +487,9 @@ Operand Translator::translateEqUnion(const ir::UnionTypePtr &_pType, const Opera
             Instructions & body = swCase.body;
 
             ir::UnionConstructorDeclarationPtr pCons = _pType->getConstructors().get(i);
-            const ir::NamedValues &fields = pCons->getFields();
+            ir::NamedValues fields;
+            if (pCons->getStructFields())
+                fields.append(*pCons->getStructFields()->mergeFields());
 //            const ir::StructType & dataType = pCons->getStruct();
 
             swCase.values.push_back(i);
@@ -833,7 +835,10 @@ Operand Translator::translateUnionConstructor(const ir::UnionConstructor & _expr
 
 //    const ir::StructType & dataType = pProto->getStruct();
 
-    if (pProto->getFields().size() > 1) {
+    ir::NamedValuesPtr pFields = pProto->getStructFields() ?
+        pProto->getStructFields()->mergeFields() : new ir::NamedValues();
+
+    if (pFields->size() > 1) {
         Auto<StructType> st = translateUnionConstructorDeclaration(*pProto);
 
         _instrs.push_back(new Unary(Unary::MALLOC,
@@ -847,10 +852,10 @@ Operand Translator::translateUnionConstructor(const ir::UnionConstructor & _expr
         _instrs.push_back(new Binary(Binary::STORE,
                 Operand(_instrs.back()->getResult()), opBuf));
 
-        initStruct(_expr, _instrs, pProto->getFields(), opBuf);
-    } else if (!pProto->getFields().empty()) {
+        initStruct(_expr, _instrs, *pFields, opBuf);
+    } else if (!pFields->empty()) {
         ir::StructFieldDefinitionPtr pFieldDef = _expr.get(0);
-        ir::TypePtr pFieldType = (ir::TypePtr) ir::resolveBaseType(pProto->getFields().get(0)->getType());
+        ir::TypePtr pFieldType = (ir::TypePtr) ir::resolveBaseType(pFields->get(0)->getType());
         Auto<Type> ft = translateType(* pFieldType);
 
         // Should be done by middle end.
@@ -1368,12 +1373,14 @@ void Translator::translateSwitchUnion(const ir::Switch & _stmt,
 
             Instructions & body = pCase->body;
             Operand opValue;
-            bool bStruct = pProto->getFields().size() > 1;
-            bool bPointer = (pProto->getFields().size() == 1);
+            const ir::NamedValuesPtr pFields = pProto->getStructFields() ?
+                pProto->getStructFields()->mergeFields() : new ir::NamedValues();
+            bool bStruct = pFields->size() > 1;
+            bool bPointer = pFields->size() == 1;
             const bool bCompare = pCons->getDeclarations().size() < pCons->size();
 
             if (bPointer) {
-                Auto<Type> fieldType = translateType(* pProto->getFields().get(0)->getType());
+                Auto<Type> fieldType = translateType(* pFields->get(0)->getType());
                 bPointer = (fieldType->sizeOf() > Type::sizeOf(Type::POINTER));
             }
 
@@ -1384,7 +1391,7 @@ void Translator::translateSwitchUnion(const ir::Switch & _stmt,
                     body.push_back(new Cast(opContents, new PointerType(st)));
                     opValue = Operand(body.back()->getResult());
                 } else {
-                    Auto<Type> fieldType = translateType(* pProto->getFields().get(0)->getType());
+                    Auto<Type> fieldType = translateType(* pFields->get(0)->getType());
 
                     if (bPointer) {
                         body.push_back(new Cast(opContents, new PointerType(fieldType)));

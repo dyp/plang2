@@ -37,10 +37,10 @@ int UnionType::compare(const Type &_other) const {
         if (cOtherConsIdx != (size_t)-1) {
             const UnionConstructorDeclaration &otherCons = *other.getConstructors().get(cOtherConsIdx);
 
-            if (otherCons.getFields().size() != cons.getFields().size())
+            if (!cons.getFields() || !otherCons.getFields())
                 return ORD_NONE;
 
-            const int cmp = tc::TupleType(&cons.getFields()).compare(tc::TupleType(&otherCons.getFields()));
+            const int cmp = cons.getFields()->compare(*otherCons.getFields());
 
             if (cmp == ORD_SUB)
                 ++cSub;
@@ -82,37 +82,34 @@ int UnionType::compare(const Type &_other) const {
 
 bool UnionType::hasFresh() const {
     for (size_t i = 0; i < m_constructors.size(); ++i)
-        for (size_t j = 0; j < m_constructors.get(i)->getFields().size(); ++j)
-            if (m_constructors.get(i)->getFields().get(j)->getType()->hasFresh())
-                return true;
-
+        if (m_constructors.get(i)->getFields() &&
+            m_constructors.get(i)->getFields()->hasFresh())
+            return true;
     return false;
 }
 
 bool UnionType::contains(const TypePtr &_pType) const {
     for (size_t i = 0; i < m_constructors.size(); ++i)
-        for (size_t j = 0; j < m_constructors.get(i)->getFields().size(); ++j) {
-            TypePtr pType = m_constructors.get(i)->getFields().get(j)->getType();
-            if (*pType == *_pType || pType->contains(_pType))
-                return true;
-        }
-
+        if (m_constructors.get(i)->getFields() &&
+            m_constructors.get(i)->getFields()->contains(_pType))
+            return true;
     return false;
 }
 
 bool UnionType::rewrite(const TypePtr &_pOld, const TypePtr &_pNew, bool _bRewriteFlags) {
     bool bResult = false;
 
-    for (size_t i = 0; i < m_constructors.size(); ++i)
-        for (size_t j = 0; j < m_constructors.get(i)->getFields().size(); ++j) {
-            NamedValue &field = *m_constructors.get(i)->getFields().get(j);
-            Auto<ir::Type> pType = field.getType();
+    for (size_t i = 0; i < m_constructors.size(); ++i) {
+        TypePtr pField = m_constructors.get(i)->getFields();
 
-            if (tc::rewriteType(pType, _pOld, _pNew, _bRewriteFlags)) {
-                bResult = true;
-                field.setType(pType);
-            }
+        if (!pField)
+            continue;
+
+        if (tc::rewriteType(pField, _pOld, _pNew, _bRewriteFlags)) {
+            bResult = true;
+            m_constructors.get(i)->setFields(pField);
         }
+    }
 
     return bResult;
 }
@@ -132,19 +129,14 @@ TypePtr UnionType::getMeet(ir::Type &_other) {
         if (cOtherConsIdx != (size_t)-1) {
             const UnionConstructorDeclaration &otherCons = *other.getConstructors().get(cOtherConsIdx);
 
-            if (otherCons.getFields().size() != cons.getFields().size())
-                continue;
-
-            tc::TupleType otherFields = tc::TupleType(&otherCons.getFields());
-
-            TypePtr pMeet = tc::TupleType(&cons.getFields()).getMeet(otherFields);
+            TypePtr pMeet = cons.getFields()->getMeet(*otherCons.getFields());
 
             if (!pMeet)
                 return NULL;
 
             UnionConstructorDeclarationPtr pCons = new UnionConstructorDeclaration(cons.getName());
 
-            pCons->getFields().append(pMeet.as<tc::TupleType>()->getFields());
+            pCons->setFields(pMeet);
             pUnion->getConstructors().add(pCons);
         }
     }
@@ -171,25 +163,20 @@ TypePtr UnionType::getJoin(ir::Type &_other) {
         if (cOtherConsIdx != (size_t) -1) {
             const UnionConstructorDeclaration &otherCons = *other.getConstructors().get(cOtherConsIdx);
 
-            if (otherCons.getFields().size() != cons.getFields().size())
-                return new Type(TOP);
-
-            tc::TupleType otherFields = tc::TupleType(&otherCons.getFields());
-
-            TypePtr pJoin = tc::TupleType(&cons.getFields()).getJoin(otherFields);
+            TypePtr pJoin = cons.getFields()->getJoin(*otherCons.getFields());
 
             if (!pJoin)
                 return NULL;
 
             UnionConstructorDeclarationPtr pCons = new UnionConstructorDeclaration(cons.getName());
 
-            pCons->getFields().append(pJoin.as<tc::TupleType>()->getFields());
+            pCons->setFields(pJoin);
             pUnion->getConstructors().add(pCons);
             --cOtherUnmatched;
         } else {
             UnionConstructorDeclarationPtr pCons = new UnionConstructorDeclaration(cons.getName());
 
-            pCons->getFields().append(cons.getFields());
+            pCons->setFields(cons.getFields());
             pUnion->getConstructors().add(pCons);
         }
     }
@@ -204,7 +191,7 @@ TypePtr UnionType::getJoin(ir::Type &_other) {
         UnionConstructorDeclarationPtr pCons = new UnionConstructorDeclaration(otherCons.getName());
 
         --cOtherUnmatched;
-        pCons->getFields().append(otherCons.getFields());
+        pCons->setFields(otherCons.getFields());
         pUnion->getConstructors().add(pCons);
 
     }
@@ -228,22 +215,9 @@ bool UnionType::less(const Type &_other) const {
         conses[other.getConstructors().get(i)->getName()].second = other.getConstructors().get(i);
     }
 
-    for (NameMap::iterator i = conses.begin(); i != conses.end(); ++i) {
-        UnionConstructorDeclarationPtr pCons = i->second.first;
-        UnionConstructorDeclarationPtr pOtherCons = i->second.second;
-
-        if (!pCons)
-            return false;
-
-        if (!pOtherCons)
-            return true;
-
-        if (tc::TupleType(&pCons->getFields()) < tc::TupleType(&pOtherCons->getFields()))
-            return true;
-
-        if (tc::TupleType(&pOtherCons->getFields()) < tc::TupleType(&pCons->getFields()))
-            return false;
-    }
+    for (NameMap::iterator i = conses.begin(); i != conses.end(); ++i)
+        if (!_equals(i->second.first, i->second.second))
+            return _less(i->second.first, i->second.second);
 
     return false;
 }
@@ -251,17 +225,15 @@ bool UnionType::less(const Type &_other) const {
 int UnionType::getMonotonicity(const Type &_var) const {
     bool bMonotone = false, bAntitone = false;
 
-    for (size_t i = 0; i < getConstructors().size(); ++i)
-        for (size_t j = 0; j < getConstructors().get(i)->getFields().size(); ++j) {
-            TypePtr pType = getConstructors().get(i)->getFields().get(j)->getType();
-            const int mt = pType->getMonotonicity(_var);
+    for (size_t i = 0; i < getConstructors().size(); ++i) {
+        const int mt = getConstructors().get(i)->getFields()->getMonotonicity(_var);
 
-            bMonotone |= mt == MT_MONOTONE;
-            bAntitone |= mt == MT_ANTITONE;
+        bMonotone |= mt == MT_MONOTONE;
+        bAntitone |= mt == MT_ANTITONE;
 
-            if ((bMonotone && bAntitone) || mt == MT_NONE)
-                return MT_NONE;
-        }
+        if ((bMonotone && bAntitone) || mt == MT_NONE)
+            return MT_NONE;
+    }
 
     return bMonotone ? MT_MONOTONE : (bAntitone ? MT_ANTITONE : MT_CONST);
 }

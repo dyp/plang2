@@ -697,7 +697,7 @@ bool Visitor::traverseVariableDeclarationGroup(VariableDeclarationGroup &_stmt) 
 
 bool Visitor::traverseUnionConstructorDeclaration(UnionConstructorDeclaration &_cons) {
     ENTER(UnionConstructorDeclaration, _cons);
-    TRAVERSE_COL(NamedValue, UnionConsField, _cons.getFields());
+    TRAVERSE(Type, UnionConsFields, _cons.getFields(), _cons, UnionConstructorDeclaration, setFields);
     EXIT();
 }
 

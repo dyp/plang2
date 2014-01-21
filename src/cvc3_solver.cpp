@@ -728,12 +728,18 @@ CVC3::TypePtr Solver::_translateUnionType(const UnionType& _union) {
         selectors.push_back(std::vector<std::string>());
         types.push_back(std::vector<CVC3::Expr>());
 
-        const size_t cSubSize = cons.getFields().size();
+        const NamedValuesPtr pFields = cons.getStructFields() ?
+            cons.getStructFields()->mergeFields() : NamedValuesPtr();
+
+        if (!pFields)
+            continue;
+
+        const size_t cSubSize = pFields->size();
         selectors.back().reserve(cSubSize);
         types.back().reserve(cSubSize);
 
-        for (size_t j = 0; j < cons.getFields().size(); ++j) {
-            const NamedValue& field = *cons.getFields().get(j);
+        for (size_t j = 0; j < cSubSize; ++j) {
+            const NamedValue& field = *pFields->get(j);
             selectors.back().push_back(_makeIdentifier(field.getName()));
             types.back().push_back(translateType(*field.getType())->getExpr());
         }

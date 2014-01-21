@@ -24,7 +24,8 @@ const std::wstring &PredicateReference::getName() const {
 }
 
 bool UnionConstructor::isComplete() const {
-    return m_decls.empty() && m_pProto && size() == m_pProto->getFields().size();
+    return m_decls.empty() && m_pProto && m_pProto->getStructFields()
+        && size() == m_pProto->getStructFields()->size();
 }
 
 void AnonymousPredicate::updateType() const {

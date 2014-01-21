@@ -371,13 +371,30 @@ int ParameterizedType::getMonotonicity(const Type &_var) const {
     return getActualType()->getMonotonicity(_var);
 }
 
+TypePtr& UnionConstructorDeclaration::getFields() {
+    return m_pFields;
+}
+
+const TypePtr& UnionConstructorDeclaration::getFields() const {
+    return m_pFields;
+}
+
+StructTypePtr UnionConstructorDeclaration::getStructFields() const {
+    return m_pFields && m_pFields->getKind() == Type::STRUCT ?
+        m_pFields.as<StructType>() : StructTypePtr();
+}
+
+void UnionConstructorDeclaration::setFields(const TypePtr& _pFields) {
+    m_pFields = _pFields;
+}
+
 bool UnionConstructorDeclaration::less(const Node& _other) const {
     if (!Node::equals(_other))
         return Node::less(_other);
     const UnionConstructorDeclaration& other = (const UnionConstructorDeclaration&)_other;
     if (getName() != other.getName())
         return getName() < other.getName();
-    return getFields() < other.getFields();
+    return _less(getFields(), other.getFields());
 }
 
 bool UnionConstructorDeclaration::equals(const Node& _other) const {
@@ -385,7 +402,7 @@ bool UnionConstructorDeclaration::equals(const Node& _other) const {
         return false;
     const UnionConstructorDeclaration& other = (const UnionConstructorDeclaration&)_other;
     return getName() == other.getName()
-        && getFields() == other.getFields();
+        && _equals(getFields(), other.getFields());
 }
 
 bool NamedReferenceType::rewrite(const TypePtr &_pOld, const TypePtr &_pNew, bool _bRewriteFlags) {

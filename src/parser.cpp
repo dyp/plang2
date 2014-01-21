@@ -1967,9 +1967,9 @@ UnionConstructorPtr Parser::parseConstructor(Context &_ctx, const UnionTypePtr &
         UnionConstructorDeclarationPtr pDecl =
                 _pUnion->getConstructors().get(_pUnion->getConstructors().findByNameIdx(strName));
 
-        if (pDecl->getFields().size() != pCons->size())
+        if (pDecl->getStructFields() && pDecl->getStructFields()->size() != pCons->size())
             ERROR(ctx, NULL, L"Constructor %ls requires %u arguments, %u given.",
-                    strName.c_str(), pDecl->getFields().size(), pCons->size());
+                    strName.c_str(), pDecl->getStructFields()->size(), pCons->size());
     }
 
     _ctx.mergeChildren();
@@ -1986,7 +1986,7 @@ UnionConstructorDeclarationPtr Parser::parseConstructorDeclaration(Context &_ctx
     UnionConstructorDeclarationPtr pCons = new UnionConstructorDeclaration(ctx.scan());
 
     if (ctx.consume(LPAREN)) {
-        if (!parseParamList(ctx, pCons->getFields(), &Parser::parseVariableName))
+        if (!parseParamList(ctx, pCons->getStructFields()->getNamesOrd(), &Parser::parseVariableName))
             return NULL;
 
         if (!ctx.consume(RPAREN))

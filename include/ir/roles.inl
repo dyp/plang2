@@ -107,7 +107,7 @@ ROLE(FormulaDeclResultType)
 ROLE(FormulaDeclBody)
 ROLE(LemmaDeclBody)
 
-ROLE(UnionConsField)
+ROLE(UnionConsFields)
 ROLE(StructFieldValue)
 ROLE(ElementIndex)
 ROLE(ElementValue)
