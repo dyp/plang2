@@ -383,7 +383,7 @@ ExpressionPtr Parser::parseComponent(Context &_ctx, Expression &_base) {
     Context &ctx = *_ctx.createChild(false);
     ExpressionPtr pExpr;
 
-    if (ctx.is(DOT) && ctx.nextIn(LBRACKET, LPAREN, MAP_LBRACKET)) {
+    if (ctx.is(WITH) && ctx.nextIn(LBRACKET, LPAREN, MAP_LBRACKET)) {
         ++ctx;
         pExpr = parseReplacement(ctx, _base);
     } else if (ctx.is(DOT)) {

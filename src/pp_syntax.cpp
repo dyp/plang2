@@ -1581,7 +1581,7 @@ bool PrettyPrinterSyntax::traverseFormula(ir::Formula &_node) {
 bool PrettyPrinterSyntax::traverseReplacement(Replacement &_expr) {
     VISITOR_ENTER(Replacement, _expr);
     VISITOR_TRAVERSE(Expression, ReplacementObject, _expr.getObject(), _expr, Component, setObject);
-    m_os << ".";
+    m_os << " with ";
     VISITOR_TRAVERSE(Constructor, ReplacementValue, _expr.getNewValues(), _expr, Replacement, setNewValues);
     VISITOR_EXIT();
 }

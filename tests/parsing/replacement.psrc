@@ -10,11 +10,11 @@
 
 foo() {
     array(nat, 1..10) a;
-    a = a.[1: a[2] ];
+    a = a with [1: a[2] ];
 
     map(string, nat) m = [{"a": 1, "b": 2, "c": 3}];
-    m = m.[{ "a": m["b"] }];
+    m = m with [{ "a": m["b"] }];
 
     struct( nat a, b ) s;
-    s = s.(b: s.a)
+    s = s with (b: s.a)
 }
