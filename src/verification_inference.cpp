@@ -757,7 +757,7 @@ bool PredicateTraverser::visitPredicate(Predicate& _pred) {
         }
     }
 
-    return false;
+    return true;
 }
 
 ModulePtr verify(const ModulePtr &_pModule) {
