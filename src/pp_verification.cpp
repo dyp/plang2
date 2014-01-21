@@ -34,6 +34,7 @@ std::wstring fmtRule(size_t _cRuleInd) {
         case vf::Context::FLS:               return L"FLS";
         case vf::Context::FLC:               return L"FLC";
         case vf::Context::FLP:               return L"FLP";
+        case vf::Context::FLB:               return L"FLB";
     }
     return L"";
 }

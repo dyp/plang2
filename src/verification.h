@@ -217,7 +217,7 @@ struct Context : public Counted {
         // E system
         EP, ES, EC, EB,
         // FL system
-        FLS, FLP, FLC,
+        FLS, FLP, FLC, FLB
     };
 
     std::list<std::pair<ConditionPtr, bool> > m_conditions;

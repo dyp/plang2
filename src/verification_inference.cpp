@@ -57,6 +57,7 @@ public:
     // FL system.
     bool ruleFLSP(const Block& _block, const ConjunctionPtr& _pTail, const ConjunctionPtr& _pRight);
     bool ruleFLC(const If& _if, const ConjunctionPtr& _pTail, const ConjunctionPtr& _pRight);
+    bool ruleFLB(const Call& _call, const ConjunctionPtr& _pTail, const ConjunctionPtr& _pRight);
 
     bool split(const Sequent& _sequent);
 
@@ -549,6 +550,26 @@ bool Inference::ruleFLC(const If& _if, const ConjunctionPtr& _pTail, const Conju
     return true;
 }
 
+bool Inference::ruleFLB(const Call& _call, const ConjunctionPtr& _pTail, const ConjunctionPtr& _pRight) {
+    ConjunctionPtr
+        pPre = getPreConditionForStatement(&_call, NULL, &m_context),
+        pPost = getPreConditionForStatement(&_call, &m_context);
+
+    // |- P_B
+    m_context.addCondition(new Sequent(NULL, pPre));
+
+    ConjunctionPtr pConj = new Conjunction();
+    pConj->assign(_pTail);
+    pConj->append(pPost);
+
+    // R & Q_B |- H
+    m_context.addCondition(new Sequent(pConj, _pRight));
+
+    m_context.m_cLastUsedRule = Context::FLB;
+
+    return true;
+}
+
 bool Inference::strategy(const Correctness& _corr) {
     if (!_corr.getStatement())
         return false;
@@ -609,6 +630,8 @@ bool Inference::strategy(const Sequent& _sequent) {
             case Statement::BLOCK:
             case Statement::PARALLEL_BLOCK:
                 return ruleFLSP(*pStmt.as<Block>(), container.second, _sequent.right());
+            case Statement::CALL:
+                return ruleFLB(*pStmt.as<Call>(), container.second, _sequent.right());
         }
     }
 
