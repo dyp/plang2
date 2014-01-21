@@ -82,6 +82,7 @@ protected:
     virtual bool traverseEnumType(ir::EnumType &_type);
     bool needsIndent();
     void printStructNamedValues(const ir::NamedValues& _nvs, std::set<std::wstring>& _usedNames, bool& _bIsFirst, bool _bNeedsIndent);
+    void printStructType(const ir::StructType& _type, bool _bSeparator, bool _bIndent);
     virtual bool traverseStructType(ir::StructType &_type);
     virtual bool traverseUnionConstructorDeclaration(ir::UnionConstructorDeclaration &_cons);
     virtual bool traverseUnionType(ir::UnionType &_type);

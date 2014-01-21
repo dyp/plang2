@@ -604,19 +604,14 @@ std::wstring getNewFieldName(std::set<std::wstring>& _usedNames) {
     return strName;
 }
 
-bool PrettyPrinterSyntax::traverseStructType(StructType &_type) {
-    VISITOR_ENTER(StructType, _type);
-
+void PrettyPrinterSyntax::printStructType(const StructType& _type, bool _bSeparator, bool _bIndent) {
     // Order of fields: ordered names, unordered names, ordered types.
-    m_os << (!m_bCompact ? L"struct(" : L"(");
-
-    INDENT();
 
     bool bIsFirst = true;
     std::set<std::wstring> usedNames;
-    printStructNamedValues(_type.getNamesOrd(), usedNames, bIsFirst, bNeedsIndent);
+    printStructNamedValues(_type.getNamesOrd(), usedNames, bIsFirst, _bIndent);
 
-    if (m_bCompact && !(_type.getNamesSet().empty() && _type.getTypesOrd().empty())) {
+    if (_bSeparator && !(_type.getNamesSet().empty() && _type.getTypesOrd().empty())) {
         m_os << L"; ";
         bIsFirst = true;
     }
@@ -633,10 +628,10 @@ bool PrettyPrinterSyntax::traverseStructType(StructType &_type) {
                 i != sortedFieldsMap.end(); ++i)
             sortedFields.add(i->second);
 
-        printStructNamedValues(sortedFields, usedNames, bIsFirst, bNeedsIndent);
+        printStructNamedValues(sortedFields, usedNames, bIsFirst, _bIndent);
     }
 
-    if (m_bCompact && !_type.getTypesOrd().empty()) {
+    if (_bSeparator && !_type.getTypesOrd().empty()) {
         m_os << L"; ";
         bIsFirst = true;
     }
@@ -648,11 +643,16 @@ bool PrettyPrinterSyntax::traverseStructType(StructType &_type) {
         else
             typeFields.add(_type.getTypesOrd().get(i));
     }
-    printStructNamedValues(typeFields, usedNames, bIsFirst, bNeedsIndent);
+    printStructNamedValues(typeFields, usedNames, bIsFirst, _bIndent);
+}
 
+bool PrettyPrinterSyntax::traverseStructType(StructType &_type) {
+    VISITOR_ENTER(StructType, _type);
+    m_os << (!m_bCompact ? L"struct(" : L"(");
+    INDENT();
+    printStructType(_type, m_bCompact, bNeedsIndent);
     UNINDENT();
     m_os << L")";
-
     VISITOR_EXIT();
 }
 
