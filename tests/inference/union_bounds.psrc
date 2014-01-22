@@ -1,0 +1,22 @@
+/*
+
+<test>
+    join//Type = union(s(int a, int b))
+    meet//Type = union(s(nat a, nat(3) b, real c))
+</test>
+
+*/
+
+type U1 = union (s(nat a, int b, real c));
+type U2 = union (s(int a, nat(3) b));
+
+U1 u1;
+U2 u2;
+
+foo(:var join) {
+    join = u1; join = u2
+}
+
+bar(var meet:) {
+    u1 = meet; u2 = meet
+}

@@ -188,6 +188,8 @@ set(TESTS_INFERENCE
     inference/arithmetic_overflow.psrc
     inference/pragmas.psrc
     inference/predicate_ref.psrc
+    inference/union_monotonicity.psrc
+    inference/union_bounds.psrc
 )
 
 set(TESTS_REWRITING
