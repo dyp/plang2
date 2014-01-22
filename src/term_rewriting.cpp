@@ -79,6 +79,33 @@ StatementPtr modifyStatement(const StatementPtr& _pStatement) {
     return top.mergeForVerification();
 }
 
+class ModifyStatements : public Visitor {
+public:
+    ModifyStatements() {}
+
+    virtual bool _traverseAnonymousPredicate(AnonymousPredicate &_decl) {
+        const StatementPtr
+            pOldStatement = _decl.getBlock(),
+            pNewStatement = modifyStatement(pOldStatement);
+
+        if (!pNewStatement)
+            return true;
+
+        _decl.getBlock()->clear();
+
+        if (pNewStatement->getKind() == Statement::BLOCK)
+            _decl.getBlock()->assign(*pNewStatement.as<Block>());
+        else
+            _decl.getBlock()->add(pNewStatement);
+
+        return true;
+    }
+};
+
+void modifyModule(const ir::ModulePtr& _pModule) {
+    ModifyStatements().traverseNode(*_pModule);
+}
+
 FormulaCallPtr makeCall(const ir::FormulaDeclarationPtr& _pFormula, ArgsMap& _args) {
     if (!_pFormula)
         return NULL;

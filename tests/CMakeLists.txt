@@ -98,10 +98,21 @@ macro(run_ot_tests FLAGS TESTS)
     endforeach()
 endmacro()
 
-macro(run_st_tests FLAGS TESTS)
+macro(run_st_matching FLAGS TESTS)
     foreach(TEST ${TESTS})
         add_test(${TEST}
             ${PROJECT_SOURCE_DIR}/tools/test_st.sh
+            ${PROJECT_SOURCE_DIR}/tools
+            ${PROJECT_BINARY_DIR}/tests
+            ${PROJECT_SOURCE_DIR}/tests/${TEST}
+            ${FLAGS})
+    endforeach()
+endmacro()
+
+macro(run_st FLAGS TESTS)
+    foreach(TEST ${TESTS})
+        add_test(${TEST}
+            ${PROJECT_SOURCE_DIR}/tools/test_st_t.sh
             ${PROJECT_SOURCE_DIR}/tools
             ${PROJECT_BINARY_DIR}/tests
             ${PROJECT_SOURCE_DIR}/tests/${TEST}
@@ -244,8 +255,11 @@ set(TESTS_TRASFORMATION
     transformation/tail_recursion.psrc
 )
 
-set(TESTS_STATEMENT_TREE
+set(TESTS_STATEMENT_TREE_MATCHING
     statement_tree/example.psrc
+)
+
+set(TESTS_STATEMENT_TREE
 )
 
 set(TESTS_CONDITIONS
@@ -279,7 +293,8 @@ run_tests("-t1" "${TESTS_SEMANTICS}")
 run_pp_tests("-t0" "${TESTS_PRETTYPRINTER}")
 run_cg_tests("-t2" "${TESTS_CALLGRAPH}")
 run_ot_tests("-t2" "${TESTS_TRASFORMATION}")
-run_st_tests("-t0" "${TESTS_STATEMENT_TREE}")
+run_st_matching("-t0" "${TESTS_STATEMENT_TREE_MATCHING}")
+run_st("-t0" "${TESTS_STATEMENT_TREE}")
 run_cond_tests("" "${TESTS_CONDITIONS}")
 run_vf_tests("-t1" "${TESTS_VERIFICATION}")
 run_pvs_tests("-t1" "${TESTS_PVS}")

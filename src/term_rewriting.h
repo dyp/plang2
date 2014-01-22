@@ -11,8 +11,9 @@ namespace tr {
 
 std::pair<ir::NodePtr, ir::NodePtr> extractFirstCall(const ir::Node& _node);
 
-// Modify statements to verification.
+// Modify statements and modules to verification.
 ir::StatementPtr modifyStatement(const ir::StatementPtr& _pStatement);
+void modifyModule(const ir::ModulePtr& _pModule);
 
 // Arguments addition.
 ir::FormulaCallPtr makeCall(const ir::FormulaDeclarationPtr& _pFormula, na::ArgsMap& _args);

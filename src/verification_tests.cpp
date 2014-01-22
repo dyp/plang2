@@ -8,9 +8,11 @@
 #include "parser.h"
 #include "parser_context.h"
 #include "pp_syntax.h"
+#include "pp_flat_tree.h"
 #include "test_statement_tree.h"
 #include "test_preconditions.h"
 #include "test_cvc3_solver.h"
+#include "term_rewriting.h"
 #include "prettyprinter.h"
 #include "options.h"
 #include "utils.h"
@@ -18,7 +20,8 @@
 using namespace lexer;
 
 bool
-    bStatementTree = false,
+    bStatementTreeMatching = false,
+    bStatementTreeTests = false,
     bPreconditions = false,
     bCVC3 = false;
 
@@ -31,9 +34,10 @@ static bool _handleNotAnOption(const std::string &_strVal, void *_p) {
 
 static bool _parseTestOptions(size_t _cArgs, const char **_pArgs) {
     Option options[] = {
-        { "statement-tree", 's', NULL, &bStatementTree, NULL, false },
-        { "preconditions",  'p', NULL, &bPreconditions, NULL, false },
-        { "cvc3",           'c', NULL, &bCVC3,          NULL, false }
+        { "statement-tree", 'm', NULL, &bStatementTreeMatching, NULL, false },
+        { "statement-tree", 't', NULL, &bStatementTreeTests,    NULL, false },
+        { "preconditions",  'p',  NULL, &bPreconditions,         NULL, false },
+        { "cvc3",           'c',  NULL, &bCVC3,                  NULL, false }
     };
 
     if (!parseOptions(_cArgs, _pArgs, options, NULL, &_handleNotAnOption))
@@ -72,8 +76,13 @@ int main(int _argc, const char ** _argv) {
     if (!pModule)
         return EXIT_FAILURE;
 
-    if (bStatementTree)
+    if (bStatementTreeMatching)
         TreePrinter(std::wcout).print(pModule);
+
+    if (bStatementTreeTests) {
+        tr::modifyModule(pModule);
+        prettyPrintFlatTree(*pModule);
+    }
 
     if (bPreconditions)
         PreconditionsPrinter(std::wcout).traverseNode(*pModule);
