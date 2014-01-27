@@ -725,7 +725,7 @@ private:
 class Block : public Collection<Statement, Statement> {
 public:
     /// Default constructor.
-    Block() {}
+    Block(const LabelPtr &_pLabel = NULL) { setLabel(_pLabel); }
 
     /// Get statement kind.
     /// \returns #Block.
@@ -736,7 +736,7 @@ public:
     virtual bool isBlockLike() const { return true; }
 
     virtual NodePtr clone(Cloner &_cloner) const {
-        Auto<Block > pCopy = NEW_CLONE(this, _cloner, Block());
+        Auto<Block> pCopy = NEW_CLONE(this, _cloner, Block(_cloner.get(this->getLabel())));
         pCopy->appendClones(*this, _cloner);
         return pCopy;
     }
@@ -746,7 +746,7 @@ public:
 class ParallelBlock : public Block {
 public:
     /// Default constructor.
-    ParallelBlock() {}
+    ParallelBlock(const LabelPtr &_pLabel = NULL) : Block(_pLabel) {}
 
     /// Get statement kind.
     /// \returns #ParallelBlock.
@@ -757,7 +757,7 @@ public:
     virtual bool isBlockLike() const { return false; }
 
     virtual NodePtr clone(Cloner &_cloner) const {
-        Auto<ParallelBlock > pCopy = NEW_CLONE(this, _cloner, ParallelBlock());
+        Auto<ParallelBlock> pCopy = NEW_CLONE(this, _cloner, ParallelBlock(_cloner.get(this->getLabel())));
         pCopy->appendClones(*this, _cloner);
         return pCopy;
     }
