@@ -1,17 +1,35 @@
 /*
 
 <test>
+    # lemma forall int a. a != -a;
+    # Example: (FORALL (a_1: INT) : NOT (a_1 = -(a_1)))
     ~~ \(FORALL \(a\w*: INT\) : NOT \(a\w* = -\(a\w*\)\)\)
     = Invalid
+
+    # lemma forall int a, b. a + b = b + a;
+    # Example: (FORALL (a_1: INT, b_2: INT) : ((a_1 + b_2) = (b_2 + a_1)))
     ~~ \(FORALL \(a\w*: INT, b\w*: INT\) : \(\(a\w* \+ b\w*\) = \(b\w* \+ a\w*\)\)\)
     = Valid
+
+    # lemma forall int a, b. a + b != b + a;
+    # Example: (FORALL (a_1: INT, b_2: INT) : NOT ((a_1 + b_2) = (b_2 + a_1)))
     ~~ \(FORALL \(a\w*: INT, b\w*: INT\) : NOT \(\(a\w* \+ b\w*\) = \(b\w* \+ a\w*\)\)\)
     = Invalid
-    ~~ \(FORALL \(a\w*: INT, b\w*: INT, c\w*: INT\) : IF \(a\w* = 0\) THEN \(a\w* > b\w*\) ELSE \(a\w* < c\w*\) ENDIF\)
+
+    # lemma forall int a, b, c. a = 0 ? a > b : a < c;
+    # Example: (FORALL (a_1: INT, b_2: INT, c_3: INT) : IF (0 = a_1) THEN (a_1 > b_2) ELSE (a_1 < c_3) ENDIF)
+    ~~ \(FORALL \(a\w*: INT, b\w*: INT, c\w*: INT\) : IF \(0 = a\w*\) THEN \(a\w* > b\w*\) ELSE \(a\w* < c\w*\) ENDIF\)
     = Invalid
+
+    # lemma forall nat a. f(a);
+    # Example: (FORALL (a_1: SUBTYPE((LAMBDA (x_2: INT): (x_2 >= 0)))) : (LAMBDA (a_3: INT): (a_3 >= 0))(a_1))
     ~~ \(FORALL \(a\w*: SUBTYPE\(\(LAMBDA \(x\w*: INT\): \(x\w* >= 0\)\)\)\) : \(LAMBDA \(a\w*: INT\): \(a\w* >= 0\)\)\(a\w*\)\)
     = Valid
-    ~~ \(FORALL \(peremennaja\w*: INT\) : \(\(peremennaja\w* \+ 1\) = 2\)\)
+
+    # lemma forall int переменная. переменная + 1 = 2;
+    # Example: (FORALL (peremennaja_1: INT) : (2 = (peremennaja_1 + 1)))
+    ~~ \(FORALL \(peremennaja\w*: INT\) : \(2 = \(peremennaja\w* \+ 1\)\)\)
+    = Invalid
 </test>
 
 */

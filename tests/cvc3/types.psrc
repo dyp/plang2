@@ -1,14 +1,40 @@
 /*
 
 <test>
+    # nat
+    # Example: SUBTYPE((LAMBDA (x_1: INT): (x_1 >= 0)))
     ~~ SUBTYPE\(\(LAMBDA \(x\w*: INT\): \(x\w* >= 0\)\)\)
+
+    # type T2 = struct(nat a, b, real c, d);
+    # Example: [# a: v_0, b: v_0, c: REAL, d: REAL #]
     ~~ a: \w*, b: \w*, c: REAL, d: REAL
+
+    # type T3 = array(int, int);
+    # Example: (ARRAY INT OF INT)
     ~ (ARRAY INT OF INT)
+
+    # type T4 = subtype(int i: true);
+    # Example: SUBTYPE((LAMBDA (i_1: INT): TRUE))
     ~~ SUBTYPE\(\(LAMBDA \(i\w*: INT\): TRUE\)\)
-    ~~ SUBTYPE\(\(LAMBDA \(empty\w*: SUBTYPE\(\(LAMBDA \(x\w*: INT\): \(x\w* >= 0\)\)\)\): \(\(empty\w* >= 1\) AND \(empty\w* <= 10\)\)\)\)
-    ~~ \(\w*, \w*\) -> SUBTYPE\(\(LAMBDA \(x\w*: INT\): \(x\w* >= 0\)\)\)
-    ~~ \(\w*, \w*\) -> \[SUBTYPE\(\(LAMBDA \(x\w*: INT\): \(x\w* >= 0\)\)\), INT\]
+
+    # type T5 = 1..10;
+    # Example: SUBTYPE((LAMBDA (empty_1: SUBTYPE((LAMBDA (x_2: INT): (x_2 >= 0)))): ((empty_1 <= 10) AND (empty_1 >= 1))))
+    ~~ SUBTYPE\(\(LAMBDA \(empty\w*: SUBTYPE\(\(LAMBDA \(x\w*: INT\): \(x\w* >= 0\)\)\)\): \(\(empty\w* <= 10\) AND \(empty\w* >= 1\)\)\)\)
+
+    # type P1 = predicate(nat a, b: nat c);
+    # Example: (v_0, v_0) -> v_0
+    ~~ \(\w*, \w*\) -> \w*
+
+    # type P2 = predicate(nat a, b: nat c, int d);
+    # Example: (v_0, v_0) -> [v_0, INT]
+    ~~ \(\w*, \w*\) -> \[\w*, INT\]
+
+    # type P3 = predicate(int a, nat b: nat c, nat d #b1 : int e #b2 : bool f #b3);
+    # Example: (INT, SUBTYPE((LAMBDA (x_1: INT): (x_1 >= 0)))) -> t_0
     ~~ \(INT, SUBTYPE\(\(LAMBDA \(x\w*: INT\): \(x\w* >= 0\)\)\)\) -> \w*
+
+    # type P4 = predicate(int a: bool b, b1);
+    # Example: INT -> [v_0, v_0]
     ~~ INT -> \[\w*, \w*\]
 </test>
 
