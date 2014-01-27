@@ -119,8 +119,8 @@ public:
     virtual NodePtr clone(Cloner &_cloner) const { return NULL; }
 
 protected:
-    static bool _less(const NodePtr& _pLeft, const NodePtr& _pRight) { return (_pLeft && _pRight) ? *_pLeft < *_pRight : !_pLeft && _pRight; }
-    static bool _equals(const NodePtr& _pLeft, const NodePtr& _pRight) { return (_pLeft && _pRight) ? *_pLeft == *_pRight : (bool)_pLeft == (bool)_pRight; }
+    static bool _less(const NodePtr& _pLeft, const NodePtr& _pRight);
+    static bool _equals(const NodePtr& _pLeft, const NodePtr& _pRight);
 
 private:
     lexer::Token *m_pLoc = nullptr;

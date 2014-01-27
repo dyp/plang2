@@ -38,6 +38,18 @@ NodesPtr Node::getChildren() const {
     return ChildrenCollector(new Nodes()).run(this);
 }
 
+bool Node::_less(const NodePtr& _pLeft, const NodePtr& _pRight) {
+    if (_pLeft == _pRight)
+        return false;
+    return (_pLeft && _pRight) ? *_pLeft < *_pRight : !_pLeft && _pRight;
+}
+
+bool Node::_equals(const NodePtr& _pLeft, const NodePtr& _pRight) {
+    if (_pLeft == _pRight)
+        return true;
+    return (_pLeft && _pRight) ? *_pLeft == *_pRight : (bool)_pLeft == (bool)_pRight;
+}
+
 bool isTypeVariable(const NamedValuePtr &_pVar) {
     if (!_pVar || !_pVar->getType())
         return false;
