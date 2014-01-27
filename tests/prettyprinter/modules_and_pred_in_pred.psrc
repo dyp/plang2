@@ -4,7 +4,7 @@ module A {
     foo(nat a: nat b, nat c #1 : nat d, nat e #2)
     {
         label: bar() {}
-        nat df = 1, as = df + 1
+        nat f = 1, g = f + 1
     }
     measure a;
 }
