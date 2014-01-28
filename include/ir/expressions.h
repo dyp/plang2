@@ -933,58 +933,6 @@ class UnionType;
 class UnionConstructorDeclaration;
 typedef std::pair<size_t, size_t> UnionFieldIdx;
 
-/// Union alternative name. Only used inside switch/case construct.
-class UnionAlternativeExpr : public Component {
-public:
-    UnionAlternativeExpr(const std::wstring & _strName, const ExpressionPtr &_pObject = NULL,
-            const UnionTypePtr &_pType = NULL, const UnionFieldIdx &_idx = UnionFieldIdx(-1, -1)) :
-        Component(_pObject), m_strName(_strName), m_pType(_pType), m_idx(_idx)
-    {}
-
-    UnionAlternativeExpr(const UnionTypePtr &_pType, const UnionFieldIdx &_idx);
-
-    /// Get component kind.
-    /// \return #UnionAlternative.
-    virtual int getComponentKind() const { return UNION_ALTERNATIVE; }
-
-    /// Get name of the alternative.
-    /// \returns Identifier.
-    const std::wstring &getName() const { return m_strName; }
-
-    /// Set name of the alternative.
-    /// \param _strName Identifier.
-    void setName(const std::wstring &_strName) { m_strName = _strName; }
-
-    /// Get corresponding union type.
-    /// \return Union type.
-    UnionTypePtr getUnionType() const { return m_pType.as<UnionType>(); }
-
-    /// Set corresponding union type.
-    /// \param _pUnionType Union type.
-    void setUnionType(const UnionTypePtr &_pUnionType) { m_pType = _pUnionType; }
-
-    UnionFieldIdx getIdx() const { return m_idx; }
-
-    void setIdx(size_t _cCons, size_t _cField) { m_idx = UnionFieldIdx(_cCons, _cField); }
-
-    NamedValuePtr getField() const;
-    UnionConstructorDeclarationPtr getConstructor() const;
-
-    virtual bool less(const Node& _other) const;
-    virtual bool equals(const Node& _other) const;
-    virtual bool matches(const Expression& _other, MatchesPtr _pMatches = NULL) const;
-
-    virtual NodePtr clone(Cloner &_cloner) const {
-        return NEW_CLONE(this, _cloner, UnionAlternativeExpr(getName(), _cloner.get(getObject()),
-                _cloner.get(getUnionType()), m_idx));
-    }
-
-private:
-    std::wstring m_strName;
-    TypePtr m_pType;
-    UnionFieldIdx m_idx;
-};
-
 /// Map element.
 class MapElementExpr : public Component {
 public:

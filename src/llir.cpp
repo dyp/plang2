@@ -71,7 +71,6 @@ public:
     Operand translateTernary(const ir::Ternary & _expr, Instructions & _instrs);
     Operand translateComponent(const ir::Component & _expr, Instructions & _instrs);
     Operand translateFieldExpr(const ir::FieldExpr & _expr, Instructions & _instrs);
-    Operand translateUnionAlternativeExpr(const ir::UnionAlternativeExpr & _expr, Instructions & _instrs);
     Operand translateConstructor(const ir::Constructor & _expr, Instructions & _instrs);
     Operand translateEq(const ir::TypePtr &_pType, const Operand & _lhs, const Operand & _rhs, Instructions & _instrs);
     Operand translateEqUnion(const ir::UnionTypePtr &_pType, const Operand & _lhs, const Operand & _rhs, Instructions & _instrs);
@@ -646,8 +645,6 @@ Operand Translator::translateComponent(const ir::Component & _expr, Instructions
     switch (_expr.getComponentKind()) {
         case ir::Component::STRUCT_FIELD:
             return translateFieldExpr((ir::FieldExpr &) _expr, _instrs);
-        case ir::Component::UNION_ALTERNATIVE:
-            return translateUnionAlternativeExpr((ir::UnionAlternativeExpr &) _expr, _instrs);
     }
 
     assert(false && "Unreachable");
@@ -666,35 +663,6 @@ Operand Translator::translateFieldExpr(const ir::FieldExpr & _expr, Instructions
     return Operand(_instrs.back()->getResult());
 */
     return Operand();
-}
-
-Operand Translator::translateUnionAlternativeExpr(const ir::UnionAlternativeExpr & _expr, Instructions & _instrs) {
-    ir::UnionTypePtr pUnion = _expr.getUnionType();
-    Auto<StructType> st = translateUnionType(* pUnion);
-    Operand object = translateExpression(* _expr.getObject(), _instrs);
-
-    _instrs.push_back(new Unary(Unary::PTR, object));
-    _instrs.push_back(new Field(Operand(_instrs.back()->getResult()), 1));
-    _instrs.push_back(new Unary(Unary::LOAD, Operand(_instrs.back()->getResult())));
-
-    ir::UnionConstructorDeclarationPtr pCons = _expr.getConstructor();
-//    const ir::StructType & dataType = pCons->getStruct();
-
-    if (pCons->getFields().size() > 1) {
-        // Treat it as a struct.
-        assert(false);
-    } else {
-        // Treat it as a plain value.
-        ir::NamedValuePtr pField = _expr.getField();
-        Auto<Type> type = translateType(* pField->getType());
-
-        if (type->sizeOf() <= Type::sizeOf(Type::POINTER)) {
-            _instrs.push_back(new Cast(Operand(_instrs.back()->getResult()), type));
-        } else
-            assert(false);
-    }
-
-    return Operand(_instrs.back()->getResult());
 }
 
 Operand Translator::translateFunctionCall(const ir::FunctionCall & _expr, Instructions & _instrs) {
