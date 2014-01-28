@@ -330,6 +330,11 @@ void getArgsMap(const Call &_call, ArgsMap& _args) {
     }
 }
 
+bool isRecursiveCall(const ir::CallPtr& _pCall, const ir::PredicatePtr& _pPred) {
+    return _pPred && _pCall && _pCall->getPredicate() && _pCall->getPredicate()->getKind() == Expression::PREDICATE
+        && _pCall->getPredicate().as<PredicateReference>()->getTarget() == _pPred;
+}
+
 ir::FormulaPtr generalize(const ExpressionPtr& _pExpr) {
     ValuesSet freeValues;
     collectValues(_pExpr, freeValues);
