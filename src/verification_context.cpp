@@ -338,9 +338,22 @@ bool Conjunction::_releaseFirstAssignment() {
     return true;
 }
 
+bool Sequent::releaseAssignments() {
+    const bool
+        bLeft = m_pLeft && m_pLeft->releaseAssignments(),
+        bRight = m_pRight && m_pRight->releaseAssignments();
+    return bLeft || bRight;
+}
+
 ExpressionPtr Sequent::mergeToExpression() const {
     if (hasLogic())
         return NULL;
+    if (!left() && !right())
+        return new Literal(true);
+    if (!left())
+        return right()->mergeToExpression();
+    if (!right())
+        return new Unary(Unary::BOOL_NEGATE, left()->mergeToExpression());
     return new Binary(Binary::IMPLIES, left()->mergeToExpression(), right()->mergeToExpression());
 }
 
@@ -440,8 +453,7 @@ bool Context::releaseAssignments() {
 
             case Condition::SEQUENT: {
                 Sequent &seq = *i->first.as<Sequent>();
-                bIsReleased |= seq.left()->releaseAssignments();
-                bIsReleased |= seq.right()->releaseAssignments();
+                bIsReleased |= seq.releaseAssignments();
                 ++i;
                 break;
             }
