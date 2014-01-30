@@ -23,7 +23,13 @@ digraph G {
 
         parse_import -> parse_expr [ lhead = cluster1, minlen = 2 ]
 
-        typecheck [ label = "Typecheck"]
+        typecheck [ shape = record,
+            label = "{ Typecheck
+                | -t, --typecheck=TYPE
+                    (0), 'none' - Disable typecheck
+                    (1), 'on' - Enable typecheck
+                    (2), 'soft' - Soft typecheck
+                    (3), 'preprocess' - Collect constraints }"]
 
         parse_expr -> typecheck [ ltail = cluster1, minlen = 2 ]
     }
@@ -38,9 +44,13 @@ digraph G {
         node [ style = filled ];
         label = "Term rewriting"
 
+        clear_identifiers [ shape = record,
+            label = "{ Clear identifiers | -k, --keep-names}" ]
+
         predicates_inst [ label = "Template predicates instantiation" ]
         types_subst [ label = "Types substitution (subtypes, named reference types)" ]
 
+        clear_identifiers -> predicates_inst
         predicates_inst -> types_subst
     }
 
@@ -53,8 +63,16 @@ digraph G {
         node [ style = filled ];
         label = "Research processes"
 
-        semantics [label = "Semantic conditions generator"]
-        verif [ label = "Generator formulas of correctness" ]
+        semantics [ shape = record,
+            label = "{ Semantic conditions generator | -s, --check-semantics }" ]
+
+        verif [ shape = record,
+            label = "{ Generator formulas of correctness
+                | -e, --verify=TYPE
+                (0), 'none' - Do nothing,
+                (1), 'nothing' - Just generate conditions,
+                (2), 'formulas' - ... and output results,
+                (3), 'verbose' - Verbose output.}" ]
     }
 
     module -> semantics [ lhead = cluster3, minlen = 2 ]
@@ -64,21 +82,33 @@ digraph G {
 
     subgraph cluster4 {
         node [ style = filled ];
-        trans [ label = "Transformation" ]
-        optim [ label = "Optimization" ]
-        cvc3 [ label = "CVC3 solver" ]
+
+        trans [ shape = record,
+            label = "{ Transformation
+                | -T, --transformation=TYPE
+                    (1), 'tailrec' - Tail recursion elimination,
+                    (2), 'predinline'- Predicate inlining,
+                    (3), 'varmerge'- Variable merging,
+                    (4), 'simplify' - Simplification,
+                    (5), 'all'- All of the above. }" ]
+
+        optim [ shape = record,
+            label = "{ Optimization | -O, --optimize }" ]
+
+        cvc3 [ shape = record,
+            label = "{ CVC3 solver | -a, --check-validity}" ]
 
         optim -> cvc3 -> trans
     }
 
     subgraph cluster5 {
         node [ style = filled ];
-        label = "Backend"
+        label = "Backend \n -b, --backend=TYPE"
 
-        pvs [ label = "PVS" ]
-        cpp [ label = "C++" ]
-        plang [ label = "P lang" ]
-        russel [ label = "Russel" ]
+        pvs [ label = "{ PVS | (3), 'pvs'}" ]
+        cpp [ label = "{ C++ | (2), 'c' }" ]
+        plang [ label = "{ P lang | -pp, --prettyprint=p }" ]
+        russel [ label = "{ Russel | (4), 'russell' }" ]
     }
 
     module -> optim [ lhead = cluster4, minlen = 2 ]
