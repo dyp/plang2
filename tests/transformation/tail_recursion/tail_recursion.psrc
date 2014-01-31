@@ -1,0 +1,53 @@
+/*
+
+<test>
+    //D/PredicateBody//IfElse//Stmt//IfBody/Multiassignment
+    //D/PredicateBody//IfElse//Stmt//IfBody/Jump
+    //D/PredicateBody//StmtLabel = 1:
+    ! //D/PredicateBody/IfBody/Multiassignment
+    ! //D/PredicateBody/IfBody/Jump
+    //F/PredicateBody/Multiassignment
+    //F/PredicateBody/Jump
+    ! //FF/PredicateBody/Multiassignment
+    ! //FF/PredicateBody/Jump
+    //SwitchCaseBody/Multiassignment
+    //SwitchCaseBody/Jump
+    //SwitchDefault/Multiassignment
+    //SwitchDefault/Jump
+</test>
+
+*/
+
+foo(:);
+D(nat a, nat b: nat c) {
+    if (a = b) {
+        c = a;
+        foo(:);
+    }
+        else {
+            if (a < b) {
+                D(a, b - a: c);
+            }
+            else {
+                D(a - b, b: c);
+                a = a;
+        }
+    }
+}
+
+F(nat a, nat b: nat c) {
+    F(b, a: c);
+}
+
+FF(nat a, nat b: nat c) {
+    a = a;
+}
+
+G(nat a, nat b: nat c) {
+    switch(a) {
+        case 1: { G(a+1, b: c) }
+        case 2: { G(a, b+1: c) }
+        default: { G(a, b: c) }
+    }
+}
+

@@ -1,0 +1,60 @@
+/*
+
+<test>
+    //bar/PredicateBody/If/IfBody/Block/VariableDeclaration
+  ! //bar/PredicateBody//Call
+    //bar/PredicateBody/If/IfBody/Block/If
+  ! //bar/PredicateBody/If/IfElse/Call
+  ! //foo/PredicateBody/Call/PredicateCallee = bar
+    //foo/PredicateBody/Call/PredicateCallee = foo
+  ! //foo/PredicateBody/Call/PredicateCallee = baz
+    //foo/PredicateBody/Block/Block/Label = 1:
+    //foo/PredicateBody/Block/Block/Label = 2:
+    //foo/PredicateBody/VariableDeclaration
+  ! //foo/PredicateBody/If/IfBody//Call
+    //foo/PredicateBody/Block/If/IfBody/Jump = 1: \#1
+    //foo/PredicateBody/Block/Block/Jump = \#Label
+</test>
+
+*/
+baz(:) {
+}
+
+foo2(nat aaa : nat b2, nat c2 #a : nat d2, nat e #b) {
+    if (aaa > 1) {
+        b2 = 2;
+        #a
+    }
+    else {
+        e = 2;
+        #b
+    }
+}
+
+bar(nat a1, a2 : nat b1 #1 : nat c1 #2) {
+    if (a2 > 1) {
+        foo2(a1 : b1, b1 : c1, c1);
+        foo2(a1 : b1, b1 : c1, c1);
+        #1
+    }
+    else
+        baz(:);
+}
+
+foo(nat aa : nat bb, nat cc #1 : nat dd, nat ee #2) {
+    baz(:);
+    bar(aa, aa : bb #3 : cc #4)
+        case 3 : {
+            call: foo2(aa: bb, cc #3 : dd, nat e4 #4)
+                case 3: bb = 0
+                //case 4: dd = 0
+        }
+        case 4 : bb = 0;
+    Label: foo(aa : bb, cc #1 : dd, ee #2);
+
+    predicate(:) a = baz;
+    a(:);
+    predicate(:) b = predicate(:) {baz(:)};
+    b(:)
+}
+

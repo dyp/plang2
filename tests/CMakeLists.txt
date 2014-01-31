@@ -87,10 +87,21 @@ macro(run_cg_tests FLAGS TESTS)
     endforeach()
 endmacro()
 
-macro(run_ot_tests FLAGS TESTS)
+macro(run_ot_tr_tests FLAGS TESTS)
     foreach(TEST ${TESTS})
         add_test(${TEST}
-            ${PROJECT_SOURCE_DIR}/tools/test_ot.sh
+            ${PROJECT_SOURCE_DIR}/tools/test_ot_tr.sh
+            ${PROJECT_SOURCE_DIR}/tools
+            ${PROJECT_BINARY_DIR}/src
+            ${PROJECT_SOURCE_DIR}/tests/${TEST}
+            ${FLAGS})
+    endforeach()
+endmacro()
+
+macro(run_ot_pi_tests FLAGS TESTS)
+    foreach(TEST ${TESTS})
+        add_test(${TEST}
+            ${PROJECT_SOURCE_DIR}/tools/test_ot_pi.sh
             ${PROJECT_SOURCE_DIR}/tools
             ${PROJECT_BINARY_DIR}/src
             ${PROJECT_SOURCE_DIR}/tests/${TEST}
@@ -253,8 +264,12 @@ set(TESTS_SEMANTICS
     semantics/arSum.psrc
 )
 
-set(TESTS_TRASFORMATION
-    transformation/tail_recursion.psrc
+set(TESTS_TRASFORMATION_TAIL_RECURSION
+    transformation/tail_recursion/tail_recursion.psrc
+)
+
+set(TESTS_TRASFORMATION_PREDICATE_INLINING
+    transformation/predicate_inlining/hyperfunction.psrc
 )
 
 set(TESTS_STATEMENT_TREE_MATCHING
@@ -302,10 +317,11 @@ else()
     message(STATUS "WARNING: 'sccmap' was not found. Not generating some tests.")
 endif()
 
-run_ot_tests("-t2" "${TESTS_TRASFORMATION}")
 run_st_matching("-t0" "${TESTS_STATEMENT_TREE_MATCHING}")
 run_st("-t0" "${TESTS_STATEMENT_TREE}")
 run_cond_tests("" "${TESTS_CONDITIONS}")
 run_vf_tests("-t1" "${TESTS_VERIFICATION}")
 run_pvs_tests("-t1" "${TESTS_PVS}")
 run_cvc3_tests("" "${TESTS_CVC3}")
+run_ot_tr_tests("-t2" "${TESTS_TRASFORMATION_TAIL_RECURSION}")
+run_ot_pi_tests("-t2" "${TESTS_TRASFORMATION_PREDICATE_INLINING}")
