@@ -150,6 +150,8 @@ protected:
         return getRoleHandler(_bPreVisit) == NULL ? 0 : (this->*getRoleHandler(_bPreVisit))(getNode());
     }
 
+    Node* getParent();
+
     bool callWalkUp() {
         return getWalkUp() == NULL ? true : (this->*getWalkUp())(getNode());
     }

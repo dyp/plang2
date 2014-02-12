@@ -9,6 +9,15 @@ using namespace ir;
 #define TRAVERSE VISITOR_TRAVERSE
 #define TRAVERSE_COL VISITOR_TRAVERSE_COL
 
+Node* Visitor::getParent() {
+    if (m_path.empty())
+        return nullptr;
+    auto i = std::prev(m_path.end());
+    if (i == m_path.begin())
+        return nullptr;
+    return (--i)->pNode;
+}
+
 bool Visitor::visitNode(Node &_node) {
     return true;
 }
