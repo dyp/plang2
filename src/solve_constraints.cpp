@@ -47,6 +47,7 @@ protected:
     bool expandType(int _kind, const TypeTypePtr &_pLhs, const TypeTypePtr &_pRhs, tc::FormulaList &_formulas);
     bool expandSubtype(int _kind, const SubtypePtr &_pLhs, const SubtypePtr &_pRhs, tc::FormulaList &_formulas);
     bool expandSubtypeWithType(int _kind, const TypePtr &_pLhs, const TypePtr &_pRhs, tc::FormulaList &_formulas);
+    bool expandUnionType(int _kind, const UnionTypePtr& _pLhs, const UnionTypePtr& _pRhs, tc::FormulaList &_formulas);
     bool runCompound(Operation _op, int &_result);
 
 private:
@@ -879,6 +880,22 @@ bool Solver::expandSubtypeWithType(int _kind, const TypePtr &_pLhs, const TypePt
 
 }
 
+bool Solver::expandUnionType(int _kind, const UnionTypePtr& _pLhs, const UnionTypePtr& _pRhs, tc::FormulaList &_formulas) {
+    for (size_t i = 0; i < _pLhs->getConstructors().size(); ++i) {
+        const UnionConstructorDeclaration &lCons = *_pLhs->getConstructors().get(i);
+        const size_t cOtherConsIdx = _pRhs->getConstructors().findByNameIdx(lCons.getName());
+
+        if (cOtherConsIdx == (size_t)-1)
+            return false;
+
+        const UnionConstructorDeclaration &rCons = *_pRhs->getConstructors().get(cOtherConsIdx);
+
+        _formulas.push_back(new tc::Formula(_kind,
+            lCons.getFields(), rCons.getFields()));
+    }
+    return true;
+}
+
 bool Solver::expand(int &_result) {
     tc::FormulaList formulas;
     bool bModified = false;
@@ -915,6 +932,8 @@ bool Solver::expand(int &_result) {
                 bResult = expandSubtype(f.getKind(), pLhs.as<Subtype>(), pRhs.as<Subtype>(), formulas);
             else if (f.getKind() == tc::Formula::SUBTYPE && (pLhs->getKind() == Type::SUBTYPE || pRhs->getKind() == Type::SUBTYPE))
                 bResult = expandSubtypeWithType(f.getKind(), pLhs, pRhs, formulas);
+            else if (pLhs->getKind() == Type::UNION && pRhs->getKind() == Type::UNION)
+                bResult = expandUnionType(f.getKind(), pLhs.as<UnionType>(), pRhs.as<UnionType>(), formulas);
             else
                 bFormulaModified = false;
 

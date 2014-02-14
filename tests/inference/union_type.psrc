@@ -1,0 +1,22 @@
+/*
+
+<test>
+    //u1/Variable/Type = union(cons1(nat a, T b))
+    //u2/Variable/Type = union(cons1(nat a, T b), cons2(nat a))
+</test>
+
+*/
+
+type T;
+
+type U1 = union(
+    cons1(nat a, T b)
+);
+
+type U2 = union(
+    cons1(nat a, T b),
+    cons2(nat a)
+);
+
+U1 u1;
+U2 u2 = u1;
