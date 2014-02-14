@@ -1,0 +1,11 @@
+/*
+
+<test>
+    //e = foo() ? false : true
+</test>
+
+*/
+
+foo(: bool result) {}
+
+bool e = foo() ? false : true;
