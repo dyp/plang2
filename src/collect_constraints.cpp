@@ -1131,10 +1131,11 @@ struct Resolver : public Visitor {
     Cloner &m_cloner;
     bool &m_bModified;
 
-    Resolver(Collector &_collector, Cloner &_cloner, bool _bModified) :
+    Resolver(Collector &_collector, Cloner &_cloner, bool &_bModified) :
         Visitor(CHILDREN_FIRST), m_collector(_collector), m_cloner(_cloner),
         m_bModified(_bModified)
     {
+        m_bModified = false;
     }
 
     virtual bool visitNamedReferenceType(NamedReferenceType &_type) {
