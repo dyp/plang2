@@ -142,6 +142,8 @@ protected:
     virtual bool traverseTernary(ir::Ternary &_node);
     virtual bool traverseFormula(ir::Formula &_node);
     virtual bool traverseReplacement(ir::Replacement &_expr);
+    virtual bool traverseRecognizerExpr(ir::RecognizerExpr &_expr);
+    virtual bool traverseAccessorExpr(ir::AccessorExpr &_expr);
     virtual bool traverseFunctionCall(ir::FunctionCall &_expr);
     virtual bool traverseFormulaCall(ir::FormulaCall &_node);
     virtual bool traverseStructFieldDefinition(ir::StructFieldDefinition &_cons);

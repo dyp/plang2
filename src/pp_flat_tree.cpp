@@ -84,6 +84,8 @@ public:
     NAMED(Module, Name);
     NAMED(VariableReference, Name);
     NAMED(FieldExpr, FieldName);
+    NAMED(RecognizerExpr, ConstructorName);
+    NAMED(AccessorExpr, ConstructorName);
     NAMED(StructFieldDefinition, Name);
     NAMED(UnionConstructorDeclaration, Name);
     NAMED(NamedReferenceType, Name);

@@ -1608,6 +1608,22 @@ bool PrettyPrinterSyntax::traverseReplacement(Replacement &_expr) {
     VISITOR_EXIT();
 }
 
+bool PrettyPrinterSyntax::traverseRecognizerExpr(ir::RecognizerExpr &_expr) {
+    VISITOR_ENTER(RecognizerExpr, _expr);
+    m_os << _expr.getConstructorName() << L"?(";
+    VISITOR_TRAVERSE(Expression, RecognizerExpression, _expr.getObject(), _expr, Component, setObject);
+    m_os << L")";
+    VISITOR_EXIT();
+}
+
+bool PrettyPrinterSyntax::traverseAccessorExpr(ir::AccessorExpr &_expr) {
+    VISITOR_ENTER(AccessorExpr, _expr);
+    m_os << _expr.getConstructorName() << L"!(";
+    VISITOR_TRAVERSE(Expression, AccessorExpression, _expr.getObject(), _expr, Component, setObject);
+    m_os << L")";
+    VISITOR_EXIT();
+}
+
 bool PrettyPrinterSyntax::traverseFunctionCall(ir::FunctionCall &_expr) {
     VISITOR_ENTER(FunctionCall, _expr);
     VISITOR_TRAVERSE(Expression, FunctionCallee, _expr.getPredicate(), _expr, FunctionCall, setPredicate);
