@@ -1,0 +1,11 @@
+/*
+
+<test>
+    foo//Measure = a
+</test>
+
+*/
+
+formula foo(nat a, b: bool)
+    = (a = b)
+    measure a;
