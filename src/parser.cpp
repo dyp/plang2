@@ -17,7 +17,7 @@
 #include "options.h"
 #include "term_rewriting.h"
 
-#include "term_rewriting.h"
+#include "type_lattice.h"
 
 #include <iostream>
 #include <algorithm>
@@ -2893,9 +2893,10 @@ bool Parser::typecheck(Context &_ctx, Node &_node) {
         return true;
 
     tc::Formulas constraints, substs;
+    tc::ContextPtr pContext;
 
     try {
-        tc::collect(constraints, _node, _ctx);
+        pContext = tc::collect(constraints, _node, _ctx);
     } catch (const std::exception &_e) {
         ERROR(_ctx, false, L"Type error: %s", _e.what());
     }
@@ -2903,8 +2904,8 @@ bool Parser::typecheck(Context &_ctx, Node &_node) {
     if (Options::instance().typeCheck == TC_PREPROCESS)
         return true;
 
-    if (tc::solve(constraints, substs))
-        tc::apply(substs, _node);
+    if (tc::solve(pContext))
+        tc::apply(pContext, _node);
     else if (Options::instance().typeCheck == TC_FULL)
         ERROR(_ctx, false, L"Type error");
 

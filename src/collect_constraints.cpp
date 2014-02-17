@@ -10,6 +10,7 @@
 #include "prettyprinter.h"
 #include "pp_syntax.h"
 #include "options.h"
+#include "type_lattice.h"
 
 #include <ir/statements.h>
 #include <ir/builtins.h>
@@ -1156,6 +1157,7 @@ struct Resolver : public Visitor {
             TypePtr pFresh = m_collector.createFresh();
 
             _type.getDeclaration()->setType(pFresh);
+            tc::ContextStack::top()->namedTypes.insert(std::make_pair(pFresh.as<tc::FreshType>(), &_type));
 
             if (pDeclType)
                 m_cloner.inject(pFresh, pDeclType);
@@ -1206,15 +1208,17 @@ void _resolveNamedReferenceTypes(Node &_node, Collector &_collector) {
     while (bModified);
 }
 
-void tc::collect(tc::Formulas &_constraints, Node &_node, ir::Context &_ctx) {
+tc::ContextPtr tc::collect(tc::Formulas &_constraints, Node &_node, ir::Context &_ctx) {
     Collector collector(_constraints, _ctx);
 
+    tc::ContextStack::push(::ref(&_constraints));
     _resolveNamedReferenceTypes(_node, collector);
 
-    if (Options::instance().typeCheck == TC_PREPROCESS)
-        return;
+    if (Options::instance().typeCheck != TC_PREPROCESS)
+        collector.traverseNode(_node);
 
-    tc::ContextStack::push(::ref(&_constraints));
-    collector.traverseNode(_node);
+    tc::ContextPtr pContext = tc::ContextStack::top();
     tc::ContextStack::pop();
+
+    return pContext;
 }

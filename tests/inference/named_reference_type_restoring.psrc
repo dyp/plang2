@@ -1,0 +1,28 @@
+/*
+
+<test>
+    //TypeDeclaration//Name = T1
+    //TypeDeclaration//Name = T2
+    //TypeDeclaration//Name = T3
+    //ArrayType/ArrayBaseType = T1
+    //MapType/MapIndexType = T2
+    //MapType/MapBaseType = T3
+    //SetType/SetBaseType = T3
+    //t1/Variable/Type = T1
+    //t2/Variable/Type = T2
+    //t3/Variable/Type = T3
+</test>
+
+*/
+
+type T1;
+type T2;
+type T3;
+
+array(T1, 1 .. 10) a;
+map(T2, T3) m;
+set(T3) s;
+
+T1 t1;
+T2 t2;
+T3 t3;

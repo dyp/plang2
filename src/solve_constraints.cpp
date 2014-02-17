@@ -1203,8 +1203,6 @@ bool Solver::run() {
             std::wcout << std::endl << L"Solution:" << std::endl;
             prettyPrint(context(), std::wcout);
         }
-
-        context().applySubsts();
     }
 
     if (Options::instance().bVerbose) {
@@ -1224,9 +1222,9 @@ bool Solver::run() {
     return result != tc::Formula::FALSE;
 }
 
-bool tc::solve(tc::Formulas &_formulas, tc::Formulas &_result) {
+bool tc::solve(const tc::ContextPtr &_pContext) {
     CS::clear();
-    CS::push(ContextPtr(new Context(::ref(&_formulas), ::ref(&_result))));
+    CS::push(_pContext);
 
     if (Options::instance().bVerbose) {
         std::wcout << std::endl << L"Solving:" << std::endl;

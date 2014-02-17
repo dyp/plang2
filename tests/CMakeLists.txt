@@ -215,6 +215,7 @@ set(TESTS_INFERENCE
     inference/predicate_ref.psrc
     inference/union_monotonicity.psrc
     inference/union_bounds.psrc
+    inference/named_reference_type_restoring.psrc
 )
 
 set(TESTS_REWRITING

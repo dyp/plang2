@@ -227,6 +227,7 @@ struct Context : public Counted {
     Auto<Formulas> pSubsts;
     Auto<Context> pParent;
     Auto<class Lattice> pTypes;
+    std::map<tc::FreshTypePtr, ir::NamedReferenceTypePtr> namedTypes;
 
     Context();
     Context(const Auto<Formulas> &_pFormulas, const Auto<Formulas> &_pSubsts);
@@ -242,7 +243,7 @@ struct Context : public Counted {
     Flags &flags() { return *pFormulas->pFlags; }
     const std::set<ir::ExpressionPtr>& getConditions() const { return pFormulas->getConditions(); }
     std::set<ir::ExpressionPtr>& getConditions() { return pFormulas->getConditions(); }
-    void applySubsts();
+    void rewriteTypesInConditions();
 
     Formulas &operator *() const { return *pFormulas; }
     Formulas *operator ->() const { return pFormulas.ptr(); }
@@ -255,6 +256,8 @@ struct Context : public Counted {
     }
 
     void insertFormulas(const tc::Formulas& _formulas);
+    void restoreNamedTypes();
+    void clearBodiesOfTypeDeclarations() const;
 };
 
 typedef Auto<Context> ContextPtr;
@@ -319,13 +322,13 @@ private:
 
 bool rewriteType(ir::TypePtr &_pType, const ir::TypePtr &_pOld, const ir::TypePtr &_pNew, bool _bRewriteFlags = true);
 
-bool solve(Formulas &_formulas, Formulas &_substs);
+bool solve(const ContextPtr& _pContext);
 
-void collect(Formulas &_constraints, ir::Node &_node, ir::Context &_ctx);
+ContextPtr collect(Formulas &_constraints, ir::Node &_node, ir::Context &_ctx);
 
 void linkPredicates(ir::Context &_ctx, ir::Node &_node);
 
-void apply(Formulas &_constraints, ir::Node &_node);
+void apply(const ContextPtr& _pContext, ir::Node &_node);
 
 }; // namespace tc
 

@@ -547,11 +547,6 @@ bool Context::add(int _kind, const ir::TypePtr &_pLhs, const ir::TypePtr &_pRhs)
     return add(new Formula(_kind, _pLhs, _pRhs));
 }
 
-void Context::applySubsts() {
-    for (auto& i: getConditions())
-        apply(*pSubsts, *i);
-}
-
 void Formulas::insertFormulas(const tc::Formulas& _formulas) {
     insert(_formulas.begin(), _formulas.end());
     getConditions().insert(_formulas.getConditions().begin(), _formulas.getConditions().end());
@@ -560,6 +555,24 @@ void Formulas::insertFormulas(const tc::Formulas& _formulas) {
 void Context::insertFormulas(const tc::Formulas& _formulas) {
     insert(_formulas.begin(), _formulas.end());
     getConditions().insert(_formulas.getConditions().begin(), _formulas.getConditions().end());
+}
+
+void Context::restoreNamedTypes() {
+    for (auto i: namedTypes) {
+        Formulas::const_iterator iSubst = pSubsts->findSubst(i.first);
+
+        if (iSubst == pSubsts->end()) {
+            pSubsts->rewrite(i.first, i.second);
+            pSubsts->insert(new tc::Formula(tc::Formula::EQUALS, i.first, i.second));
+        }
+
+        if (iSubst != pSubsts->end() &&
+            (*iSubst)->getRhs()->getKind() == ir::Type::FRESH) {
+            const ir::TypePtr pOldRight = (*iSubst)->getRhs();
+            pSubsts->rewrite((*iSubst)->getRhs(), i.second);
+            pSubsts->insert(new tc::Formula(tc::Formula::EQUALS, pOldRight, i.second));
+        }
+    }
 }
 
 class PredicateLinker : public ir::Visitor {
@@ -618,12 +631,20 @@ public:
     }
 
     virtual bool visitType(ir::Type &_type) {
-        if (_type.getKind() == ir::Type::FRESH) {
-            Formulas::const_iterator iSubst = m_substs.findSubst(&_type);
+        if (_type.getKind() != ir::Type::FRESH)
+            return true;
 
-            if (iSubst != m_substs.end())
-                callSetter((*iSubst)->getRhs());
-        }
+        Formulas::const_iterator iSubst = m_substs.findSubst(&_type);
+        if (iSubst == m_substs.end())
+            return true;
+
+        const ir::Node *pParent = getParent();
+        if (pParent && getLoc().role == ir::R_TypeDeclBody &&
+            (*iSubst)->getRhs()->getKind() == ir::Type::NAMED_REFERENCE &&
+            pParent == (*iSubst)->getRhs().as<ir::NamedReferenceType>()->getDeclaration().ptr())
+            return true;
+
+        callSetter((*iSubst)->getRhs());
         return true;
     }
 
@@ -631,9 +652,29 @@ private:
     const Formulas &m_substs;
 };
 
-void tc::apply(tc::Formulas &_constraints, ir::Node &_node) {
+static void _apply(tc::Formulas &_constraints, ir::Node &_node) {
     FreshTypeRewriter ftr(_constraints);
     ftr.traverseNode(_node);
+}
+
+void Context::rewriteTypesInConditions() {
+    for (auto& i: getConditions())
+        _apply(*pSubsts, *i);
+}
+
+void Context::clearBodiesOfTypeDeclarations() const {
+    for (auto i: namedTypes) {
+        const ir::TypePtr pBody = i.second->getDeclaration()->getType();
+        if (pBody && pBody->getKind() == ir::Type::FRESH)
+            i.second->getDeclaration()->setType(ir::TypePtr());
+    }
+}
+
+void tc::apply(const ContextPtr& _pContext, ir::Node &_node) {
+    _pContext->restoreNamedTypes();
+    _pContext->rewriteTypesInConditions();
+    _apply(*_pContext->pSubsts, _node);
+    _pContext->clearBodiesOfTypeDeclarations();
 }
 
 Context::Context() :
