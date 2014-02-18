@@ -1,0 +1,25 @@
+/*
+
+<test>
+    e1//cons1//Name = u
+    e2//cons1//Name = u
+    e2//FieldExpr//Name = cons1
+    e3//cons1//Name = u
+    e3//cons2//Name = u
+    e3//FieldExpr//Name = cons1
+    e3//FieldExpr//Name = cons2
+</test>
+
+*/
+
+type U = union(
+    cons1(nat a, nat b),
+    cons2(nat c, nat d)
+);
+
+U u;
+
+var
+    e1 = cons1!(u),
+    e2 = cons1!(u).a,
+    e3 = cons1?(u) ? cons1!(u).a : cons2!(u).c;

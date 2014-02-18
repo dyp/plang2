@@ -194,6 +194,8 @@ set(TESTS_PARSING
     parsing/predicate_type.psrc
     parsing/ternary_if_call.psrc
     parsing/formula_measure.psrc
+    parsing/accessors.psrc
+    parsing/recognizers.psrc
 )
 
 set(TESTS_INFERENCE

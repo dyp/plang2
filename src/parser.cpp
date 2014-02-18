@@ -191,6 +191,8 @@ public:
     NamedValuePtr parseNamedValue(Context &_ctx);
     ElementDefinitionPtr parseArrayElement(Context &_ctx);
     ElementDefinitionPtr parseMapElement(Context &_ctx);
+    RecognizerExprPtr parseRecognizerExpr(Context &_ctx);
+    ExpressionPtr parseAccessorExpr(Context &_ctx);
     StructFieldDefinitionPtr parseFieldDefinition(Context &_ctx);
     StructFieldDefinitionPtr parseConstructorField(Context &_ctx);
     UnionConstructorDeclarationPtr parseConstructorDeclaration(Context &_ctx);
@@ -762,11 +764,13 @@ ExpressionPtr Parser::parseAtom(Context &_ctx) {
         if (bLinkedIdentifier && !pExpr)
             ERROR(ctx, NULL, L"Parameter with name %ls not found", str.c_str());
 
+        // Accessors and Recognizers.
         if (!pExpr && moduleCtx.getConstructor(str)) {
-            if (ctx.nextIs(QUESTION) && !ctx.nextLoc()->hasLeadingSpace()) {
-                assert(false && "Unimplemented");
-                // ParseRecognizer?
-            } else
+            if (ctx.nextIs(QUESTION) && !ctx.nextLoc()->hasLeadingSpace())
+                pExpr = parseRecognizerExpr(ctx);
+            else if (ctx.nextIs(BANG) && !ctx.nextLoc()->hasLeadingSpace())
+                pExpr = parseAccessorExpr(ctx);
+            else
                 pExpr = parseConstructor(ctx, NULL);
         }
 
@@ -1879,6 +1883,50 @@ ElementDefinitionPtr Parser::parseMapElement(Context &_ctx) {
     _ctx.mergeChildren();
 
     return pElem;
+}
+
+RecognizerExprPtr Parser::parseRecognizerExpr(Context &_ctx) {
+    Context &ctx = *_ctx.createChild(false);
+
+    const std::wstring strName = ctx.scan();
+
+    if (!ctx.consume(QUESTION))
+        ERROR(ctx, NULL, L"Expected '?', got: %ls", TOK_S(ctx));
+    if (!ctx.consume(LPAREN))
+        ERROR(ctx, NULL, L"Expected '(', got: %ls", TOK_S(ctx));
+
+    const ExpressionPtr pUnion = parseExpression(ctx);
+    if (!pUnion)
+        return NULL;
+
+    if (!ctx.consume(RPAREN))
+        ERROR(ctx, NULL, L"Expected ')', got: %ls", TOK_S(ctx));
+
+    _ctx.mergeChildren();
+
+    return new RecognizerExpr(strName, pUnion);
+}
+
+ExpressionPtr Parser::parseAccessorExpr(Context &_ctx) {
+    Context &ctx = *_ctx.createChild(false);
+
+    const std::wstring strName = ctx.scan();
+
+    if (!ctx.consume(BANG))
+        ERROR(ctx, NULL, L"Expected '!', got: %ls", TOK_S(ctx));
+    if (!ctx.consume(LPAREN))
+        ERROR(ctx, NULL, L"Expected '(', got: %ls", TOK_S(ctx));
+
+    const ExpressionPtr pUnion = parseExpression(ctx);
+    if (!pUnion)
+        return NULL;
+
+    if (!ctx.consume(RPAREN))
+        ERROR(ctx, NULL, L"Expected ')', got: %ls", TOK_S(ctx));
+
+    _ctx.mergeChildren();
+
+    return new AccessorExpr(strName, pUnion);
 }
 
 StructFieldDefinitionPtr Parser::parseFieldDefinition(Context &_ctx) {
