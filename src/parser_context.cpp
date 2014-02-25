@@ -71,6 +71,13 @@ void Context::mergeTo(Context *_pCtx, bool _bMergeFailed) {
             _pCtx->m_constructors->insert(m_constructors->begin(), m_constructors->end());
     }
 
+    if (m_jumps) {
+        if (!_pCtx->m_jumps)
+            std::swap(_pCtx->m_jumps, m_jumps);
+        else
+            _pCtx->m_jumps->insert(m_jumps->begin(), m_jumps->end());
+    }
+
     if (m_bScope)
         return;
 
@@ -300,6 +307,22 @@ void Context::addLabel(const ir::LabelPtr &_pLabel) {
     if (m_labels == NULL)
         m_labels = new LabelMap();
     (*m_labels)[_pLabel->getName()] = _pLabel;
+}
+
+ir::JumpPtr Context::getJump(const std::wstring &_strName) const {
+    if (m_jumps) {
+        JumpMap::const_iterator i = m_jumps->find(_strName);
+        if (i != m_jumps->end())
+            return i->second;
+    }
+
+    return !m_bScope && m_pParent ? m_pParent->getJump(_strName) : ir::JumpPtr();
+}
+
+void Context::addJump(const ir::JumpPtr &_pJump) {
+    if (m_jumps == NULL)
+        m_jumps = new JumpMap();
+    (*m_jumps)[_pJump->getDestination()->getName()] = _pJump;
 }
 
 ir::ProcessPtr Context::getProcess(const std::wstring &_strName) const {

@@ -2324,10 +2324,12 @@ JumpPtr Parser::parseJump(Context &_ctx) {
 
     std::wstring name = ctx.scan();
     LabelPtr pLabel = ctx.createLabel(name);
+    JumpPtr pJump = new Jump(pLabel);
+    ctx.addJump(pJump);
 
     _ctx.mergeChildren();
 
-    return new Jump(pLabel);
+    return pJump;
 }
 
 ReceivePtr Parser::parseReceive(Context &_ctx) {
@@ -2664,6 +2666,8 @@ StatementPtr Parser::parseStatement(Context &_ctx) {
     if (_ctx.in(IDENTIFIER, LABEL, INTEGER) && _ctx.nextIs(COLON)) {
         Context &ctx = *_ctx.createChild(false);
         LabelPtr pLabel = ctx.createLabel(ctx.scan(2));
+        pLabel->setLoc(&*_ctx.loc());
+        ctx.addLabel(pLabel);
 
         if (ctx.is(RBRACE))
             pStmt = new Statement();
@@ -2681,6 +2685,10 @@ StatementPtr Parser::parseStatement(Context &_ctx) {
         }
 
         pStmt->setLabel(pLabel);
+
+        if (JumpPtr pJump = _ctx.getJump(pLabel->getName()))
+            pJump->setDestination(pLabel);
+
         _ctx.mergeChildren();
 
         return pStmt;

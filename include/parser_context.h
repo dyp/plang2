@@ -102,6 +102,7 @@ public:
     typedef std::map<std::wstring, ir::NamedValuePtr> VariableMap;
     typedef std::map<std::wstring, ir::TypeDeclarationPtr> TypeMap;
     typedef std::map<std::wstring, ir::LabelPtr> LabelMap;
+    typedef std::map<std::wstring, ir::JumpPtr> JumpMap;
     typedef std::map<std::wstring, ir::ProcessPtr> ProcessMap;
     typedef std::map<std::wstring, ir::FormulaDeclarationPtr> FormulaMap;
     typedef std::multimap<std::wstring, ir::UnionConstructorDeclarationPtr> ConsMap;
@@ -179,6 +180,9 @@ public:
     ir::LabelPtr createLabel(const std::wstring &_strName);
     void addLabel(const ir::LabelPtr &_pLabel);
 
+    ir::JumpPtr getJump(const std::wstring &_strName) const;
+    void addJump(const ir::JumpPtr &_pJump);
+
     ir::ProcessPtr getProcess(const std::wstring &_strName) const;
     void addProcess(const ir::ProcessPtr &_pProcess);
 
@@ -221,6 +225,7 @@ private:
     VariableMap *m_variables = nullptr;
     TypeMap *m_types = nullptr;
     LabelMap *m_labels = nullptr;
+    JumpMap *m_jumps = nullptr;
     ProcessMap *m_processes = nullptr;
     FormulaMap *m_formulas = nullptr;
     ConsMap *m_constructors = nullptr;
