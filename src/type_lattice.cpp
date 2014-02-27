@@ -578,3 +578,17 @@ void Lattice::update(RelationHandler _handler, void *_pParam) {
 
     m_bValid = mr != MR_FAILED;
 }
+
+bool Lattice::traverse(const Handler& _handler, bool _bOnlyFresh, const Types& _ignored) {
+    bool bModified = false;
+
+    for (tc::TypeNodes::const_iterator i = m_types.begin(); i != m_types.end(); ++i) {
+        if (i->pType->getKind() != ir::Type::FRESH && _bOnlyFresh)
+            continue;
+        if (_ignored.find(i->pType) != _ignored.end())
+            continue;
+        bModified |= _handler(i->pType, i->lowers, i->uppers);
+    }
+
+    return bModified;
+}
