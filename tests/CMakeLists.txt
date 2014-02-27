@@ -39,6 +39,8 @@ set(SOURCES_ST
     ../src/generate_name.cpp
     ../src/verification_context.cpp
     ../src/cvc3_solver.cpp
+    ../src/typecheck/operations.cpp
+    ../src/typecheck/guess.cpp
 )
 
 add_executable(${TARGET_ST} ${SOURCES_ST})

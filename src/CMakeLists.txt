@@ -51,6 +51,8 @@ set(SOURCES
     predicate_ordering.cpp
     callgraph.cpp
     generate_callgraph.cpp
+    typecheck/guess.cpp
+    typecheck/operations.cpp
 )
 
 add_definitions(

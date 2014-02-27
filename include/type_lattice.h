@@ -6,6 +6,8 @@
 
 #include "typecheck.h"
 
+#include <functional>
+
 namespace tc {
 
 typedef Auto<class Relation> RelationPtr;
@@ -137,6 +139,7 @@ public:
     Lattice(Context *_pCtx) : m_pCtx(_pCtx), m_bValid(false) {}
 
     void invalidate() { m_bValid = false; }
+
     const Relations &lowers(const ir::TypePtr &_pType);
     const Relations &uppers(const ir::TypePtr &_pType);
     const TypeNodes &nodes();
@@ -149,6 +152,11 @@ public:
     void makeNodes(TypeNodeQueue &_nodes);
     void cleanUp();
     void dump();
+
+    typedef std::set<ir::TypePtr> Types;
+    typedef std::function<bool(const Auto<ir::Type>&, const Relations&, const Relations&)> Handler;
+
+    bool traverse(const Handler& _handler, bool _bOnlyFresh, const Types& _ignored = Types());
 
 private:
     Context *m_pCtx;
