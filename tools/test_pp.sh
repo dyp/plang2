@@ -21,9 +21,9 @@ rm $ORIG $TEMP $PP $NEWTEST
 
 if test -z $DIFFRESULT
 then
-    echo "[ \033[0;32mPassed\033[0m ]"
+    echo -e "[ \033[0;32mPassed\033[0m ]"
     exit 0
 else
-    echo "[ \033[0;31mFailed\033[0m ]" "$DIFFRESULT"
+    echo -e "[ \033[0;31mFailed\033[0m ]" "$DIFFRESULT"
     exit 1
 fi

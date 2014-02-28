@@ -19,12 +19,12 @@ $CUR_DIR/test_cg_sort.py $EXPECTED2
 diff -b $RESULT $EXPECTED2 >/dev/null 2>&1
 
 if [ "$?" = "0" ]; then
-    echo "[ \033[0;32mPassed\033[0m ]"
+    echo -e "[ \033[0;32mPassed\033[0m ]"
     rm $RESULT
     rm $EXPECTED2
     exit 0
 else
-    echo "[ \033[0;31mFailed\033[0m ]"
+    echo -e "[ \033[0;31mFailed\033[0m ]"
     diff -u -b $RESULT $EXPECTED2
     rm $RESULT
     rm $EXPECTED2
