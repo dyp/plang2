@@ -221,6 +221,7 @@ set(TESTS_INFERENCE
     inference/union_bounds.psrc
     inference/named_reference_type_restoring.psrc
     inference/union_type.psrc
+    inference/quantified_formula_type.psrc
 )
 
 set(TESTS_REWRITING

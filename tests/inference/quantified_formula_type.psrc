@@ -1,0 +1,13 @@
+/*
+
+<test>
+    //foo/PredicateOutParam//Type = bool
+</test>
+
+*/
+
+foo(nat arg: var result) {
+    result = (arg = 0)
+}
+
+lemma forall nat a. foo(a);
