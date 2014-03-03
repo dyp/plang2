@@ -580,6 +580,9 @@ public:
     PredicateLinker(ir::Context &_ctx) : Visitor(CHILDREN_FIRST), m_ctx(_ctx) {}
 
     virtual bool visitPredicateReference(ir::PredicateReference &_ref) {
+        if (!_ref.getType())
+            return true;
+
         ir::Predicates predicates;
 
         if (_ref.getTarget() && _ref.getTarget()->isBuiltin())
