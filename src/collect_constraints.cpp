@@ -660,7 +660,11 @@ bool Collector::visitTernary(Ternary &_ternary) {
 
 bool Collector::visitFormula(Formula &_formula) {
     _formula.setType(createFresh(_formula.getType()));
+    tc::FreshTypePtr pFresh = new tc::FreshType(tc::FreshType::PARAM_OUT);
+
     m_constraints.insert(new tc::Formula(tc::Formula::EQUALS, _formula.getType(), new Type(Type::BOOL)));
+    m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE, pFresh, new Type(Type::BOOL)));
+    m_constraints.insert(new tc::Formula(tc::Formula::EQUALS, pFresh, _formula.getSubformula()->getType()));
     return true;
 }
 
