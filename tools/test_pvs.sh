@@ -15,11 +15,11 @@ $BIN_DIR/plang -b3 -k $TEST |sort > $RESULT
 sort $EXPECTED| diff -b -B $RESULT - >/dev/null 2>&1
 
 if [ "$?" = "0" ]; then
-    echo "[ \033[0;32mPassed\033[0m ]"
+    echo -e "[ \033[0;32mPassed\033[0m ]"
     rm $RESULT
     exit 0
 else
-    echo "[ \033[0;31mFailed\033[0m ]"
+    echo -e "[ \033[0;31mFailed\033[0m ]"
     diff -u $RESULT $EXPECTED
     rm $RESULT
     exit 1
