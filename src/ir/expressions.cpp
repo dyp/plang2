@@ -318,6 +318,11 @@ bool Expression::implies(const ExpressionPtr& _pLeft, const ExpressionPtr& _pRig
     return false;
 }
 
+const ExpressionPtr& Expression::_cloneTypeTo(const ExpressionPtr& _pExpr, Cloner &_cloner) const {
+    _pExpr->setType(_cloner.get(getType()));
+    return _pExpr;
+}
+
 bool Wild::less(const Node& _other) const {
     if (!Expression::equals(_other))
         return Expression::less(_other);
@@ -328,6 +333,10 @@ bool Wild::equals(const Node& _other) const {
     if (!Expression::equals(_other))
         return Expression::less(_other);
     return getName() == ((const Wild&)_other).getName();
+}
+
+NodePtr Wild::clone(Cloner &_cloner) const {
+    return _cloneTypeTo(NEW_CLONE(this, _cloner, Wild(m_strName)), _cloner);
 }
 
 bool Literal::less(const Node& _other) const {
@@ -374,6 +383,10 @@ bool Literal::matches(const Expression& _other, MatchesPtr _pMatches) const {
     return *this == _other;
 }
 
+NodePtr Literal::clone(Cloner &_cloner) const {
+    return _cloneTypeTo(NEW_CLONE(this, _cloner, Literal(*this)), _cloner);
+}
+
 bool VariableReference::less(const Node& _other) const {
     if (!Expression::equals(_other))
         return Expression::less(_other);
@@ -390,6 +403,10 @@ bool VariableReference::matches(const Expression& _other, MatchesPtr _pMatches) 
     if (!Expression::equals(_other))
         return Expression::matches(_other, _pMatches);
     return *getTarget() == *((const VariableReference&)_other).getTarget();
+}
+
+NodePtr VariableReference::clone(Cloner &_cloner) const {
+    return _cloneTypeTo(NEW_CLONE(this, _cloner, VariableReference(m_strName, _cloner.get(m_pTarget, true))), _cloner);
 }
 
 bool PredicateReference::less(const Node& _other) const {
@@ -437,6 +454,10 @@ bool Unary::matches(const Expression& _other, MatchesPtr _pMatches) const {
     return getOperator() == other.getOperator() && _matches(getExpression(), other.getExpression(), _pMatches);
 }
 
+NodePtr Unary::clone(Cloner &_cloner) const {
+    return _cloneTypeTo(NEW_CLONE(this, _cloner, Unary(m_operator, _cloner.get(m_pExpression), m_overflow)), _cloner);
+}
+
 bool Binary::less(const Node& _other) const {
     if (!Expression::equals(_other))
         return Expression::less(_other);
@@ -470,6 +491,10 @@ bool Binary::matches(const Expression& _other, MatchesPtr _pMatches) const {
         : false;
 }
 
+NodePtr Binary::clone(Cloner &_cloner) const {
+    return _cloneTypeTo(NEW_CLONE(this, _cloner, Binary(m_operator, _cloner.get(m_pLeft), _cloner.get(m_pRight), m_overflow)), _cloner);
+}
+
 bool Ternary::less(const Node& _other) const {
     if (!Expression::equals(_other))
         return Expression::less(_other);
@@ -499,6 +524,10 @@ bool Ternary::matches(const Expression& _other, MatchesPtr _pMatches) const {
         && _matches(getElse(), other.getElse(), _pMatches);
 }
 
+NodePtr Ternary::clone(Cloner &_cloner) const {
+    return _cloneTypeTo(NEW_CLONE(this, _cloner, Ternary(_cloner.get(m_pIf), _cloner.get(m_pThen), _cloner.get(m_pElse))), _cloner);
+}
+
 bool TypeExpr::less(const Node& _other) const {
     if (!Expression::equals(_other))
         return Expression::less(_other);
@@ -516,6 +545,10 @@ bool TypeExpr::matches(const Expression& _other, MatchesPtr _pMatches) const {
         return Expression::matches(_other, _pMatches);
     const TypeExpr& other = (const TypeExpr&)_other;
     return _equals(getContents(), other.getContents());
+}
+
+NodePtr TypeExpr::clone(Cloner &_cloner) const {
+    return _cloneTypeTo(NEW_CLONE(this, _cloner, TypeExpr(_cloner.get(m_pContents))), _cloner);
 }
 
 bool CastExpr::less(const Node& _other) const {
@@ -539,6 +572,10 @@ bool CastExpr::matches(const Expression& _other, MatchesPtr _pMatches) const {
         return Expression::matches(_other, _pMatches);
     const CastExpr& other = (const CastExpr&)_other;
     return _matches(getToType(), other.getToType(), _pMatches) && _matches(getExpression(), other.getExpression(), _pMatches);
+}
+
+NodePtr CastExpr::clone(Cloner &_cloner) const {
+    return _cloneTypeTo(NEW_CLONE(this, _cloner, CastExpr(_cloner.get(m_pExpression), _cloner.get(m_pToType))), _cloner);
 }
 
 bool Formula::less(const Node& _other) const {
@@ -568,6 +605,12 @@ bool Formula::matches(const Expression& _other, MatchesPtr _pMatches) const {
     return getQuantifier() == other.getQuantifier()
         && matchNamedValues(getBoundVariables(), other.getBoundVariables())
         && _matches(getSubformula(), other.getSubformula(), _pMatches);
+}
+
+NodePtr Formula::clone(Cloner &_cloner) const {
+    FormulaPtr pFormula = NEW_CLONE(this, _cloner, Formula(m_quantifier, _cloner.get(m_pSubformula)));
+    pFormula->getBoundVariables().appendClones(getBoundVariables(), _cloner);
+    return _cloneTypeTo(pFormula, _cloner);
 }
 
 bool Component::less(const Node& _other) const {
@@ -611,6 +654,12 @@ bool ArrayPartExpr::matches(const Expression& _other, MatchesPtr _pMatches) cons
     return matchCollections(getIndices(), ((const ArrayPartExpr&)_other).getIndices(), _pMatches);
 }
 
+NodePtr ArrayPartExpr::clone(Cloner &_cloner) const {
+    ArrayPartExprPtr pExpr = NEW_CLONE(this, _cloner, ArrayPartExpr(_cloner.get(getObject())));
+    pExpr->getIndices().appendClones(getIndices(), _cloner);
+    return _cloneTypeTo(pExpr, _cloner);
+}
+
 bool FieldExpr::less(const Node& _other) const {
     if (!Component::equals(_other))
         return Component::less(_other);
@@ -627,6 +676,10 @@ bool FieldExpr::matches(const Expression& _other, MatchesPtr _pMatches) const {
     if (!Component::equals(_other))
         return Component::matches(_other, _pMatches);
     return *this == _other;
+}
+
+NodePtr FieldExpr::clone(Cloner &_cloner) const {
+    return _cloneTypeTo(NEW_CLONE(this, _cloner, FieldExpr(m_strField, _cloner.get(getObject()))), _cloner);
 }
 
 bool MapElementExpr::less(const Node& _other) const {
@@ -647,6 +700,10 @@ bool MapElementExpr::matches(const Expression& _other, MatchesPtr _pMatches) con
     return _matches(getIndex(), ((const MapElementExpr&)_other).getIndex(), _pMatches);
 }
 
+NodePtr MapElementExpr::clone(Cloner &_cloner) const {
+    return _cloneTypeTo(NEW_CLONE(this, _cloner, MapElementExpr(_cloner.get(getIndex()), _cloner.get(getObject()))), _cloner);
+}
+
 bool ListElementExpr::less(const Node& _other) const {
     if (!Component::equals(_other))
         return Component::less(_other);
@@ -665,6 +722,10 @@ bool ListElementExpr::matches(const Expression& _other, MatchesPtr _pMatches) co
     return _matches(getIndex(), ((const ListElementExpr&)_other).getIndex(), _pMatches);
 }
 
+NodePtr ListElementExpr::clone(Cloner &_cloner) const {
+    return _cloneTypeTo(NEW_CLONE(this, _cloner, ListElementExpr(_cloner.get(getIndex()), _cloner.get(getObject()))), _cloner);
+}
+
 bool Replacement::less(const Node& _other) const {
     if (!Component::equals(_other))
         return Component::less(_other);
@@ -681,6 +742,10 @@ bool Replacement::matches(const Expression& _other, MatchesPtr _pMatches) const 
     if (!Component::equals(_other))
         return Component::matches(_other, _pMatches);
     return _matches(getNewValues(), ((const Replacement&)_other).getNewValues(), _pMatches);
+}
+
+NodePtr Replacement::clone(Cloner &_cloner) const {
+    return _cloneTypeTo(NEW_CLONE(this, _cloner, Replacement(_cloner.get(getNewValues()), _cloner.get(getObject()))), _cloner);
 }
 
 bool AccessorBase::less(const Node& _other) const {
@@ -709,6 +774,14 @@ bool AccessorBase::matches(const Expression& _other, MatchesPtr _pMatches) const
     return getConstructorName() == other.getConstructorName();
 }
 
+NodePtr RecognizerExpr::clone(Cloner &_cloner) const {
+    return _cloneTypeTo(NEW_CLONE(this, _cloner, RecognizerExpr(m_pConstructor, _cloner.get(getObject()))), _cloner);
+}
+
+NodePtr AccessorExpr::clone(Cloner &_cloner) const {
+    return _cloneTypeTo(NEW_CLONE(this, _cloner, AccessorExpr(m_pConstructor, _cloner.get(getObject()))), _cloner);
+}
+
 bool FunctionCall::less(const Node& _other) const {
     if (!Expression::equals(_other))
         return Expression::less(_other);
@@ -731,6 +804,12 @@ bool FunctionCall::matches(const Expression& _other, MatchesPtr _pMatches) const
     const FunctionCall& other = (const FunctionCall&)_other;
     return _matches(getPredicate(), other.getPredicate(), _pMatches)
         && matchCollections(getArgs(), other.getArgs(), _pMatches);
+}
+
+NodePtr FunctionCall::clone(Cloner &_cloner) const {
+    FunctionCallPtr pExpr = NEW_CLONE(this, _cloner, FunctionCall(_cloner.get(getPredicate())));
+    pExpr->getArgs().appendClones(getArgs(), _cloner);
+    return _cloneTypeTo(pExpr, _cloner);
 }
 
 bool Binder::less(const Node& _other) const {
@@ -757,6 +836,12 @@ bool Binder::matches(const Expression& _other, MatchesPtr _pMatches) const {
         && matchCollections(getArgs(), other.getArgs(), _pMatches);
 }
 
+NodePtr Binder::clone(Cloner &_cloner) const {
+    BinderPtr pExpr = NEW_CLONE(this, _cloner, Binder(_cloner.get(getPredicate())));
+    pExpr->getArgs().appendClones(getArgs(), _cloner);
+    return _cloneTypeTo(pExpr, _cloner);
+}
+
 bool FormulaCall::less(const Node& _other) const {
     if (!Expression::equals(_other))
         return Expression::less(_other);
@@ -779,6 +864,12 @@ bool FormulaCall::matches(const Expression& _other, MatchesPtr _pMatches) const 
     const FormulaCall& other = (const FormulaCall&)_other;
     return _equals(getTarget(), other.getTarget())
         && matchCollections(getArgs(), other.getArgs(), _pMatches);
+}
+
+NodePtr FormulaCall::clone(Cloner &_cloner) const {
+    FormulaCallPtr pExpr = NEW_CLONE(this, _cloner, FormulaCall(_cloner.get(getTarget(), true)));
+    pExpr->getArgs().appendClones(getArgs(), _cloner);
+    return _cloneTypeTo(pExpr, _cloner);
 }
 
 bool Branch::less(const Node& _other) const {
@@ -848,6 +939,12 @@ bool Lambda::matches(const Expression& _other, MatchesPtr _pMatches) const {
     return getPredicate() == ((const Lambda&)_other).getPredicate();
 }
 
+NodePtr Lambda::clone(Cloner &_cloner) const {
+    LambdaPtr pExpr = NEW_CLONE(this, _cloner, Lambda());
+    m_pred.cloneTo(pExpr->m_pred, _cloner);
+    return _cloneTypeTo(pExpr, _cloner);
+}
+
 bool ElementDefinition::less(const Node& _other) const {
     if (!Node::equals(_other))
         return Node::less(_other);
@@ -881,6 +978,12 @@ bool StructFieldDefinition::equals(const Node& _other) const {
         && _equals(getValue(), other.getValue());
 }
 
+NodePtr StructConstructor::clone(Cloner &_cloner) const {
+    StructConstructorPtr pCopy = NEW_CLONE(this, _cloner, StructConstructor());
+    pCopy->appendClones(*this, _cloner);
+    return _cloneTypeTo(pCopy, _cloner);
+}
+
 bool UnionConstructor::less(const Node& _other) const {
     if (!StructConstructor::equals(_other))
         return StructConstructor::less(_other);
@@ -899,6 +1002,36 @@ bool UnionConstructor::equals(const Node& _other) const {
     return getName() == other.getName()
         && getDeclarations() == other.getDeclarations()
         && _equals(getPrototype(), other.getPrototype());
+}
+
+NodePtr UnionConstructor::clone(Cloner &_cloner) const {
+    UnionConstructorPtr pCopy = NEW_CLONE(this, _cloner, UnionConstructor(getName(), _cloner.get(getPrototype(), true)));
+    pCopy->getDeclarations().appendClones(getDeclarations(), _cloner);
+    return _cloneTypeTo(pCopy, _cloner);
+}
+
+NodePtr ArrayConstructor::clone(Cloner &_cloner) const {
+    ArrayConstructorPtr pCopy = NEW_CLONE(this, _cloner, ArrayConstructor());
+    pCopy->appendClones(*this, _cloner);
+    return _cloneTypeTo(pCopy, _cloner);
+}
+
+NodePtr MapConstructor::clone(Cloner &_cloner) const {
+    MapConstructorPtr pCopy = NEW_CLONE(this, _cloner, MapConstructor());
+    pCopy->appendClones(*this, _cloner);
+    return _cloneTypeTo(pCopy, _cloner);
+}
+
+NodePtr SetConstructor::clone(Cloner &_cloner) const {
+    SetConstructorPtr pCopy = NEW_CLONE(this, _cloner, SetConstructor());
+    pCopy->appendClones(*this, _cloner);
+    return _cloneTypeTo(pCopy, _cloner);
+}
+
+NodePtr ListConstructor::clone(Cloner &_cloner) const {
+    ListConstructorPtr pCopy = NEW_CLONE(this, _cloner, ListConstructor());
+    pCopy->appendClones(*this, _cloner);
+    return _cloneTypeTo(pCopy, _cloner);
 }
 
 bool ArrayPartDefinition::less(const Node& _other) const {
@@ -931,4 +1064,11 @@ bool ArrayIteration::equals(const Node& _other) const {
         return false;
     const ArrayIteration& other = (const ArrayIteration&)_other;
     return _equals(getDefault(), other.getDefault()) && getIterators() == other.getIterators();
+}
+
+NodePtr ArrayIteration::clone(Cloner &_cloner) const {
+    ArrayIterationPtr pCopy = NEW_CLONE(this, _cloner, ArrayIteration(_cloner.get(getDefault())));
+    pCopy->appendClones(*this, _cloner);
+    pCopy->getIterators().appendClones(getIterators(), _cloner);
+    return _cloneTypeTo(pCopy, _cloner);
 }
