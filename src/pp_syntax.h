@@ -8,31 +8,26 @@
 #include "ir/base.h"
 #include "prettyprinter.h"
 #include "verification.h"
+#include "generate_name.h"
 
 namespace pp {
 
 class Context : public Counted {
 public:
-    Context() : m_nLastFoundIdentifier(0) {}
-    void collectIdentifiers(ir::Node &_node);
+    Context() {}
+
+    NameGenerator& nameGenerator() { return m_names; }
+
     void collectPaths(ir::Node &_node);
-    void addLabel(const std::wstring& _name);
-    void addNamedValue(const ir::NamedValuePtr& _pVal);
-    std::wstring getNewLabelName(const std::wstring& _name = L"");
-    std::wstring getLabelName(ir::Label &_label);
-    std::wstring getNamedValueName(ir::NamedValue &_val);
+
     void getPath(const ir::NodePtr& _pNode, std::list<ir::ModulePtr>& _container);
     void sortModule(ir::Module &_module, std::list<ir::NodePtr>& _sorted);
     void clear();
 
 private:
-    std::set<std::wstring> m_usedLabels;
-    std::map<ir::LabelPtr, std::wstring> m_labelIdentifiers;
-    std::map<ir::NamedValuePtr, std::wstring> m_identifiers;
-    std::set<std::wstring> m_usedIdentifiers;
-    int m_nLastFoundIdentifier;
     std::multimap<ir::NodePtr, ir::NodePtr> m_decls, m_deps;
     std::map<ir::NodePtr, std::list<ir::ModulePtr>> m_paths;
+    NameGenerator m_names;
 
     void _buildDependencies(ir::NodePtr _pRoot);
     void _topologicalSort(const ir::NodePtr& _pDecl, std::list<ir::NodePtr>& _sorted);

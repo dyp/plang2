@@ -75,7 +75,7 @@ static void _updateContext(const ConjunctionPtr& _pConj, const ContextPtr& _pCon
         ValuesSet container;
         (*i)->getFreeValues(container);
         for (ValuesSet::iterator i = container.begin(); i != container.end(); ++i)
-            _pContext->addNamedValue(*i);
+            _pContext->nameGenerator().addNamedValue(*i);
     }
 }
 

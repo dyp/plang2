@@ -10,33 +10,6 @@ using namespace ir;
 
 namespace pp {
 
-class CollectIdentifiers : public ir::Visitor {
-public:
-    CollectIdentifiers(std::map<NamedValuePtr, std::wstring>& _identifiers, std::set<std::wstring>& _usedIdentifiers) :
-        m_identifiers(_identifiers), m_usedIdentifiers(_usedIdentifiers)
-    {}
-
-    virtual bool visitNamedValue(NamedValue & _val) {
-        if (!_val.getName().empty()) {
-            m_identifiers.insert(std::pair<NamedValuePtr, std::wstring>(&_val, _val.getName()));
-            m_usedIdentifiers.insert(_val.getName());
-        }
-
-        return true;
-    }
-
-    virtual bool visitVariableReference(VariableReference & _var) {
-        if (_var.getTarget())
-            visitNamedValue(*_var.getTarget());
-
-        return true;
-    }
-
-private:
-    std::map<NamedValuePtr, std::wstring> &m_identifiers;
-    std::set<std::wstring> &m_usedIdentifiers;
-};
-
 typedef std::multimap<NodePtr, NodePtr> Graph;
 typedef std::pair<const NodePtr, NodePtr> Edge;
 
@@ -218,59 +191,8 @@ private:
     const Graph& m_decls;
 };
 
-void Context::collectIdentifiers(Node &_node) {
-    CollectIdentifiers(m_identifiers, m_usedIdentifiers).traverseNode(_node);
-}
-
 void Context::collectPaths(ir::Node &_node) {
     CollectPaths(m_paths).traverseNode(_node);
-}
-
-void Context::addLabel(const std::wstring& _name) {
-    m_usedLabels.insert(_name);
-}
-
-void Context::addNamedValue(const NamedValuePtr& _pVal) {
-    if (!_pVal->getName().empty()) {
-        m_identifiers.insert(std::make_pair(_pVal, _pVal->getName()));
-        m_usedIdentifiers.insert(_pVal->getName());
-    }
-}
-
-std::wstring Context::getNewLabelName(const std::wstring& _name) {
-    for (size_t i = 1;; ++i) {
-        const std::wstring strName = _name + fmtInt(i, L"%d");
-        if (m_usedLabels.insert(strName).second)
-            return strName;
-    }
-
-    return L"";
-}
-
-std::wstring Context::getLabelName(ir::Label &_label) {
-    if (!_label.getName().empty())
-        return _label.getName();
-    else {
-        auto &strIndentifier = m_labelIdentifiers[&_label];
-        if (!strIndentifier.empty())
-            return strIndentifier;
-        else
-            return m_labelIdentifiers[&_label] = getNewLabelName();
-    }
-}
-
-std::wstring Context::getNamedValueName(NamedValue &_val) {
-    std::wstring strIdent = m_identifiers[&_val];
-
-    if (strIdent.empty()) {
-        do
-            strIdent = intToAlpha(m_nLastFoundIdentifier++);
-        while (!m_usedIdentifiers.insert(strIdent).second);
-
-        m_identifiers[&_val] = strIdent;
-    }
-
-    return strIdent;
 }
 
 void Context::getPath(const ir::NodePtr& _pNode, std::list<ir::ModulePtr>& _container) {
@@ -309,10 +231,7 @@ void Context::sortModule(Module &_module, std::list<NodePtr>& _sorted) {
 void Context::clear() {
     m_deps.clear();
     m_decls.clear();
-    m_usedLabels.clear();
-    m_identifiers.clear();
-    m_usedIdentifiers.clear();
-    m_nLastFoundIdentifier = 0;
+    m_names.clear();
 }
 
 // NODE / MODULE
@@ -387,8 +306,7 @@ void PrettyPrinterSyntax::printPath(const NodePtr& _pNode) {
 
 // NODE / LABEL
 bool PrettyPrinterSyntax::visitLabel(ir::Label &_label) {
-    m_pContext->addLabel(_label.getName());
-    m_os << m_pContext->getLabelName(_label) << ": ";
+    m_os << m_pContext->nameGenerator().getLabelName(_label) << ": ";
     return true;
 }
 
@@ -778,7 +696,7 @@ bool PrettyPrinterSyntax::traverseStatement(Statement &_stmt) {
 bool PrettyPrinterSyntax::traverseJump(Jump &_stmt) {
     VISITOR_ENTER(Jump, _stmt);
     VISITOR_TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
-    m_os << L"#" << m_pContext->getLabelName(*_stmt.getDestination());
+    m_os << L"#" << m_pContext->nameGenerator().getLabelName(*_stmt.getDestination());
     VISITOR_EXIT();
 }
 
@@ -966,7 +884,7 @@ bool PrettyPrinterSyntax::traverseCall(Call &_stmt) {
 
     std::vector<std::wstring> names;
     for (size_t i = 0; i < _stmt.getBranches().size(); ++i)
-        names.push_back(m_pContext->getNewLabelName(strGeneralName));
+        names.push_back(m_pContext->nameGenerator().getNewLabelName(strGeneralName));
 
     for (size_t i = 0; i < _stmt.getBranches().size(); ++i) {
         CallBranch &br = *_stmt.getBranches().get(i);
@@ -1289,7 +1207,7 @@ bool PrettyPrinterSyntax::visitNamedValue(NamedValue &_val) {
     if (getRole() != R_EnumValueDecl)
         m_os << L" ";
 
-    m_os << m_pContext->getNamedValueName(_val);
+    m_os << m_pContext->nameGenerator().getNamedValueName(_val);
 
     return false;
 }
@@ -1522,7 +1440,8 @@ bool PrettyPrinterSyntax::visitLiteral(ir::Literal &_node) {
 
 bool PrettyPrinterSyntax::visitVariableReference(ir::VariableReference &_node) {
     printPath(_node.getTarget());
-    m_os << (_node.getName().empty() ? m_pContext->getNamedValueName(*_node.getTarget()) : _node.getName());
+    m_os << (_node.getName().empty() ?
+        m_pContext->nameGenerator().getNamedValueName(*_node.getTarget()) : _node.getName());
     return false;
 }
 
@@ -1798,7 +1717,7 @@ bool PrettyPrinterSyntax::visitConstructor(Constructor& _expr) {
 
 void PrettyPrinterSyntax::run() {
     if (m_pNode) {
-        m_pContext->collectIdentifiers(*m_pNode);
+        m_pContext->nameGenerator().collect(*m_pNode);
         m_pContext->collectPaths(*m_pNode);
         traverseNode(*m_pNode);
     }
@@ -1810,7 +1729,7 @@ void PrettyPrinterSyntax::print(Node &_node) {
     if (&_node == NULL)
         m_os << "NULL";
     else {
-        m_pContext->collectIdentifiers(_node);
+        m_pContext->nameGenerator().collect(_node);
         m_pContext->collectPaths(_node);
         traverseNode(_node);
     }

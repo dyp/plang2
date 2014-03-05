@@ -17,7 +17,7 @@ public:
     {}
 
     std::wstring namedValueName(const NamedValuePtr& pValue) {
-        return removeRedundantSymbols(cyrillicToASCII(m_context.getNamedValueName(*pValue)), L"'", L"?");
+        return removeRedundantSymbols(cyrillicToASCII(m_context.nameGenerator().getNamedValueName(*pValue)), L"'", L"?");
     }
 
     std::wstring fmtType(int _kind) {
@@ -340,7 +340,7 @@ public:
         if (!m_path.empty() && getLoc().role == R_VarDeclVar)
             return true;
         printComma();
-        m_os << cyrillicToASCII(m_context.getNamedValueName(_value)) << ": ";
+        m_os << cyrillicToASCII(m_context.nameGenerator().getNamedValueName(_value)) << ": ";
         return true;
     }
 
@@ -366,7 +366,7 @@ public:
 
     bool visitLabel(ir::Label &_label) {
         m_os << cyrillicToASCII(_label.getName().empty()
-            ? m_context.getNewLabelName(L"L") : _label.getName()) << ": ";
+            ? m_context.nameGenerator().getNewLabelName(L"L") : _label.getName()) << ": ";
         return true;
     }
 
@@ -501,7 +501,7 @@ public:
         for (size_t i = 0; i < _expr.size(); ++i) {
             if (i != 0)
                 m_os << L" OR ";
-            m_os << m_context.getNamedValueName(nv) << " = ";
+            m_os << m_context.nameGenerator().getNamedValueName(nv) << " = ";
             traverseNode(*_expr.get(i));
         }
 
@@ -834,7 +834,7 @@ public:
 
     bool traverseModule(ir::Module &_module) {
         m_context.clear();
-        m_context.collectIdentifiers(_module);
+        m_context.nameGenerator().collect(_module);
 
         if (_module.getName().empty())
             return Visitor::traverseModule(_module);
