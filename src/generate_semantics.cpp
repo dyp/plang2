@@ -19,6 +19,184 @@
 using namespace ir;
 using namespace vf;
 
+class CollectPreConditions::NameGenerator: public Counted {
+private:
+    size_t m_typeNumber;   //for naming modules
+    size_t m_lambdaNumber;
+    size_t m_callNumber;   //for naming lemmas
+    size_t m_switchDefaultNumber;
+    size_t m_switchCaseNumber;
+    size_t m_arrayPartIndexNumber;
+    size_t m_subtypeParamNumber;
+    size_t m_unionConsFieldNumber;
+    size_t m_assignmentNumber;
+    size_t m_divideNumber;
+    size_t m_arrayConsNumber;
+    size_t m_arrayModNumber;
+    size_t m_ifNumber;
+    size_t m_arrayUnionNumber;
+
+public:
+    NameGenerator() : m_typeNumber(0), m_lambdaNumber(0), m_callNumber(0), m_switchDefaultNumber(0),
+                      m_switchCaseNumber(0), m_arrayPartIndexNumber(0), m_subtypeParamNumber(0), m_unionConsFieldNumber(0),
+                      m_assignmentNumber(0), m_divideNumber(0), m_arrayConsNumber(0), m_arrayModNumber(0), m_ifNumber(0),
+                      m_arrayUnionNumber(0) {}
+
+    std::wstring makeNameSubmoduleForType();     //for modules
+    std::wstring makeNameSubmoduleForLambda();
+    std::wstring makeNameSubmoduleForProcess(ir::Process &_process);
+    std::wstring makeNameSubmoduleForPredicate(ir::Predicate &_predicate);
+
+    std::wstring makeNamePredicatePrecondition(ir::Predicate &_predicate);    //for preconditions
+    std::wstring makeNamePredicateBranchPrecondition(ir::Predicate &_predicate, size_t _branchNumber);
+    std::wstring makeNameTypePreCondition();
+    std::wstring makeNameTypeBranchPreCondition(size_t _branchNumber);
+    std::wstring makeNameProcessBranchPreCondition(ir::Process &_process, size_t _branchNumber);
+    std::wstring makeNameLambdaToPredicate();   //for lambdas
+
+    std::wstring makeNamePredicatePostcondition(ir::Predicate &_predicate);     //for verification
+    std::wstring makeNamePredicateMeasure(ir::Predicate &_predicate);
+
+    std::wstring makeNameLemmaCall();     //for lemmas
+    std::wstring makeNameLemmaSwitchDefault();
+    std::wstring makeNameLemmaSwitchCase();
+    std::wstring makeNameLemmaArrayPartIndex();
+    std::wstring makeNameLemmaSubtypeParam();
+    std::wstring makeNameLemmaUnionConsField();
+    std::wstring makeNameLemmaAssignment();
+    std::wstring makeNameLemmaDivide();
+    std::wstring makeNameLemmaArrayCons();
+    std::wstring makeNameLemmaArrayMod();
+    std::wstring makeNameLemmaIf();
+    std::wstring makeNameLemmaArrayUnion();
+};
+
+///preconditions
+
+std::wstring CollectPreConditions::NameGenerator::makeNamePredicatePrecondition(ir::Predicate &_predicate){
+    return _predicate.getName() + L"Precondition";
+}
+
+std::wstring CollectPreConditions::NameGenerator::makeNamePredicateBranchPrecondition(ir::Predicate &_predicate, size_t _branchNumber){
+    return _predicate.getName() + fmtInt(_branchNumber, L"Precondition%u");
+}
+
+std::wstring CollectPreConditions::NameGenerator::makeNameTypePreCondition(){
+    return fmtInt(m_typeNumber, L"Type%u");
+}
+
+std::wstring CollectPreConditions::NameGenerator::makeNameTypeBranchPreCondition(size_t _branchNumber){
+    return fmtInt(m_typeNumber, L"Type%u") + fmtInt(_branchNumber, L"Precondition%u");
+}
+
+std::wstring CollectPreConditions::NameGenerator::makeNameProcessBranchPreCondition(ir::Process &_process, size_t _branchNumber){
+    return _process.getName() + fmtInt(_branchNumber, L"Precondition%u");
+}
+
+
+///verification
+
+std::wstring CollectPreConditions::NameGenerator::makeNamePredicatePostcondition(ir::Predicate &_predicate){
+    return _predicate.getName() + L"Postcondition";
+}
+
+std::wstring CollectPreConditions::NameGenerator::makeNamePredicateMeasure(ir::Predicate &_predicate){
+    return _predicate.getName() + L"Measure";
+}
+
+
+///submodules
+
+std::wstring CollectPreConditions::NameGenerator::makeNameSubmoduleForType(){
+    m_typeNumber++;
+    return fmtInt(m_typeNumber, L"Type%u");
+}
+
+std::wstring CollectPreConditions::NameGenerator::makeNameSubmoduleForLambda(){
+    m_lambdaNumber++;
+    return fmtInt(m_lambdaNumber, L"Lambda%u");
+}
+
+std::wstring CollectPreConditions::NameGenerator::makeNameLambdaToPredicate(){
+    return fmtInt(m_lambdaNumber, L"Lambda%u");
+}
+
+std::wstring CollectPreConditions::NameGenerator::makeNameSubmoduleForProcess(ir::Process &_process){
+    return _process.getName();
+}
+
+std::wstring CollectPreConditions::NameGenerator::makeNameSubmoduleForPredicate(ir::Predicate &_predicate){
+    return _predicate.getName();
+}
+
+
+
+///semantics' lemmas
+
+std::wstring CollectPreConditions::NameGenerator::makeNameLemmaCall(){
+    m_callNumber++;
+    return fmtInt(m_callNumber, L"Call%u");
+}
+
+std::wstring CollectPreConditions::NameGenerator::makeNameLemmaSwitchDefault(){
+    m_switchDefaultNumber++;
+    return fmtInt(m_switchDefaultNumber, L"SwitchDefault%u");
+}
+
+std::wstring CollectPreConditions::NameGenerator::makeNameLemmaSwitchCase(){
+    m_switchCaseNumber++;
+    return fmtInt(m_switchCaseNumber, L"SwitchCase%u");
+}
+
+std::wstring CollectPreConditions::NameGenerator::makeNameLemmaArrayPartIndex(){
+    m_arrayPartIndexNumber++;
+    return fmtInt(m_arrayPartIndexNumber, L"ArrayPartIndex%u");
+}
+
+std::wstring CollectPreConditions::NameGenerator::makeNameLemmaSubtypeParam(){
+    m_subtypeParamNumber++;
+    return fmtInt(m_subtypeParamNumber, L"SubtypeParam%u");
+}
+
+std::wstring CollectPreConditions::NameGenerator::makeNameLemmaUnionConsField(){
+    m_unionConsFieldNumber++;
+    return fmtInt(m_unionConsFieldNumber, L"UnionConsField%u");
+}
+
+std::wstring CollectPreConditions::NameGenerator::makeNameLemmaAssignment(){
+    m_assignmentNumber++;
+    return fmtInt(m_assignmentNumber, L"Assignment%u");
+}
+
+std::wstring CollectPreConditions::NameGenerator::makeNameLemmaDivide(){
+    m_divideNumber++;
+    return fmtInt(m_divideNumber, L"Divide%u");
+}
+
+std::wstring CollectPreConditions::NameGenerator::makeNameLemmaArrayCons(){
+    m_arrayConsNumber++;
+    return fmtInt(m_arrayConsNumber, L"ArrayConstructor%u");
+}
+
+std::wstring CollectPreConditions::NameGenerator::makeNameLemmaArrayMod(){
+    m_arrayModNumber++;
+    return fmtInt(m_arrayModNumber, L"ArrayModification%u");
+}
+
+std::wstring CollectPreConditions::NameGenerator::makeNameLemmaIf(){
+    m_ifNumber++;
+    return fmtInt(m_ifNumber, L"If%u");
+}
+
+std::wstring CollectPreConditions::NameGenerator::makeNameLemmaArrayUnion(){
+    m_arrayUnionNumber++;
+    return fmtInt(m_arrayUnionNumber, L"ArrayUnion%u");
+}
+
+CollectPreConditions::CollectPreConditions(Module &_module) :
+    m_module(_module), m_pNameGen(new NameGenerator())
+{}
+
 ExpressionPtr CollectPreConditions::collectConditions() {
     ExpressionPtr pExpr;
     for (std::list<Loc>::reverse_iterator i = m_path.rbegin(); i != m_path.rend(); ++i) {
@@ -210,20 +388,20 @@ ExpressionPtr CollectPreConditions::collectConditions() {
 
 int CollectPreConditions::handlePredicateDecl(Node &_node) {
     m_pPredicate = &(Predicate &)_node;
-    m_pNewModule = new Module(m_nameGen.makeNameSubmoduleForPredicate(*m_pPredicate));
+    m_pNewModule = new Module(m_pNameGen->makeNameSubmoduleForPredicate(*m_pPredicate));
     m_module.getModules().add(m_pNewModule);
     return 0;
 }
 
 int CollectPreConditions::handleProcessDecl(Node &_node) {
     m_pProcess = &(Process &)_node;
-    m_pNewModule = new Module(m_nameGen.makeNameSubmoduleForProcess(*m_pProcess));
+    m_pNewModule = new Module(m_pNameGen->makeNameSubmoduleForProcess(*m_pProcess));
     m_module.getModules().add(m_pNewModule);
     return 0;
 }
 
 bool CollectPreConditions::visitPredicateType(PredicateType &_node) {
-    m_pNewModule = new Module(m_nameGen.makeNameSubmoduleForType());
+    m_pNewModule = new Module(m_pNameGen->makeNameSubmoduleForType());
     m_module.getModules().add(m_pNewModule);
     return true;
 }
@@ -231,9 +409,9 @@ bool CollectPreConditions::visitPredicateType(PredicateType &_node) {
 bool CollectPreConditions::visitLambda(Lambda &_node) {
  /*   Lambda &_lambda = (Lambda &)_node;
     m_pPredicate = new Predicate((AnonymousPredicate &)_lambda.getPredicate());
-    m_pPredicate->setName(m_nameGen.makeNameLambdaToPredicate());
+    m_pPredicate->setName(m_pNameGen->makeNameLambdaToPredicate());
 
-    m_pNewModule = new Module(m_nameGen.makeNameSubmoduleForLambda());
+    m_pNewModule = new Module(m_pNameGen->makeNameSubmoduleForLambda());
     m_module.getModules().add(m_pNewModule);*/
     return true;
 }
@@ -244,7 +422,7 @@ bool CollectPreConditions::visitLambda(Lambda &_node) {
 int CollectPreConditions::handlePredicatePreCondition(Node &_node) {
 
     m_pNewModule->getFormulas().add(na::declareFormula(
-        m_nameGen.makeNamePredicatePrecondition(*m_pPredicate),
+        m_pNameGen->makeNamePredicatePrecondition(*m_pPredicate),
         *m_pPredicate, (Formula &)_node));
 
     return 0;
@@ -253,7 +431,7 @@ int CollectPreConditions::handlePredicatePreCondition(Node &_node) {
 int CollectPreConditions::handlePredicateBranchPreCondition(Node &_node) {
 
     m_pNewModule->getFormulas().add(na::declareFormula(
-        m_nameGen.makeNamePredicateBranchPrecondition(*m_pPredicate, getLoc().cPosInCollection),
+        m_pNameGen->makeNamePredicateBranchPrecondition(*m_pPredicate, getLoc().cPosInCollection),
         *m_pPredicate, (Formula &)_node));
 
     return 0;
@@ -262,7 +440,7 @@ int CollectPreConditions::handlePredicateBranchPreCondition(Node &_node) {
 int CollectPreConditions::handlePredicateTypePreCondition(Node &_node) {
 
     m_pNewModule->getFormulas().add(na::declareFormula(
-        m_nameGen.makeNameTypePreCondition(),
+        m_pNameGen->makeNameTypePreCondition(),
         *m_pPredicate, (Formula &)_node));
 
     return 0;
@@ -271,7 +449,7 @@ int CollectPreConditions::handlePredicateTypePreCondition(Node &_node) {
 int CollectPreConditions::handlePredicateTypeBranchPreCondition(Node &_node) {
 
     m_pNewModule->getFormulas().add(na::declareFormula(
-        m_nameGen.makeNameTypeBranchPreCondition(getLoc().cPosInCollection),
+        m_pNameGen->makeNameTypeBranchPreCondition(getLoc().cPosInCollection),
         *m_pPredicate, (Formula &)_node));
 
     return 0;
@@ -280,7 +458,7 @@ int CollectPreConditions::handlePredicateTypeBranchPreCondition(Node &_node) {
 int CollectPreConditions::handleProcessBranchPreCondition(Node &_node) {
 
     m_pNewModule->getFormulas().add(na::declareFormula(
-        m_nameGen.makeNameProcessBranchPreCondition(*m_pProcess, getLoc().cPosInCollection),
+        m_pNameGen->makeNameProcessBranchPreCondition(*m_pProcess, getLoc().cPosInCollection),
         *m_pPredicate, (Formula &)_node));
 
     return 0;
@@ -291,7 +469,7 @@ int CollectPreConditions::handleProcessBranchPreCondition(Node &_node) {
 
 int CollectPreConditions::handleFunctionCallee(Node &_node) {
     m_pNewModule->getLemmas().add(new LemmaDeclaration(collectConditions(),
-                                    new Label(m_nameGen.makeNameLemmaCall())));
+                                    new Label(m_pNameGen->makeNameLemmaCall())));
     return 0;
 }
 
@@ -371,10 +549,10 @@ bool CollectPreConditions::visitCall(Call &_node) {
                         if(pCond)
                             m_pNewModule->getLemmas().add(new LemmaDeclaration(
                                 new Binary(Binary::IMPLIES, pCond, pExpr),
-                                new Label(m_nameGen.makeNameLemmaCall())));
+                                new Label(m_pNameGen->makeNameLemmaCall())));
                         else
                             m_pNewModule->getLemmas().add(new LemmaDeclaration(pExpr,
-                                new Label(m_nameGen.makeNameLemmaCall())));
+                                new Label(m_pNameGen->makeNameLemmaCall())));
                     }
                     ///error lemma
                     else {
@@ -382,7 +560,7 @@ bool CollectPreConditions::visitCall(Call &_node) {
 
                         m_pNewModule->getLemmas().add(new LemmaDeclaration(
                             new Binary(Binary::NOT_EQUALS, pLiteral, pLiteral),
-                            new Label(m_nameGen.makeNameLemmaCall())));
+                            new Label(m_pNameGen->makeNameLemmaCall())));
                     }
                 }
             }
@@ -406,7 +584,7 @@ bool CollectPreConditions::visitCall(Call &_node) {
                 pExpr = new Binary(Binary::IFF, pExpr, pExprCall);
 
                 m_pNewModule->getLemmas().add(new LemmaDeclaration(pExpr,
-                    new Label(m_nameGen.makeNameLemmaCall())));
+                    new Label(m_pNameGen->makeNameLemmaCall())));
             }
 
 //for predicate
@@ -445,10 +623,10 @@ bool CollectPreConditions::visitCall(Call &_node) {
                     if(pCond)
                         m_pNewModule->getLemmas().add(new LemmaDeclaration(
                             new Binary(Binary::IMPLIES, pCond, pExpr),
-                            new Label(m_nameGen.makeNameLemmaCall())));
+                            new Label(m_pNameGen->makeNameLemmaCall())));
                     else
                         m_pNewModule->getLemmas().add(new LemmaDeclaration(pExpr,
-                            new Label(m_nameGen.makeNameLemmaCall())));
+                            new Label(m_pNameGen->makeNameLemmaCall())));
                 }
 
                 if(pPost) {
@@ -463,10 +641,10 @@ bool CollectPreConditions::visitCall(Call &_node) {
                     if(pCond)
                         m_pNewModule->getLemmas().add(new LemmaDeclaration(
                             new Binary(Binary::IMPLIES, pCond, pExpr),
-                            new Label(m_nameGen.makeNameLemmaCall())));
+                            new Label(m_pNameGen->makeNameLemmaCall())));
                     else
                         m_pNewModule->getLemmas().add(new LemmaDeclaration(pExpr,
-                            new Label(m_nameGen.makeNameLemmaCall())));
+                            new Label(m_pNameGen->makeNameLemmaCall())));
                 }
             }
         }
@@ -534,10 +712,10 @@ bool CollectPreConditions::visitCall(Call &_node) {
                             if(pCond)
                                 m_pNewModule->getLemmas().add(new LemmaDeclaration(
                                     new Binary(Binary::IMPLIES, pCond, pExpr),
-                                    new Label(m_nameGen.makeNameLemmaCall())));
+                                    new Label(m_pNameGen->makeNameLemmaCall())));
                             else
                                 m_pNewModule->getLemmas().add(new LemmaDeclaration(pExpr,
-                                    new Label(m_nameGen.makeNameLemmaCall())));
+                                    new Label(m_pNameGen->makeNameLemmaCall())));
                         }
                         //error lemma
                         else {
@@ -545,7 +723,7 @@ bool CollectPreConditions::visitCall(Call &_node) {
 
                             m_pNewModule->getLemmas().add(new LemmaDeclaration(
                                 new Binary(Binary::NOT_EQUALS, pLiteral, pLiteral),
-                                new Label(m_nameGen.makeNameLemmaCall())));
+                                new Label(m_pNameGen->makeNameLemmaCall())));
                         }
                     }
                 }
@@ -569,7 +747,7 @@ bool CollectPreConditions::visitCall(Call &_node) {
                     pExpr = new Binary(Binary::IMPLIES, pExpr, pExprCall);
 
                     m_pNewModule->getLemmas().add(new LemmaDeclaration(pExpr,
-                        new Label(m_nameGen.makeNameLemmaCall())));
+                        new Label(m_pNameGen->makeNameLemmaCall())));
                 }
             }
         }
@@ -624,28 +802,28 @@ bool CollectPreConditions::visitIf(If &_node) {
     pFormulaElse->getBoundVariables().append(params);
 
     m_pNewModule->getLemmas().add(new LemmaDeclaration(pFormulaIf,
-                                                       new Label(m_nameGen.makeNameLemmaIf())));
+                                                       new Label(m_pNameGen->makeNameLemmaIf())));
 
     m_pNewModule->getLemmas().add(new LemmaDeclaration(pFormulaElse,
-                                                       new Label(m_nameGen.makeNameLemmaIf())));
+                                                       new Label(m_pNameGen->makeNameLemmaIf())));
     return true;
 }
 
 int CollectPreConditions::handleSwitchDefault(Node &_node) {
     m_pNewModule->getLemmas().add(new LemmaDeclaration(collectConditions(),
-                                    new Label(m_nameGen.makeNameLemmaSwitchDefault())));
+                                    new Label(m_pNameGen->makeNameLemmaSwitchDefault())));
     return 0;
 }
 
 int CollectPreConditions::handleSwitchCase(Node &_node) {
  //   m_pNewModule->getLemmas().add(new LemmaDeclaration(collectConditions(),
-   //                                 new Label(m_nameGen.makeNameLemmaSwitchCase())));
+   //                                 new Label(m_pNameGen->makeNameLemmaSwitchCase())));
     return 0;
 }
 
 int CollectPreConditions::handleUnionConsField(Node &_node) {
     m_pNewModule->getLemmas().add(new LemmaDeclaration(collectConditions(),
-                                    new Label(m_nameGen.makeNameLemmaUnionConsField())));
+                                    new Label(m_pNameGen->makeNameLemmaUnionConsField())));
     return 0;
 }
 
@@ -675,10 +853,10 @@ bool CollectPreConditions::visitArrayPartExpr(ArrayPartExpr &_node) {
         if(ExpressionPtr pCond = collectConditions())
             m_pNewModule->getLemmas().add(new LemmaDeclaration(
                 new Binary(Binary::IMPLIES, pCond, pExpr),
-                new Label(m_nameGen.makeNameLemmaArrayPartIndex())));
+                new Label(m_pNameGen->makeNameLemmaArrayPartIndex())));
         else
             m_pNewModule->getLemmas().add(new LemmaDeclaration(pExpr,
-                new Label(m_nameGen.makeNameLemmaArrayPartIndex())));
+                new Label(m_pNameGen->makeNameLemmaArrayPartIndex())));
     }
 
     return true;
@@ -706,10 +884,10 @@ bool CollectPreConditions::visitReplacement(Replacement &_node) {
             if(ExpressionPtr pCond = collectConditions())
                 m_pNewModule->getLemmas().add(new LemmaDeclaration(
                     new Binary(Binary::IMPLIES, pCond, pExpr),
-                    new Label(m_nameGen.makeNameLemmaArrayMod())));
+                    new Label(m_pNameGen->makeNameLemmaArrayMod())));
             else
                 m_pNewModule->getLemmas().add(new LemmaDeclaration(pExpr,
-                    new Label(m_nameGen.makeNameLemmaArrayMod())));
+                    new Label(m_pNameGen->makeNameLemmaArrayMod())));
 
             for (size_t j = i + 1; j < _node.getNewValues().as<ArrayConstructor>()->size(); j++) {
 
@@ -717,7 +895,7 @@ bool CollectPreConditions::visitReplacement(Replacement &_node) {
 
                 m_pNewModule->getLemmas().add(new LemmaDeclaration(
                     new Binary(Binary::NOT_EQUALS, pExpr1, pExpr2),
-                    new Label(m_nameGen.makeNameLemmaArrayMod())));
+                    new Label(m_pNameGen->makeNameLemmaArrayMod())));
             }
         }
     }
@@ -742,10 +920,10 @@ bool CollectPreConditions::visitReplacement(Replacement &_node) {
                     if(ExpressionPtr pCond = collectConditions())
                         m_pNewModule->getLemmas().add(new LemmaDeclaration(
                             new Binary(Binary::IMPLIES, pCond, pExpr),
-                            new Label(m_nameGen.makeNameLemmaArrayMod())));
+                            new Label(m_pNameGen->makeNameLemmaArrayMod())));
                     else
                         m_pNewModule->getLemmas().add(new LemmaDeclaration(pExpr,
-                            new Label(m_nameGen.makeNameLemmaArrayMod())));
+                            new Label(m_pNameGen->makeNameLemmaArrayMod())));
                 }
 
                 for (size_t j = i + 1; j < _node.getNewValues().as<ArrayConstructor>()->size(); j++) {
@@ -769,7 +947,7 @@ bool CollectPreConditions::visitReplacement(Replacement &_node) {
                                     new Binary(Binary::NOT_EQUALS, pExpr3, pExpr4));
                         }
                         m_pNewModule->getLemmas().add(new LemmaDeclaration(pExpr,
-                            new Label(m_nameGen.makeNameLemmaArrayMod())));
+                            new Label(m_pNameGen->makeNameLemmaArrayMod())));
                     }
                 }
             }
@@ -829,10 +1007,10 @@ bool CollectPreConditions::visitAssignment(Assignment &_node) {
                         if(pCond)
                             m_pNewModule->getLemmas().add(new LemmaDeclaration(
                                 new Binary(Binary::IMPLIES, pCond, pExpr3),
-                                new Label(m_nameGen.makeNameLemmaArrayCons())));
+                                new Label(m_pNameGen->makeNameLemmaArrayCons())));
                         else
                             m_pNewModule->getLemmas().add(new LemmaDeclaration(pExpr3,
-                                new Label(m_nameGen.makeNameLemmaArrayCons())));
+                                new Label(m_pNameGen->makeNameLemmaArrayCons())));
                     }
                 }
             }
@@ -896,10 +1074,10 @@ bool CollectPreConditions::visitAssignment(Assignment &_node) {
                 if(pCond)
                     m_pNewModule->getLemmas().add(new LemmaDeclaration(
                         new Binary(Binary::IMPLIES, pCond, pExpr2),
-                        new Label(m_nameGen.makeNameLemmaArrayCons())));
+                        new Label(m_pNameGen->makeNameLemmaArrayCons())));
                 else
                     m_pNewModule->getLemmas().add(new LemmaDeclaration(pExpr2,
-                        new Label(m_nameGen.makeNameLemmaArrayCons())));
+                        new Label(m_pNameGen->makeNameLemmaArrayCons())));
             }
         }
 
@@ -985,7 +1163,7 @@ bool CollectPreConditions::visitAssignment(Assignment &_node) {
             pExpr = new Binary(Binary::IFF, pExpr1, pExpr);
 
             m_pNewModule->getLemmas().add(new LemmaDeclaration(pExpr,
-                new Label(m_nameGen.makeNameLemmaArrayCons())));
+                new Label(m_pNameGen->makeNameLemmaArrayCons())));
         }
     }
 
@@ -1021,7 +1199,7 @@ bool CollectPreConditions::visitAssignment(Assignment &_node) {
             pExpr = new Binary(Binary::IMPLIES, pExpr, pExprL);
 
             m_pNewModule->getLemmas().add(new LemmaDeclaration(pExpr,
-                new Label(m_nameGen.makeNameLemmaAssignment())));
+                new Label(m_pNameGen->makeNameLemmaAssignment())));
         }
 
 ///for arrays
@@ -1049,10 +1227,10 @@ bool CollectPreConditions::visitAssignment(Assignment &_node) {
                 if(pCond)
                     m_pNewModule->getLemmas().add(new LemmaDeclaration(
                         new Binary(Binary::IMPLIES, pCond, pExpr),
-                        new Label(m_nameGen.makeNameLemmaAssignment())));
+                        new Label(m_pNameGen->makeNameLemmaAssignment())));
                 else
                     m_pNewModule->getLemmas().add(new LemmaDeclaration(pExpr,
-                        new Label(m_nameGen.makeNameLemmaAssignment())));
+                        new Label(m_pNameGen->makeNameLemmaAssignment())));
             }
             ///error lemma
             else {
@@ -1060,7 +1238,7 @@ bool CollectPreConditions::visitAssignment(Assignment &_node) {
 
                 m_pNewModule->getLemmas().add(new LemmaDeclaration(
                     new Binary(Binary::NOT_EQUALS, pLiteral, pLiteral),
-                    new Label(m_nameGen.makeNameLemmaAssignment())));
+                    new Label(m_pNameGen->makeNameLemmaAssignment())));
             }
         }
     }
@@ -1148,7 +1326,7 @@ bool CollectPreConditions::visitAssignment(Assignment &_node) {
                     }
 
                     m_pNewModule->getLemmas().add(new LemmaDeclaration(pExprNonintersect,
-                        new Label(m_nameGen.makeNameLemmaArrayUnion())));
+                        new Label(m_pNameGen->makeNameLemmaArrayUnion())));
                 }
             }
 
@@ -1172,7 +1350,7 @@ bool CollectPreConditions::visitAssignment(Assignment &_node) {
             pExprEqual = new Binary(Binary::IFF, pExpr1, pExprEqual);
 
             m_pNewModule->getLemmas().add(new LemmaDeclaration(pExprEqual,
-                new Label(m_nameGen.makeNameLemmaArrayUnion())));
+                new Label(m_pNameGen->makeNameLemmaArrayUnion())));
         }
     }
     return true;
@@ -1186,7 +1364,7 @@ bool CollectPreConditions::visitBinary(Binary &_node) {
         m_pNewModule->getLemmas().add(new LemmaDeclaration(
             new Binary(Binary::IMPLIES, collectConditions(),
             new Binary(Binary::NOT_EQUALS, _node.getRightSide(), pLiteral)),
-            new Label(m_nameGen.makeNameLemmaDivide())));
+            new Label(m_pNameGen->makeNameLemmaDivide())));
     }
 
     return true;
