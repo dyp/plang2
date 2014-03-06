@@ -370,17 +370,9 @@ bool Context::getConstructors(const std::wstring &_strName, ir::UnionConstructor
     return !_cons.empty();
 }
 
-ir::UnionConstructorDeclarationPtr Context::getConstructor(const std::wstring &_strName) const {
+bool Context::hasConstructor(const std::wstring &_strName) const {
     ir::UnionConstructorDeclarations cons;
     getConstructors(_strName, cons);
-
-    return cons.size() == 1 ? cons.get(0) : ir::UnionConstructorDeclarationPtr();
-}
-
-bool Context::isConstructor(const std::wstring &_strName) const {
-    ir::UnionConstructorDeclarations cons;
-    getConstructors(_strName, cons);
-
     return !cons.empty();
 }
 

@@ -767,7 +767,7 @@ ExpressionPtr Parser::parseAtom(Context &_ctx) {
             ERROR(ctx, NULL, L"Parameter with name %ls not found", str.c_str());
 
         // Accessors and Recognizers.
-        if (!pExpr && moduleCtx.getConstructor(str)) {
+        if (!pExpr && moduleCtx.hasConstructor(str)) {
             if (ctx.nextIs(QUESTION) && !ctx.nextLoc()->hasLeadingSpace())
                 pExpr = parseRecognizerExpr(ctx);
             else if (ctx.nextIs(BANG) && !ctx.nextLoc()->hasLeadingSpace())
@@ -2003,7 +2003,7 @@ UnionConstructorPtr Parser::parseConstructor(Context &_ctx, const UnionTypePtr &
     UnionConstructorPtr pCons = new UnionConstructor(strName);
 
     if ((_pUnion && _pUnion->getConstructors().findByNameIdx(strName) == (size_t)-1) ||
-            (!_pUnion && !_ctx.getConstructor(strName)))
+            (!_pUnion && !_ctx.hasConstructor(strName)))
         ERROR(ctx, NULL, L"Unknown union constructor reference: %ls", strName.c_str());
 
     if (ctx.is(LPAREN)) {

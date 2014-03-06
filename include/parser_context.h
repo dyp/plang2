@@ -190,9 +190,8 @@ public:
     void addFormula(const ir::FormulaDeclarationPtr &_pFormula);
 
     bool getConstructors(const std::wstring &_strName, ir::UnionConstructorDeclarations &_cons) const;
-    ir::UnionConstructorDeclarationPtr getConstructor(const std::wstring &_strName) const;
     void addConstructor(const ir::UnionConstructorDeclarationPtr &_pCons);
-    bool isConstructor(const std::wstring &_strName) const;
+    bool hasConstructor(const std::wstring &_strName) const;
 
     // Constructor-parsing stuff.
     ir::UnionConstructorPtr getCurrentConstructor() const {
