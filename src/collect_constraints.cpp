@@ -651,10 +651,9 @@ bool Collector::visitBinary(Binary &_binary) {
 
 bool Collector::visitTernary(Ternary &_ternary) {
     _ternary.setType(createFresh(_ternary.getType()));
-    m_constraints.insert(new tc::Formula(tc::Formula::EQUALS, _ternary.getIf()->getType(), new Type(Type::BOOL)));
+    m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE, _ternary.getIf()->getType(), new Type(Type::BOOL)));
     m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE, _ternary.getThen()->getType(), _ternary.getType()));
     m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE, _ternary.getElse()->getType(), _ternary.getType()));
-
     return true;
 }
 

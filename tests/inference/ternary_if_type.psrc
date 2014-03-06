@@ -1,0 +1,13 @@
+/*
+
+<test>
+    //e = bool e
+</test>
+
+*/
+
+type FALSE = subtype(bool i: i = false);
+
+foo(: FALSE result) {}
+
+bool e = (foo() ? false : true);
