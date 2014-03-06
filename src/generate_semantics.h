@@ -8,21 +8,21 @@
 #include "ir/declarations.h"
 #include "ir/visitor.h"
 #include "utils.h"
-#include "generate_name.h"
 #include "verification.h"
 
 namespace ir{
 
 class CollectPreConditions : public Visitor {
     Module &m_module;
-    NameGenerator m_nameGen;
+    class NameGenerator;
+    Auto<NameGenerator> m_pNameGen;
     Predicate *m_pPredicate = nullptr;
     Process *m_pProcess = nullptr;
     Auto<Module> m_pNewModule;
     Collection<LemmaDeclaration> m_lemmas;
 
 public:
-    CollectPreConditions(Module &_module) : m_module(_module) {}
+    CollectPreConditions(Module &_module);
 
     ///collecting preconditions, conditions from If's and Switch's for generating lemmas
     ExpressionPtr collectConditions();
