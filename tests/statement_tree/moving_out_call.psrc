@@ -1,0 +1,35 @@
+/*
+
+<test>
+    ~ bar(arg: a)
+    ~ bar(1 + arg: b)
+    ~ bar(2 + arg: c)
+</test>>
+
+*/
+
+bar(nat arg: nat result) {
+    result = arg
+}
+
+foo(nat arg: nat result) {
+    /* After moving out should be
+       somethig like that:
+
+        bar(arg: a);
+        if (a > 1) {
+            bar(1 + arg: b);
+            result = b
+        }
+        else {
+            bar(2 + arg: c);
+            result = c
+        }
+
+    */
+
+    if (bar(arg) > 1)
+        result = bar(arg + 1)
+    else
+        result = bar(arg + 2)
+}

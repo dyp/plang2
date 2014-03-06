@@ -286,6 +286,7 @@ set(TESTS_STATEMENT_TREE_MATCHING
 )
 
 set(TESTS_STATEMENT_TREE
+    statement_tree/moving_out_call.psrc
 )
 
 set(TESTS_CONDITIONS
@@ -326,8 +327,8 @@ else()
     message(STATUS "WARNING: 'sccmap' was not found. Not generating some tests.")
 endif()
 
-run_st_matching("-t0" "${TESTS_STATEMENT_TREE_MATCHING}")
-run_st("-t0" "${TESTS_STATEMENT_TREE}")
+run_st_matching("" "${TESTS_STATEMENT_TREE_MATCHING}")
+run_st("" "${TESTS_STATEMENT_TREE}")
 run_cond_tests("" "${TESTS_CONDITIONS}")
 run_vf_tests("-t1" "${TESTS_VERIFICATION}")
 run_pvs_tests("-t1" "${TESTS_PVS}")
