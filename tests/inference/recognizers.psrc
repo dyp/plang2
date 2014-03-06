@@ -1,0 +1,23 @@
+/*
+
+<test>
+    e1//Type = bool
+    e2//Type = bool
+    a//Type ~ union
+    b//Type = bool
+</test>
+
+*/
+
+type U = union(
+    cons1(nat a, nat b),
+    cons2(nat c, nat d)
+);
+
+U u;
+
+var
+    e1 = cons1?(u),
+    e2 = cons1?(u) or cons2?(u),
+    a = cons2(1, 2),
+    b = cons1?(a);

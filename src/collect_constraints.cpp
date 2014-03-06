@@ -39,6 +39,8 @@ public:
     virtual bool visitTernary(Ternary &_ternary);
     virtual bool visitFormula(Formula &_formula);
     virtual bool visitArrayPartExpr(ArrayPartExpr &_array);
+    virtual bool visitRecognizerExpr(RecognizerExpr& _expr);
+    virtual bool visitAccessorExpr(AccessorExpr& _expr);
     virtual bool visitStructConstructor(StructConstructor &_cons);
     virtual bool visitUnionConstructor(UnionConstructor &_cons);
     virtual bool visitListConstructor(ListConstructor &_cons);
@@ -707,6 +709,32 @@ bool Collector::visitArrayPartExpr(ArrayPartExpr &_array) {
     formulas.insert(new tc::Formula(tc::Formula::SUBTYPE, _array.getIndices().get(0)->getType(), new Type(Type::NAT, Number::GENERIC)));
 
     m_constraints.insert(pFormula);
+    return true;
+}
+
+bool Collector::visitRecognizerExpr(RecognizerExpr& _expr) {
+    _expr.setType(new Type(Type::BOOL));
+
+    UnionTypePtr pUnionType = new UnionType();
+    pUnionType->getConstructors().add(
+        new UnionConstructorDeclaration(_expr.getConstructorName()));
+
+    tc::FreshTypePtr pFields = createFresh();
+    pUnionType->getConstructors().get(0)->setFields(pFields);
+
+    m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE, pUnionType, _expr.getObject()->getType()));
+    return true;
+}
+
+bool Collector::visitAccessorExpr(AccessorExpr& _expr) {
+    _expr.setType(createFresh(_expr.getType()));
+
+    UnionTypePtr pUnionType = new UnionType();
+    pUnionType->getConstructors().add(
+        new UnionConstructorDeclaration(_expr.getConstructorName()));
+    pUnionType->getConstructors().get(0)->setFields(_expr.getType());
+
+    m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE, pUnionType, _expr.getObject()->getType()));
     return true;
 }
 

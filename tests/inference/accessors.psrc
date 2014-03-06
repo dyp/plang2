@@ -1,0 +1,21 @@
+/*
+
+<test>
+    e1//Type = (nat a, nat b)
+    e2//Type = nat
+    e3//Type = nat
+</test>
+
+*/
+
+type U = union(
+    cons1(nat a, nat b),
+    cons2(nat c, nat d)
+);
+
+U u;
+
+var
+    e1 = cons1!(u),
+    e2 = cons1!(u).a,
+    e3 = cons1?(u) ? cons1!(u).a : cons2!(u).c;

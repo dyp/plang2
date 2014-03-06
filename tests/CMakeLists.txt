@@ -225,6 +225,8 @@ set(TESTS_INFERENCE
     inference/quantified_formula_type.psrc
     inference/ternary_if_type.psrc
     inference/formula_bounded_variables.psrc
+    inference/recognizers.psrc
+    inference/accessors.psrc
 )
 
 set(TESTS_REWRITING
