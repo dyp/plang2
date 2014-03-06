@@ -7,6 +7,7 @@
 #include "ir/visitor.h"
 #include "generate_semantics.h"
 #include "pp_syntax.h"
+#include "term_rewriting.h"
 
 class PreconditionsPrinter : public ir::Visitor {
 public:
@@ -24,6 +25,7 @@ public:
         if (!pExpr)
             return true;
 
+        tr::normalizeExpressions(pExpr);
         pp::prettyPrintSyntax(*pExpr, m_os);
         m_os << L"\n";
         return true;
@@ -40,12 +42,16 @@ public:
             pConjPost = getPostConditionForStatement(&_stmt);
 
         ir::ExpressionPtr pExpr = pConjPre->mergeToExpression();
+        tr::normalizeExpressions(pExpr);
+
         if (!pConjPre->empty() && pExpr) {
             pp::prettyPrintSyntax(*pExpr, m_os);
             m_os << L"\n";
         }
 
         pExpr = pConjPost->mergeToExpression();
+        tr::normalizeExpressions(pExpr);
+
         if (!pConjPost->empty() && pExpr) {
             pp::prettyPrintSyntax(*pExpr, m_os);
             m_os << L"\n";
