@@ -57,6 +57,7 @@ public:
 
     virtual int handlePredicateInParam(Node &_node);
     virtual int handlePredicateOutParam(Node &_node);
+    virtual int handleFormulaBoundVariable(Node &_node);
     virtual int handleParameterizedTypeParam(Node &_node);
     virtual int handleVarDeclVar(Node &_node);
     virtual int handleSubtypeParam(Node &_node);
@@ -1093,6 +1094,11 @@ int Collector::handlePredicateInParam(Node &_node) {
 
 int Collector::handlePredicateOutParam(Node &_node) {
     collectParam((NamedValue *)&_node, tc::FreshType::PARAM_OUT);
+    return 0;
+}
+
+int Collector::handleFormulaBoundVariable(Node &_node) {
+    collectParam((NamedValue *)&_node, tc::FreshType::PARAM_IN);
     return 0;
 }
 

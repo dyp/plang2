@@ -1,0 +1,13 @@
+/*
+
+<test>
+    //FormulaBoundVariable//Type = nat
+</test>
+
+*/
+
+foo(nat arg: bool result) {
+    result = (arg = 0)
+}
+
+lemma forall var a. foo(a);
