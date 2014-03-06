@@ -19,5 +19,5 @@ bar () {
     nat n = l[1];
 
     array(nat, 1..10) arr;
-    arr = arr.[1:5]
+    arr = arr with [1:5]
 }
