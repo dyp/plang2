@@ -296,7 +296,9 @@ FunctionCallPtr Parser::parseFunctionCall(Context &_ctx, Expression &_base) {
     Context &ctx = *_ctx.createChild(false);
     FunctionCallPtr pCall = new FunctionCall();
 
-    if (!parseActualParameterList(ctx, pCall->getArgs()))
+    if (ctx.is(LPAREN, RPAREN))
+        ctx.skip(2);
+    else if (!parseActualParameterList(ctx, pCall->getArgs()))
         return NULL;
 
     pCall->setPredicate(&_base);

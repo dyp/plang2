@@ -1,0 +1,14 @@
+/*
+
+<test>
+    //e/VarDeclInit = foo()
+    //e/VarDeclInit//FunctionCall|//Name = foo
+</test>
+
+*/
+
+foo(: bool r) {
+    r = true
+}
+
+var e = foo();

@@ -198,6 +198,7 @@ set(TESTS_PARSING
     parsing/formula_measure.psrc
     parsing/accessors.psrc
     parsing/recognizers.psrc
+    parsing/function_call_without_arguments.psrc
 )
 
 set(TESTS_INFERENCE
