@@ -227,6 +227,7 @@ set(TESTS_INFERENCE
     inference/formula_bounded_variables.psrc
     inference/recognizers.psrc
     inference/accessors.psrc
+    inference/recursive_types.psrc
 )
 
 set(TESTS_REWRITING

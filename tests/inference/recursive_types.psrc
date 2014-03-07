@@ -1,0 +1,12 @@
+/*
+
+<test>
+    //t1/Type ~ union
+</test>
+
+*/
+
+type T1 = union(foo, bar(T1 t1));
+type T2 = union(baz(T1 t1), qux(T2 t2));
+
+T1 t1 = foo;

@@ -1179,6 +1179,14 @@ struct Resolver : public Visitor {
         if (pSetter == NULL)
             return true;
 
+        for (auto i: m_path) {
+            if (i.pNode == _type.getDeclaration().ptr())
+                return true;
+            if (i.pNode && _type.getDeclaration() && _type.getDeclaration()->getType() &&
+                *i.pNode == *_type.getDeclaration()->getType())
+                return true;
+        }
+
         TypePtr pDeclType = _type.getDeclaration()->getType();
 
         if (!pDeclType && Options::instance().typeCheck == TC_PREPROCESS)
