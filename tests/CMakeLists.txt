@@ -56,6 +56,19 @@ target_link_libraries(${TARGET_ST}
     gmp
 )
 
+set(SOURCES_INDENTING_STREAM
+    ../src/test_indenting_stream.cpp
+    ../src/utils.cpp
+)
+
+add_executable(test_indenting_stream ${SOURCES_INDENTING_STREAM})
+target_link_libraries(test_indenting_stream gmpxx gmp)
+
+add_executable(test_indenting_stream_w ${SOURCES_INDENTING_STREAM})
+target_link_libraries(test_indenting_stream_w gmpxx gmp)
+set_target_properties(test_indenting_stream
+    PROPERTIES COMPILE_DEFINITIONS "WIDE")
+
 macro(run_tests FLAGS TESTS)
     foreach(TEST ${TESTS})
         add_test(${TEST}
@@ -172,6 +185,21 @@ macro(run_cvc3_tests FLAGS TESTS)
             ${PROJECT_SOURCE_DIR}/tools/test_cvc3.sh
             ${PROJECT_SOURCE_DIR}/tools
             ${PROJECT_BINARY_DIR}/tests
+            ${PROJECT_SOURCE_DIR}/tests/${TEST}
+            ${FLAGS})
+    endforeach()
+endmacro()
+
+macro(run_indenting_stream_tests TESTS)
+    foreach(TEST ${TESTS})
+        add_test(${TEST}
+            ${PROJECT_SOURCE_DIR}/tools/test_indenting_stream.sh
+            ${PROJECT_BINARY_DIR}/tests/test_indenting_stream
+            ${PROJECT_SOURCE_DIR}/tests/${TEST}
+            ${FLAGS})
+        add_test(${TEST}_wide
+            ${PROJECT_SOURCE_DIR}/tools/test_indenting_stream.sh
+            ${PROJECT_BINARY_DIR}/tests/test_indenting_stream
             ${PROJECT_SOURCE_DIR}/tests/${TEST}
             ${FLAGS})
     endforeach()
@@ -319,6 +347,18 @@ set(TESTS_CVC3
     cvc3/replacement.psrc
 )
 
+set(TESTS_INDENTING_STREAM
+    indenting_stream/custom_indentation
+    indenting_stream/custom_level
+    indenting_stream/indent_underflow
+    indenting_stream/indent_unindent
+    indenting_stream/midline_indent
+    indenting_stream/newline
+    indenting_stream/single_line
+    indenting_stream/skip_line
+    indenting_stream/two_lines
+)
+
 run_tests("-t0" "${TESTS_PARSING}")
 run_tests("-t2" "${TESTS_INFERENCE}")
 run_tests("-t3" "${TESTS_REWRITING}")
@@ -341,3 +381,4 @@ run_pvs_tests("-t1" "${TESTS_PVS}")
 run_cvc3_tests("" "${TESTS_CVC3}")
 run_ot_tr_tests("-t2" "${TESTS_TRASFORMATION_TAIL_RECURSION}")
 run_ot_pi_tests("-t2" "${TESTS_TRASFORMATION_PREDICATE_INLINING}")
+run_indenting_stream_tests("${TESTS_INDENTING_STREAM}")
