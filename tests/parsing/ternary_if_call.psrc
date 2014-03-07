@@ -1,7 +1,7 @@
 /*
 
 <test>
-    //e = foo() ? false : true
+    //e/VarDeclInit = foo() ? false : true
 </test>
 
 */
