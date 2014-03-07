@@ -352,6 +352,9 @@ set(TESTS_INDENTING_STREAM
     indenting_stream/custom_level
     indenting_stream/indent_underflow
     indenting_stream/indent_unindent
+    indenting_stream/inline
+    indenting_stream/inline_newline
+    indenting_stream/inline_trim
     indenting_stream/midline_indent
     indenting_stream/newline
     indenting_stream/single_line

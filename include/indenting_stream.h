@@ -46,14 +46,63 @@ class IndentingStream : public std::basic_ostream<_Char, _Traits> {
             m_nLevel = std::max(0, m_nLevel + _nDelta);
         }
 
+        void setInline(bool _bEnable) {
+            // Do not put separators at the begging and the end of inline sequence.
+            if (_bEnable) {
+                if (isInline() && m_bLastCharIsPending && m_cColumn > 0) {
+                    _sputc(m_chLast);
+                    ++m_cColumn;
+                }
+
+                m_chLast = c_chSpace;
+                m_bLastCharIsPending = false;
+            } else if (!_bEnable)
+                m_bLastCharIsPending = false;
+
+            m_nInlineCount = std::max(0, m_nInlineCount + (_bEnable ? 1 : -1));
+        }
+
+        bool isInline() const {
+            return m_nInlineCount > 0;
+        }
+
     protected:
         virtual Int overflow(Int _c) {
+            if (isInline()) {
+                if (_isNewLine(_c)) {
+                    if (_isSpace(m_chLast))
+                        return _c;
+
+                    m_chLast = c_chSpace;
+                    m_bLastCharIsPending = true;
+                    return _c;
+                } else if (_isSpace(m_chLast) && _isSpace(_c))
+                    return _c;
+                else if (_isSpace(_c)) {
+                    m_chLast = c_chSpace;
+                    m_bLastCharIsPending = true;
+                    return _c;
+                } else if (m_bLastCharIsPending) {
+                    assert(_isSpace(m_chLast) && !_isNewLine(m_chLast));
+                    const Int n = _sputc(m_chLast);
+
+                    if (n == _Traits::eof())
+                        return n;
+
+                    ++m_cColumn;
+                }
+
+                m_bLastCharIsPending = false;
+            }
+
             if (m_cColumn == 0 && !_isNewLine(_c))
                 _indent();
 
             const Int n = _sputc(_c);
 
             if (n != _Traits::eof()) {
+                m_chLast = _c;
+
                 if (_isNewLine(_c))
                     m_cColumn = 0;
                 else
@@ -70,22 +119,57 @@ class IndentingStream : public std::basic_ostream<_Char, _Traits> {
                 return 0;
 
             size_t cBegin = 0, cColumn = m_cColumn;
+            _Char chLast = m_chLast;
+            bool bLastCharIsPending = isInline() && m_bLastCharIsPending;
+
+            auto writePart = [&](size_t _cEnd, std::streamsize &_nWritten) {
+                const std::streamsize nLength = _cEnd - cBegin;
+
+                _nWritten = _sputn(_pChars + cBegin, nLength);
+
+                if (_nWritten > 0)
+                    m_chLast = _pChars[cBegin + _nWritten - 1];
+
+                if (_nWritten < nLength) {
+                    m_cColumn += _nWritten;
+                    return false;
+                }
+
+                return true;
+            };
+
+            std::streamsize nWritten = 0;
 
             for (size_t cPos = 0; cPos < _nCount; ++cPos) {
-                const _Char c = _pChars[cPos];
+                _Char c = _pChars[cPos];
+
+                if (isInline()) {
+                    if (_isSpace(c)) {
+                        if (!writePart(cPos, nWritten))
+                            return cBegin + nWritten;
+
+                        bLastCharIsPending |= !_isSpace(chLast);
+                        chLast = c_chSpace;
+                        cBegin = cPos + 1;
+                        m_cColumn += nWritten;
+                        continue;
+                    } else if (bLastCharIsPending) {
+                        _sputc(chLast);
+                        ++cColumn;
+                        ++m_cColumn;
+                    }
+
+                    bLastCharIsPending = false;
+                }
+
+                chLast = c;
 
                 if (_isNewLine(c))
                     cColumn = 0;
                 else {
                     if (cColumn == 0) {
-                        const std::streamsize nLength = cPos - cBegin;
-                        const std::streamsize nWritten =
-                                _sputn(_pChars + cBegin, nLength);
-
-                        if (nWritten < nLength) {
-                            m_cColumn += nWritten;
+                        if (!writePart(cPos, nWritten))
                             return cBegin + nWritten;
-                        }
 
                         m_cColumn = 0;
                         cBegin = cPos;
@@ -96,12 +180,20 @@ class IndentingStream : public std::basic_ostream<_Char, _Traits> {
                 }
             }
 
-            assert(cBegin < _nCount);
+            assert(cBegin <= _nCount);
 
-            const std::streamsize nLength = _nCount - cBegin;
-            const std::streamsize nWritten = _sputn(_pChars + cBegin, nLength);
+            if (cBegin == _nCount) {
+                m_bLastCharIsPending = bLastCharIsPending;
+                m_chLast = chLast;
+                return _nCount;
+            }
 
-            m_cColumn = std::max<std::streamsize>(0, cColumn + nWritten - nLength);
+            if (isInline() && bLastCharIsPending)
+                _sputc(chLast);
+
+            writePart(_nCount, nWritten);
+            m_cColumn = std::max<std::streamsize>(0, cColumn + nWritten - _nCount + cBegin);
+            m_bLastCharIsPending = false;
 
             return cBegin + nWritten;
         }
@@ -109,6 +201,10 @@ class IndentingStream : public std::basic_ostream<_Char, _Traits> {
     private:
         static bool _isNewLine(_Char _c) {
             return _c == '\n' || _c == '\r';
+        }
+
+        bool _isSpace(_Char _c) {
+            return std::isspace(_c, this->getloc()) || _c == (_Char)-1;
         }
 
         bool _flush() {
@@ -139,14 +235,20 @@ class IndentingStream : public std::basic_ostream<_Char, _Traits> {
             if (!m_strIndentation.empty()) {
                 for (int n = 0; n < m_nLevel; ++n)
                     m_strPending += m_strIndentation;
+
                 m_cColumn += m_nLevel*m_strIndentation.size();
+
+                if (m_nLevel > 0)
+                    m_chLast = m_strIndentation.back();
             }
         }
 
         std::basic_streambuf<_Char, _Traits> *m_pSlave;
         String m_strIndentation, m_strPending;
-        int m_nLevel = 0;
+        int m_nLevel = 0, m_nInlineCount = 0;
         size_t m_cColumn = 0;
+        _Char m_chLast = -1;
+        bool m_bLastCharIsPending = false;
     };
 
     StreamBuf *_rdbuf() const {
@@ -212,6 +314,14 @@ public:
     void modifyLevel(int _nDelta) {
         _rdbuf()->modifyLevel(_nDelta);
     }
+
+    void setInline(bool _bEnable) {
+        _rdbuf()->setInline(_bEnable);
+    }
+
+    bool isInline() const {
+        return _rdbuf()->isInline();
+    }
 };
 
 template<typename _Char, typename _Traits>
@@ -266,6 +376,23 @@ IndentingStream<_Char, _Traits> &operator <<(
         IndentingStream<_Char, _Traits> &_os, IndentationLevel _level)
 {
     _os.setLevel(_level.nValue);
+    return _os;
+}
+
+struct InlineToggle {
+    bool bEnable;
+};
+
+inline
+InlineToggle setInline(bool _bEnable = true) {
+    return {_bEnable};
+}
+
+template<typename _Char, typename _Traits = std::char_traits<_Char> >
+IndentingStream<_Char, _Traits> &operator <<(
+        IndentingStream<_Char, _Traits> &_os, InlineToggle _inline)
+{
+    _os.setInline(_inline.bEnable);
     return _os;
 }
 

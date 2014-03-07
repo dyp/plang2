@@ -85,7 +85,7 @@ int main(int _argc, const char **_argv) {
 
         for (size_t c = 0; c < strIn.size();) {
             if (strIn[c] == L('\\') && c + 1 < strIn.size() &&
-                    STRING(L("iunvl")).find(strIn[c + 1]) != STRING::npos)
+                    STRING(L("iunvlab")).find(strIn[c + 1]) != STRING::npos)
             {
                 ++c;
 
@@ -98,6 +98,12 @@ int main(int _argc, const char **_argv) {
                         ++c;
                     } else if (strIn[c] == L('u')) {
                         out << strOut << unindent;
+                        ++c;
+                    } else if (strIn[c] == L('a')) {
+                        out << strOut << setInline(true);
+                        ++c;
+                    } else if (strIn[c] == L('b')) {
+                        out << strOut << setInline(false);
                         ++c;
                     } else if (strIn[c] == L('v')) {
                         out << strOut << setIndentation(strIn.substr(c + 1));
