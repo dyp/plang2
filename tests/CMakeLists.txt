@@ -360,6 +360,7 @@ set(TESTS_INDENTING_STREAM
     indenting_stream/single_line
     indenting_stream/skip_line
     indenting_stream/two_lines
+    indenting_stream/verbatim
 )
 
 run_tests("-t0" "${TESTS_PARSING}")

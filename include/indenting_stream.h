@@ -63,7 +63,11 @@ class IndentingStream : public std::basic_ostream<_Char, _Traits> {
         }
 
         bool isInline() const {
-            return m_nInlineCount > 0;
+            return m_nInlineCount > 0 && m_nVerbatimCount == 0;
+        }
+
+        void setVerbatim(bool _bEnable) {
+            m_nVerbatimCount = std::max(0, m_nVerbatimCount + (_bEnable ? 1 : -1));
         }
 
     protected:
@@ -199,6 +203,10 @@ class IndentingStream : public std::basic_ostream<_Char, _Traits> {
         }
 
     private:
+        bool _isInline() const {
+            return m_nInlineCount > 0 && m_nVerbatimCount == 0;
+        }
+
         static bool _isNewLine(_Char _c) {
             return _c == '\n' || _c == '\r';
         }
@@ -232,7 +240,7 @@ class IndentingStream : public std::basic_ostream<_Char, _Traits> {
         }
 
         void _indent() {
-            if (!m_strIndentation.empty()) {
+            if (m_nVerbatimCount == 0 && !m_strIndentation.empty()) {
                 for (int n = 0; n < m_nLevel; ++n)
                     m_strPending += m_strIndentation;
 
@@ -245,7 +253,7 @@ class IndentingStream : public std::basic_ostream<_Char, _Traits> {
 
         std::basic_streambuf<_Char, _Traits> *m_pSlave;
         String m_strIndentation, m_strPending;
-        int m_nLevel = 0, m_nInlineCount = 0;
+        int m_nLevel = 0, m_nInlineCount = 0, m_nVerbatimCount = 0;
         size_t m_cColumn = 0;
         _Char m_chLast = -1;
         bool m_bLastCharIsPending = false;
@@ -322,6 +330,10 @@ public:
     bool isInline() const {
         return _rdbuf()->isInline();
     }
+
+    void setVerbatim(bool _bEnable) {
+        _rdbuf()->setVerbatim(_bEnable);
+    }
 };
 
 template<typename _Char, typename _Traits>
@@ -393,6 +405,23 @@ IndentingStream<_Char, _Traits> &operator <<(
         IndentingStream<_Char, _Traits> &_os, InlineToggle _inline)
 {
     _os.setInline(_inline.bEnable);
+    return _os;
+}
+
+struct VerbatimToggle {
+    bool bEnable;
+};
+
+inline
+VerbatimToggle setVerbatim(bool _bEnable = true) {
+    return {_bEnable};
+}
+
+template<typename _Char, typename _Traits = std::char_traits<_Char> >
+IndentingStream<_Char, _Traits> &operator <<(
+        IndentingStream<_Char, _Traits> &_os, VerbatimToggle _verbatim)
+{
+    _os.setVerbatim(_verbatim.bEnable);
     return _os;
 }
 
