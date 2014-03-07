@@ -1793,9 +1793,3 @@ void prettyPrintCompact(Node &_node, std::wostream &_os, int _nFlags, const Cont
 }
 
 }
-
-void prettyPrintCompact(Node &_node, std::wostream &_os, int _nFlags) {
-    std::wstringstream wstringstream;
-    pp::PrettyPrinterSyntax(wstringstream, true, _nFlags).print(_node);
-    _os << removeRedundantSymbols(wstringstream.str(), L"\r\n ");
-}

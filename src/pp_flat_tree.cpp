@@ -1,7 +1,7 @@
 /// \file pp_flat_tree.cpp
 ///
 
-#include "prettyprinter.h"
+#include "pp_syntax.h"
 #include "utils.h"
 
 using namespace ir;
@@ -18,12 +18,14 @@ public:
     int m_nPrevDepth;
 
     void print() {
+        m_os << setInline(true);
         for (std::list<std::wstring>::iterator i = m_path.begin(); i != m_path.end(); ++i)
             m_os << L"/" << *i;
         if (m_pPrevNode) {
             m_os << L" = ";
             prettyPrintCompact(*m_pPrevNode, m_os, PPC_NO_INCOMPLETE_TYPES);
         }
+        m_os << setInline(false);
         m_os << L"\n";
     }
 
@@ -127,47 +129,58 @@ public:
 
 protected:
     const void printQuantifier(int _quantifier) {
+        m_os << setInline(true);
         for (std::list<std::wstring>::iterator i = m_path.begin(); i != m_path.end(); ++i)
             m_os << L"/" << *i;
         m_os << "/Quantifier = ";
         switch (_quantifier) {
-            case ir::Formula::NONE:          m_os << L"none\n";    break;
-            case ir::Formula::UNIVERSAL:     m_os << L"forall\n";  break;
-            case ir::Formula::EXISTENTIAL:   m_os << L"exists\n";  break;
+            case ir::Formula::NONE:          m_os << L"none";    break;
+            case ir::Formula::UNIVERSAL:     m_os << L"forall";  break;
+            case ir::Formula::EXISTENTIAL:   m_os << L"exists";  break;
         }
+        m_os << setInline(false) << "\n";
     }
 
     const void printLemmaStatus(int _status) {
+        m_os << setInline(true);
         for (std::list<std::wstring>::iterator i = m_path.begin(); i != m_path.end(); ++i)
             m_os << L"/" << *i;
         m_os << L"/Status = ";
         switch (_status) {
-            case ir::LemmaDeclaration::VALID:     m_os << L"valid\n";     break;
-            case ir::LemmaDeclaration::INVALID:   m_os << L"invalid\n";   break;
-            case ir::LemmaDeclaration::UNKNOWN:   m_os << L"unknown\n";   break;
+            case ir::LemmaDeclaration::VALID:     m_os << L"valid";     break;
+            case ir::LemmaDeclaration::INVALID:   m_os << L"invalid";   break;
+            case ir::LemmaDeclaration::UNKNOWN:   m_os << L"unknown";   break;
         }
+        m_os << setInline(false) << "\n";
     }
 
     const void printName(const std::wstring &_strName) {
+        m_os << setInline(true);
         for (std::list<std::wstring>::iterator i = m_path.begin(); i != m_path.end(); ++i)
             m_os << L"/" << *i;
         m_os << "/Name = " << _strName << "\n";
+        m_os << setInline(false) << "\n";
     }
 
     const void printLine(const lexer::Token *_pLoc) {
+        m_os << setInline(true);
         for (std::list<std::wstring>::iterator i = m_path.begin(); i != m_path.end(); ++i)
             m_os << L"/" << *i;
         m_os << "/Line = " << _pLoc->getLine();
+        m_os << setInline(false) << "\n";
     }
 
     const void printDestination(const lexer::Token *_pLoc) {
+        m_os << setInline(true);
         for (std::list<std::wstring>::iterator i = m_path.begin(); i != m_path.end(); ++i)
             m_os << L"/" << *i;
         m_os << "/Destination/Line = " << _pLoc->getLine();
+        m_os << setInline(false) << "\n";
     }
 };
 
 void prettyPrintFlatTree(ir::Node &_node, std::wostream &_os) {
     PrettyPrinterFlat pp(_os, _node);
+    Param::updateUsed(_node);
     pp.run();
 }

@@ -5,7 +5,7 @@
 
 #include "utils.h"
 #include "typecheck.h"
-#include "prettyprinter.h"
+#include "pp_syntax.h"
 #include "ir/visitor.h"
 #include "type_lattice.h"
 

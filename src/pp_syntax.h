@@ -187,4 +187,9 @@ void prettyPrint(const vf::Context& _context, std::wostream &_os = std::wcout, c
 
 }
 
+template<typename _Stream>
+void prettyPrintCompact(ir::Node &_node, _Stream &_os, int _nFlags = 0) {
+    pp::PrettyPrinterSyntax(_os, true, _nFlags).print(_node);
+}
+
 #endif /* PP_SYNTAX_H_ */

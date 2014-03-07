@@ -11,13 +11,15 @@
 #include "typecheck.h"
 #include "verification.h"
 #include "ir/visitor.h"
+#include "indenting_stream.h"
 
 class PrettyPrinterBase: public ir::Visitor {
 public:
-    PrettyPrinterBase(std::wostream &_os) : m_os(_os) {}
+    template<typename _Stream>
+    PrettyPrinterBase(_Stream &_os) : m_os(_os) {}
 
 protected:
-    std::wostream &m_os;
+    IndentingStream<wchar_t> m_os;
 
     std::wstring fmtIndent(const std::wstring &_s);
     std::wstring fmtFreshType(tc::FreshType &_type);
@@ -35,8 +37,6 @@ enum {
     PPC_NO_REAL_BITS = 0x02,
     PPC_NO_INCOMPLETE_TYPES = 0x04,
 };
-
-void prettyPrintCompact(ir::Node &_node, std::wostream &_os, int _nFlags = 0);
 
 void print(ir::Node &_node, std::wostream &_os = std::wcout);
 
