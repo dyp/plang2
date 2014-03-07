@@ -3008,8 +3008,8 @@ bool Parser::parseDeclarations(Context &_ctx, Module &_module) {
             break;
             case TYPE:
                 if (TypeDeclarationPtr pDecl = parseTypeDeclaration(*pCtx)) {
-                    if (!pCtx->consume(SEMICOLON))
-                        ERROR(*pCtx, false, L"Semicolon expected");
+                    if (!pCtx->in(SEMICOLON, RBRACE, END_OF_FILE))
+                        ERROR(*pCtx, false, L"Semicolon or end of declarations expected");
                     _module.getTypes().add(pDecl);
                     if (!typecheck(*pCtx, *pDecl))
                             return false;
