@@ -7,8 +7,6 @@
 #include <assert.h>
 
 #include "typecheck.h"
-#include "prettyprinter.h"
-#include "pp_syntax.h"
 #include "options.h"
 #include "type_lattice.h"
 
