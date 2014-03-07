@@ -79,13 +79,14 @@ public:
         RoleHandler roleHandlerPost;
         NodeSetter *pSetter;
         NodeWalkUp walkUp;
-        bool bPartOfCollection;
+        bool bPartOfCollection, bLastInCollection;
         size_t cPosInCollection;
 
         Loc(Node &_node, NodeType _type, NodeRole _role, RoleHandler _roleHandler = NULL,
                 RoleHandler _roleHandlerPost = NULL, NodeSetter *_pSetter = NULL, NodeWalkUp _walkUp = NULL) :
             pNode(&_node), type(_type), role(_role), roleHandler(_roleHandler), roleHandlerPost(_roleHandlerPost),
-            pSetter(_pSetter), walkUp(_walkUp), bPartOfCollection(false), cPosInCollection(0)
+            pSetter(_pSetter), walkUp(_walkUp), bPartOfCollection(false),
+            bLastInCollection(false), cPosInCollection(0)
         {
         }
     };
@@ -187,6 +188,7 @@ bool Visitor::traverseCollection(Collection<_Node, _Base> &_nodes) {
                     &setter, loc.walkUp);
             loc.cPosInCollection = i;
             loc.bPartOfCollection = true;
+            loc.bLastInCollection = i + 1 == _nodes.size();
 
             if (!traverseNode(*_nodes.get(i)))
                 return false;
