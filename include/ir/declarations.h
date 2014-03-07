@@ -36,8 +36,9 @@ public:
     virtual bool equals(const Node& _other) const;
 
     virtual NodePtr clone(Cloner &_cloner) const {
-        PredicatePtr pCopy = NEW_CLONE(this, _cloner, Predicate(getName(), isBuiltin()));
+        const PredicatePtr pCopy = NEW_CLONE(this, _cloner, Predicate(getName(), isBuiltin()));
         cloneTo(*pCopy, _cloner);
+        pCopy->setLoc(this->getLoc());
         return pCopy;
     }
 
@@ -140,9 +141,10 @@ public:
     const BlockPtr &getBlock() const { return m_pBlock; }
 
     virtual NodePtr clone(Cloner &_cloner) const {
-        ProcessPtr pCopy = NEW_CLONE(this, _cloner, Process(getName(), _cloner.get(getBlock())));
+        const ProcessPtr pCopy = NEW_CLONE(this, _cloner, Process(getName(), _cloner.get(getBlock())));
         pCopy->getInParams().appendClones(getInParams(), _cloner);
         pCopy->getOutParams().appendClones(getOutParams(), _cloner);
+        pCopy->setLoc(this->getLoc());
         return pCopy;
     }
 
@@ -256,7 +258,9 @@ public:
     virtual bool equals(const Node& _other) const;
 
     virtual NodePtr clone(Cloner &_cloner) const {
-        return NEW_CLONE(this, _cloner, VariableDeclaration(_cloner.get(getVariable()), _cloner.get(getValue()), _cloner.get(getLabel())));
+        const VariableDeclarationPtr pCopy = NEW_CLONE(this, _cloner, VariableDeclaration(_cloner.get(getVariable()), _cloner.get(getValue()), _cloner.get(getLabel())));
+        pCopy->setLoc(this->getLoc());
+        return pCopy;
     }
 
 private:
@@ -310,7 +314,10 @@ public:
     virtual bool equals(const Node &_other) const;
 
     virtual NodePtr clone(Cloner &_cloner) const {
-        return NEW_CLONE(this, _cloner, TypeDeclaration(getName(), _cloner.get(getType()), _cloner.get(getLabel())));
+        const TypeDeclarationPtr pCopy = NEW_CLONE(this, _cloner, TypeDeclaration(getName(),
+                _cloner.get(getType()), _cloner.get(getLabel())));
+        pCopy->setLoc(this->getLoc());
+        return pCopy;
     }
 
 private:
@@ -370,8 +377,9 @@ public:
     virtual bool equals(const Node& _other) const;
 
     virtual NodePtr clone(Cloner &_cloner) const {
-        FormulaDeclarationPtr pCopy = NEW_CLONE(this, _cloner, FormulaDeclaration(getName(), _cloner.get(getResultType()), _cloner.get(getFormula()), _cloner.get(getLabel())));
+        const FormulaDeclarationPtr pCopy = NEW_CLONE(this, _cloner, FormulaDeclaration(getName(), _cloner.get(getResultType()), _cloner.get(getFormula()), _cloner.get(getLabel())));
         pCopy->getParams().appendClones(getParams(), _cloner);
+        pCopy->setLoc(this->getLoc());
         return pCopy;
     }
 
@@ -572,12 +580,13 @@ public:
     virtual bool equals(const Node& _other) const;
 
     virtual NodePtr clone(Cloner &_cloner) const {
-        ModulePtr pCopy = NEW_CLONE(this, _cloner, Module(getName()));
+        const ModulePtr pCopy = NEW_CLONE(this, _cloner, Module(getName()));
         pCopy->getParams().appendClones(getParams(), _cloner);
         cloneTo(*pCopy, _cloner);
         pCopy->getImports() = getImports();
         pCopy->getClasses().appendClones(getClasses(), _cloner);
         pCopy->getModules().appendClones(getModules(), _cloner);
+        pCopy->setLoc(this->getLoc());
         return pCopy;
     }
 

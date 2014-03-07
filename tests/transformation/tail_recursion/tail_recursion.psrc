@@ -3,7 +3,7 @@
 <test>
     //D/PredicateBody//IfElse//Stmt//IfBody/Multiassignment
     //D/PredicateBody//IfElse//Stmt//IfBody/Jump
-    //D/PredicateBody//StmtLabel = 1:
+    //D/PredicateBody/If/Label
     ! //D/PredicateBody/IfBody/Multiassignment
     ! //D/PredicateBody/IfBody/Jump
     //F/PredicateBody/Multiassignment

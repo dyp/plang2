@@ -104,7 +104,7 @@ public:
 
     virtual NodesPtr getChildren() const;
 
-    void setLoc(lexer::Token *_pLoc) { m_pLoc = _pLoc; }
+    void setLoc(const lexer::Token *_pLoc) { m_pLoc = _pLoc; }
     const lexer::Token *getLoc() const { return m_pLoc; }
 
     bool operator<(const Node& _other) const { return less(_other); }
@@ -123,7 +123,7 @@ protected:
     static bool _equals(const NodePtr& _pLeft, const NodePtr& _pRight);
 
 private:
-    lexer::Token *m_pLoc = nullptr;
+    const lexer::Token *m_pLoc = nullptr;
     // TODO: assignment of m_pLoc for all Nodes.
 };
 
@@ -540,7 +540,10 @@ public:
     }
 
     virtual NodePtr clone(Cloner &_cloner) const {
-        return NEW_CLONE(this, _cloner, NamedValue(m_strName, _cloner.get(m_pType.ptr())));
+        const NamedValuePtr pCopy = NEW_CLONE(this, _cloner, NamedValue(m_strName, _cloner.get(m_pType.ptr())));
+        pCopy->setLoc(this->getLoc());
+        return pCopy;
+
     }
 
 private:
@@ -643,7 +646,11 @@ public:
     virtual bool less(const Node& _other) const;
     virtual bool equals(const Node& _other) const;
 
-    virtual NodePtr clone(Cloner &_cloner) const { return NEW_CLONE(this, _cloner, Label(m_strName)); }
+    virtual NodePtr clone(Cloner &_cloner) const {
+        const LabelPtr pCopy = NEW_CLONE(this, _cloner, Label(m_strName));
+        pCopy->setLoc(this->getLoc());
+        return pCopy;
+    }
 
 private:
     std::wstring m_strName;

@@ -212,7 +212,9 @@ public:
     void setOrdinal(int _nOrdinal) { m_nOrdinal = _nOrdinal; }
 
     virtual NodePtr clone(Cloner &_cloner) const {
-        return NEW_CLONE(this, _cloner, EnumValue(getName(), getOrdinal(), _cloner.get(getType())));
+        const EnumValuePtr pCopy = NEW_CLONE(this, _cloner, EnumValue(getName(), getOrdinal(), _cloner.get(getType())));
+        pCopy->setLoc(this->getLoc());
+        return pCopy;
     }
 
 private:
@@ -284,8 +286,10 @@ public:
     virtual bool equals(const Node& _other) const;
 
     virtual NodePtr clone(Cloner &_cloner) const {
-        return NEW_CLONE(this, _cloner, UnionConstructorDeclaration(getName(), getOrdinal(),
-                _cloner.get(getUnion()), _cloner.get(getFields())));
+        const UnionConstructorDeclarationPtr pCopy = NEW_CLONE(this, _cloner, UnionConstructorDeclaration(getName(),
+                getOrdinal(), _cloner.get(getUnion()), _cloner.get(getFields())));
+        pCopy->setLoc(this->getLoc());
+        return pCopy;
     }
 
 private:

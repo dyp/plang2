@@ -12,8 +12,9 @@
     //foo/PredicateBody/Block/Block/Label = 2:
     //foo/PredicateBody/VariableDeclaration
   ! //foo/PredicateBody/If/IfBody//Call
-    //foo/PredicateBody/Block/If/IfBody/Jump = 1: \#1
-    //foo/PredicateBody/Block/Block/Jump = \#Label
+    //foo/PredicateBody/Block/If/IfBody/Jump/Destination/Line = 35
+    //foo/PredicateBody/Block/Block/StmtLabel/Line = 35
+    //foo/PredicateBody/Block/Block/Jump/Destination/Line = 54
 </test>
 
 */
@@ -45,12 +46,12 @@ foo(nat aa : nat bb, nat cc #1 : nat dd, nat ee #2) {
     baz(:);
     bar(aa, aa : bb #3 : cc #4)
         case 3 : {
-            call: foo2(aa: bb, cc #3 : dd, nat e4 #4)
-                case 3: bb = 0
-                //case 4: dd = 0
+            call: foo2(aa: bb, cc #5 : dd, nat e4 #6)
+                case 5: bb = 0
+                //case 6: dd = 0
         }
         case 4 : bb = 0;
-    Label: foo(aa : bb, cc #1 : dd, ee #2);
+    Label: foo(aa : bb, cc #7 : dd, ee #8);
 
     predicate(:) a = baz;
     a(:);
