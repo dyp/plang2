@@ -2995,6 +2995,7 @@ bool Parser::parseDeclarations(Context &_ctx, Module &_module) {
                 }
                 // no break;
             CASE_BUILTIN_TYPE:
+            case PREDICATE:
             case MUTABLE: {
                 Collection<VariableDeclaration> decls;
                 parseParamList(*pCtx, decls, &Parser::parseVariableDeclaration, ALLOW_INITIALIZATION | PART_OF_LIST | SINGLE_TYPE);
