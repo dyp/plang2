@@ -116,9 +116,9 @@ bool Visitor::traverseEnumType(EnumType &_type) {
 
 bool Visitor::traverseStructType(StructType &_type) {
     ENTER(StructType, _type);
-    TRAVERSE_COL(NamedValue, StructFieldDecl, _type.getNamesOrd());
-    TRAVERSE_COL(NamedValue, StructFieldDecl, _type.getTypesOrd());
-    TRAVERSE_COL(NamedValue, StructFieldDecl, _type.getNamesSet());
+    TRAVERSE_COL(NamedValue, StructFieldDeclNameOrd, _type.getNamesOrd());
+    TRAVERSE_COL(NamedValue, StructFieldDeclTypeOrd, _type.getTypesOrd());
+    TRAVERSE_COL(NamedValue, StructFieldDeclNameSet, _type.getNamesSet());
     EXIT();
 }
 
