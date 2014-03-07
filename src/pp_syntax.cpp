@@ -328,8 +328,18 @@ bool PrettyPrinterSyntax::traverseType(Type &_type) {
 }
 
 bool PrettyPrinterSyntax::visitType(Type &_type) {
-    if ((m_nFlags & PPC_NO_INCOMPLETE_TYPES) && (_type.getKind() == Type::FRESH || _type.getKind() == Type::GENERIC))
-        return true;
+    if ((m_nFlags & PPC_NO_INCOMPLETE_TYPES) &&
+            (_type.getKind() == Type::FRESH || _type.getKind() == Type::GENERIC))
+        switch (getRole()) {
+            case R_VariableType:
+            case R_NamedValueType:
+            case R_ParamType:
+            case R_FormulaDeclResultType:
+                m_os << L"var";
+                // no break;
+            default:
+                return true;
+        }
 
     if (_type.getKind() == Type::FRESH) {
         m_os << fmtFreshType((tc::FreshType &)_type);
