@@ -193,21 +193,11 @@ void Conjunction::_negate(const ConjunctPtr& _pConjunct, Conjunction& _result) {
     _divide(_pConjunct.as<FormulaConjunct>()->getExpression(), parts, Binary::BOOL_AND);
     if (parts.size() > 1) {
         Conjunction conj;
-        bool bFirstTraverse = true;
 
         for (std::set<ExpressionPtr>::iterator i = parts.begin(); i != parts.end(); ++i) {
             Conjunction result;
             _negate(new FormulaConjunct(*i), result);
-
-            if (!bFirstTraverse) {
-                for (std::set<ConjunctPtr>::iterator i = conj.getConjuncts().begin(); i != conj.getConjuncts().end(); ++i)
-                    for (std::set<ConjunctPtr>::iterator j = result.getConjuncts().begin(); j != result.getConjuncts().end(); ++j)
-                        (*i).as<FormulaConjunct>()->setExpression(new Binary(Binary::BOOL_OR,
-                            (*i)->mergeToExpression(), (*j)->mergeToExpression()));
-            } else {
-                conj.append(result);
-                bFirstTraverse = false;
-            }
+            conj.disjunct(&result);
         }
 
         _result.append(conj);
@@ -219,24 +209,20 @@ void Conjunction::_negate(const ConjunctPtr& _pConjunct, Conjunction& _result) {
 
 void Conjunction::negate() {
     Conjunction container;
-    bool bFirstTraverse = true;
 
     for (std::set<ConjunctPtr>::iterator i = m_conjuncts.begin(); i != m_conjuncts.end(); ++i) {
         Conjunction negation;
         _negate(*i, negation);
-
-        if (!bFirstTraverse) {
-                for (std::set<ConjunctPtr>::iterator i = container.getConjuncts().begin(); i != container.getConjuncts().end(); ++i)
-                    for (std::set<ConjunctPtr>::iterator j = negation.getConjuncts().begin(); j != negation.getConjuncts().end(); ++j)
-                        (*i).as<FormulaConjunct>()->setExpression(new Binary(Binary::BOOL_OR,
-                            (*i)->mergeToExpression(), (*j)->mergeToExpression()));
-            } else {
-                container.append(negation);
-                bFirstTraverse = false;
-            }
+        container.disjunct(&negation);
     }
 
     m_conjuncts.swap(container.getConjuncts());
+}
+
+void Conjunction::disjunct(const ConjunctionPtr& _pOther) {
+    if (!_pOther)
+        return;
+    assign(_disjunct(this, _pOther));
 }
 
 bool Conjunction::releaseAssignments() {
@@ -287,22 +273,11 @@ void Conjunction::_normalize(const ConjunctPtr& _pConjunct, Conjunction& _result
     _divide(_pConjunct.as<FormulaConjunct>()->getExpression(), parts, Binary::BOOL_OR);
     if (parts.size() > 1) {
         Conjunction conj;
-        bool bFirstTraverse = true;
 
         for (std::set<ExpressionPtr>::iterator i = parts.begin(); i != parts.end(); ++i) {
             Conjunction result;
             _normalize(new FormulaConjunct(*i), result);
-
-            if (!bFirstTraverse) {
-                for (std::set<ConjunctPtr>::iterator i = conj.getConjuncts().begin(); i != conj.getConjuncts().end(); ++i)
-                    for (std::set<ConjunctPtr>::iterator j = result.getConjuncts().begin(); j != result.getConjuncts().end(); ++j)
-                        (*i).as<FormulaConjunct>()->setExpression(new Binary(Binary::BOOL_OR,
-                            (*i)->mergeToExpression(), (*j)->mergeToExpression()));
-            }
-            else {
-                conj.append(result);
-                bFirstTraverse = false;
-            }
+            conj.disjunct(&result);
         }
 
         _result.append(conj);
@@ -317,6 +292,23 @@ void Conjunction::_normalize() {
     for (std::set<ConjunctPtr>::iterator i = m_conjuncts.begin(); i != m_conjuncts.end(); ++i)
         _normalize(*i, container);
     m_conjuncts.swap(container.getConjuncts());
+}
+
+ConjunctionPtr Conjunction::_disjunct(const ConjunctionPtr& _pLeft, const ConjunctionPtr& _pRight) {
+    if (!_pLeft || !_pRight)
+        return nullptr;
+    if (_pLeft->empty() && _pRight->empty())
+        return new Conjunction();
+    if (_pLeft->empty() || _pRight->empty())
+        return _pLeft->empty() ? _pRight : _pLeft;
+
+    ConjunctionPtr pResult = new Conjunction();
+    for (auto i: _pLeft->getConjuncts())
+        for (auto j: _pRight->getConjuncts())
+            pResult->addExpression(new Binary(Binary::BOOL_OR,
+                i->mergeToExpression(), j->mergeToExpression()));
+
+    return pResult;
 }
 
 bool Conjunction::_releaseFirstAssignment() {

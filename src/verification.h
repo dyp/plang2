@@ -127,6 +127,8 @@ public:
     bool split(const na::ValuesSet& _leftValues, Conjunction& _left, const na::ValuesSet& _rightValues, Conjunction& _right);
     void negate();
 
+    void disjunct(const Auto<Conjunction>& _pOther);
+
     bool releaseAssignments();
     std::pair<ConjunctPtr, Auto<Conjunction> > extractLogic() const;
 
@@ -139,6 +141,8 @@ private:
     static void _normalize(const ConjunctPtr& _pConjunct, Conjunction& _result);
     bool _releaseFirstAssignment();
     void _normalize();
+    static Auto<Conjunction> _disjunct(const Auto<Conjunction>& _pLeft, const Auto<Conjunction>& _pRight);
+
 };
 typedef Auto<Conjunction> ConjunctionPtr;
 
