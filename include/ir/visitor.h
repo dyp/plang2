@@ -205,7 +205,7 @@ bool Visitor::traverseCollection(Collection<_Node, _Base> &_nodes) {
         if (m_path.empty())                                         \
             m_path.push_back(Loc(_PARAM, ir::N_##_TYPE, ir::R_TopLevel));   \
         else                                                        \
-            getLoc().type = ir::N_##_TYPE;                              \
+            getLoc().type = ir::N_##_TYPE;                          \
         if (getOrder() == PARENTS_FIRST) {                          \
             callRoleHandler(true);                                  \
             if (!walkUpFrom##_TYPE(_PARAM))                         \
@@ -215,7 +215,7 @@ bool Visitor::traverseCollection(Collection<_Node, _Base> &_nodes) {
             getLoc().walkUp = &Visitor::walkUpFrom##_TYPE;          \
     } while (0)
 
-#define VISITOR_EXIT()                      \
+#define VISITOR_EXIT_INLINE()               \
     do {                                    \
         if (getOrder() == CHILDREN_FIRST) { \
             callRoleHandler(true);          \
@@ -223,6 +223,11 @@ bool Visitor::traverseCollection(Collection<_Node, _Base> &_nodes) {
                 return !isStopped();        \
             callRoleHandler(false);         \
         }                                   \
+    } while (0)
+
+#define VISITOR_EXIT()                      \
+    do {                                    \
+        VISITOR_EXIT_INLINE();              \
         return true;                        \
     } while (0)
 
@@ -230,14 +235,39 @@ bool Visitor::traverseCollection(Collection<_Node, _Base> &_nodes) {
     do {                                                                            \
         if (isStopped())                                                            \
             return false;                                                           \
-        if (_PARAM) {                                                    \
-            ir::NodeSetterImpl< ir::_PTYPE, ir::_TYPE, &ir::_PTYPE::_SETTER > setter(_PARENT);      \
+        if (_PARAM) {                                                               \
+            ir::NodeSetterImpl< ir::_PTYPE, ir::_TYPE, &ir::_PTYPE::_SETTER > setter(_PARENT);  \
+            Ctx ctx(this, *(_PARAM), ir::N_##_TYPE, ir::R_##_ROLE, &Visitor::handle##_ROLE,     \
+                &Visitor::handle##_ROLE##Post, &setter);                            \
+            if (!traverse##_TYPE(*(_PARAM)))                                        \
+                return false;                                                       \
+        }                                                                           \
+    } while (0)
+
+#define VISITOR_TRAVERSE_NS(_TYPE, _ROLE, _PARAM)                                   \
+    do {                                                                            \
+        if (isStopped())                                                            \
+            return false;                                                           \
+        if (_PARAM) {                                                               \
+            ir::NodeSetter setter;                                                  \
             Ctx ctx(this, *(_PARAM), ir::N_##_TYPE, ir::R_##_ROLE, &Visitor::handle##_ROLE, \
                 &Visitor::handle##_ROLE##Post, &setter);                            \
             if (!traverse##_TYPE(*(_PARAM)))                                        \
                 return false;                                                       \
         }                                                                           \
     } while (0)
+
+#define VISITOR_TRAVERSE_INLINE(_TYPE, _ROLE, _PARAM, _PARENT, _PTYPE, _SETTER)                     \
+        assert(_PARAM);                                                                             \
+        ir::NodeSetterImpl< ir::_PTYPE, ir::_TYPE, &ir::_PTYPE::_SETTER > __setter##LINE(_PARENT);  \
+        Ctx __ctx##LINE(this, *(_PARAM), ir::N_##_TYPE, ir::R_##_ROLE, &Visitor::handle##_ROLE,     \
+            &Visitor::handle##_ROLE##Post, &__setter##LINE)
+
+#define VISITOR_TRAVERSE_INLINE_NS(_TYPE, _ROLE, _PARAM)                                            \
+        assert(_PARAM);                                                                             \
+        ir::NodeSetter __setter##LINE;                                                              \
+        Ctx __ctx##LINE(this, *(_PARAM), ir::N_##_TYPE, ir::R_##_ROLE, &Visitor::handle##_ROLE,     \
+            &Visitor::handle##_ROLE##Post, &__setter##LINE)
 
 #define VISITOR_TRAVERSE_COL(_TYPE, _ROLE, _PARAM)                                  \
     do {                                                                            \
@@ -247,6 +277,23 @@ bool Visitor::traverseCollection(Collection<_Node, _Base> &_nodes) {
             Ctx ctx(this, _PARAM, ir::N_##_TYPE, ir::R_##_ROLE, &Visitor::handle##_ROLE,    \
                 &Visitor::handle##_ROLE##Post, NULL);                               \
             if (!traverseCollection(_PARAM))                                        \
+                return false;                                                       \
+        }                                                                           \
+    } while (0)
+
+#define VISITOR_TRAVERSE_ITEM_NS(_TYPE, _ROLE, _PARAM, _INDEX)                      \
+    do {                                                                            \
+        if (isStopped())                                                            \
+            return false;                                                           \
+        const size_t cIndex = (_INDEX);                                             \
+        if ((_INDEX) < (_PARAM).size() && (_PARAM).get(cIndex)) {                   \
+            Auto<_TYPE> pNode = (_PARAM).get(cIndex);                               \
+            Ctx ctx(this, _PARAM, ir::N_##_TYPE, ir::R_##_ROLE, &Visitor::handle##_ROLE,    \
+                &Visitor::handle##_ROLE##Post, NULL);                               \
+            getLoc().cPosInCollection = cIndex;                                     \
+            getLoc().bPartOfCollection = true;                                      \
+            getLoc().bLastInCollection = cIndex + 1 == (_PARAM).size();             \
+            if (!traverse##_TYPE(*pNode))                                           \
                 return false;                                                       \
         }                                                                           \
     } while (0)
