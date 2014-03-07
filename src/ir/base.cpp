@@ -1,6 +1,8 @@
 /// \file base.cpp
 ///
 
+#include <set>
+
 #include "ir/base.h"
 #include "ir/types.h"
 #include "ir/declarations.h"
@@ -127,5 +129,36 @@ bool NamedValue::equals(const Node& _other) const {
         && getName() == other.getName()
         && _equals(getType(), other.getType());
 }
+
+void Param::updateUsed(Node &_root) {
+    struct Enumerator : public Visitor {
+        std::set<NamedValuePtr> params;
+
+        virtual bool visitParam(Param &_param) {
+            _param.setUsed(false);
+            params.insert(&_param);
+            return true;
+        }
+    };
+
+    struct Updater : public Visitor {
+        Enumerator enumerator;
+
+        void run(Node &_root) {
+            enumerator.traverseNode(_root);
+            traverseNode(_root);
+        }
+
+        virtual bool visitVariableReference(VariableReference &_val) {
+            if (_val.getTarget() && _val.getTarget()->getKind() == NamedValue::PREDICATE_PARAMETER &&
+                    enumerator.params.find(_val.getTarget()) != enumerator.params.end())
+                _val.getTarget().as<Param>()->setUsed(true);
+            return true;
+        }
+    } updater;
+
+    updater.run(_root);
+}
+
 
 }

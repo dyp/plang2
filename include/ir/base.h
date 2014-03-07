@@ -556,13 +556,15 @@ private:
 class Param : public NamedValue {
 public:
     /// Default constructor.
-    Param() : m_pLinkedParam(NULL), m_bOutput(false) {}
+    Param() : m_pLinkedParam(NULL), m_bOutput(false), m_bUsed(false) {}
 
     /// Constructor for initializing using name.
     /// \param _strName Identifier.
     /// \param _pType Type associated with value.
-    Param(const std::wstring &_strName, const TypePtr &_pType = NULL, bool _bOutput = false)
-        : NamedValue(_strName, _pType), m_pLinkedParam(NULL), m_bOutput(_bOutput) {}
+    Param(const std::wstring &_strName, const TypePtr &_pType = NULL,
+            bool _bOutput = false, bool _bUsed = false)
+        : NamedValue(_strName, _pType), m_pLinkedParam(NULL),
+          m_bOutput(_bOutput), m_bUsed(_bUsed) {}
 
     /// Get value kind.
     /// \returns #PredicateParameter.
@@ -584,13 +586,18 @@ public:
     /// \param _bValue True if a linked parameter is needed, false otherwise.
     void setOutput(bool _bValue) { m_bOutput = _bValue; }
 
+    bool isUsed() const { return m_bUsed; }
+    void setUsed(bool _bValue) { m_bUsed = _bValue; }
+    static void updateUsed(Node &_root);
+
     virtual NodePtr clone(Cloner &_cloner) const {
-        return NEW_CLONE(this, _cloner, Param(getName(), _cloner.get(getType().ptr()), m_bOutput));
+        return NEW_CLONE(this, _cloner, Param(getName(), _cloner.get(getType().ptr()),
+                m_bOutput, m_bUsed));
     }
 
 private:
     ParamPtr m_pLinkedParam;
-    bool m_bOutput;
+    bool m_bOutput, m_bUsed;
 };
 
 // We need to define some collections as classes (vs. typedef'ed templates) because some uses
