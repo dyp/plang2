@@ -19,12 +19,12 @@ public:
 
     void print() {
         for (std::list<std::wstring>::iterator i = m_path.begin(); i != m_path.end(); ++i)
-            std::wcout << L"/" << *i;
+            m_os << L"/" << *i;
         if (m_pPrevNode) {
-            std::wcout << L" = ";
-            prettyPrintCompact(*m_pPrevNode, std::wcout, PPC_NO_INCOMPLETE_TYPES);
+            m_os << L" = ";
+            prettyPrintCompact(*m_pPrevNode, m_os, PPC_NO_INCOMPLETE_TYPES);
         }
-        std::wcout << L"\n";
+        m_os << L"\n";
     }
 
 #define VISITOR(_NODE, ...)                             \
@@ -128,12 +128,12 @@ public:
 protected:
     const void printQuantifier(int _quantifier) {
         for (std::list<std::wstring>::iterator i = m_path.begin(); i != m_path.end(); ++i)
-            std::wcout << L"/" << *i;
-        std::wcout << "/Quantifier = ";
+            m_os << L"/" << *i;
+        m_os << "/Quantifier = ";
         switch (_quantifier) {
-            case ir::Formula::NONE:          std::wcout << L"none\n";    break;
-            case ir::Formula::UNIVERSAL:     std::wcout << L"forall\n";  break;
-            case ir::Formula::EXISTENTIAL:   std::wcout << L"exists\n";  break;
+            case ir::Formula::NONE:          m_os << L"none\n";    break;
+            case ir::Formula::UNIVERSAL:     m_os << L"forall\n";  break;
+            case ir::Formula::EXISTENTIAL:   m_os << L"exists\n";  break;
         }
     }
 
@@ -150,20 +150,20 @@ protected:
 
     const void printName(const std::wstring &_strName) {
         for (std::list<std::wstring>::iterator i = m_path.begin(); i != m_path.end(); ++i)
-            std::wcout << L"/" << *i;
-        std::wcout << "/Name = " << _strName << "\n";
+            m_os << L"/" << *i;
+        m_os << "/Name = " << _strName << "\n";
     }
 
     const void printLine(const lexer::Token *_pLoc) {
         for (std::list<std::wstring>::iterator i = m_path.begin(); i != m_path.end(); ++i)
-            std::wcout << L"/" << *i;
-        std::wcout << "/Line = " << _pLoc->getLine() << "\n";
+            m_os << L"/" << *i;
+        m_os << "/Line = " << _pLoc->getLine();
     }
 
     const void printDestination(const lexer::Token *_pLoc) {
         for (std::list<std::wstring>::iterator i = m_path.begin(); i != m_path.end(); ++i)
-            std::wcout << L"/" << *i;
-        std::wcout << "/Destination/Line = " << _pLoc->getLine() << "\n";
+            m_os << L"/" << *i;
+        m_os << "/Destination/Line = " << _pLoc->getLine();
     }
 };
 
