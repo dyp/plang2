@@ -11,7 +11,6 @@
 #include "utils.h"
 #include "statement_tree.h"
 #include "node_analysis.h"
-#include "pp_syntax.h"
 
 using namespace ir;
 using namespace st;
