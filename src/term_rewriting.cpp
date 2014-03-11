@@ -274,7 +274,7 @@ public:
 
     static void extractBinaryOperands(const BinaryPtr& _pBinary, int _nOperator,
             Operands& _container);
-    virtual bool traverseExpression(Expression& _expr);
+    virtual bool visitBinary(Binary& _bin);
 };
 
 void Normalizer::extractBinaryOperands(const BinaryPtr& _pBinary,
@@ -302,11 +302,18 @@ void Normalizer::extractBinaryOperands(const BinaryPtr& _pBinary,
     }
 }
 
-bool Normalizer::traverseExpression(Expression& _expr) {
-    if (_expr.getKind() != Expression::BINARY || !((const Binary&)_expr).isSymmetrical())
-        return Visitor::traverseExpression(_expr);
+bool Normalizer::visitBinary(Binary& _bin) {
+    if (!_bin.isSymmetrical())
+        return true;
 
-    BinaryPtr pBin(&_expr);
+    const Node* pParent = getParent();
+    if (pParent &&
+        pParent->getNodeKind() == Node::EXPRESSION &&
+        ((Expression*)pParent)->getKind() == Expression::BINARY &&
+        ((Binary*)pParent)->getOperator() == _bin.getOperator())
+        return true;
+
+    BinaryPtr pBin = &_bin;
     Operands operands;
 
     extractBinaryOperands(pBin, pBin->getOperator(), operands);

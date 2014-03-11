@@ -5,13 +5,17 @@
     //w/VarDeclInit = a * b * c * d
     //e/VarDeclInit = a * a * a
     //r/VarDeclInit = a * b * c * d
+    //t/VarDeclInit = c * d * (a + b)
+    //u/VarDeclInit = f * g * (b + e * (d + r)) * (e + a * r)
 </test>
 
 */
 
-var a, b, c, d;
+var a, b, c, d, f, g, h;
 var q = a*b;
 var w = b*a*d*c;
 var e = a*a*a;
 var r = c*(b*a)*d;
+var t = c*(b + a)*d;
+var u = g*f*(e*(d + r) + b)*(r*a + e);
 
