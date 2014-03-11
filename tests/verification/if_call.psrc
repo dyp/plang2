@@ -1,9 +1,9 @@
 /*
 
 <test>
-    = forall nat a. a >= 1 => m_bar(a - 1) < m_bar(a) & P_bar(a - 1) & a >= 1
-    = forall nat a, K b. Q_bar(b) & a >= 1 => Q_bar(b)
-    = forall nat a, nat b, nat c. c = a - 1 & a >= 1 & b = a - 1 => b = c
+    ~~ \w* >= 1 => m_bar\(\w* - 1\) < m_bar\(\w*\) & \w* >= 1 & P_bar\(\w* - 1\)
+    ~~ \w* >= 1 & Q_bar\(\w*\) => Q_bar\(\w*\)
+    ~~ \w* >= 1 & \w* = \w* - 1 & \w* = \w* - 1 => \w* = \w*
 </test>
 
 */
