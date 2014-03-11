@@ -408,7 +408,8 @@ bool Context::transferComplete() {
             continue;
         }
 
-        const ExpressionPtr& pNewLemma = generalize(sequent.mergeToExpression());
+        const ExpressionPtr pNewLemma = generalize(sequent.mergeToExpression());
+        normalizeExpressions(pNewLemma);
         m_lemmas.push_back(std::make_pair(pNewLemma, true));
         i = m_conditions.erase(i);
         bIsTransferred = true;

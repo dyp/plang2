@@ -1,10 +1,10 @@
 /*
 
 <test>
-    = forall nat a, nat b. b = 0 & P_bar(a) => b < 1 & f(1, 2) & b = 0
-    = forall nat a, nat b. P_bar(a) => (exists . b = 0)
-    = forall nat a, nat c. c = 0 & P_bar(a) => c < 2 & f(1, 2)
-    = forall nat a, nat c. P_bar(a) => (exists . c = 0)
+    ~~ 0 = \w* & P_bar\(\w*\) => \w* < 1 & 0 = \w* & f\(1, 2\)
+    ~~ P_bar\(\w*\) => \(exists nat \w*. 0 = \w*\)
+    ~~ 0 = \w* & P_bar\(\w*\) => \w* < 2 & f\(1, 2\)
+    ~~ P_bar\(\w*\) => \(exists nat \w*. 0 = \w*\)
 </test>
 
 */

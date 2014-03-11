@@ -1,14 +1,14 @@
 /*
 
 <test>
-    = forall nat a. P_bar(a) => a > 0 => a >= 1
-    = forall nat a. a > 0 & (a > 0 => a >= 1) => m_bar(a - 1) < m_bar(a) & P_bar(a - 1) & a >= 1
-    = forall nat b, nat a. Q_bar(b) & a > 0 & (a > 0 => a >= 1) => ((!(a > 0)) => b = 0) & (a > 0 => Q_bar(b))
-    = forall nat a, nat b, nat c. c = a - 1 & b = a - 1 & a >= 1 => b = c
-    = forall nat b, nat a. b = 11 & ((!(a > 0)) => b = 0) & (a > 0 => Q_bar(b)) & P_bar(a) => Q_bar(b)
-    = forall nat b, nat a. ((!(a > 0)) => b = 0) & (a > 0 => Q_bar(b)) & P_bar(a) => (exists . b = 11)
-    = forall nat b, nat a. (!(a > 0)) & (a > 0 => a >= 1) & b = 0 => ((!(a > 0)) => b = 0) & (a > 0 => Q_bar(b))
-    = forall nat b, nat a. (!(a > 0)) & (a > 0 => a >= 1) => (exists . b = 0)
+    ~~ P_bar\(\w*\) => \w* > 0 => \w* >= 1
+    ~~ \w* > 0 & \(\w* > 0 => \w* >= 1\) => m_bar\(\w* - 1\) < m_bar\(\w*\) & \w* >= 1 & P_bar\(\w* - 1\)
+    ~~ \w* > 0 & \(\w* > 0 => \w* >= 1\) & Q_bar\(\w*\) => \(\(!\(\w* > 0\)\) => 0 = \w*\) & \(\w* > 0 => Q_bar\(\w*\)\)
+    ~~ \w* >= 1 & \w* = \w* - 1 & \w* = \w* - 1 => \w* = \w*
+    ~~ 11 = \w* & \(\(!\(\w* > 0\)\) => 0 = \w*\) & \(\w* > 0 => Q_bar\(\w*\)\) & P_bar\(\w*\) => Q_bar\(\w*\)
+    ~~ \(\(!\(\w* > 0\)\) => 0 = \w*\) & \(\w* > 0 => Q_bar\(\w*\)\) & P_bar\(\w*\) => \(exists nat \w*. 11 = \w*\)
+    ~~ \(!\(\w* > 0\)\) & 0 = \w* & \(\w* > 0 => \w* >= 1\) => \(\(!\(\w* > 0\)\) => 0 = \w*\) & \(\w* > 0 => Q_bar\(\w*\)\)
+    ~~ \(!\(\w* > 0\)\) & \(\w* > 0 => \w* >= 1\) => \(exists nat \w*. 0 = \w*\)
 </test>
 
 */
