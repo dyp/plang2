@@ -7,13 +7,16 @@
     = Invalid
 
     # lemma forall int a, b. a + b = b + a;
-    # Example: (FORALL (a_1: INT, b_2: INT) : ((a_1 + b_2) = (b_2 + a_1)))
-    ~~ \(FORALL \(a\w*: INT, b\w*: INT\) : \(\(a\w* \+ b\w*\) = \(b\w* \+ a\w*\)\)\)
+    # Example: (FORALL (a_1: INT, b_2: INT) : (LET v_0 = (a_1 + b_2)
+    #           IN (v_0 = v_0)))
+    ~~ LET v\w* = \(a\w* \+ b\w*\)
+    ~~ IN \(v\w* = v\w*\)
     = Valid
 
     # lemma forall int a, b. a + b != b + a;
-    # Example: (FORALL (a_1: INT, b_2: INT) : NOT ((a_1 + b_2) = (b_2 + a_1)))
-    ~~ \(FORALL \(a\w*: INT, b\w*: INT\) : NOT \(\(a\w* \+ b\w*\) = \(b\w* \+ a\w*\)\)\)
+    # Example: (FORALL (a_1: INT, b_2: INT) : (LET v_0 = (a_1 + b_2)
+    #           IN NOT (v_0 = v_0)))
+    ~~ NOT \(v\w* = v\w*\)
     = Invalid
 
     # lemma forall int a, b, c. a = 0 ? a > b : a < c;
@@ -27,8 +30,8 @@
     = Valid
 
     # lemma forall int переменная. переменная + 1 = 2;
-    # Example: (FORALL (peremennaja_1: INT) : (2 = (peremennaja_1 + 1)))
-    ~~ \(FORALL \(peremennaja\w*: INT\) : \(2 = \(peremennaja\w* \+ 1\)\)\)
+    # Example: (FORALL (peremennaja_1: INT) : (2 = (1 + peremennaja_1)))
+    ~~ \(FORALL \(peremennaja\w*: INT\) : \(2 = \(1 \+ peremennaja\w*\)\)\)
     = Invalid
 </test>
 
