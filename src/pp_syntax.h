@@ -56,6 +56,7 @@ public:
 
     void run();
     void print(ir::Node &_node);
+    void print(const ir::NodePtr &_pNode);
 
 protected:
     // NODE / MODULE

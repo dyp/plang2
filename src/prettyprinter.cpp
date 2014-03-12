@@ -380,9 +380,9 @@ public:
                 if (j != part.begin())
                     m_os << L" and ";
 
-                PrettyPrinterSyntax::print(*g.getLhs());
+                PrettyPrinterSyntax::print(g.getLhs());
                 m_os << L" " << fmtTypeFormulaOp(g.getKind()) << L" ";
-                PrettyPrinterSyntax::print(*g.getRhs());
+                PrettyPrinterSyntax::print(g.getRhs());
 
                 collectConditions(g);
             }
@@ -396,9 +396,9 @@ public:
 
     void print(const tc::Formula &_formula) {
         if (!_formula.is(tc::Formula::COMPOUND)) {
-            PrettyPrinterSyntax::print(*_formula.getLhs());
+            PrettyPrinterSyntax::print(_formula.getLhs());
             m_os << L" " << fmtTypeFormulaOp(_formula.getKind()) << L" ";
-            PrettyPrinterSyntax::print(*_formula.getRhs());
+            PrettyPrinterSyntax::print(_formula.getRhs());
         } else
             print((const tc::CompoundFormula&)_formula);
 
@@ -430,7 +430,7 @@ public:
         for (auto& i: m_conditions) {
             if (i.first != 0)
                 m_os << L"[" << i.first << L"] ";
-            PrettyPrinterSyntax::print(*i.second);
+            PrettyPrinterSyntax::print(i.second);
             m_os << L"\n";
         }
 
@@ -442,9 +442,9 @@ public:
             assert(f.getLhs());
             assert(f.getRhs());
 
-            PrettyPrinterSyntax::print(*f.getLhs());
+            PrettyPrinterSyntax::print(f.getLhs());
             m_os << L" -> ";
-            PrettyPrinterSyntax::print(*f.getRhs());
+            PrettyPrinterSyntax::print(f.getRhs());
             m_os << L"\n";
         }
     }
@@ -462,9 +462,9 @@ void prettyPrint(const tc::Formula &_formula, std::wostream &_os, bool _bNewLine
     pp::PrettyPrinterSyntax pp(_os, true, 0);
 
     if (!_formula.is(tc::Formula::COMPOUND)) {
-        pp.print(*_formula.getLhs());
+        pp.print(_formula.getLhs());
         _os << L" " << fmtTypeFormulaOp(_formula.getKind()) << L" ";
-        pp.print(*_formula.getRhs());
+        pp.print(_formula.getRhs());
     } else {
         tc::CompoundFormula &cf = (tc::CompoundFormula &)_formula;
 
@@ -486,9 +486,9 @@ void prettyPrint(const tc::Formula &_formula, std::wostream &_os, bool _bNewLine
                 if (k != part.begin())
                     _os << L" and ";
 
-                pp.print(*g.getLhs());
+                pp.print(g.getLhs());
                 _os << L" " << fmtTypeFormulaOp(g.getKind()) << L" ";
-                pp.print(*g.getRhs());
+                pp.print(g.getRhs());
             }
 
             tc::ContextStack::pop();

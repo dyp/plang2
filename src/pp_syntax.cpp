@@ -1640,6 +1640,14 @@ void PrettyPrinterSyntax::print(Node &_node) {
     traverseNode(_node);
 }
 
+void PrettyPrinterSyntax::print(const NodePtr &_pNode) {
+    if (!_pNode) {
+        m_os << L"NULL";
+        return;
+    }
+    print(*_pNode);
+}
+
 void prettyPrintSyntax(Node &_node, std::wostream & _os, const ContextPtr& _pContext, bool _bNewLine) {
     PrettyPrinterSyntax(_node, _os, _pContext).run();
     if (_bNewLine)
