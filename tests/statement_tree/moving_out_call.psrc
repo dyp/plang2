@@ -1,9 +1,9 @@
 /*
 
 <test>
-    ~ bar(arg: a)
-    ~ bar(1 + arg: b)
-    ~ bar(2 + arg: c)
+    ~ bar(arg : a)
+    ~ bar(1 + arg : b)
+    ~ bar(2 + arg : c)
 </test>>
 
 */

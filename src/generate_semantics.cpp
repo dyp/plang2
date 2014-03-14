@@ -1453,11 +1453,11 @@ RangePtr CollectPreConditions::arrayRangeWithCurrentParams(ExpressionPtr _pArray
             getType().as<NamedReferenceType>()->getDeclaration().as<TypeDeclaration>()->
             getType().as<ParameterizedType>()->getParams();
 
-        std::list<TypePtr> dims;
+        Collection<Type> dims;
         _pArray.as<VariableReference>()->getTarget().as<Param>()->
             getType().as<NamedReferenceType>()->getDeclaration().as<TypeDeclaration>()->
             getType().as<ParameterizedType>()->getActualType().as<DerivedType>().as<ArrayType>()->getDimensions(dims);
-        TypePtr pType = getNotNamedReferenceType(dims.front());
+        TypePtr pType = getNotNamedReferenceType(dims.get(0));
         RangePtr pRange = NULL;
         if (pType && pType->getKind() == Type::SUBTYPE)
             pType.as<Subtype>()->asRange();
@@ -1582,11 +1582,10 @@ Auto<Module> ir::processPreConditions(Module &_module) {
 }
 
 void ir::getRanges(const ArrayType &_array, Collection<Range> &_ranges) {
-    std::list<TypePtr> dims;
+    Collection<Type> dims;
     _array.getDimensions(dims);
 
-    for(std::list<TypePtr>::iterator i = dims.begin(); i != dims.end(); ++i) {
-        TypePtr pType = CollectPreConditions::getNotNamedReferenceType(*i);
+    for(TypePtr pType : dims) {
         if (!pType) {
             _ranges.add(NULL);
             continue;
@@ -1684,7 +1683,7 @@ void Semantics::checkIntersect(const ExpressionPtr& _pExpr1, const ExpressionPtr
 }
 
 void Semantics::arrayUnion(const ArrayTypePtr& _pArr1, const ArrayTypePtr& _pArr2) {
-    std::list<TypePtr> dim1, dim2;
+    Collection<Type> dim1, dim2;
     _pArr1->getDimensions(dim1);
     _pArr2->getDimensions(dim2);
 
@@ -1692,7 +1691,7 @@ void Semantics::arrayUnion(const ArrayTypePtr& _pArr1, const ArrayTypePtr& _pArr
         return;
 
     TypePtr dimLeft = NULL, dimRight = NULL;
-    for (std::list<TypePtr>::iterator i = dim1.begin(), j = dim2.begin();
+    for (auto i = dim1.begin(), j = dim2.begin();
         i != dim1.end(); ++i, ++j) {
         if (**i != **j) {
             if (dimLeft || dimRight)
@@ -1822,13 +1821,13 @@ bool Semantics::visitArrayPartExpr(ArrayPartExpr& _ap) {
     assert(_ap.getObject()->getType()->getKind() == Type::ARRAY);
     const ArrayType& array = *_ap.getObject()->getType().as<ArrayType>();
 
-    std::list<TypePtr> dims;
+    Collection<Type> dims;
     array.getDimensions(dims);
 
     assert(dims.size() == _ap.getIndices().size());
 
     size_t j = 0;
-    for (std::list<TypePtr>::iterator i = dims.begin(); i != dims.end(); ++i, ++j)
+    for (auto i = dims.begin(); i != dims.end(); ++i, ++j)
         m_pPrecondition->append(Conjunction::getConjunction(isElement((*i).as<Subtype>(), _ap.getIndices().get(j))));
 
     return true;

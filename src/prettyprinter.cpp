@@ -284,7 +284,9 @@ protected:
     );
 
     VISITOR(NamedValue,
-            PROP(Quote, Name);
+            if (_node.getKind() != NamedValue::PREDICATE_PARAMETER ||
+                    static_cast<const Param &>(_node).isUsed())
+                PROP(Quote, Name);
     );
 
     VISITOR(EnumValue,
@@ -333,11 +335,13 @@ protected:
 
 void prettyPrint(Module & _module, std::wostream & _os) {
     PrettyPrinter pp(_os);
+    Param::updateUsed(_module);
     pp.traverseModule(_module);
 }
 
 void print(ir::Node &_node, std::wostream &_os) {
     PrettyPrinter pp(_os);
+    Param::updateUsed(_node);
     pp.traverseNode(_node);
 }
 

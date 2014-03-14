@@ -1,9 +1,9 @@
 /*
 
 <test>
-    foo//Type = predicate(nat arg: var result)
+    foo/Type = predicate(nat : var)
 </test>
 
 */
 
-predicate(nat arg: var result) foo;
+predicate(nat arg : var result) foo;

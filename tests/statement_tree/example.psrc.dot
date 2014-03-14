@@ -55,7 +55,7 @@ digraph G {
         A14 -> A15 [ label = 1 ];
         A15 [ label = "{}" ];
         A15 -> A16 [ label = 1 ];
-        A16 [ label = "baz(baz(1 + a): c)" ];
+        A16 [ label = "baz(baz(1 + a) : c)" ];
         A15 -> A17 [ label = 2 ];
         A17 [ label = "||" ];
         A17 -> A18 [ label = 1 ];
@@ -93,7 +93,7 @@ digraph G {
         A23 -> A32 [ label = 3 ];
         A32 [ label = "{}" ];
         A32 -> A33 [ label = 1 ];
-        A33 [ label = "bar(a: b)" ];
+        A33 [ label = "bar(a : b)" ];
         A32 -> A34 [ label = 2 ];
         A34 [ label = "if" ];
         A34 -> A35 [ label = 1 ];
@@ -101,9 +101,9 @@ digraph G {
         A35 -> A36 [ label = 1 ];
         A36 [ label = "{}" ];
         A36 -> A37 [ label = 1 ];
-        A37 [ label = "baz(1 + a: b)" ];
+        A37 [ label = "baz(1 + a : b)" ];
         A36 -> A38 [ label = 2 ];
-        A38 [ label = "baz(a: c)" ];
+        A38 [ label = "baz(a : c)" ];
         A35 -> A39 [ label = 2 ];
         A39 [ label = "||" ];
         A39 -> A40 [ label = 1 ];
@@ -115,7 +115,7 @@ digraph G {
         A42 -> A43 [ label = 1 ];
         A43 [ label = "{}" ];
         A43 -> A44 [ label = 1 ];
-        A44 [ label = "baz(11: a)" ];
+        A44 [ label = "baz(11 : a)" ];
         A43 -> A45 [ label = 2 ];
         A45 [ label = "c = a" ];
         A42 -> A46 [ label = 2 ];
@@ -139,15 +139,15 @@ digraph G {
         A47 -> A53 [ label = 4 ];
         A53 [ label = "nat d" ];
         A47 -> A54 [ label = 5 ];
-        A54 [ label = "bar(a: b)" ];
+        A54 [ label = "bar(a : b)" ];
         A47 -> A55 [ label = 6 ];
         A55 [ label = "if" ];
         A55 -> A56 [ label = 1 ];
         A56 [ label = "{}" ];
         A56 -> A57 [ label = 1 ];
-        A57 [ label = "baz(1 + a: b)" ];
+        A57 [ label = "baz(1 + a : b)" ];
         A56 -> A58 [ label = 2 ];
-        A58 [ label = "baz(a: c)" ];
+        A58 [ label = "baz(a : c)" ];
         A56 -> A59 [ label = 3 ];
         A59 [ label = "||" ];
         A59 -> A60 [ label = 1 ];
@@ -157,7 +157,7 @@ digraph G {
         A55 -> A62 [ label = 2 ];
         A62 [ label = "{}" ];
         A62 -> A63 [ label = 1 ];
-        A63 [ label = "baz(11: a)" ];
+        A63 [ label = "baz(11 : a)" ];
         A62 -> A64 [ label = 2 ];
         A64 [ label = "c = a" ];
         A62 -> A65 [ label = 3 ];

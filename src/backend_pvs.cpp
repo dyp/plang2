@@ -71,7 +71,7 @@ public:
 
         if (_stmt.getType()->getKind() == Type::PARAMETERIZED) {
             m_os << L"(";
-            traverseCollection(_stmt.getType().as<ParameterizedType>()->getParams());
+            VISITOR_TRAVERSE_COL(Type, Type, _stmt.getType().as<ParameterizedType>()->getParams());
             m_os << L")";
         }
 
@@ -132,19 +132,19 @@ public:
     bool visitArrayType(ArrayType& _array) {
         const TypePtr& pBaseType = _array.getRootType();
 
-        std::list<TypePtr> dims;
+        Collection<Type> dims;
         _array.getDimensions(dims);
 
         m_os << L"[";
 
-        for (std::list<TypePtr>::iterator i = dims.begin(); i != dims.end(); ++i) {
-            if (i != dims.begin())
-                m_os << ", ";
-            traverseNode(**i);
+        for (size_t c = 0; c < dims.size(); ++c) {
+            if (c > 0)
+                m_os << L", ";
+            VISITOR_TRAVERSE_ITEM_NS(Type, ArrayDimType, dims, c);
         }
 
         m_os << L" -> ";
-        traverseNode(*pBaseType);
+        VISITOR_TRAVERSE_NS(Type, ArrayBaseType, pBaseType);
         m_os << L"]";
 
         return false;
@@ -425,7 +425,7 @@ public:
         std::wstring strParens;
         for (size_t i = 0; i < _expr.size(); ++i) {
             m_os << L"cons(";
-            traverseNode(*_expr.get(i));
+            VISITOR_TRAVERSE_NS(Expression, Expression, _expr.get(i));
             m_os << L", ";
             strParens += L")";
         }
@@ -433,37 +433,33 @@ public:
         return false;
     }
 
-    void printArrayConstructor(const ArrayConstructor& _array, const ArrayTypePtr& _pType = NULL, bool bNeedType = false) {
+    bool printArrayConstructor(const ArrayConstructor& _array, const ArrayTypePtr& _pType = NULL, bool bNeedType = false) {
         if (!_array.getType())
-            return;
+            return true;
 
         const ArrayType& array = !_pType ? *_array.getType().as<ArrayType>() : *_pType;
 
-        std::list<TypePtr> dims;
+        Collection<Type> dims;
         array.getDimensions(dims);
 
         StructConstructor index;
         std::vector<NamedValuePtr> indexes;
 
         m_os << L"(";
-        for (std::list<TypePtr>::iterator i = dims.begin(); i != dims.end(); ++i) {
-            if (i != dims.begin())
-                m_os << L", ";
-
+        for (auto i = dims.begin(); i != dims.end(); ++i) {
             indexes.push_back(new NamedValue(L"", *i));
-            traverseNode(*indexes.back());
-
+            VISITOR_TRAVERSE_NS(NamedValue, ArrayIterator, indexes.back());
             index.add(new StructFieldDefinition(new VariableReference(indexes.back())));
         }
         m_os << L") : ";
 
         if (bNeedType) {
             const TypePtr& pRootType = array.getRootType();
-            traverseNode(*pRootType);
+            VISITOR_TRAVERSE_NS(Type, Type, pRootType);
             m_os << L" = ";
         }
 
-        NodePtr pIndex = &index;
+        ExpressionPtr pIndex = &index;
         if (indexes.size() == 1)
             pIndex = new VariableReference(indexes.back());
 
@@ -472,13 +468,14 @@ public:
             if (i != 0)
                 m_os << L", ";
 
-            traverseNode(*pIndex);
+            VISITOR_TRAVERSE_NS(Expression, Expression, pIndex);
             m_os << L" = ";
-            traverseNode(*_array.get(i)->getIndex());
+            VISITOR_TRAVERSE_NS(Expression, Expression, _array.get(i)->getIndex());
             m_os << L" -> ";
-            traverseNode(*_array.get(i)->getValue());
+            VISITOR_TRAVERSE_NS(Expression, Expression, _array.get(i)->getValue());
         }
         m_os << L" ENDCOND";
+        return true;
     }
 
     bool visitArrayConstructor(ArrayConstructor& _array) {
@@ -495,14 +492,14 @@ public:
         NamedValue nv(L"", _expr.getType().as<SetType>()->getBaseType());
 
         m_os << L"{";
-        traverseNode(nv);
+        VISITOR_TRAVERSE_NS(NamedValue, Variable, NamedValuePtr(&nv));
         m_os << L" | ";
 
         for (size_t i = 0; i < _expr.size(); ++i) {
             if (i != 0)
                 m_os << L" OR ";
             m_os << m_context.nameGenerator().getNamedValueName(nv) << " = ";
-            traverseNode(*_expr.get(i));
+            VISITOR_TRAVERSE_NS(Expression, SetElementDef, _expr.get(i));
         }
 
         m_os << L"}";
@@ -684,7 +681,7 @@ public:
 
         if (_node.getResultType()) {
             m_os << " : ";
-            traverseNode(*_node.getResultType());
+            VISITOR_TRAVERSE_NS(Type, FormulaDeclResultType, _node.getResultType());
         }
 
         m_os << " = ";
@@ -694,35 +691,31 @@ public:
         VISITOR_EXIT();
     }
 
-    void printArrayDimTypes(const ArrayType& _array) {
-        std::list<TypePtr> dims;
+    bool printArrayDimTypes(const ArrayType& _array) {
+        Collection<Type> dims;
         _array.getDimensions(dims);
 
         if (dims.size() > 1)
             m_os << L"[";
 
-        for (std::list<TypePtr>::iterator i = dims.begin(); i != dims.end(); ++i) {
-            if (i != dims.begin())
-                m_os << ", ";
-            traverseNode(**i);
-        }
+        VISITOR_TRAVERSE_COL(Type, ArrayDimType, dims);
 
         if (dims.size() > 1)
             m_os << L"]";
+
+        return true;
     }
 
-    void printArrayPartIndices(const Collection<Expression>& _indices) {
+    bool printArrayPartIndices(Collection<Expression>& _indices) {
         if (_indices.size() > 1)
             m_os << L"[";
 
-        for (size_t i = 0; i < _indices.size(); ++i) {
-            if (i != 0)
-                m_os << L", ";
-            traverseNode(*_indices.get(i));
-        }
+        VISITOR_TRAVERSE_COL(Expression, Expression, _indices);
 
         if (_indices.size() > 1)
             m_os << L"]";
+
+        return true;
     }
 
     bool visitArrayPartExpr(ArrayPartExpr &_expr) {
@@ -735,11 +728,11 @@ public:
         m_os << L", ";
         printArrayPartIndices(_expr.getIndices());
         m_os << L", ";
-        traverseNode(*array.getRootType());
+        VISITOR_TRAVERSE_NS(Type, Type, array.getRootType());
         m_os << L"]";
 
         m_os << L"(";
-        traverseNode(*_expr.getObject());
+        VISITOR_TRAVERSE_NS(Expression, Expression, _expr.getObject());
         m_os << L")";
 
         return false;
@@ -753,19 +746,19 @@ public:
         VISITOR_EXIT();
     }
 
-    void printCondition(const NamedValuePtr& _pValue, const ExpressionPtr& _pExpr) {
+    bool printCondition(const NamedValuePtr& _pValue, const ExpressionPtr& _pExpr) {
         if (!_pValue || !_pExpr)
-            return;
+            return true;
 
         if (_pExpr->getKind() != Expression::TYPE) {
             m_os << _pValue->getName();
             m_os << L" = ";
-            traverseNode(*_pExpr);
-            return;
+            VISITOR_TRAVERSE_NS(Expression, Expression, _pExpr);
+            return true;
         }
 
         if (_pExpr.as<TypeExpr>()->getContents()->getKind() != Type::SUBTYPE)
-            return;
+            return true;
 
         const Subtype& sub = *_pExpr.as<TypeExpr>()->getContents().as<Subtype>();
 
@@ -773,8 +766,10 @@ public:
         pCond = Expression::substitute(pCond, new VariableReference(sub.getParam()), new VariableReference(_pValue)).as<Expression>();
 
         m_os << L"(";
-        traverseNode(*pCond);
+        VISITOR_TRAVERSE_NS(Expression, Expression, pCond);
         m_os << L")";
+
+        return true;
     }
 
     bool traverseArrayIteration(ArrayIteration & _expr) {
@@ -816,7 +811,7 @@ public:
 
             m_os << L") -> ";
 
-            traverseNode(*pDef->getExpression());
+            VISITOR_TRAVERSE_NS(Expression, Expression, pDef->getExpression());
         }
 
         if (_expr.getDefault()) {
@@ -841,15 +836,13 @@ public:
 
         m_os << cyrillicToASCII(_module.getName()) << L" : THEORY\nBEGIN\n\n";
 
-        std::list<NodePtr> sorted;
+        Nodes sorted;
         m_context.sortModule(_module, sorted);
-
-        for (std::list<NodePtr>::iterator i = sorted.begin(); i != sorted.end(); ++i)
-            traverseNode(**i);
+        VISITOR_TRAVERSE_COL(Node, Decl, sorted);
 
         m_os << L"\n";
 
-        traverseNode(_module.getLemmas());
+        VISITOR_TRAVERSE_COL(LemmaDeclaration, LemmaDecl, _module.getLemmas());
 
         m_os << L"\nEND " << cyrillicToASCII(_module.getName()) << L"\n";
 

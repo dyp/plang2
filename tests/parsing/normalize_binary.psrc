@@ -1,12 +1,12 @@
 /*
 
 <test>
-    //q/VarDeclInit = a * b
-    //w/VarDeclInit = a * b * c * d
-    //e/VarDeclInit = a * a * a
-    //r/VarDeclInit = a * b * c * d
-    //t/VarDeclInit = c * d * (a + b)
-    //u/VarDeclInit = f * g * (b + e * (d + r)) * (e + a * r)
+    //q/VarDeclInit = a*b
+    //w/VarDeclInit = a*b*c*d
+    //e/VarDeclInit = a*a*a
+    //r/VarDeclInit = a*b*c*d
+    //t/VarDeclInit = c*d*(a + b)
+    //u/VarDeclInit = f*g*(b + e*(d + r))*(e + a*r)
 </test>
 
 */

@@ -7,7 +7,7 @@ Lst : TYPE = list[nat]
 a : VAR nat = 0
 b : VAR nat = bv2nat(NOT nat2bv(a))
 arr(d: {f: nat | (f <= 10) AND (f >= 1)}) : nat = COND d = 1 -> 1, d = 2 -> 2 ENDCOND
-arr1 : VAR [{g: nat | (g <= 10) AND (g >= 1)}, {h: nat | (h <= 10) AND (h >= 1)} -> nat] = (LAMBDA (i: int, j: int) : COND (((i <= 5 AND i >= 1) AND (j <= 2 AND j >= 1))) -> 1, (((i <= 30 AND i >= 6) AND (j <= 5 AND j >= 3))) -> 2, ELSE -> 3 ENDCOND)
+arr1 : VAR [{g: nat | (g <= 10) AND (g >= 1)}, {h: nat | (h <= 10) AND (h >= 1)} -> nat] = (LAMBDA (i: int, j: int) : COND ((((i <= 5) AND (i >= 1)) AND ((j <= 2) AND (j >= 1)))) -> 1, ((((i <= 30) AND (i >= 6)) AND ((j <= 5) AND (j >= 3)))) -> 2, ELSE -> 3 ENDCOND)
 e : VAR nat = restrict[{f: nat | (f <= 10) AND (f >= 1)}, 1, nat](arr)
 l : VAR list[nat] = cons(1, cons(2, cons(3, null)))
 s : VAR setof[nat] = {k: nat | k = 1 OR k = 2 OR k = 3}

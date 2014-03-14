@@ -522,7 +522,7 @@ public:
 
     /// Get array dimensions as list of types.
     /// \return List of ranges.
-    void getDimensions(std::list<TypePtr> &_dimensions) const;
+    void getDimensions(Collection<Type> &_dimensions) const;
 
     size_t getDimensionsCount() const {
         return getBaseType()->getKind() == ARRAY

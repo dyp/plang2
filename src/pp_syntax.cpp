@@ -13,7 +13,7 @@ namespace pp {
 typedef std::multimap<NodePtr, NodePtr> Graph;
 typedef std::pair<const NodePtr, NodePtr> Edge;
 
-class CollectPaths : public ir::Visitor {
+class CollectPaths : public Visitor {
 public:
     CollectPaths(std::map<NodePtr, std::list<ModulePtr>>& _paths) :
         m_paths(_paths)
@@ -42,7 +42,7 @@ private:
     std::map<NodePtr, std::list<ModulePtr>>& m_paths;
 };
 
-class GetDeclarations : public ir::Visitor {
+class GetDeclarations : public Visitor {
 public:
     GetDeclarations(Graph& _decls) : m_decls(_decls) {}
 
@@ -112,7 +112,7 @@ static bool _hasLoops(const Graph& _graph, const Edge& _edge) {
     return _depthFirstTraversal(_graph, _edge, _edge.second);
 }
 
-class GetDeclDependencies : public ir::Visitor {
+class GetDeclDependencies : public Visitor {
 public:
     GetDeclDependencies(const Graph& _decls, Graph& _graph) :
         m_graph(_graph), m_decls(_decls)
@@ -191,7 +191,7 @@ private:
     const Graph& m_decls;
 };
 
-void Context::collectPaths(ir::Node &_node) {
+void Context::collectPaths(Node &_node) {
     CollectPaths(m_paths).traverseNode(_node);
 }
 
@@ -207,16 +207,16 @@ void Context::_buildDependencies(NodePtr _pRoot) {
     GetDeclDependencies(m_decls, m_deps).run(_pRoot);
 }
 
-void Context::_topologicalSort(const NodePtr& _pDecl, std::list<NodePtr>& _sorted) {
+void Context::_topologicalSort(const NodePtr& _pDecl, Nodes& _sorted) {
     if (std::find(_sorted.begin(), _sorted.end(), _pDecl) != _sorted.end())
         return;
     std::pair<Graph::iterator, Graph::iterator> its = m_deps.equal_range(_pDecl);
     for (Graph::iterator i = its.first; i != its.second; ++i)
         _topologicalSort(i->second, _sorted);
-    _sorted.push_back(_pDecl);
+    _sorted.add(_pDecl);
 }
 
-void Context::sortModule(Module &_module, std::list<NodePtr>& _sorted) {
+void Context::sortModule(Module &_module, Nodes& _sorted) {
     _buildDependencies(&_module);
 
     if (!_module.getPredicates().empty())
@@ -234,65 +234,53 @@ void Context::clear() {
     m_names.clear();
 }
 
-// NODE / MODULE
-void PrettyPrinterSyntax::printDeclarationGroup(Module &_module) {
-    std::list<NodePtr> sorted;
-    m_pContext->sortModule(_module, sorted);
-
-    for (std::list<NodePtr>::iterator i = sorted.begin(); i != sorted.end(); ++i) {
-        traverseNode(**i);
-        if ((*i)->getNodeKind() == Node::STATEMENT &&
-                !(*i).as<Statement>()->isBlockLike())
-            m_os << L";";
-        if (i != sorted.end())
-            m_os << L"\n";
-    }
-}
-
-bool PrettyPrinterSyntax::_traverseDeclarationGroup(DeclarationGroup &_decl) {
-    VISITOR_TRAVERSE_COL(LemmaDeclaration, LemmaDecl, _decl.getLemmas());
-    VISITOR_TRAVERSE_COL(Message, MessageDecl, _decl.getMessages());
-    VISITOR_TRAVERSE_COL(Process, ProcessDecl, _decl.getProcesses());
-    return true;
-}
-
 bool PrettyPrinterSyntax::traverseModule(Module &_module) {
     VISITOR_ENTER(Module, _module);
 
     const ModulePtr pOldCurrModule = m_pCurrentModule;
     m_pCurrentModule = &_module;
 
-    const bool bNeedsIndent = !_module.getName().empty();
+    if (!_module.getName().empty()) {
+        m_os << L"module " << indent << _module.getName();
 
-    if (bNeedsIndent) {
-        m_os << fmtIndent(L"module ") << _module.getName();
         if (!_module.getParams().empty()) {
-            m_os << L"(";
+            m_os << L"(" << setInline(true);
             VISITOR_TRAVERSE_COL(Param, ModuleParam, _module.getParams());
-            m_os << L")";
+            m_os << setInline(false) << L")";
         }
-        m_os << L" {\n";
-        incTab();
+
+        m_os << L" {";
     }
 
-    printDeclarationGroup(_module);
-    if (!_traverseDeclarationGroup(_module))
-        return false;
+    Nodes sortedDecls;
 
-    VISITOR_TRAVERSE_COL(Class, ClassDecl, _module.getClasses());
+    m_pContext->sortModule(_module, sortedDecls);
 
-    if (bNeedsIndent) {
-        decTab();
-        m_os << fmtIndent(L"}");
+    sortedDecls.append(_module.getLemmas());
+    sortedDecls.append(_module.getMessages());
+    sortedDecls.append(_module.getProcesses());
+    sortedDecls.append(_module.getClasses());
+
+    for (size_t c = 0; c < sortedDecls.size(); ++c) {
+        if (c > 0) {
+            if (sortedDecls.get(c - 1)->getNodeKind() == Node::STATEMENT &&
+                    !sortedDecls.get(c - 1).as<Statement>()->isBlockLike())
+                m_os << L";";
+        }
+
+        m_os << L"\n";
+        VISITOR_TRAVERSE_ITEM_NS(Node, Decl, sortedDecls, c);
     }
+
+    if (!_module.getName().empty())
+        m_os << unindent << L"\n}";
 
     m_pCurrentModule = pOldCurrModule;
-
     VISITOR_EXIT();
 }
 
 void PrettyPrinterSyntax::printPath(const NodePtr& _pNode) {
-    std::list<ir::ModulePtr> container;
+    std::list<ModulePtr> container;
     m_pContext->getPath(_pNode, container);
 
     bool bCanPrint = false;
@@ -305,8 +293,14 @@ void PrettyPrinterSyntax::printPath(const NodePtr& _pNode) {
 }
 
 // NODE / LABEL
-bool PrettyPrinterSyntax::visitLabel(ir::Label &_label) {
-    m_os << m_pContext->nameGenerator().getLabelName(_label) << ": ";
+bool PrettyPrinterSyntax::visitLabel(Label &_label) {
+    m_pContext->nameGenerator().addLabel(&_label);
+
+    if (m_os.getLevel() > 0)
+        m_os << unindent << m_pContext->nameGenerator().getLabelName(_label) << ":\n" << indent;
+    else
+        m_os << m_pContext->nameGenerator().getLabelName(_label) << ": ";
+
     return true;
 }
 
@@ -317,14 +311,6 @@ static std::wstring fmtBits(int _bits) {
         case Number::NATIVE:  return L"native";  break;
         default:              return fmtInt(_bits);
     }
-}
-
-bool PrettyPrinterSyntax::traverseType(Type &_type) {
-    if (&_type != NULL)
-        return Visitor::traverseType(_type);
-
-    m_os << L"NULL";
-    return true;
 }
 
 bool PrettyPrinterSyntax::visitType(Type &_type) {
@@ -367,189 +353,144 @@ bool PrettyPrinterSyntax::traverseNamedReferenceType(NamedReferenceType &_type) 
     m_os << _type.getName();
 
     if (!_type.getArgs().empty()) {
-        m_os << L"(";
+        m_os << L"(" << setInline(true);
         VISITOR_TRAVERSE_COL(Expression, NamedTypeArg, _type.getArgs());
-        m_os << L")";
+        m_os << setInline(false) << L")";
     }
 
     VISITOR_EXIT();
 }
 
 bool PrettyPrinterSyntax::visitSetType(SetType &_type) {
-    m_os << (m_bCompact ? L"{" : L"set(");
-    traverseType(*_type.getBaseType());
-    m_os << (m_bCompact ? L"}" : L")");
+    m_os << (m_bCompact ? L"{" : L"set(") << setInline(true);
+    VISITOR_TRAVERSE_NS(Type, SetBaseType, _type.getBaseType());
+    m_os << setInline(false) << (m_bCompact ? L"}" : L")");
     return false;
 }
 
 bool PrettyPrinterSyntax::visitListType(ListType &_type) {
-    m_os << (m_bCompact ? L"[[" : L"list(");
-    traverseType(*_type.getBaseType());
-    m_os << (m_bCompact ? L"]]" : L")");
+    m_os << (m_bCompact ? L"[[" : L"list(") << setInline(true);
+    VISITOR_TRAVERSE_NS(Type, ListBaseType, _type.getBaseType());
+    m_os << setInline(false) << (m_bCompact ? L"]]" : L")");
     return false;
 }
 
 bool PrettyPrinterSyntax::visitRefType(RefType &_type) {
-    m_os << L"ref(";
-    traverseType(*_type.getBaseType());
-    m_os << L")";
+    m_os << L"ref(" << setInline(true);
+    VISITOR_TRAVERSE_NS(Type, RefBaseType, _type.getBaseType());
+    m_os << setInline(false) << L")";
     return false;
 }
 
 bool PrettyPrinterSyntax::traverseMapType(MapType &_type) {
     VISITOR_ENTER(MapType, _type);
-    m_os << (m_bCompact ? L"{" : L"map(");
-    VISITOR_TRAVERSE(Type, MapIndexType, _type.getIndexType(), _type, MapType, setIndexType);
+    m_os << (m_bCompact ? L"{" : L"map(") << setInline(true);
+    VISITOR_TRAVERSE_NS(Type, MapIndexType, _type.getIndexType());
     m_os << (m_bCompact ? L" : " : L", ");
-    VISITOR_TRAVERSE(Type, MapBaseType, _type.getBaseType(), _type, DerivedType, setBaseType);
-    m_os << (m_bCompact ? L"}" : L")");
+    VISITOR_TRAVERSE_NS(Type, MapBaseType, _type.getBaseType());
+    m_os << setInline(false) << (m_bCompact ? L"}" : L")");
     VISITOR_EXIT();
 }
 
 bool PrettyPrinterSyntax::traverseSubtype(Subtype &_type) {
+    if (!m_bCompact) {
+        if (RangePtr pRange = _type.asRange()) {
+            VISITOR_TRAVERSE_NS(Range, Type, pRange);
+            return true;
+        }
+    }
+
     VISITOR_ENTER(Subtype, _type);
-    m_os << (m_bCompact ? L"{" : L"subtype(");
-    VISITOR_TRAVERSE(NamedValue, SubtypeParam, _type.getParam(), _type, Subtype, setParam);
+    m_os << (m_bCompact ? L"{" : L"subtype(") << indent;
+    VISITOR_TRAVERSE_NS(NamedValue, SubtypeParam, _type.getParam());
     m_os << (m_bCompact ? L" | " : L": ");
-    VISITOR_TRAVERSE(Expression, SubtypeCond, _type.getExpression(), _type, Subtype, setExpression);
-    m_os << (m_bCompact ? L"}" : L")");
+    VISITOR_TRAVERSE_NS(Expression, SubtypeCond, _type.getExpression());
+    m_os << unindent << (m_bCompact ? L"}" : L")");
     VISITOR_EXIT();
 }
 
 bool PrettyPrinterSyntax::traverseRange(Range &_type) {
     VISITOR_ENTER(Range, _type);
-    VISITOR_TRAVERSE(Expression, RangeMin, _type.getMin(), _type, Range, setMin);
+    m_os << setInline(true);
+    VISITOR_TRAVERSE_NS(Expression, RangeMin, _type.getMin());
     m_os << L"..";
-    VISITOR_TRAVERSE(Expression, RangeMax, _type.getMax(), _type, Range, setMax);
+    VISITOR_TRAVERSE_NS(Expression, RangeMax, _type.getMax());
+    m_os << setInline(false);
     VISITOR_EXIT();
 }
 
 bool PrettyPrinterSyntax::visitArrayType(ArrayType &_type) {
     const TypePtr& pBaseType = _type.getRootType();
 
+    m_os << setInline(true);
+
     if (!m_bCompact)
         m_os << L"array(";
-    traverseType(*pBaseType);
+
+    VISITOR_TRAVERSE_NS(Type, ArrayBaseType, pBaseType);
 
     if (!m_bCompact)
-        m_os << ", ";
+        m_os << L", ";
 
-    std::list<TypePtr> dims;
+    Collection<Type> dims;
     _type.getDimensions(dims);
 
-    for (std::list<TypePtr>::iterator i = dims.begin(); i != dims.end(); ++i) {
+    for (size_t c = 0; c < dims.size(); ++c) {
         if (m_bCompact)
             m_os << L"[";
+        else if (c > 0)
+            m_os << L", ";
 
-        TypePtr pDim = *i;
+        TypePtr pDim = dims.get(c);
         if (pDim->getKind() == Type::SUBTYPE) {
             RangePtr pRange = pDim.as<Subtype>()->asRange();
             if (pRange)
                 pDim = pRange;
         }
-        traverseType(*pDim);
+
+        VISITOR_TRAVERSE_NS(Type, ArrayDimType, pDim);
 
         if (m_bCompact)
             m_os << L"]";
-
-        const bool bIsLast = (*i == dims.back());
-        if (!bIsLast && !m_bCompact)
-            m_os << L", ";
     }
 
     if (!m_bCompact)
         m_os << L")";
+
+    m_os << setInline(false);
 
     return false;
 }
 
 bool PrettyPrinterSyntax::traverseEnumType(EnumType &_type) {
     VISITOR_ENTER(EnumType, _type);
+    m_os << L"enum(" << indent;
 
-    m_os << L"enum(";
     for (size_t i = 0; i < _type.getValues().size(); ++i) {
-        m_os << _type.getValues().get(i)->getName();
-        const bool bIsLast = (_type.getValues().size() - 1 == i);
-        if (!bIsLast)
-            m_os << L", ";
-    }
-    m_os << L")";
+        if (i > 0)
+            m_os << L",\n";
+        else if (!m_os.isInline())
+            m_os << L"\n";
 
+        VISITOR_TRAVERSE_ITEM_NS(EnumValue, EnumValueDecl, _type.getValues(), i);
+    }
+
+    m_os << unindent << (_type.getValues().empty() || m_os.isInline() ? L")" : L"\n)");
     VISITOR_EXIT();
 }
 
-void PrettyPrinterSyntax::printStructNamedValues(const NamedValues& _nvs, std::set<std::wstring>& _usedNames, bool& _bIsFirst, bool _bNeedsIndent) {
-    for (size_t i = 0; i < _nvs.size(); ++i) {
-        if (!_bIsFirst)
-            m_os << L", ";
-        if (_bNeedsIndent)
-            m_os << L"\n" << fmtIndent();
+bool PrettyPrinterSyntax::_traverseStructType(StructType &_type) {
+    VISITOR_ENTER(StructType, _type);
 
-        NamedValuePtr pField = _nvs.get(i);
-
-        traverseType(*pField->getType());
-
-        if (!pField->getName().empty()) {
-            m_os << L" " << pField->getName();
-            _usedNames.insert(_nvs.get(i)->getName());
-        }
-
-        _bIsFirst = false;
-    }
-}
-
-bool PrettyPrinterSyntax::needsIndent() {
-    switch (getRole()) {
-        case R_FormulaCallArgs:
-        case R_FunctionCallArgs:
-        case R_PredicateInParam:
-        case R_PredicateOutParam:
-        case R_PredicateCallArgs:
-        case R_PredicateCallBranchResults:
-            return false;
-        default:
-            break;
-    }
-    return !m_bCompact && !m_bSingleLine;
-}
-
-#define INDENT()                                \
-    const bool bNeedsIndent = needsIndent();    \
-    const bool oldSingleLine = m_bSingleLine;   \
-    if (bNeedsIndent) {                         \
-        incTab();                               \
-        m_bSingleLine = true;                   \
-    }
-
-#define UNINDENT()                              \
-    if (bNeedsIndent) {                         \
-        decTab();                               \
-        m_os << L"\n" << fmtIndent();           \
-        m_bSingleLine = oldSingleLine;          \
-    }
-
-std::wstring getNewFieldName(std::set<std::wstring>& _usedNames) {
-    size_t i = 1;
-    std::wstring strName;
-
-    do {
-        strName = intToAlpha(i++);
-    } while (!_usedNames.insert(strName).second);
-
-    return strName;
-}
-
-void PrettyPrinterSyntax::printStructType(const StructType& _type, bool _bSeparator, bool _bIndent) {
     // Order of fields: ordered names, unordered names, ordered types.
-
-    bool bIsFirst = true;
-    std::set<std::wstring> usedNames;
-    printStructNamedValues(_type.getNamesOrd(), usedNames, bIsFirst, _bIndent);
-
-    if (_bSeparator && !(_type.getNamesSet().empty() && _type.getTypesOrd().empty())) {
-        m_os << L"; ";
-        bIsFirst = true;
+    if (!_type.getNamesOrd().empty()) {
+        if (!m_os.isInline())
+            m_os << L"\n";
+        VISITOR_TRAVERSE_COL(NamedValue, StructFieldDeclNameOrd, _type.getNamesOrd());
     }
+
+    if (m_bCompact && !(_type.getNamesSet().empty() && _type.getTypesOrd().empty()))
+        m_os << L";";
 
     if (!_type.getNamesSet().empty()) {
         // Ensure sorting for debug purposes (don't reorder source collection though).
@@ -563,113 +504,117 @@ void PrettyPrinterSyntax::printStructType(const StructType& _type, bool _bSepara
                 i != sortedFieldsMap.end(); ++i)
             sortedFields.add(i->second);
 
-        printStructNamedValues(sortedFields, usedNames, bIsFirst, _bIndent);
+        if (m_bCompact)
+            m_os << L"\n";
+        else if (!_type.getNamesSet().empty())
+            m_os << L",\n";
+
+        VISITOR_TRAVERSE_COL(NamedValue, StructFieldDeclNameSet, sortedFields);
     }
 
-    if (_bSeparator && !_type.getTypesOrd().empty()) {
-        m_os << L"; ";
-        bIsFirst = true;
+    if (m_bCompact && !_type.getTypesOrd().empty())
+        m_os << L";";
+
+    if (!_type.getTypesOrd().empty()) {
+        if (m_bCompact)
+            m_os << L"\n";
+        else if (!_type.getNamesOrd().empty() || !_type.getNamesSet().empty())
+            m_os << L",\n";
+
+        VISITOR_TRAVERSE_COL(NamedValue, StructFieldDeclTypeOrd, _type.getTypesOrd());
     }
 
-    NamedValues typeFields;
-    for (size_t i = 0; i < _type.getTypesOrd().size(); ++i) {
-        if (_type.getTypesOrd().get(i)->getName().empty() && !m_bCompact)
-            typeFields.add(new NamedValue(getNewFieldName(usedNames), _type.getTypesOrd().get(i)->getType()));
-        else
-            typeFields.add(_type.getTypesOrd().get(i));
-    }
-    printStructNamedValues(typeFields, usedNames, bIsFirst, _bIndent);
+    VISITOR_EXIT();
 }
 
 bool PrettyPrinterSyntax::traverseStructType(StructType &_type) {
-    VISITOR_ENTER(StructType, _type);
-    m_os << (!m_bCompact ? L"struct(" : L"(");
-    INDENT();
-    printStructType(_type, m_bCompact, bNeedsIndent);
-    UNINDENT();
-    m_os << L")";
-    VISITOR_EXIT();
+    m_os << (m_bCompact ? L"(" : L"struct(") << indent;
+    const bool bResult = _traverseStructType(_type);
+    m_os << unindent << (_type.empty() || m_os.isInline() ? L")" : L"\n)");
+    return bResult;
 }
 
 bool PrettyPrinterSyntax::traverseUnionConstructorDeclaration(UnionConstructorDeclaration &_cons) {
     VISITOR_ENTER(UnionConstructorDeclaration, _cons);
-    m_os << _cons.getName() << L"(";
-    if (_cons.getStructFields())
-        printStructType(*_cons.getStructFields(), false, false);
-    else if (_cons.getFields())
-        traverseType(*_cons.getFields());
-    m_os << ")";
+
+    if (getLoc().cPosInCollection > 0)
+        m_os << L",\n";
+    else if (!m_os.isInline())
+        m_os << L"\n";
+
+    m_os << _cons.getName() << L"(" << setInline(true);
+
+    if (const StructTypePtr pStruct = _cons.getStructFields()) {
+        VISITOR_TRAVERSE_INLINE_NS(StructType, UnionConsFields, pStruct);
+        if (!_traverseStructType(*pStruct))
+            return false;
+    } else
+        VISITOR_TRAVERSE_NS(Type, UnionConsFields, _cons.getFields());
+
+    m_os << setInline(false) << L")";
     VISITOR_EXIT();
 }
 
 bool PrettyPrinterSyntax::traverseUnionType(UnionType &_type) {
     VISITOR_ENTER(UnionType, _type);
-    m_os << L"union(";
-
-    INDENT();
-
-    for (size_t i = 0; i < _type.getConstructors().size(); ++i) {
-        if (bNeedsIndent)
-            m_os << L"\n" << fmtIndent();
-
-        traverseUnionConstructorDeclaration(*_type.getConstructors().get(i));
-
-        const bool bIsLast = (_type.getConstructors().size() - 1 == i);
-        if (!bIsLast)
-            m_os << ", ";
-    }
-
-    UNINDENT();
-    m_os << L")";
+    m_os << L"union(" << indent;
+    VISITOR_TRAVERSE_COL(UnionConstructorDeclaration, UnionConstructorDecl, _type.getConstructors());
+    m_os << unindent << (_type.getConstructors().empty() || m_os.isInline() ? L")" : L"\n)");
     VISITOR_EXIT();
 }
 
 bool PrettyPrinterSyntax::traversePredicateType(PredicateType &_type) {
     VISITOR_ENTER(PredicateType, _type);
-    m_os << L"predicate(";
+    m_os << L"predicate(" << setInline(true);
     VISITOR_TRAVERSE_COL(Param, PredicateTypeInParam, _type.getInParams());
 
     for (size_t i = 0; i < _type.getOutParams().size(); ++i) {
-        m_os << " : ";
-        for (size_t j = 0; j < _type.getOutParams().get(i)->size(); ++j) {
-            if (j != 0)
-                m_os << L", ";
-            traverseType(*_type.getOutParams().get(i)->get(j)->getType());
-            m_os << L" " << _type.getOutParams().get(i)->get(j)->getName();
-        }
-        if (_type.getOutParams().get(i)->getLabel() && !_type.getOutParams().get(i)->getLabel()->getName().empty())
-            m_os << L" #" << _type.getOutParams().get(i)->getLabel()->getName();
+        Branch &br = *_type.getOutParams().get(i);
+
+        m_os << L" : ";
+        VISITOR_TRAVERSE_COL(Param, PredicateTypeOutParam, br);
+
+        if (br.getLabel() && !br.getLabel()->getName().empty())
+            m_os << L" #" << br.getLabel()->getName();
     }
 
-    m_os << L")";
+    m_os << setInline(false) << L")";
 
     if (m_bCompact)
         VISITOR_EXIT();
 
     if (_type.getPreCondition()) {
-        m_os << L" pre ";
-        VISITOR_TRAVERSE(Formula, PredicatePreCondition, _type.getPreCondition(), _type, PredicateType, setPreCondition);
+        m_os << indent << L"\npre " << indent;
+        VISITOR_TRAVERSE_NS(Formula, PredicatePreCondition, _type.getPreCondition());
+        m_os << unindent << unindent;
     }
 
     Branches& branches = _type.getOutParams();
+
     for (size_t i = 0; i < branches.size(); ++i) {
         if (!branches.get(i) || !branches.get(i)->getPreCondition() || !branches.get(i)->getLabel())
             continue;
+
         Branch& br = *branches.get(i);
-        m_os << L" pre " << br.getLabel()->getName() << L": ";
-        VISITOR_TRAVERSE(Formula, PredicatePreCondition, br.getPreCondition(), br, Branch, setPreCondition);
+        m_os << indent << L"\npre " << br.getLabel()->getName() << L": " << indent;
+        VISITOR_TRAVERSE_NS(Formula, PredicatePreCondition, br.getPreCondition());
+        m_os << unindent << unindent;
     }
+
     for (size_t i = 0; i < branches.size(); ++i) {
         if (!branches.get(i) || !branches.get(i)->getPostCondition() || !branches.get(i)->getLabel())
             continue;
+
         Branch& br = *branches.get(i);
-        m_os << L" post " << br.getLabel()->getName() << L": ";
-        VISITOR_TRAVERSE(Formula, PredicatePostCondition, br.getPostCondition(), br, Branch, setPostCondition);
+        m_os << indent << L"\npost " << br.getLabel()->getName() << L": " << indent;
+        VISITOR_TRAVERSE_NS(Formula, PredicatePostCondition, br.getPostCondition());
+        m_os << unindent << unindent;
     }
 
     if (_type.getPostCondition()) {
-        m_os << L" post ";
-        VISITOR_TRAVERSE(Formula, PredicatePostCondition, _type.getPostCondition(), _type, PredicateType, setPostCondition);
+        m_os << indent << L"\npost " << indent;
+        VISITOR_TRAVERSE_NS(Formula, PredicatePostCondition, _type.getPostCondition());
+        m_os << unindent << unindent;
     }
 
     VISITOR_EXIT();
@@ -677,7 +622,7 @@ bool PrettyPrinterSyntax::traversePredicateType(PredicateType &_type) {
 
 bool PrettyPrinterSyntax::traverseParameterizedType(ParameterizedType &_type) {
     VISITOR_ENTER(ParameterizedType, _type);
-    VISITOR_TRAVERSE(Type, ParameterizedTypeBase, _type.getActualType(), _type, ParameterizedType, setActualType);
+    VISITOR_TRAVERSE_NS(Type, ParameterizedTypeBase, _type.getActualType());
     VISITOR_EXIT();
 }
 
@@ -691,140 +636,137 @@ bool PrettyPrinterSyntax::visitOptionalType(OptionalType& _type) {
     return false;
 }
 
-// NODE / STATEMENT
-bool PrettyPrinterSyntax::traverseStatement(Statement &_stmt) {
-    if (&_stmt == NULL)
-        return false;
-    if (!m_bMergeLines
-        && _stmt.getKind() != Statement::PARALLEL_BLOCK
-        && _stmt.getKind() != Statement::VARIABLE_DECLARATION_GROUP)
-        m_os << fmtIndent();
-    separateLines();
-    return Visitor::traverseStatement(_stmt);
-}
-
 bool PrettyPrinterSyntax::traverseJump(Jump &_stmt) {
     VISITOR_ENTER(Jump, _stmt);
-    VISITOR_TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
+    VISITOR_TRAVERSE_NS(Label, StmtLabel, _stmt.getLabel());
     m_os << L"#" << m_pContext->nameGenerator().getLabelName(*_stmt.getDestination());
     VISITOR_EXIT();
 }
 
 bool PrettyPrinterSyntax::traverseBlock(Block &_stmt) {
     VISITOR_ENTER(Block, _stmt);
-    VISITOR_TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
+    VISITOR_TRAVERSE_NS(Label, StmtLabel, _stmt.getLabel());
 
-    m_os << L"{\n";
-    incTab();
+    m_os << L"{" << indent;
 
     for (size_t i = 0; i < _stmt.size(); ++i) {
-        const bool bIsLast = i != _stmt.size() - 1;
-        traverseStatement(*_stmt.get(i));
-        m_os << (bIsLast && !_stmt.get(i)->isBlockLike() ? L";\n" : L"\n");
+        if (i > 0 && !_stmt.get(i - 1)->isBlockLike())
+            m_os << L";";
+
+        m_os << L"\n";
+        VISITOR_TRAVERSE_ITEM_NS(Statement, Stmt, _stmt, i);
     }
 
-    decTab();
-    m_os << fmtIndent(L"}");
+    m_os << unindent << L"\n}";
 
     VISITOR_EXIT();
 }
 
 bool PrettyPrinterSyntax::traverseParallelBlock(ParallelBlock &_stmt) {
     VISITOR_ENTER(ParallelBlock, _stmt);
-    VISITOR_TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
+    VISITOR_TRAVERSE_NS(Label, StmtLabel, _stmt.getLabel());
 
-    for (size_t i = 0; i < _stmt.size(); ++i) {
-        if (i > 0) {
-            m_os << fmtIndent(L"|| ");
-            mergeLines();
-        }
-        traverseStatement(*_stmt.get(i));
-        if (i != _stmt.size() - 1)
-            m_os << L"\n";
-        if (i == 0 && _stmt.size() != 1)
-            incTab();
+    if (_stmt.empty())
+        VISITOR_EXIT();
+
+    VISITOR_TRAVERSE_ITEM_NS(Statement, Stmt, _stmt, 0);
+    m_os << indent;
+
+    for (size_t i = 1; i < _stmt.size(); ++i) {
+        m_os << L" ||\n";
+        VISITOR_TRAVERSE_ITEM_NS(Statement, Stmt, _stmt, i);
     }
 
-    if (_stmt.size() != 1)
-        decTab();
-
+    m_os << unindent;
     VISITOR_EXIT();
 }
 
 bool PrettyPrinterSyntax::_traverseAnonymousPredicate(AnonymousPredicate &_decl) {
-    m_os << L"(";
+    m_os << L"(" << setInline();
     VISITOR_TRAVERSE_COL(Param, PredicateInParam, _decl.getInParams());
-    m_os << L" : ";
 
     bool bHavePreConditions = false, bHavePostConditions = false;
 
     for (size_t i = 0; i < _decl.getOutParams().size(); ++i) {
         Branch &br = *_decl.getOutParams().get(i);
-        bHavePreConditions = bHavePreConditions || br.getPreCondition();
-        bHavePostConditions = bHavePostConditions || br.getPostCondition();
+
+        m_os << L" : ";
+
+        bHavePreConditions |= br.getPreCondition();
+        bHavePostConditions |= br.getPostCondition();
         VISITOR_TRAVERSE_COL(Param, PredicateOutParam, br);
+
         if (br.getLabel() && !br.getLabel()->getName().empty())
-            m_os << L" #" << br.getLabel()->getName();
-        if (i < _decl.getOutParams().size() - 1)
-            m_os << L" : ";
+            m_os << (br.empty() ? L"#" : L" #") << br.getLabel()->getName();
     }
 
-    bHavePreConditions = bHavePreConditions || _decl.getPreCondition();
-    bHavePostConditions = bHavePostConditions || _decl.getPostCondition();
+    bHavePreConditions |= _decl.getPreCondition();
+    bHavePostConditions |= _decl.getPostCondition();
 
-    m_os << L")";
+    m_os << setInline(false) << L")";
+
+    if (!_decl.getBlock())
+        m_os << indent;
 
     if (bHavePreConditions) {
-        m_os << L"\n";
         if (_decl.getPreCondition()) {
-            m_os << fmtIndent(L"pre ");
-            VISITOR_TRAVERSE(Formula, PredicatePreCondition, _decl.getPreCondition(), _decl, AnonymousPredicate, setPreCondition);
-            m_os << L"\n";
+            m_os << L"\npre " << indent;
+            VISITOR_TRAVERSE_NS(Formula, PredicatePreCondition, _decl.getPreCondition());
+            m_os << unindent;
         }
+
         for (size_t i = 0; i < _decl.getOutParams().size(); ++i) {
             Branch &br = *_decl.getOutParams().get(i);
+
             if (br.getPreCondition()) {
-                m_os << fmtIndent(L"pre ") << br.getLabel()->getName() << L": ";
-                VISITOR_TRAVERSE(Formula, PredicateBranchPreCondition, br.getPreCondition(), br, Branch, setPreCondition);
-                m_os << L"\n";
+                m_os << L"\npre " << br.getLabel()->getName() << L": " << indent;
+                VISITOR_TRAVERSE_NS(Formula, PredicateBranchPreCondition, br.getPreCondition());
+                m_os << unindent;
             }
         }
     }
-    else
-        mergeLines();
 
     if (_decl.getBlock())
-        m_os << L" ";
-    traverseStatement(*_decl.getBlock());
+        m_os << (bHavePreConditions ? L"\n" : L" ");
+
+    VISITOR_TRAVERSE_NS(Block, PredicateBody, _decl.getBlock());
 
     if (bHavePostConditions) {
         if (_decl.getPostCondition()) {
-            m_os << L"\n" << fmtIndent(L"post ");
-            VISITOR_TRAVERSE(Formula, PredicatePostCondition, _decl.getPostCondition(), _decl, AnonymousPredicate, setPostCondition);
+            m_os << L"\npost " << indent;
+            VISITOR_TRAVERSE_NS(Formula, PredicatePostCondition, _decl.getPostCondition());
+            m_os << unindent;
         }
+
         for (size_t i = 0; i < _decl.getOutParams().size(); ++i) {
             Branch &br = *_decl.getOutParams().get(i);
+
             if (br.getPostCondition()) {
-                m_os << L"\n" << fmtIndent(L"post ") << br.getLabel()->getName() << L": ";
-                VISITOR_TRAVERSE(Formula, PredicateBranchPostCondition, br.getPostCondition(), br, Branch, setPostCondition);
+                m_os << L"\npost " << br.getLabel()->getName() << L": " << indent;
+                VISITOR_TRAVERSE_NS(Formula, PredicateBranchPostCondition, br.getPostCondition());
+                m_os << unindent;
             }
         }
     }
 
     if (_decl.getMeasure()) {
-        m_os << L"\n" << fmtIndent(L"measure ");
-        VISITOR_TRAVERSE(Expression, PredicateMeasure, _decl.getMeasure(), _decl, AnonymousPredicate, setMeasure);
+        m_os << L"\nmeasure " << indent;
+        VISITOR_TRAVERSE_NS(Expression, PredicateMeasure, _decl.getMeasure());
+        m_os << unindent;
     }
 
     if (_decl.getMeasure() || bHavePostConditions)
         m_os << L";";
+
+    if (!_decl.getBlock())
+        m_os << unindent;
 
     return true;
 }
 
 bool PrettyPrinterSyntax::traversePredicate(Predicate &_stmt) {
     VISITOR_ENTER(Predicate, _stmt);
-    VISITOR_TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
+    VISITOR_TRAVERSE_NS(Label, StmtLabel, _stmt.getLabel());
 
     m_os << _stmt.getName();
 
@@ -834,24 +776,26 @@ bool PrettyPrinterSyntax::traversePredicate(Predicate &_stmt) {
     VISITOR_EXIT();
 }
 
-bool PrettyPrinterSyntax::traverseAssignment(ir::Assignment &_stmt) {
+bool PrettyPrinterSyntax::traverseAssignment(Assignment &_stmt) {
     VISITOR_ENTER(Assignment, _stmt);
 
-    VISITOR_TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
-    VISITOR_TRAVERSE(Expression, LValue, _stmt.getLValue(), _stmt, Assignment, setLValue);
-    m_os << " = ";
-    VISITOR_TRAVERSE(Expression, RValue, _stmt.getExpression(), _stmt, Assignment, setExpression);
+    VISITOR_TRAVERSE_NS(Label, StmtLabel, _stmt.getLabel());
+    VISITOR_TRAVERSE_NS(Expression, LValue, _stmt.getLValue());
+    m_os << " = " << indent;
+    VISITOR_TRAVERSE_NS(Expression, RValue, _stmt.getExpression());
+    m_os << unindent;
 
     VISITOR_EXIT();
 }
 
 bool PrettyPrinterSyntax::traverseMultiassignment(Multiassignment &_stmt) {
     VISITOR_ENTER(Multiassignment, _stmt);
-    VISITOR_TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
+    VISITOR_TRAVERSE_NS(Label, StmtLabel, _stmt.getLabel());
 
     VISITOR_TRAVERSE_COL(Expression, LValue, _stmt.getLValues());
-    m_os << " = ";
+    m_os << " = " << indent;
     VISITOR_TRAVERSE_COL(Expression, RValue, _stmt.getExpressions());
+    m_os << unindent;
 
     VISITOR_EXIT();
 }
@@ -869,705 +813,670 @@ VariableDeclarationPtr getVarDecl(const Call& _call, const ExpressionPtr& _pArg)
 
 bool PrettyPrinterSyntax::traverseCall(Call &_stmt) {
     VISITOR_ENTER(Call, _stmt);
-    VISITOR_TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
-    VISITOR_TRAVERSE(Expression, PredicateCallee, _stmt.getPredicate(), _stmt, Call, setPredicate);
+    VISITOR_TRAVERSE_NS(Label, StmtLabel, _stmt.getLabel());
+    VISITOR_TRAVERSE_NS(Expression, PredicateCallee, _stmt.getPredicate());
 
-    m_os << L"(";
+    m_os << L"(" << indent;
     VISITOR_TRAVERSE_COL(Expression, PredicateCallArgs, _stmt.getArgs());
 
-    if (_stmt.getBranches().size() == 0) {
-        m_os << L")";
-        VISITOR_EXIT();
-    }
+    std::map<CallBranchPtr, std::wstring> branchLabels;
+    const std::wstring strGeneralName =
+         _stmt.getPredicate()->getKind() == Expression::PREDICATE ?
+             _stmt.getPredicate().as<PredicateReference>()->getName() : L"";
+    bool bEmptyArgSet = _stmt.getArgs().empty();
 
-    m_os << L": ";
+    for (CallBranchPtr pBranch : _stmt.getBranches()) {
+        m_os << (bEmptyArgSet ? L":" : L" :");
+        bEmptyArgSet = true;
 
-    if (_stmt.getBranches().size() == 1) {
-        traverseCollection(*_stmt.getBranches().get(0));
-        m_os << L")";
-        VISITOR_EXIT();
-    }
-
-    const std::wstring strGeneralName = _stmt.getPredicate()->getKind() == Expression::PREDICATE
-        ? _stmt.getPredicate().as<PredicateReference>()->getName()
-        : L"";
-
-    std::vector<std::wstring> names;
-    for (size_t i = 0; i < _stmt.getBranches().size(); ++i)
-        names.push_back(m_pContext->nameGenerator().getNewLabelName(strGeneralName));
-
-    for (size_t i = 0; i < _stmt.getBranches().size(); ++i) {
-        CallBranch &br = *_stmt.getBranches().get(i);
-
-        bool bIsFirst = true;
-        for (size_t j = 0; j < br.size(); ++j) {
-            ExpressionPtr pArg = br.get(j);
-            if (!pArg)
-                continue;
-
-            if (!bIsFirst)
-                m_os << L", ";
-            bIsFirst = false;
-
-            if (VariableDeclarationPtr pVar = getVarDecl(_stmt, pArg))
-                traverseVariableDeclaration(*pVar);
-            else
-                traverseExpression(*pArg);
-        }
-
-        if (_stmt.getBranches().size() > 1)
-            m_os << L" #" << names[i];
-        if (i != _stmt.getBranches().size() - 1)
-            m_os << L" : ";
-    }
-
-    m_os << L")";
-
-    for (size_t i = 0; i < _stmt.getBranches().size(); ++i) {
-        CallBranch &br = *_stmt.getBranches().get(i);
-        if (!br.getHandler())
+        if (!pBranch)
             continue;
 
-        incTab();
+        bEmptyArgSet = pBranch->empty() && !pBranch->getHandler();
 
-        m_os << "\n" << fmtIndent() << L"case " << names[i] << ": ";
-        mergeLines();
-        traverseStatement(*br.getHandler());
-        decTab();
+        for (size_t c = 0; c < pBranch->size(); ++c) {
+            ExpressionPtr pExpr = pBranch->get(c);
+
+            m_os << (c > 0 ? L", " : L" ");
+
+            if (VariableDeclarationPtr pVar = getVarDecl(_stmt, pExpr))
+                VISITOR_TRAVERSE_NS(VariableDeclaration, PredicateVarDecl, pVar);
+            else
+                VISITOR_TRAVERSE_NS(Expression, PredicateCallBranchResults, pExpr);
+        }
+
+        if (pBranch->getHandler()) {
+            const std::wstring strLabel = m_pContext->nameGenerator().getNewLabelName(strGeneralName);
+            branchLabels[pBranch] = strLabel;
+            m_os << L" #" << strLabel;
+        }
+
+    }
+
+    m_os << unindent << L")";
+
+    for (size_t c = 0; c < _stmt.getBranches().size(); ++c) {
+        CallBranchPtr pBranch = _stmt.getBranches().get(c);
+
+        if (!pBranch || !pBranch->getHandler())
+            continue;
+
+        m_os << indent << L"\n" << L"case " << branchLabels[pBranch] << ":\n" << indent;
+        VISITOR_TRAVERSE_NS(Statement, PredicateCallBranchHandler, pBranch->getHandler());
+        m_os << unindent << unindent;
     }
 
     VISITOR_EXIT();
 }
 
-void PrettyPrinterSyntax::printMergedStatement(const StatementPtr _pStmt) {
-    if (_pStmt->getKind() == Statement::BLOCK) {
-        mergeLines();
-        traverseStatement(*_pStmt);
-    } else {
-        incTab();
-        m_os << L"\n";
-        traverseStatement(*_pStmt);
-        decTab();
-    }
-}
-
-void PrettyPrinterSyntax::feedLine(const Statement& _stmt) {
-    if (_stmt.getLabel())
-        m_os << L"\n" << fmtIndent();
-}
-
 bool PrettyPrinterSyntax::traverseIf(If &_stmt) {
     VISITOR_ENTER(If, _stmt);
-    VISITOR_TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
+    VISITOR_TRAVERSE_NS(Label, StmtLabel, _stmt.getLabel());
+    m_os << L"if (" << indent;
+    VISITOR_TRAVERSE_NS(Expression, IfArg, _stmt.getArg());
+    m_os << unindent << L")";
 
-    feedLine(_stmt);
+    bool bBlock = _stmt.getBody() &&
+            _stmt.getBody()->getKind() == Statement::BLOCK;
 
-    m_os << L"if (";
-    VISITOR_TRAVERSE(Expression, IfArg, _stmt.getArg(), _stmt, If, setArg);
-    m_os << L") ";
+    if (bBlock)
+        m_os << " ";
+    else
+        m_os << "\n" << indent;
 
-    if (_stmt.getBody())
-        printMergedStatement(_stmt.getBody());
+    VISITOR_TRAVERSE_NS(Statement, IfBody, _stmt.getBody());
+
+    if (!bBlock)
+        m_os << unindent;
 
     if (_stmt.getElse()) {
-        m_os << L"\n" << fmtIndent(L"else ");
-        printMergedStatement(_stmt.getElse());
+        m_os << (bBlock ? " " : "\n") << "else";
+        bBlock = _stmt.getElse()->getKind() == Statement::BLOCK ||
+                _stmt.getElse()->getKind() == Statement::IF;
+
+        if (bBlock)
+            m_os << " ";
+        else
+            m_os << "\n" << indent;
+
+        VISITOR_TRAVERSE_NS(Statement, IfElse, _stmt.getElse());
+
+        if (!bBlock)
+            m_os << unindent;
     }
 
+    VISITOR_EXIT();
+}
+
+bool PrettyPrinterSyntax::traverseSwitchCase(SwitchCase &_case) {
+    VISITOR_ENTER(SwitchCase, _case);
+    m_os << L"\ncase " << indent;
+    VISITOR_TRAVERSE_COL(Expression, SwitchCaseValue, _case.getExpressions());
+    m_os << L":\n";
+    VISITOR_TRAVERSE_NS(Statement, SwitchCaseBody, _case.getBody());
+    m_os << unindent;
     VISITOR_EXIT();
 }
 
 bool PrettyPrinterSyntax::traverseSwitch(Switch &_stmt) {
     VISITOR_ENTER(Switch, _stmt);
-    VISITOR_TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
+    VISITOR_TRAVERSE_NS(Label, StmtLabel, _stmt.getLabel());
+    m_os << L"switch (" << indent;
 
-    feedLine(_stmt);
-
-    m_os << L"switch (";
-    if (_stmt.getParamDecl()) {
-        mergeLines();
-        VISITOR_TRAVERSE(VariableDeclaration, SwitchParamDecl, _stmt.getParamDecl(), _stmt, Switch, setParamDecl);
-    }
+    if (_stmt.getParamDecl())
+        VISITOR_TRAVERSE_NS(VariableDeclaration, SwitchParamDecl, _stmt.getParamDecl());
     else
-        VISITOR_TRAVERSE(Expression, SwitchArg, _stmt.getArg(), _stmt, Switch, setArg);
-    m_os << L") {\n";
-    incTab();
+        VISITOR_TRAVERSE_NS(Expression, SwitchArg, _stmt.getArg());
 
-    for (size_t i=0; i < _stmt.size(); ++i) {
-        if (!_stmt.get(i))
-            continue;
-
-        m_os << fmtIndent(L"case ");
-        traverseCollection(_stmt.get(i)->getExpressions());
-        m_os << L" : ";
-        mergeLines();
-
-        if (_stmt.get(i)->getBody())
-            traverseStatement(*_stmt.get(i)->getBody());
-
-        m_os << "\n";
-    }
+    m_os << L") {";
+    VISITOR_TRAVERSE_COL(SwitchCase, SwitchCase, _stmt);
 
     if (_stmt.getDefault()) {
-        m_os << fmtIndent(L"default: ");
-        mergeLines();
-        VISITOR_TRAVERSE(Statement, SwitchDefault, _stmt.getDefault(), _stmt, Switch, setDefault);
-        m_os << L"\n";
+        if (!_stmt.empty())
+            m_os << L"\n";
+
+        m_os << L"default:\n" << indent;
+        VISITOR_TRAVERSE_NS(Statement, SwitchDefault, _stmt.getDefault());
+        m_os << unindent;
     }
 
-    decTab();
-    m_os << fmtIndent(L"}");
+    m_os << unindent << L"\n}";
     VISITOR_EXIT();
 }
 
 bool PrettyPrinterSyntax::traverseFor(For &_stmt) {
     VISITOR_ENTER(For, _stmt);
-    VISITOR_TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
-
-    feedLine(_stmt);
-
-    m_os << L"for (";
-    VISITOR_TRAVERSE(VariableDeclaration, ForIterator, _stmt.getIterator(), _stmt, For, setIterator);
+    VISITOR_TRAVERSE_NS(Label, StmtLabel, _stmt.getLabel());
+    m_os << L"for (" << indent;
+    VISITOR_TRAVERSE_NS(VariableDeclaration, ForIterator, _stmt.getIterator());
     m_os << L"; ";
-    VISITOR_TRAVERSE(Expression, ForInvariant, _stmt.getInvariant(), _stmt, For, setInvariant);
+    VISITOR_TRAVERSE_NS(Expression, ForInvariant, _stmt.getInvariant());
     m_os << L"; ";
-    mergeLines();
-    VISITOR_TRAVERSE(Statement, ForIncrement, _stmt.getIncrement(), _stmt, For, setIncrement);
-    m_os << L") ";
-
-    if (_stmt.getBody())
-        printMergedStatement(_stmt.getBody());
-
+    VISITOR_TRAVERSE_NS(Statement, ForIncrement, _stmt.getIncrement());
+    m_os << L")\n";
+    VISITOR_TRAVERSE_NS(Statement, ForBody, _stmt.getBody());
+    m_os << unindent;
     VISITOR_EXIT();
 }
 
 bool PrettyPrinterSyntax::traverseWhile(While &_stmt) {
     VISITOR_ENTER(While, _stmt);
-    VISITOR_TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
-
-    feedLine(_stmt);
-
-    m_os << L"while (";
-    VISITOR_TRAVERSE(Expression, WhileInvariant, _stmt.getInvariant(), _stmt, While, setInvariant);
-    m_os << L") ";
-
-    if (_stmt.getBody())
-        printMergedStatement(_stmt.getBody());
-
+    VISITOR_TRAVERSE_NS(Label, StmtLabel, _stmt.getLabel());
+    m_os << L"while (" << indent;
+    VISITOR_TRAVERSE_NS(Expression, WhileInvariant, _stmt.getInvariant());
+    m_os << L")\n";
+    VISITOR_TRAVERSE_NS(Statement, WhileBody, _stmt.getBody());
+    m_os << unindent;
     VISITOR_EXIT();
 }
 
 bool PrettyPrinterSyntax::traverseBreak(Break &_stmt) {
     VISITOR_ENTER(Break, _stmt);
-    VISITOR_TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
+    VISITOR_TRAVERSE_NS(Label, StmtLabel, _stmt.getLabel());
     m_os << L"break";
     VISITOR_EXIT();
 }
 
 bool PrettyPrinterSyntax::traverseWith(With &_stmt) {
     VISITOR_ENTER(With, _stmt);
-    VISITOR_TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
+    VISITOR_TRAVERSE_NS(Label, StmtLabel, _stmt.getLabel());
 
-    feedLine(_stmt);
-
-    m_os << L"with (";
+    m_os << L"with (" << indent;
     VISITOR_TRAVERSE_COL(Expression, WithArg, _stmt.getArgs());
-    m_os << L") ";
-
-    if (_stmt.getBody())
-        printMergedStatement(_stmt.getBody());
-
+    m_os << L")\n";
+    VISITOR_TRAVERSE_NS(Statement, WithBody, _stmt.getBody());
+    m_os << unindent;
     VISITOR_EXIT();
 }
 
 bool PrettyPrinterSyntax::traverseTypeDeclaration(TypeDeclaration &_stmt) {
     VISITOR_ENTER(TypeDeclaration, _stmt);
 
-    VISITOR_TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
+    VISITOR_TRAVERSE_NS(Label, StmtLabel, _stmt.getLabel());
     m_os << L"type " << _stmt.getName();
 
     if (!_stmt.getType())
         VISITOR_EXIT();
 
     if (_stmt.getType()->getKind() == Type::PARAMETERIZED) {
-        m_os << L"(";
-        traverseCollection(_stmt.getType().as<ParameterizedType>()->getParams());
-        m_os << L")";
+        m_os << L"(" << setInline(true);
+        VISITOR_TRAVERSE_COL(NamedValue, ParameterizedTypeParam,
+                _stmt.getType().as<ParameterizedType>()->getParams());
+        m_os<< setInline(false) << L")";
     }
 
-    m_os << L" = ";
-    VISITOR_TRAVERSE(Type, TypeDeclBody, _stmt.getType(), _stmt, TypeDeclaration, setType);
+    m_os << L" = " << indent;
+    VISITOR_TRAVERSE_NS(Type, TypeDeclBody, _stmt.getType());
+    m_os << unindent;
 
-    VISITOR_EXIT();
-}
-
-bool PrettyPrinterSyntax::traverseVariable(Variable &_val) {
-    VISITOR_ENTER(Variable, _val);
-    if (_val.isMutable())
-        m_os << L"mutable ";
-    VISITOR_TRAVERSE(Type, VariableType, _val.getType(), _val, NamedValue, setType);
-    m_os << L" " << _val.getName();
     VISITOR_EXIT();
 }
 
 bool PrettyPrinterSyntax::traverseVariableDeclaration(VariableDeclaration &_stmt) {
     VISITOR_ENTER(VariableDeclaration, _stmt);
-    VISITOR_TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
+    VISITOR_TRAVERSE_NS(Label, StmtLabel, _stmt.getLabel());
 
-    if (_stmt.getVariable()->isMutable())
-        m_os << "mutable ";
+    if (getRole() == R_VarDeclGroupElement && getLoc().cPosInCollection > 0) {
+        VISITOR_TRAVERSE_INLINE(Variable, VarDeclVar, _stmt.getVariable(),
+                _stmt, VariableDeclaration, setVariable);
+        VISITOR_ENTER(Variable, *_stmt.getVariable());
+        m_os << ", " << _stmt.getVariable()->getName();
+        VISITOR_EXIT_INLINE();
+    } else
+        VISITOR_TRAVERSE_NS(Variable, VarDeclVar, _stmt.getVariable());
 
-    VISITOR_TRAVERSE(Variable, VarDeclVar, _stmt.getVariable(), _stmt, VariableDeclaration, setVariable);
+    if (getRole() == R_VarDeclGroupElement && getLoc().cPosInCollection == 0)
+        m_os << indent;
 
     if (_stmt.getValue()) {
-        m_os << L" = ";
-        VISITOR_TRAVERSE(Expression, VarDeclInit, _stmt.getValue(), _stmt, VariableDeclaration, setValue);
+        m_os << L" = " << indent;
+        VISITOR_TRAVERSE_NS(Expression, VarDeclInit, _stmt.getValue());
+        m_os << unindent;
     }
+
+    if (getRole() == R_VarDeclGroupElement && getLoc().bLastInCollection)
+        m_os << unindent;
 
     VISITOR_EXIT();
 }
 
 bool PrettyPrinterSyntax::traverseVariableDeclarationGroup(VariableDeclarationGroup &_stmt) {
-    VISITOR_ENTER(Block, _stmt);
-
-    if (_stmt.empty())
-        VISITOR_EXIT();
-
-    m_os << fmtIndent();
-    traverseType(*_stmt.get(0)->getVariable()->getType());
-    m_os << L" ";
-
-    for (size_t i = 0; i < _stmt.size(); ++i) {
-        const bool bIsLast = (_stmt.size() - 1 == i);
-        VariableDeclaration var = *_stmt.get(i);
-
-        m_os << var.getName();
-        if (var.getValue()) {
-            m_os << L" = ";
-            traverseExpression(*var.getValue());
-        }
-        if (!bIsLast)
-            m_os << L", ";
-    }
-
+    VISITOR_ENTER(VariableDeclarationGroup, _stmt);
+    VISITOR_TRAVERSE_NS(Label, StmtLabel, _stmt.getLabel());
+    VISITOR_TRAVERSE_COL(VariableDeclaration, VarDeclGroupElement, _stmt);
     VISITOR_EXIT();
 }
 
 bool PrettyPrinterSyntax::traverseFormulaDeclaration(FormulaDeclaration &_node) {
     VISITOR_ENTER(FormulaDeclaration, _node);
-    VISITOR_TRAVERSE(Label, StmtLabel, _node.getLabel(), _node, Statement, setLabel);
+    VISITOR_TRAVERSE_NS(Label, StmtLabel, _node.getLabel());
 
-    m_os << "formula " << _node.getName();
+    m_os << L"formula " << _node.getName();
 
     if (!_node.getParams().empty() || _node.getResultType()) {
-        m_os << "(";
+        m_os << L"(" << setInline(true);
         VISITOR_TRAVERSE_COL(NamedValue, FormulaDeclParams, _node.getParams());
 
         if (_node.getResultType())
-            m_os << " : ";
+            m_os << L" : ";
 
-        VISITOR_TRAVERSE(Type, FormulaDeclResultType, _node.getResultType(), _node, FormulaDeclaration, setResultType);
-        m_os << ")";
+        VISITOR_TRAVERSE_NS(Type, FormulaDeclResultType, _node.getResultType());
+        m_os << setInline(false) << L")";
     }
 
-    m_os << " = ";
-    VISITOR_TRAVERSE(Expression, FormulaDeclBody, _node.getFormula(), _node, FormulaDeclaration, setFormula);
+    m_os << L" = " << indent;
+    VISITOR_TRAVERSE_NS(Expression, FormulaDeclBody, _node.getFormula());
+    m_os << unindent;
+
     VISITOR_EXIT();
 }
 
 bool PrettyPrinterSyntax::traverseLemmaDeclaration(LemmaDeclaration &_stmt) {
     VISITOR_ENTER(LemmaDeclaration, _stmt);
 
-    VISITOR_TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
+    VISITOR_TRAVERSE_NS(Label, StmtLabel, _stmt.getLabel());
 
-    m_os << "lemma ";
+    m_os << L"lemma ";
 
     switch (_stmt.getStatus()) {
         case LemmaDeclaration::VALID:
-            m_os << "valid ";
+            m_os << L"valid ";
             break;
         case LemmaDeclaration::INVALID:
-            m_os << "invalid ";
+            m_os << L"invalid ";
             break;
         case LemmaDeclaration::UNKNOWN:
-            m_os << "unknown ";
+            m_os << L"unknown ";
             break;
     }
 
-    VISITOR_TRAVERSE(Expression, LemmaDeclBody, _stmt.getProposition(), _stmt, LemmaDeclaration, setProposition);
-    m_os << ";\n";
+    m_os << indent;
+    VISITOR_TRAVERSE_NS(Expression, LemmaDeclBody, _stmt.getProposition());
+    m_os << unindent;
 
     VISITOR_EXIT();
 }
 
 // NODE / NAMED_VALUE
-bool PrettyPrinterSyntax::visitNamedValue(NamedValue &_val) {
-    if (!m_path.empty()) {
-        if (getLoc().bPartOfCollection && getLoc().cPosInCollection != 0)
+bool PrettyPrinterSyntax::traverseNamedValue(NamedValue &_val) {
+    if (!m_path.empty() && getLoc().bPartOfCollection && getLoc().cPosInCollection != 0) {
+        if (getRole() == R_StructFieldDeclNameOrd ||
+                getRole() == R_StructFieldDeclNameSet ||
+                getRole() == R_StructFieldDeclTypeOrd)
+            m_os << L",\n";
+        else
             m_os << L", ";
-        else if (getLoc().role == R_PredicateTypeOutParam && getLoc().cPosInCollection == 0)
-            m_os << L" : ";
     }
 
-    if (getRole() != R_EnumValueDecl)
-        traverseType(*_val.getType());
+    if (_val.getKind() != NamedValue::GENERIC)
+        return PrettyPrinterBase::traverseNamedValue(_val);
 
-    if (getLoc().type == N_Param)
-        return false;
-    if (getRole() != R_EnumValueDecl)
-        m_os << L" ";
 
+    VISITOR_ENTER(NamedValue, _val);
+    VISITOR_TRAVERSE_NS(Type, NamedValueType, _val.getType());
+
+    if (getRole() != R_StructFieldDeclTypeOrd)
+        m_os << L" " << m_pContext->nameGenerator().getNamedValueName(_val);
+
+    VISITOR_EXIT();
+}
+
+bool PrettyPrinterSyntax::traverseEnumValue(EnumValue &_val) {
+    VISITOR_ENTER(EnumValue, _val);
     m_os << m_pContext->nameGenerator().getNamedValueName(_val);
+    VISITOR_EXIT();
+}
 
-    return false;
+bool PrettyPrinterSyntax::traverseParam(Param &_val) {
+    VISITOR_ENTER(Param, _val);
+    VISITOR_TRAVERSE_NS(Type, ParamType, _val.getType());
+
+    if (_val.isUsed())
+        m_os << L" " << m_pContext->nameGenerator().getNamedValueName(_val);
+
+    VISITOR_EXIT();
+}
+
+bool PrettyPrinterSyntax::traverseVariable(Variable &_val) {
+    VISITOR_ENTER(Variable, _val);
+
+    if (_val.isMutable())
+        m_os << "mutable ";
+
+    m_os << setInline(true);
+    VISITOR_TRAVERSE_NS(Type, VariableType, _val.getType());
+    m_os << L" " << m_pContext->nameGenerator().getNamedValueName(_val);
+    m_os << setInline(false);
+    VISITOR_EXIT();
 }
 
 // NODE / EXPRESSION
-void PrettyPrinterSyntax::printLiteralKind(ir::Literal &_node) {
+void PrettyPrinterSyntax::printLiteralKind(Literal &_node) {
     switch (_node.getLiteralKind()) {
-        case ir::Literal::UNIT:
+        case Literal::UNIT:
             m_os << L"0";
             break;
-        case ir::Literal::NUMBER:
+        case Literal::NUMBER:
             m_os << _node.getNumber().toString();
             break;
-        case ir::Literal::BOOL:
+        case Literal::BOOL:
             m_os << (_node.getBool() ? L"true" : L"false");
             break;
-        case ir::Literal::CHAR:
-            m_os <<  L"\'" << _node.getChar() << L"\'";
+        case Literal::CHAR:
+            m_os <<  L"\'" << setVerbatim(true) << _node.getChar() << setVerbatim(false) << L"\'";
             break;
-        case ir::Literal::STRING:
-            m_os <<  L"\"" << _node.getString().c_str() << L"\"";
+        case Literal::STRING:
+            m_os <<  L"\"" << setVerbatim(true) << _node.getString().c_str() << setVerbatim(false) << L"\"";
             break;
     }
 }
 
-void PrettyPrinterSyntax::printUnaryOperator(ir::Unary &_node) {
+void PrettyPrinterSyntax::printUnaryOperator(Unary &_node) {
     switch (_node.getOperator()) {
-        case ir::Unary::PLUS:
+        case Unary::PLUS:
             m_os << L"+";
             break;
-        case ir::Unary::MINUS:
+        case Unary::MINUS:
             m_os << L"-";
             break;
-        case ir::Unary::BOOL_NEGATE:
+        case Unary::BOOL_NEGATE:
             m_os << L"!";
             break;
-        case ir::Unary::BITWISE_NEGATE:
+        case Unary::BITWISE_NEGATE:
             m_os << L"~";
             break;
     }
 }
 
-void PrettyPrinterSyntax::printBinaryOperator(ir::Binary &_node) {
+void PrettyPrinterSyntax::printBinaryOperator(Binary &_node) {
     switch (_node.getOperator()) {
-        case ir::Binary::ADD:
-            m_os << L"+";
+        case Binary::ADD:
+            m_os << L" + ";
             break;
-        case ir::Binary::SUBTRACT:
-            m_os << L"-";
+        case Binary::SUBTRACT:
+            m_os << L" - ";
             break;
-        case ir::Binary::MULTIPLY:
+        case Binary::MULTIPLY:
             m_os << L"*";
             break;
-        case ir::Binary::DIVIDE:
+        case Binary::DIVIDE:
             m_os << L"/";
             break;
-        case ir::Binary::REMAINDER:
+        case Binary::REMAINDER:
             m_os << L"%";
             break;
-        case ir::Binary::SHIFT_LEFT:
-            m_os << L"<<";
+        case Binary::SHIFT_LEFT:
+            m_os << L" << ";
             break;
-        case ir::Binary::SHIFT_RIGHT:
-            m_os << L">>";
+        case Binary::SHIFT_RIGHT:
+            m_os << L" >> ";
             break;
-        case ir::Binary::POWER:
+        case Binary::POWER:
             m_os << L"^";
             break;
-        case ir::Binary::BOOL_AND:
-            m_os << L"&";
+        case Binary::BOOL_AND:
+            m_os << L" & ";
             break;
-        case ir::Binary::BOOL_OR:
-            m_os << L"or";
+        case Binary::BOOL_OR:
+            m_os << L" or ";
             break;
-        case ir::Binary::BOOL_XOR:
-            m_os << L"^";
+        case Binary::BOOL_XOR:
+            m_os << L" ^ ";
             break;
-        case ir::Binary::EQUALS:
-            m_os << L"=";
+        case Binary::EQUALS:
+            m_os << L" = ";
             break;
-        case ir::Binary::NOT_EQUALS:
-            m_os << L"!=";
+        case Binary::NOT_EQUALS:
+            m_os << L" != ";
             break;
-        case ir::Binary::LESS:
-            m_os << L"<";
+        case Binary::LESS:
+            m_os << L" < ";
             break;
-        case ir::Binary::LESS_OR_EQUALS:
-            m_os << L"<=";
+        case Binary::LESS_OR_EQUALS:
+            m_os << L" <= ";
             break;
-        case ir::Binary::GREATER:
-            m_os << L">";
+        case Binary::GREATER:
+            m_os << L" > ";
             break;
-        case ir::Binary::GREATER_OR_EQUALS:
-            m_os << L">=";
+        case Binary::GREATER_OR_EQUALS:
+            m_os << L" >= ";
             break;
-        case ir::Binary::IMPLIES:
-            m_os << L"=>";
+        case Binary::IMPLIES:
+            m_os << L" => ";
             break;
-        case ir::Binary::IFF:
-            m_os << L"<=>";
+        case Binary::IFF:
+            m_os << L" <=> ";
             break;
     }
 }
 
 void PrettyPrinterSyntax::printQuantifier(int _quantifier) {
     switch (_quantifier) {
-        case ir::Formula::NONE:
+        case Formula::NONE:
             m_os << "none";
             break;
-        case ir::Formula::UNIVERSAL:
+        case Formula::UNIVERSAL:
             m_os << "forall";
             break;
-        case ir::Formula::EXISTENTIAL:
+        case Formula::EXISTENTIAL:
             m_os << "exists";
             break;
     }
 }
 
-void PrettyPrinterSyntax::printComma() {
-    if (m_path.empty())
-        return;
+bool PrettyPrinterSyntax::needsParen() {
+    if (m_path.empty() || !getLoc().pNode ||
+            getLoc().pNode->getNodeKind() != Node::EXPRESSION)
+        return false;
+
+    const ExpressionPtr pNode = static_cast<Expression *>(getLoc().pNode);
+    const int nKind = pNode->getKind();
+
+    switch (nKind) {
+        case Expression::FORMULA:
+            if (pNode.as<Formula>()->getQuantifier() == Formula::NONE)
+                return false;
+            break;
+
+        case Expression::LAMBDA:
+            if (!pNode.as<Lambda>()->getPredicate().getPostCondition() &&
+                    !pNode.as<Lambda>()->getPredicate().getMeasure())
+                return false;
+            break;
+
+        case Expression::COMPONENT:
+            if (pNode.as<Component>()->getComponentKind() != Component::REPLACEMENT)
+                return false;
+            break;
+
+        case Expression::CAST:
+        case Expression::UNARY:
+        case Expression::BINARY:
+        case Expression::TERNARY:
+            break;
+
+        default:
+            return false;
+    }
+
+    switch (getRole()) {
+        case R_RangeMin:
+        case R_RangeMax:
+        case R_UnarySubexpression:
+        case R_ArrayPartObject:
+        case R_FieldObject:
+        case R_MapElementObject:
+        case R_ListElementObject:
+        case R_ReplacementObject:
+        case R_ReplacementValue:
+        case R_FunctionCallee:
+        case R_BinderCallee:
+        case R_LValue:
+        case R_PredicateCallee:
+            return true;
+
+        case R_BinarySubexpression:
+            if (nKind == Expression::UNARY)
+                return false;
+            if (nKind != Expression::BINARY)
+                return true;
+            return (Binary::getPrecedence(pNode.as<Binary>()->getOperator()) <
+                    Binary::getPrecedence(static_cast<Binary *>(getParent())->getOperator()));
+
+        case R_TernarySubexpression:
+            return nKind == Expression::TERNARY;
+
+        default:
+            return false;
+    }
+}
+
+bool PrettyPrinterSyntax::traverseExpression(Expression &_node) {
     if (getLoc().bPartOfCollection && getLoc().cPosInCollection > 0)
         m_os << ", ";
-}
 
-ir::ExpressionPtr PrettyPrinterSyntax::getChild() {
-    std::list<Visitor::Loc>::iterator i = ::prev(m_path.end());
-    if (i->pNode->getNodeKind() != ir::Node::EXPRESSION)
-        return NULL;
-    return i->pNode;
-}
-
-ir::ExpressionPtr PrettyPrinterSyntax::getParent() {
-    std::list<Visitor::Loc>::iterator i = ::prev(m_path.end());
-    if (i->pNode->getNodeKind() != ir::Node::EXPRESSION)
-        return NULL;
-    if (i == m_path.begin())
-        return NULL;
-    else
-        --i;
-    if (i->pNode->getNodeKind() != ir::Node::EXPRESSION)
-        return NULL;
-    return i->pNode;
-}
-
-int PrettyPrinterSyntax::getParentKind() {
-    const ir::ExpressionPtr pParent = getParent();
-    if (pParent)
-        return pParent->getKind();
-    else
-        return -1;
-}
-
-int PrettyPrinterSyntax::getChildKind() {
-    const ir::ExpressionPtr pChild = getChild();
-    if (pChild)
-        return pChild->getKind();
-    else
-        return -1;
-}
-
-bool PrettyPrinterSyntax::needsParen() {
-
-    const int nChildKind = getChildKind();
-    if (nChildKind == -1)
-        return false;
-
-    switch (nChildKind) {
-        case ir::Expression::FORMULA_CALL:
-        case ir::Expression::FUNCTION_CALL:
-        case ir::Expression::COMPONENT:
-        case ir::Expression::LITERAL:
-        case ir::Expression::VAR:
-            return false;
-        default:
-            break;
-    }
-
-    const int nParentKind = getParentKind();
-    if (nParentKind == -1)
-        return false;
-
-    if (nParentKind == nChildKind) {
-        if (nParentKind == ir::Expression::BINARY) {
-            const ir::BinaryPtr pChild = getChild().as<Binary>();
-            const ir::BinaryPtr pParent = getParent().as<Binary>();
-            return (Binary::getPrecedence(pChild->getOperator()) < Binary::getPrecedence(pParent->getOperator()));
-        }
-        return true;
-    }
-
-    switch (nParentKind) {
-        case ir::Expression::UNARY:
-        case ir::Expression::BINARY:
-        case ir::Expression::TERNARY:
-            break;
-
-        default:
-            return false;
-    }
-
-    return true;
-
-}
-
-bool PrettyPrinterSyntax::traverseExpression(ir::Expression &_node) {
-
-    printComma();
-
-    bool bParen;
-    if (m_path.empty())
-        bParen = false;
-    else
-        bParen = needsParen();
+    const bool bParen = needsParen();
 
     if (bParen)
-        m_os << "(";
-    const bool result = Visitor::traverseExpression(_node);
-    if (bParen)
-        m_os << ")";
+        m_os << "(" << indent;
 
-    return result;
+    const bool bResult = Visitor::traverseExpression(_node);
+
+    if (bParen)
+        m_os << unindent << ")";
+
+    return bResult;
 
 }
 
-bool PrettyPrinterSyntax::visitLiteral(ir::Literal &_node) {
+bool PrettyPrinterSyntax::visitLiteral(Literal &_node) {
     printLiteralKind(_node);
     return true;
 }
 
-bool PrettyPrinterSyntax::visitVariableReference(ir::VariableReference &_node) {
+bool PrettyPrinterSyntax::visitVariableReference(VariableReference &_node) {
     printPath(_node.getTarget());
     m_os << (_node.getName().empty() ?
         m_pContext->nameGenerator().getNamedValueName(*_node.getTarget()) : _node.getName());
     return false;
 }
 
-bool PrettyPrinterSyntax::visitPredicateReference(ir::PredicateReference &_node) {
+bool PrettyPrinterSyntax::visitPredicateReference(PredicateReference &_node) {
     m_os << _node.getName();
     return true;
 }
 
-bool PrettyPrinterSyntax::visitLambda(ir::Lambda &_node) {
+bool PrettyPrinterSyntax::visitLambda(Lambda &_node) {
     m_os << L"predicate";
     return true;
 }
 
 bool PrettyPrinterSyntax::traverseBinder(Binder &_expr) {
     VISITOR_ENTER(Binder, _expr);
-    VISITOR_TRAVERSE(Expression, BinderCallee, _expr.getPredicate(), _expr, Binder, setPredicate);
+    VISITOR_TRAVERSE_NS(Expression, BinderCallee, _expr.getPredicate());
 
-    m_os << L"(";
-    for (size_t i = 0; i < _expr.getArgs().size(); ++i) {
+    m_os << L"(" << indent;
+
+    for (size_t i = 0; i < _expr.getArgs().size(); ++i)
         if (_expr.getArgs().get(i))
-            traverseExpression(*_expr.getArgs().get(i));
+            VISITOR_TRAVERSE_ITEM_NS(Expression, BinderArgs, _expr.getArgs(), i);
         else
-            m_os << L"_";
-        const bool bIsLast = (_expr.getArgs().size() - 1 == i);
-        if (!bIsLast)
-            m_os << L", ";
-    }
-    m_os << L")";
+            m_os << (i > 0 ? L", _" : L"_");
+
+    m_os << unindent << L")";
 
     VISITOR_EXIT();
 }
 
-bool PrettyPrinterSyntax::visitUnary(ir::Unary &_node) {
+bool PrettyPrinterSyntax::visitUnary(Unary &_node) {
     printUnaryOperator(_node);
     return true;
 }
 
-bool PrettyPrinterSyntax::traverseBinary(ir::Binary &_node) {
+bool PrettyPrinterSyntax::traverseBinary(Binary &_node) {
     VISITOR_ENTER(Binary, _node);
-    VISITOR_TRAVERSE(Expression, BinarySubexpression, _node.getLeftSide(), _node, Binary, setLeftSide);
-
-    m_os << " ";
+    VISITOR_TRAVERSE_NS(Expression, BinarySubexpression, _node.getLeftSide());
     printBinaryOperator(_node);
-    m_os << " ";
-
-    VISITOR_TRAVERSE(Expression, BinarySubexpression, _node.getRightSide(), _node, Binary, setRightSide);
+    m_os << indent;
+    VISITOR_TRAVERSE_NS(Expression, BinarySubexpression, _node.getRightSide());
+    m_os << unindent;
     VISITOR_EXIT();
 }
 
-bool PrettyPrinterSyntax::traverseTernary(ir::Ternary &_node) {
+bool PrettyPrinterSyntax::traverseTernary(Ternary &_node) {
     VISITOR_ENTER(Ternary, _node);
 
-    VISITOR_TRAVERSE(Expression, TernarySubexpression, _node.getIf(), _node, Ternary, setIf);
-    m_os << " ? ";
-    VISITOR_TRAVERSE(Expression, TernarySubexpression, _node.getThen(), _node, Ternary, setThen);
+    VISITOR_TRAVERSE_NS(Expression, TernarySubexpression, _node.getIf());
+    m_os << " ? " << indent;
+    VISITOR_TRAVERSE_NS(Expression, TernarySubexpression, _node.getThen());
     m_os << " : ";
-    VISITOR_TRAVERSE(Expression, TernarySubexpression, _node.getElse(), _node, Ternary, setElse);
+    VISITOR_TRAVERSE_NS(Expression, TernarySubexpression, _node.getElse());
+    m_os << unindent;
 
     VISITOR_EXIT();
 }
 
-bool PrettyPrinterSyntax::traverseFormula(ir::Formula &_node) {
+bool PrettyPrinterSyntax::traverseFormula(Formula &_node) {
     VISITOR_ENTER(Formula, _node);
 
     const int nQuantifier = _node.getQuantifier();
 
-    if (nQuantifier != ir::Formula::NONE) {
+    if (nQuantifier != Formula::NONE) {
         printQuantifier(nQuantifier);
         m_os << " ";
         VISITOR_TRAVERSE_COL(NamedValue, FormulaBoundVariable, _node.getBoundVariables());
-        m_os << ". ";
+        m_os << ". " << indent;
     }
 
-    VISITOR_TRAVERSE(Expression, Subformula, _node.getSubformula(), _node, Formula, setSubformula);
+    VISITOR_TRAVERSE_NS(Expression, Subformula, _node.getSubformula());
+
+    if (nQuantifier != Formula::NONE)
+        m_os << unindent;
+
     VISITOR_EXIT();
 }
 
 bool PrettyPrinterSyntax::traverseReplacement(Replacement &_expr) {
     VISITOR_ENTER(Replacement, _expr);
-    VISITOR_TRAVERSE(Expression, ReplacementObject, _expr.getObject(), _expr, Component, setObject);
-    m_os << " with ";
-    VISITOR_TRAVERSE(Constructor, ReplacementValue, _expr.getNewValues(), _expr, Replacement, setNewValues);
+    VISITOR_TRAVERSE_NS(Expression, ReplacementObject, _expr.getObject());
+    m_os << L" with " << indent;
+    VISITOR_TRAVERSE_NS(Constructor, ReplacementValue, _expr.getNewValues());
+    m_os << unindent;
     VISITOR_EXIT();
 }
 
-bool PrettyPrinterSyntax::traverseRecognizerExpr(ir::RecognizerExpr &_expr) {
+bool PrettyPrinterSyntax::traverseRecognizerExpr(RecognizerExpr &_expr) {
     VISITOR_ENTER(RecognizerExpr, _expr);
-    m_os << _expr.getConstructorName() << L"?(";
-    VISITOR_TRAVERSE(Expression, RecognizerExpression, _expr.getObject(), _expr, Component, setObject);
-    m_os << L")";
+    m_os << _expr.getConstructorName() << L"?(" << indent;
+    VISITOR_TRAVERSE_NS(Expression, RecognizerExpression, _expr.getObject());
+    m_os << unindent << L")";
     VISITOR_EXIT();
 }
 
-bool PrettyPrinterSyntax::traverseAccessorExpr(ir::AccessorExpr &_expr) {
+bool PrettyPrinterSyntax::traverseAccessorExpr(AccessorExpr &_expr) {
     VISITOR_ENTER(AccessorExpr, _expr);
-    m_os << _expr.getConstructorName() << L"!(";
-    VISITOR_TRAVERSE(Expression, AccessorExpression, _expr.getObject(), _expr, Component, setObject);
-    m_os << L")";
+    m_os << _expr.getConstructorName() << L"!(" << indent;
+    VISITOR_TRAVERSE_NS(Expression, AccessorExpression, _expr.getObject());
+    m_os << unindent << L")";
     VISITOR_EXIT();
 }
 
-bool PrettyPrinterSyntax::traverseFunctionCall(ir::FunctionCall &_expr) {
+bool PrettyPrinterSyntax::traverseFunctionCall(FunctionCall &_expr) {
     VISITOR_ENTER(FunctionCall, _expr);
-    VISITOR_TRAVERSE(Expression, FunctionCallee, _expr.getPredicate(), _expr, FunctionCall, setPredicate);
-    m_os << "(";
+    VISITOR_TRAVERSE_NS(Expression, FunctionCallee, _expr.getPredicate());
+    m_os << L"(" << indent;
     VISITOR_TRAVERSE_COL(Expression, FunctionCallArgs, _expr.getArgs());
-    m_os << ")";
+    m_os << unindent << L")";
     VISITOR_EXIT();
 }
 
-bool PrettyPrinterSyntax::traverseFormulaCall(ir::FormulaCall &_node) {
-    printPath(_node.getTarget());
-    m_os << _node.getName() << L"(";
-    const bool bResult = Visitor::traverseFormulaCall(_node);
-    m_os << ")";
-    return bResult;
+bool PrettyPrinterSyntax::traverseFormulaCall(FormulaCall &_expr) {
+    VISITOR_ENTER(FormulaCall, _expr);
+    printPath(_expr.getTarget());
+    m_os << _expr.getName() << L"(" << indent;
+    VISITOR_TRAVERSE_COL(Expression, FormulaCallArgs, _expr.getArgs());
+    m_os << unindent << L")";
+    VISITOR_EXIT();
 }
 
 bool PrettyPrinterSyntax::traverseStructFieldDefinition(StructFieldDefinition &_cons) {
@@ -1575,26 +1484,27 @@ bool PrettyPrinterSyntax::traverseStructFieldDefinition(StructFieldDefinition &_
 
     if (getLoc().cPosInCollection > 0)
         m_os << L", ";
+
     if (!_cons.getName().empty())
         m_os << _cons.getName() << L": ";
 
-    VISITOR_TRAVERSE(Expression, StructFieldValue, _cons.getValue(), _cons, StructFieldDefinition, setValue);
+    VISITOR_TRAVERSE_NS(Expression, StructFieldValue, _cons.getValue());
     VISITOR_EXIT();
 }
 
 bool PrettyPrinterSyntax::traverseStructConstructor(StructConstructor &_expr) {
     VISITOR_ENTER(StructConstructor, _expr);
-    m_os << L"(";
+    m_os << L"(" << indent;
     VISITOR_TRAVERSE_COL(StructFieldDefinition, StructFieldDef, _expr);
-    m_os << L")";
+    m_os << unindent << L")";
     VISITOR_EXIT();
 }
 
 bool PrettyPrinterSyntax::traverseUnionConstructor(UnionConstructor &_expr) {
     VISITOR_ENTER(UnionConstructor, _expr);
-    m_os << _expr.getName() << L"(";
+    m_os << _expr.getName() << L"(" << indent;
     VISITOR_TRAVERSE_COL(StructFieldDefinition, UnionCostructorParam, _expr);
-    m_os << L")";
+    m_os << unindent << L")";
     VISITOR_EXIT();
 }
 
@@ -1603,116 +1513,105 @@ bool PrettyPrinterSyntax::traverseElementDefinition(ElementDefinition &_cons) {
     if (getLoc().cPosInCollection > 0)
         m_os << L", ";
 
-    VISITOR_TRAVERSE(Expression, ElementIndex, _cons.getIndex(), _cons, ElementDefinition, setIndex);
+    VISITOR_TRAVERSE_NS(Expression, ElementIndex, _cons.getIndex());
     if (_cons.getIndex())
         m_os << L": ";
 
-    VISITOR_TRAVERSE(Expression, ElementValue, _cons.getValue(), _cons, ElementDefinition, setValue);
+    VISITOR_TRAVERSE_NS(Expression, ElementValue, _cons.getValue());
     VISITOR_EXIT();
 }
 
 bool PrettyPrinterSyntax::traverseArrayConstructor(ArrayConstructor &_expr) {
     VISITOR_ENTER(ArrayConstructor, _expr);
-    m_os << L"[ ";
+    m_os << L"[" << indent;
     VISITOR_TRAVERSE_COL(ElementDefinition, ArrayElementDef, _expr);
-    m_os << L" ]";
+    m_os << unindent << L"]";
     VISITOR_EXIT();
 }
 
 bool PrettyPrinterSyntax::traverseMapConstructor(MapConstructor &_expr) {
     VISITOR_ENTER(MapConstructor, _expr);
-    m_os << L"[{";
+    m_os << L"[{" << indent;
     VISITOR_TRAVERSE_COL(ElementDefinition, MapElementDef, _expr);
-    m_os << L"}]";
+    m_os << unindent << L"}]";
     VISITOR_EXIT();
 }
 
 bool PrettyPrinterSyntax::traverseSetConstructor(SetConstructor &_expr) {
     VISITOR_ENTER(SetConstructor, _expr);
-    m_os << L"{";
+    m_os << L"{" << indent;
     VISITOR_TRAVERSE_COL(Expression, SetElementDef, _expr);
-    m_os << L"}";
+    m_os << unindent << L"}";
     VISITOR_EXIT();
 }
 
 bool PrettyPrinterSyntax::traverseListConstructor(ListConstructor &_expr) {
     VISITOR_ENTER(ListConstructor, _expr);
-    m_os << L"[[ ";
+    m_os << L"[[" << indent;
     VISITOR_TRAVERSE_COL(Expression, ListElementDef, _expr);
-    m_os << L" ]]";
+    m_os << unindent << L"]]";
     VISITOR_EXIT();
 }
 
 bool PrettyPrinterSyntax::traverseArrayPartDefinition(ArrayPartDefinition &_cons) {
     VISITOR_ENTER(ArrayPartDefinition, _cons);
-    m_os << L"case ";
+    m_os << L"\ncase ";
     VISITOR_TRAVERSE_COL(Expression, ArrayPartCond, _cons.getConditions());
-    m_os << L": ";
-    VISITOR_TRAVERSE(Expression, ArrayPartValue, _cons.getExpression(), _cons, ArrayPartDefinition, setExpression);
+    m_os << L": " << indent;
+    VISITOR_TRAVERSE_NS(Expression, ArrayPartValue, _cons.getExpression());
+    m_os << unindent;
     VISITOR_EXIT();
 }
 
 bool PrettyPrinterSyntax::traverseArrayIteration(ArrayIteration &_expr) {
     VISITOR_ENTER(ArrayIteration, _expr);
 
-    m_os << L"for(";
+    m_os << L"for (" << indent;
     VISITOR_TRAVERSE_COL(NamedValue, ArrayIterator, _expr.getIterators());
-    m_os << L") { ";
-
-    INDENT();
-
-    for (size_t i = 0; i < _expr.size(); ++i) {
-        if (bNeedsIndent)
-            m_os << L"\n" << fmtIndent();
-        traverseArrayPartDefinition(*_expr.get(i));
-        m_os << L" ";
-    }
+    m_os << L") {";
+    VISITOR_TRAVERSE_COL(ArrayPartDefinition, ArrayIterationPart, _expr);
 
     if (_expr.getDefault()) {
-        if (bNeedsIndent)
-            m_os << L"\n" << fmtIndent();
-        m_os << L"default: ";
-        VISITOR_TRAVERSE(Expression, ArrayIterationDefault, _expr.getDefault(), _expr, ArrayIteration, setDefault);
-        m_os << L" ";
+        m_os << L"\ndefault: " << indent;
+        VISITOR_TRAVERSE_NS(Expression, ArrayIterationDefault, _expr.getDefault());
+        m_os << unindent;
     }
 
-    UNINDENT();
-
-    m_os << L"}";
+    m_os << unindent << L"\n}";
     VISITOR_EXIT();
 }
 
 bool PrettyPrinterSyntax::traverseArrayPartExpr(ArrayPartExpr &_expr) {
     VISITOR_ENTER(ArrayPartExpr, _expr);
-    VISITOR_TRAVERSE(Expression, ArrayPartObject, _expr.getObject(), _expr, Component, setObject);
-    m_os << L"[ ";
+    VISITOR_TRAVERSE_NS(Expression, ArrayPartObject, _expr.getObject());
+    m_os << L"[" << indent;
     VISITOR_TRAVERSE_COL(Expression, ArrayPartIndex, _expr.getIndices());
-    m_os << L" ]";
+    m_os << unindent << L"]";
     VISITOR_EXIT();
 }
 
 bool PrettyPrinterSyntax::traverseFieldExpr(FieldExpr &_expr) {
     VISITOR_ENTER(FieldExpr, _expr);
-    VISITOR_TRAVERSE(Expression, FieldObject, _expr.getObject(), _expr, Component, setObject);
+    VISITOR_TRAVERSE_NS(Expression, FieldObject, _expr.getObject());
     m_os << L"." << _expr.getFieldName();
     VISITOR_EXIT();
 }
 
 bool PrettyPrinterSyntax::traverseMapElementExpr(MapElementExpr &_expr) {
     VISITOR_ENTER(MapElementExpr, _expr);
-    VISITOR_TRAVERSE(Expression, MapElementObject, _expr.getObject(), _expr, Component, setObject);
-    m_os << L"[ ";
-    VISITOR_TRAVERSE(Expression, MapElementIndex, _expr.getIndex(), _expr, MapElementExpr, setIndex);
-    m_os << L" ]";
+    VISITOR_TRAVERSE_NS(Expression, MapElementObject, _expr.getObject());
+    m_os << L"[" << indent;
+    VISITOR_TRAVERSE_NS(Expression, MapElementIndex, _expr.getIndex());
+    m_os << unindent << L"]";
     VISITOR_EXIT();
 }
 
 bool PrettyPrinterSyntax::traverseListElementExpr(ListElementExpr &_expr) {
     VISITOR_ENTER(ListElementExpr, _expr);
-    VISITOR_TRAVERSE(Expression, ListElementObject, _expr.getObject(), _expr, Component, setObject);
-    m_os << L"[ ";
-    VISITOR_TRAVERSE(Expression, ListElementIndex, _expr.getIndex(), _expr, ListElementExpr, setIndex);
-    m_os << L" ]";
+    VISITOR_TRAVERSE_NS(Expression, ListElementObject, _expr.getObject());
+    m_os << L"[" << indent;
+    VISITOR_TRAVERSE_NS(Expression, ListElementIndex, _expr.getIndex());
+    m_os << unindent << L"]";
     VISITOR_EXIT();
 }
 
@@ -1729,60 +1628,25 @@ void PrettyPrinterSyntax::run() {
     if (m_pNode) {
         m_pContext->nameGenerator().collect(*m_pNode);
         m_pContext->collectPaths(*m_pNode);
+        Param::updateUsed(*m_pNode);
         traverseNode(*m_pNode);
-    }
-    else if (m_bCompact)
+    } else if (m_bCompact)
         m_os << L"NULL";
 }
 
 void PrettyPrinterSyntax::print(Node &_node) {
-    if (&_node == NULL)
-        m_os << "NULL";
-    else {
-        m_pContext->nameGenerator().collect(_node);
-        m_pContext->collectPaths(_node);
-        traverseNode(_node);
-    }
+    m_pContext->nameGenerator().collect(_node);
+    m_pContext->collectPaths(_node);
+    traverseNode(_node);
 }
 
-size_t PrettyPrinterSyntax::getDepth() const {
-    return m_szDepth;
-}
-
-std::wstring PrettyPrinterSyntax::fmtIndent(const std::wstring &_s) {
-    std::wstring res;
-
-    for (size_t i = 0; i < getDepth(); ++i)
-        res += L" ";
-
-    return res + _s;
-}
-
-void PrettyPrinterSyntax::incTab() {
-    m_szDepth += 4;
-}
-
-void PrettyPrinterSyntax::decTab() {
-    if (m_szDepth > 4)
-        m_szDepth -= 4;
-    else
-        m_szDepth = 0;
-}
-
-void PrettyPrinterSyntax::mergeLines() {
-    m_bMergeLines = true;
-}
-void PrettyPrinterSyntax::separateLines() {
-    m_bMergeLines = false;
-}
-
-void prettyPrintSyntax(ir::Node &_node, std::wostream & _os, const ContextPtr& _pContext, bool _bNewLine) {
+void prettyPrintSyntax(Node &_node, std::wostream & _os, const ContextPtr& _pContext, bool _bNewLine) {
     PrettyPrinterSyntax(_node, _os, _pContext).run();
     if (_bNewLine)
         _os << L"\n";
 }
 
-void prettyPrintSyntax(ir::Node &_node, size_t nDepth, std::wostream & _os) {
+void prettyPrintSyntax(Node &_node, size_t nDepth, std::wostream & _os) {
     PrettyPrinterSyntax(_node, _os, nDepth).run();
 }
 

@@ -246,8 +246,8 @@ int maxBitsIntNat(int _bitsInt, int _bitsNat) {
     return std::make_pair((Type *)NULL, false);
 }
 
-void ArrayType::getDimensions(std::list<TypePtr>& _dimensions) const {
-    _dimensions.push_back(getDimensionType());
+void ArrayType::getDimensions(Collection<Type>& _dimensions) const {
+    _dimensions.add(getDimensionType());
     if (getBaseType()->getKind() == ARRAY)
         getBaseType().as<ArrayType>()->getDimensions(_dimensions);
 }

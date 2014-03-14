@@ -1,6 +1,6 @@
 digraph G {
-"bar( : )"
+"bar(:)"
 bar2
 bar3
-baz -> "bar(predicate( : ) a, predicate( : ) b : )"
+baz -> "bar(predicate(:), predicate(:) :)"
 }

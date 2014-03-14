@@ -21,7 +21,7 @@ public:
     void collectPaths(ir::Node &_node);
 
     void getPath(const ir::NodePtr& _pNode, std::list<ir::ModulePtr>& _container);
-    void sortModule(ir::Module &_module, std::list<ir::NodePtr>& _sorted);
+    void sortModule(ir::Module &_module, ir::Nodes& _sorted);
     void clear();
 
 private:
@@ -30,22 +30,27 @@ private:
     NameGenerator m_names;
 
     void _buildDependencies(ir::NodePtr _pRoot);
-    void _topologicalSort(const ir::NodePtr& _pDecl, std::list<ir::NodePtr>& _sorted);
+    void _topologicalSort(const ir::NodePtr& _pDecl, ir::Nodes& _sorted);
 };
 typedef Auto<Context> ContextPtr;
 
 class PrettyPrinterSyntax: public PrettyPrinterBase {
 public:
-    PrettyPrinterSyntax(ir::Node &_node, std::wostream &_os, ContextPtr _pContext) :
-        PrettyPrinterBase(_os), m_pNode(&_node), m_szDepth(0), m_nFlags(0), m_bMergeLines(false), m_bCompact(false), m_bSingleLine(false),
+    template<typename _Stream>
+    PrettyPrinterSyntax(ir::Node &_node, _Stream &_os, ContextPtr _pContext) :
+        PrettyPrinterBase(_os), m_pNode(&_node), m_nFlags(0), m_bCompact(false), m_bSingleLine(false),
         m_pContext(!_pContext ? new Context() : _pContext)
     {}
-    PrettyPrinterSyntax(ir::Node &_node, std::wostream &_os, size_t nDepth = 0) :
-        PrettyPrinterBase(_os), m_pNode(&_node), m_szDepth(nDepth), m_nFlags(0), m_bMergeLines(false), m_bCompact(false), m_bSingleLine(false),
+
+    template<typename _Stream>
+    PrettyPrinterSyntax(ir::Node &_node, _Stream &_os, size_t nDepth = 0) :
+        PrettyPrinterBase(_os), m_pNode(&_node), m_nFlags(0), m_bCompact(false), m_bSingleLine(false),
         m_pContext(new Context())
     {}
-    PrettyPrinterSyntax(std::wostream &_os, bool _bCompact = false, int _nFlags = 0, ContextPtr _pContext = NULL) :
-        PrettyPrinterBase(_os), m_pNode(NULL), m_szDepth(0), m_nFlags(_nFlags), m_bMergeLines(false), m_bCompact(_bCompact), m_bSingleLine(false),
+
+    template<typename _Stream>
+    PrettyPrinterSyntax(_Stream &_os, bool _bCompact = false, int _nFlags = 0, ContextPtr _pContext = NULL) :
+        PrettyPrinterBase(_os), m_pNode(NULL), m_nFlags(_nFlags), m_bCompact(_bCompact), m_bSingleLine(false),
         m_pContext(!_pContext ? new Context() : _pContext)
     {}
 
@@ -53,10 +58,7 @@ public:
     void print(ir::Node &_node);
 
 protected:
-
     // NODE / MODULE
-    virtual bool _traverseDeclarationGroup(ir::DeclarationGroup &_decl);
-    void printDeclarationGroup(ir::Module &_module);
     virtual bool traverseModule(ir::Module &_module);
     void printPath(const ir::NodePtr& _pNode);
 
@@ -64,7 +66,6 @@ protected:
     virtual bool visitLabel(ir::Label &_label);
 
     // NODE / TYPE
-    virtual bool traverseType(ir::Type &_type);
     virtual bool visitType(ir::Type &_type);
     virtual bool visitTypeType(ir::TypeType &_type);
     virtual bool traverseNamedReferenceType(ir::NamedReferenceType &_type);
@@ -77,8 +78,6 @@ protected:
     virtual bool visitArrayType(ir::ArrayType &_type);
     virtual bool traverseEnumType(ir::EnumType &_type);
     bool needsIndent();
-    void printStructNamedValues(const ir::NamedValues& _nvs, std::set<std::wstring>& _usedNames, bool& _bIsFirst, bool _bNeedsIndent);
-    void printStructType(const ir::StructType& _type, bool _bSeparator, bool _bIndent);
     virtual bool traverseStructType(ir::StructType &_type);
     virtual bool traverseUnionConstructorDeclaration(ir::UnionConstructorDeclaration &_cons);
     virtual bool traverseUnionType(ir::UnionType &_type);
@@ -88,7 +87,6 @@ protected:
     virtual bool visitOptionalType(ir::OptionalType& _type);
 
     // NODE / STATEMENT
-    virtual bool traverseStatement(ir::Statement &_stmt);
     virtual bool traverseJump(ir::Jump &_stmt);
     virtual bool traverseBlock(ir::Block &_stmt);
     virtual bool traverseParallelBlock(ir::ParallelBlock &_stmt);
@@ -97,34 +95,30 @@ protected:
     virtual bool traverseAssignment(ir::Assignment &_stmt);
     virtual bool traverseMultiassignment(ir::Multiassignment &_stmt);
     virtual bool traverseCall(ir::Call &_stmt);
-    void printMergedStatement(const ir::StatementPtr _pStmt);
-    void feedLine(const ir::Statement& _stmt);
     virtual bool traverseIf(ir::If &_stmt);
     virtual bool traverseSwitch(ir::Switch &_stmt);
+    virtual bool traverseSwitchCase(ir::SwitchCase &_case);
     virtual bool traverseFor(ir::For &_stmt);
     virtual bool traverseWhile(ir::While &_stmt);
     virtual bool traverseBreak(ir::Break &_stmt);
     virtual bool traverseWith(ir::With &_stmt);
     virtual bool traverseTypeDeclaration(ir::TypeDeclaration &_stmt);
-    virtual bool traverseVariable(ir::Variable &_val);
     virtual bool traverseVariableDeclaration(ir::VariableDeclaration &_stmt);
     virtual bool traverseVariableDeclarationGroup(ir::VariableDeclarationGroup &_stmt);
     virtual bool traverseFormulaDeclaration(ir::FormulaDeclaration &_node);
     virtual bool traverseLemmaDeclaration(ir::LemmaDeclaration &_stmt);
 
     // NODE / NAMED_VALUE
-    virtual bool visitNamedValue(ir::NamedValue &_val);
+    virtual bool traverseNamedValue(ir::NamedValue &_val);
+    virtual bool traverseEnumValue(ir::EnumValue &_val);
+    virtual bool traverseParam(ir::Param &_val);
+    virtual bool traverseVariable(ir::Variable &_val);
 
     // NODE / EXPRESSION
     void printLiteralKind(ir::Literal &_node);
     void printUnaryOperator(ir::Unary &_node);
     void printBinaryOperator(ir::Binary &_node);
     void printQuantifier(int _quantifier);
-    void printComma();
-    ir::ExpressionPtr getChild();
-    ir::ExpressionPtr getParent();
-    int getParentKind();
-    int getChildKind();
     bool needsParen();
     virtual bool traverseExpression(ir::Expression &_node);
     virtual bool visitLiteral(ir::Literal &_node);
@@ -157,21 +151,14 @@ protected:
     virtual bool traverseListElementExpr(ir::ListElementExpr &_expr);
     virtual bool visitConstructor(ir::Constructor& _expr);
 
-    size_t getDepth() const;
-    std::wstring fmtIndent(const std::wstring &_s = L"");
-    void incTab();
-    void decTab();
-    void mergeLines();
-    void separateLines();
-
-
 private:
     ir::NodePtr m_pNode;
     ir::ModulePtr m_pCurrentModule;
-    size_t m_szDepth;
     int m_nFlags;
-    bool m_bMergeLines, m_bCompact, m_bSingleLine;
+    bool m_bCompact, m_bSingleLine;
     ContextPtr m_pContext;
+
+    bool _traverseStructType(ir::StructType &_type);
 };
 
 void prettyPrintSyntax(ir::Node &_node, std::wostream & _os = std::wcout, const ContextPtr& _pContext = NULL,  bool _bNewLine = false);

@@ -1,15 +1,15 @@
 digraph G {
-"bar( : )"
+"bar(:)"
 quux -> bar2
 quux -> bar4
 quux -> bar5
-"bar(predicate( : ) a, predicate( : ) b : int z)" -> bar2
-"bar(predicate( : ) a, predicate( : ) b : int z)" -> bar3
-"bar(predicate( : ) a, predicate( : ) b : int z)" -> bar4
-"bar(predicate( : ) a, predicate( : ) b : int z)" -> bar5
+"bar(predicate(:), predicate(:) : int)" -> bar2
+"bar(predicate(:), predicate(:) : int)" -> bar3
+"bar(predicate(:), predicate(:) : int)" -> bar4
+"bar(predicate(:), predicate(:) : int)" -> bar5
 baz -> bar2
 baz -> bar4
 baz -> bar5
 baz -> quux
-baz -> "bar(predicate( : ) a, predicate( : ) b : int z)"
+baz -> "bar(predicate(:), predicate(:) : int)"
 }
