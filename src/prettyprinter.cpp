@@ -367,7 +367,7 @@ public:
             if (i > 0)
                 m_os << L"\n  or ";
 
-            m_os << L"(";
+            m_os << setInline(true) << L"(";
 
             const tc::Formulas &part = _formula.getPart(i);
             tc::ContextStack::push(_formula.getPartPtr(i));
@@ -388,7 +388,7 @@ public:
             }
 
             tc::ContextStack::pop();
-            m_os << L")";
+            m_os << setInline(false) << L")";
 
             collectConditions(part);
         }
@@ -396,9 +396,11 @@ public:
 
     void print(const tc::Formula &_formula) {
         if (!_formula.is(tc::Formula::COMPOUND)) {
+            m_os << setInline(true);
             PrettyPrinterSyntax::print(_formula.getLhs());
             m_os << L" " << fmtTypeFormulaOp(_formula.getKind()) << L" ";
             PrettyPrinterSyntax::print(_formula.getRhs());
+            m_os << setInline(false);
         } else
             print((const tc::CompoundFormula&)_formula);
 
@@ -430,8 +432,9 @@ public:
         for (auto& i: m_conditions) {
             if (i.first != 0)
                 m_os << L"[" << i.first << L"] ";
+            m_os << setInline(true);
             PrettyPrinterSyntax::print(i.second);
-            m_os << L"\n";
+            m_os << setInline(false) << L"\n";
         }
 
         m_os << L"----------\n";
@@ -442,10 +445,11 @@ public:
             assert(f.getLhs());
             assert(f.getRhs());
 
+            m_os << setInline(true);
             PrettyPrinterSyntax::print(f.getLhs());
             m_os << L" -> ";
             PrettyPrinterSyntax::print(f.getRhs());
-            m_os << L"\n";
+            m_os << setInline(false) << L"\n";
         }
     }
 
