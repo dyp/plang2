@@ -1020,7 +1020,8 @@ bool PrettyPrinterSyntax::traverseVariableDeclaration(VariableDeclaration &_stmt
         VISITOR_TRAVERSE_INLINE(Variable, VarDeclVar, _stmt.getVariable(),
                 _stmt, VariableDeclaration, setVariable);
         VISITOR_ENTER(Variable, *_stmt.getVariable());
-        m_os << ", " << _stmt.getVariable()->getName();
+        m_os << ", " << m_pContext->nameGenerator().getNamedValueName(
+                *_stmt.getVariable());
         VISITOR_EXIT_INLINE();
     } else
         VISITOR_TRAVERSE_NS(Variable, VarDeclVar, _stmt.getVariable());
