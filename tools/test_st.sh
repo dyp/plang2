@@ -20,7 +20,7 @@ if [ "$?" = "0" ]; then
     exit 0
 else
     echo -e "[ \033[0;31mFailed\033[0m ]"
-    diff -u $RESULT $EXPECTED
+    sort $EXPECTED| diff -b -B $RESULT -
     rm $RESULT
     exit 1
 fi
