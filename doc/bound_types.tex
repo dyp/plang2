@@ -1,0 +1,283 @@
+\documentclass[10pt,russian]{article}
+\usepackage[T2A]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[a4paper]{geometry}
+\geometry{verbose,tmargin=2cm,bmargin=2cm,lmargin=2cm,rmargin=2cm,headheight=1cm,headsep=1cm,footskip=1cm}
+\usepackage{textcomp}
+\pagestyle{empty}
+\makeatletter
+
+\usepackage{amsthm}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{amsmath}
+
+\renewcommand{\theenumii}{\arabic{enumi}.\arabic{enumii}.}
+\renewcommand{\labelenumii}{\theenumii}
+\newcommand{\subtype}{\preccurlyeq}
+\newcommand{\meet}{\wedge}
+\newcommand{\join}{\vee}
+\newcommand{\bigmeet}{\bigwedge}
+\newcommand{\bigjoin}{\bigvee}
+
+\makeatother
+
+\usepackage{babel}
+
+\begin{document}
+
+\title{Отложенное вычисление типов экстремумов}
+\maketitle
+
+\section{Использование свойств решётки для вывода типов}
+
+Допустим, имеется набор формул, включающий в себя:
+
+\begin{equation}
+\label{upper_bounds}
+\begin{split}
+A &\subtype cons(\alpha_{1,1}, \dotsc, \alpha_{1,m}) \\
+  &... \\
+A &\subtype cons(\alpha_{n,1}, \dotsc, \alpha_{n,m}) \text{, где}
+\end{split}
+\end{equation}
+$A$ -- типовая переменная; $\alpha_{i,j}$ -- произвольные типы, хотя бы один из
+которых является типовой переменной\footnote{она же fresh type}; $cons$ -- некий
+типовой конструктор (структура, список, предикат и т.п.) Каждая из этих формул
+определяет верхнюю грань для $A$. Также допустим, что других ограничений сверху
+у $A$ нет.
+
+
+Тогда, т.к. типы образуют решётку по операции $\subtype$, должно выполняться
+
+\begin{equation}
+\label{bigmeet}
+A \subtype {\displaystyle\bigmeet_{i=1}^n cons(\alpha_{i,1}, \dotsc, \alpha_{i,m})}
+\end{equation}
+
+В случае, когда в \eqref{upper_bounds} отношения направлены в другую сторону,
+в формуле выше используется супремум.
+
+Если инфинум в правой части \eqref{bigmeet} отличен от $\bot$, и если его можно
+вычислить, получаем
+
+\begin{equation*}
+A \subtype cons(\beta_1, \dotsc, \beta_m) \text{, где}
+\end{equation*}
+
+$\beta_i$ каким-то образом получены из $\alpha_{i,j}$ и также могут
+содержать типовые переменные (операция \texttt{infer}). После чего, если $A$
+более ничем не ограничено, либо соответствует типу входного параметра,
+левая часть приравнивается к правой (операция \texttt{guess}):
+
+\begin{equation*}
+A^{\wedge} = cons(\beta_1, \dotsc, \beta_m)
+\end{equation*}
+
+Однако, инфинум из правой части \eqref{bigmeet} не всегда может быть вычислен
+из-за присутствия среди $\alpha{i,j}$ типовых переменных.
+
+\section{Текущий подход. Операция \texttt{explode}}
+
+Если дана формула $A \subtype cons(\beta_1, \dotsc, \beta_m)$, то в
+некоторых случаях можно воспользоваться наблюдением, что конструкторы в левой и
+правой части должны совпадать. В частности, можно утверждать, что подтип списка
+тоже является списком. Это позволяет сделать замену
+
+\begin{align*}
+A &= cons(B_1, \dotsc, B_m) \\
+cons(B_1, \dotsc, B_m) &\subtype cons(\beta_1, \dotsc, \beta_m) \text{, где}
+\end{align*}
+
+$B_i$ -- новые типовые переменные. Далее раскрывается конструктор $cons$
+(операция \texttt{expand}), с учётом монотонной или антимонотонной зависимости
+$cons$ от аргументов (в последнем случае отношение $\subtype$ будет
+перевёрнуто):
+
+\begin{equation*}
+B_i \subtype \beta_i
+\end{equation*}
+
+Возвращаясь к \eqref{upper_bounds}, получаем:
+
+\begin{equation*}
+\forall ~ j ~ B_i \subtype \alpha_{i,j}
+\end{equation*}
+
+Недостатком такого подхода является то, что он применим только для некоторых
+типовых конструкторов, имеющих фиксированное количество параметров, а именно:
+множеств, списков и ассоциативных массивов, т.к., в ином случае, замену для $A$
+подобрать невозможно.
+
+\section{Предлагаемый подход. Типы экстремумов}
+
+Допустим, существовала бы возможность вычислить экстремумы типовых переменных
+во всех случаях. Это позволило бы отказаться от операции \texttt{explode}, т.к.
+вся необходимая функциональность реализовалась бы благодаря \texttt{infer} и
+\texttt{guess}, причём была бы обеспечена поддержка всех типовых конструкторов,
+таких как структуры, объединения, предикаты и т.п.
+
+Единственное, что мешает вычислению экстремумов для любого набора типов, --
+наличие в нём типовых переменных. Инфинум и, соответственно, супремум для них
+определяются следующим образом:
+
+\begin{align*}
+A \meet \bot &= \bot&       A \join \bot &= A \\
+A \meet \top &= A&          A \join \top &= \top \\
+A \meet A &= A&             A \join A &= A
+\end{align*}
+
+Для произвольного же аргумента $\beta$ значения выражений $A \meet \beta$ и
+$A \join \beta$ не определены. Доопределим их, введя новые типовые
+конструкторы: \textit{meet} и \textit{join}. Задаваемые этими конструкторами
+типы не зависят от порядка аргументов (в следствие коммутативности операций
+$\meet$ и $\join$).
+
+\begin{equation}
+\label{meet}
+\begin{split}
+A \meet \beta &= meet(A, \beta) \\
+meet(\alpha) &= \alpha \\
+meet(\alpha_1, \dotsc, \alpha_n) \meet meet(\beta_1, \dotsc, \beta_m) &=
+    (meet(\alpha_1, \dotsc, \alpha_n) \meet \beta_m) \meet
+        meet(\beta_1, \dotsc, \beta_{m - 1}) \\
+\beta \meet meet(\alpha_1, \dotsc, \alpha_n) =
+meet(\alpha_1, \dotsc, \alpha_n) \meet \beta &=
+    \begin{cases}
+        \bot
+            & \text{($\exists ~ i ~ \alpha_i \meet \beta = \bot$)} \\
+        meet(\alpha_1, \dotsc, \alpha_i \meet \beta, \dotsc, \alpha_n)
+            & \text{($\alpha_i \meet \beta$ -- не \textit{meet}-тип)} \\
+        meet(\alpha_1, \dotsc, \alpha_n, \beta)
+            & \text{($\forall ~ i ~ \alpha_i \meet \beta$ -- \textit{meet}-тип)}
+    \end{cases} \\
+\beta \join meet(\alpha_1, \dotsc, \alpha_n) =
+meet(\alpha_1, \dotsc, \alpha_n) \join \beta &=
+    \begin{cases}
+        \beta & \text{($\exists ~ i ~ \alpha_i \subtype \beta$)} \\
+        meet(\alpha_1, \dotsc, \alpha_n)
+            & \text{($\forall ~ i ~ \beta \subtype \alpha_i$)} \\
+        join(meet(\alpha_1, \dotsc, \alpha_n), \beta) & \text{(иначе)}
+    \end{cases} \\
+meet(\alpha_1, \dotsc, \alpha_n) \subtype \beta &\Leftarrow
+    \exists ~ i ~ \alpha_i \subtype \beta \\
+\beta \subtype meet(\alpha_1, \dotsc, \alpha_n) &\Leftarrow
+    \forall ~ i ~ \beta \subtype \alpha_i \\
+meet(\alpha_1, \dotsc, \alpha_n) \subtype meet(\beta_1, \dotsc, \beta_m) &\Leftarrow
+    \forall ~ j ~ \exists ~ i ~ \alpha_i \subtype \beta_j
+\end{split}
+\end{equation}
+
+\begin{equation}
+\label{join}
+\begin{split}
+A \join \beta &= join(A, \beta) \\
+join(\beta) &= \beta \\
+join(\alpha_1, \dotsc, \alpha_n) \join join(\beta_1, \dotsc, \beta_m) &=
+    (join(\alpha_1, \dotsc, \alpha_n) \join \beta_m) \join
+        join(\beta_1, \dotsc, \beta_{m - 1}) \\
+\beta \join join(\alpha_1, \dotsc, \alpha_n) =
+join(\alpha_1, \dotsc, \alpha_n) \join \beta &=
+    \begin{cases}
+        \top
+            & \text{($\exists ~ i ~ \alpha_i \join \beta = \top$)} \\
+        join(\alpha_1, \dotsc, \alpha_i \join \beta, \dotsc, \alpha_n)
+            & \text{($\alpha_i \join \beta$ -- не \textit{join}-тип)} \\
+        join(\alpha_1, \dotsc, \alpha_n, \beta)
+            & \text{($\forall ~ i ~ \alpha_i \join \beta$ -- \textit{join}-тип)}
+    \end{cases} \\
+\beta \meet join(\alpha_1, \dotsc, \alpha_n) =
+join(\alpha_1, \dotsc, \alpha_n) \meet \beta &=
+    \begin{cases}
+        \beta & \text{($\exists ~ i ~ \beta \subtype \alpha_i$)} \\
+        join(\alpha_1, \dotsc, \alpha_n)
+            & \text{($\forall ~ i ~ \alpha_i \subtype \beta$)} \\
+        meet(join(\alpha_1, \dotsc, \alpha_n), \beta) & \text{(иначе)}
+    \end{cases} \\
+join(\alpha_1, \dotsc, \alpha_n) \subtype \beta &\Leftarrow
+    \forall ~ i ~ \alpha_i \subtype \beta \\
+\beta \subtype join(\alpha_1, \dotsc, \alpha_n) &\Leftarrow
+    \exists ~ i ~ \beta \subtype \alpha_i \\
+join(\alpha_1, \dotsc, \alpha_n) \subtype join(\beta_1, \dotsc, \beta_m) &\Leftarrow
+    \forall ~ i ~ \exists ~ j ~ \alpha_i \subtype \beta_j
+\end{split}
+\end{equation}
+
+% TODO Неплохо бы доказать, что это не противоречит аксиомам инфинума/супремума
+% для решётки. В особенности, волнует соблюдение ассоциативности.
+
+Для примера, допустим, что некоторая типовая переменная ограничена парой типов,
+хотя бы один из которых зависит от другой типовой переменной:
+
+\begin{align*}
+A^{\wedge} &\subtype struct(int ~ a, int ~ b) \\
+A^{\wedge} &\subtype struct(B ~ a, nat ~ b)
+\end{align*}
+
+В операции \texttt{infer} мы попробуем вычислить инфинум структур из правых
+частей. Это удастся сделать благодаря использованию типа \textit{meet}:
+
+\begin{align*}
+A^{\wedge} &\subtype struct(int ~ a, int ~ b) \meet struct(B ~ a, nat ~ b) \\
+A^{\wedge} &\subtype struct(int \meet B ~ a, int \meet nat ~ b) \\
+A^{\wedge} &\subtype struct(meet(B, int) ~ a, nat ~ b)
+\end{align*}
+
+После чего в \texttt{guess} вхождения $A$ будут заменены на $struct(meet(B,
+int) ~ a, nat ~ b)$. Если тип $B$ также будет перезаписан, $meet(B, int)$
+необходимо заменить на вычисленное значение инфинума. Добавим следующие правила
+для перезаписи:
+
+\begin{align*}
+meet(\alpha_1, \dotsc, \alpha_i(A), \dotsc, \alpha_n) \Bigl\lvert_{A = \beta} &=
+    meet(\alpha_1, \dotsc, \alpha_{i - 1}, \alpha_{i + 1}, \dotsc, \alpha_n) \meet (
+    \alpha_i(A) \Bigl\lvert_{A = \beta}) \\
+join(\alpha_1, \dotsc, \alpha_i(A), \dotsc, \alpha_n) \Bigl\lvert_{A = \beta} &=
+    join(\alpha_1, \dotsc, \alpha_{i - 1}, \alpha_{i + 1}, \dotsc, \alpha_n) \join (
+    \alpha_i(A) \Bigl\lvert_{A = \beta})
+\end{align*}
+
+Это позволит, при известной подстановке для $B$ завершить вывод:
+
+\begin{align*}
+A^{\wedge} &= struct(meet(B, int) ~ a, nat ~ b) \\
+B &= real \\[1ex]
+&\text{превращается в} \\[1ex]
+A^{\wedge} &= struct(int ~ a, nat ~ b) \\
+B &= real
+\end{align*}
+
+\section{Замечания относительно планируемой реализации}
+
+Нет необходимости заводить новую операцию для раскрытия \textit{meet}- и
+\textit{join}-типов, потому что они автоматически будут перезаписаны в
+\texttt{rewriteType()}, как только всё необходимое для этого окажется вычислено.
+
+\vspace{1em}
+
+Левой частью формул \eqref{upper_bounds} не обязана быть типовая переменная, на
+вычисление верхней грани это никак не влияет. Однако, если бы вместо
+переменной там оказался конструктор, формулы бы были обработаны ещё до
+\texttt{infer}, в операциях \texttt{eval} либо \texttt{expand}.
+
+\vspace{1em}
+
+Как видно из \eqref{meet} и \eqref{join}, вычислить отношение $\subtype$, если
+в формуле участвуют \textit{meet}- и \textit{join}-типы, можно не всегда.
+
+\vspace{1em}
+
+Не кажется целесообразным создавать \textit{meet}- и \textit{join}-типы в узлах
+при построении графового представления решётки типов. Следовательно, требуется
+передавать флаг во все \texttt{getMeet()} и \texttt{getJoin()}, контролирующий
+поведение при вычислении экстремумов с участием типовых переменных. Флаг может
+также в последствие быть перенесён в специальный контекст, разделяемый между
+вызовами \texttt{getMeet()} и \texttt{getJoin()}.
+
+\vspace{1em}
+
+Возможно, имеет смысл включать вычисление \textit{meet}- и \textit{join}-типов
+только в операции \texttt{guess}, и, если удалось найти подходящий экстремум,
+хотя бы и содержащий такие типы, сразу выполнять замену.
+
+\end{document}
