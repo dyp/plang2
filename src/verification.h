@@ -163,7 +163,8 @@ public:
         m_pLeft(new Conjunction()), m_pRight(new Conjunction())
     {}
     Sequent(const ConjunctionPtr& _pLeft, const ConjunctionPtr& _pRigth) :
-        m_pLeft(_pLeft), m_pRight(_pRigth)
+        m_pLeft(!_pLeft ? new Conjunction() : _pLeft),
+        m_pRight(!_pRigth ? new Conjunction() : _pRigth)
     {}
 
     virtual int getKind() const { return SEQUENT; }

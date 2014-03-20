@@ -340,11 +340,11 @@ bool Sequent::releaseAssignments() {
 ExpressionPtr Sequent::mergeToExpression() const {
     if (hasLogic())
         return NULL;
-    if (!left() && !right())
+    if (left()->empty() && right()->empty())
         return new Literal(true);
-    if (!left())
+    if (left()->empty())
         return right()->mergeToExpression();
-    if (!right())
+    if (right()->empty())
         return new Unary(Unary::BOOL_NEGATE, left()->mergeToExpression());
     return new Binary(Binary::IMPLIES, left()->mergeToExpression(), right()->mergeToExpression());
 }
