@@ -125,6 +125,7 @@ void _printUsage() {
         << "    -s, --check-semantics         Generate logical conditions for proving semantic correctness\n"
         << "    -a, --check-validity          Check validity of declared lemmas\n"
         << "    -k, --keep-names              Keep names of variables\n"
+        << "    -m, --move-out                Move out some syntax constructions\n"
         << "        --help                    Show this message\n";
 }
 
@@ -143,6 +144,7 @@ bool Options::init(size_t _cArgs, const char **_pArgs) {
         { "check-semantics", 's', NULL,               &instance().bCheckSemantics, NULL,                          false },
         { "check-validity",  'a', NULL,               &instance().bCheckValidity,  NULL,                          false },
         { "keep-names",      'k', NULL,               &instance().bKeepNames,      NULL,                          false },
+        { "move-out",        'm', NULL,               &instance().bMoveOut,        NULL,                          false },
         { NULL,               0,  NULL,               NULL,                        NULL,                          false }
     };
 
@@ -174,7 +176,8 @@ Options::Options() :
     bCheckSemantics(false),
     bCheckValidity(false),
     bVerbose(false),
-    bKeepNames(false)
+    bKeepNames(false),
+    bMoveOut(false)
 {
 }
 
