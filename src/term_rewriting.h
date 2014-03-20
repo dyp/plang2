@@ -29,7 +29,7 @@ void declareLemma(const ir::ModulePtr& _pModule, const ir::ExpressionPtr& _pProp
 void instantiateModule(const ir::ModulePtr& _pModule, const ir::Collection<ir::Expression>& _args);
 
 // Make expression an ordered.
-void normalizeExpressions(const ir::NodePtr& _pNode);
+ir::NodePtr normalizeExpressions(const ir::NodePtr& _pNode);
 
 } // namespace tr
 

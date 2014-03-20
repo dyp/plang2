@@ -273,11 +273,18 @@ void instantiateModule(const ModulePtr& _pModule, const Collection<Expression>& 
 class Normalizer : public Visitor {
 public:
     typedef std::multiset<ExpressionPtr, PtrLess<Expression> > Operands;
-    Normalizer() : Visitor(CHILDREN_FIRST) {}
+    Normalizer(const NodePtr& _pRoot) :
+        Visitor(CHILDREN_FIRST), m_pRoot(_pRoot)
+    {}
 
     static void extractBinaryOperands(const BinaryPtr& _pBinary, int _nOperator,
             Operands& _container);
     virtual bool visitBinary(Binary& _bin);
+
+    NodePtr run();
+
+private:
+    NodePtr m_pRoot;
 };
 
 void Normalizer::extractBinaryOperands(const BinaryPtr& _pBinary,
@@ -320,31 +327,25 @@ bool Normalizer::visitBinary(Binary& _bin) {
     Operands operands;
 
     extractBinaryOperands(pBin, pBin->getOperator(), operands);
+    pBin = new Binary(pBin->getOperator(), operands);
 
-    if (!operands.empty()) {
-        auto iLast = std::prev(operands.end());
-
-        pBin->setLeftSide(*operands.begin());
-
-        if (iLast != operands.begin()) {
-            for (auto i = std::next(operands.begin()); i != iLast; ++i) {
-                pBin->setRightSide(new Binary(pBin->getOperator()));
-                pBin = pBin->getRightSide().as<Binary>();
-                pBin->setLeftSide(*i);
-            }
-
-            pBin->setRightSide(*iLast);
-        } else
-            pBin->setRightSide(nullptr);
-    }
+    if (m_pRoot.ptr() == &_bin)
+        m_pRoot = pBin;
+    else
+        callSetter(pBin);
 
     return true;
 }
 
-void normalizeExpressions(const NodePtr& _pNode) {
+NodePtr Normalizer::run() {
+    traverseNode(*m_pRoot);
+    return m_pRoot;
+}
+
+NodePtr normalizeExpressions(const NodePtr& _pNode) {
     if (!_pNode)
-        return;
-    Normalizer().traverseNode(*_pNode);
+        return nullptr;
+    return Normalizer(_pNode).run();
 }
 
 } // namespace tr
