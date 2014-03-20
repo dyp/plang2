@@ -573,6 +573,29 @@ public:
             const Overflow &_overflow = Overflow()) :
         m_operator(_operator), m_pLeft(_pLeft), m_pRight(_pRight), m_overflow(_overflow) { }
 
+    // Make binary from container.
+    template<class T>
+    Binary(int _operator, const T& _operands, const Overflow &_overflow = Overflow())
+        : m_operator(_operator), m_pLeft(nullptr), m_pRight(nullptr), m_overflow(_overflow)
+    {
+        Binary* pCurrent = this;
+        if (!_operands.empty()) {
+            auto iLast = std::prev(_operands.end());
+
+            setLeftSide(*_operands.begin());
+
+            if (iLast != _operands.begin()) {
+                for (auto i = std::next(_operands.begin()); i != iLast; ++i) {
+                    pCurrent->setRightSide(new Binary(getOperator()));
+                    pCurrent = pCurrent->getRightSide().as<Binary>().ptr();
+                    pCurrent->setLeftSide(*i);
+                }
+
+                pCurrent->setRightSide(*iLast);
+            }
+        }
+    }
+
     /// Get expression kind.
     /// \return #Binary.
     virtual int getKind() const { return BINARY; }
