@@ -20,7 +20,7 @@ array(int, 1..10) a;
 lemma a = a with [1: 0, 2 : 3];
 
 map(int, int) m;
-lemma m = m with [1: 1];
+lemma m = m with [{ 1: 1 }];
 
 struct(nat a, b, c) s;
 lemma s = s with (a: 1);
