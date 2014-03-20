@@ -350,6 +350,8 @@ bool Visitor::traverseComponent(Component &_expr) {
             return traverseRecognizerExpr((RecognizerExpr &)_expr);
         case Component::ACCESSOR:
             return traverseAccessorExpr((AccessorExpr &)_expr);
+        case Component::ARRAY_REPLACEMENT:
+            return traverseArrayReplacement((ArrayReplacement &)_expr);
     }
 
     return true;
@@ -398,6 +400,15 @@ bool Visitor::traverseRecognizerExpr(RecognizerExpr &_expr) {
 bool Visitor::traverseAccessorExpr(AccessorExpr &_expr) {
     ENTER(AccessorExpr, _expr);
     TRAVERSE(Expression, AccessorExpression, _expr.getObject(), _expr, Component, setObject);
+    EXIT();
+}
+
+bool Visitor::traverseArrayReplacement(ArrayReplacement &_expr) {
+    ENTER(ArrayReplacement, _expr);
+    TRAVERSE(Expression, ArrayReplacementObject, _expr.getObject(), _expr, Component, setObject);
+    TRAVERSE_COL(NamedValue, ArrayReplacementIterator, _expr.getIterators());
+    TRAVERSE(Expression, ArrayReplacementDefault, _expr.getDefault(), _expr, ArrayReplacement, setDefault);
+    TRAVERSE_COL(ArrayPartDefinition, ArrayReplacementPart, _expr);
     EXIT();
 }
 
