@@ -27,6 +27,28 @@ public:
         return true;
     }
 
+    virtual bool visitTypeDeclaration(TypeDeclaration & _type) {
+        m_generator.addType(&_type);
+        return true;
+    }
+
+    virtual bool visitNamedReferenceType(NamedReferenceType & _type) {
+        if (_type.getDeclaration())
+            visitTypeDeclaration(*_type.getDeclaration());
+        return true;
+    }
+
+    virtual bool visitFormulaDeclaration(FormulaDeclaration & _formula) {
+        m_generator.addFormula(&_formula);
+        return true;
+    }
+
+    virtual bool visitFormulaCall(FormulaCall & _formula) {
+        if (_formula.getTarget())
+            visitFormulaDeclaration(*_formula.getTarget());
+        return true;
+    }
+
 private:
     NameGenerator& m_generator;
 };
@@ -47,6 +69,20 @@ void NameGenerator::addLabel(const LabelPtr& _pLabel) {
         return;
     m_labels.insert({_pLabel, _pLabel->getName()});
     m_usedLabels.insert(_pLabel->getName());
+}
+
+void NameGenerator::addType(const ir::TypeDeclarationPtr& _pType) {
+    if (!_pType || _pType->getName().empty())
+        return;
+    m_types.insert({_pType, _pType->getName()});
+    m_usedIdentifiers.insert(_pType->getName());
+}
+
+void NameGenerator::addFormula(const ir::FormulaDeclarationPtr& _pFormula) {
+    if (!_pFormula || _pFormula->getName().empty())
+        return;
+    m_formulas.insert({_pFormula, _pFormula->getName()});
+    m_usedIdentifiers.insert(_pFormula->getName());
 }
 
 std::wstring NameGenerator::_generateUniqueName(std::set<std::wstring>& _used,
@@ -106,6 +142,44 @@ std::wstring NameGenerator::getLabelName(Label& _label) {
     return strLabel;
 }
 
+std::wstring NameGenerator::getTypeName(ir::TypeDeclaration& _type) {
+    auto iType = m_types.find(&_type);
+    std::wstring strIdent = iType != m_types.end() ?
+        iType->second : L"";
+
+    if (strIdent.empty()) {
+        strIdent = _generateUniqueName(m_usedIdentifiers, m_nLastFoundIdentifier, L"T_%ls");
+        m_types[&_type] = strIdent;
+    }
+
+    return strIdent;
+}
+
+std::wstring NameGenerator::getTypeName(ir::NamedReferenceType& _type) {
+    return !_type.getDeclaration() ?
+        _generateUniqueName(m_usedIdentifiers, m_nLastFoundIdentifier, L"UnknownType_%ls") :
+        getTypeName(*_type.getDeclaration());
+}
+
+std::wstring NameGenerator::getFormulaName(ir::FormulaDeclaration& _formula) {
+    auto iFormula = m_formulas.find(&_formula);
+    std::wstring strIdent = iFormula != m_formulas.end() ?
+        iFormula->second : L"";
+
+    if (strIdent.empty()) {
+        strIdent = _generateUniqueName(m_usedIdentifiers, m_nLastFoundIdentifier, L"f_%ls");
+        m_formulas[&_formula] = strIdent;
+    }
+
+    return strIdent;
+}
+
+std::wstring NameGenerator::getFormulaName(ir::FormulaCall& _formula) {
+    return !_formula.getTarget() ?
+        _generateUniqueName(m_usedIdentifiers, m_nLastFoundIdentifier, L"unknownFormula_%ls") :
+        getFormulaName(*_formula.getTarget());
+}
+
 std::wstring NameGenerator::getNewLabelName(const std::wstring& _name) {
     for (size_t i = 1;; ++i) {
         const std::wstring strName = _name + fmtInt(i, L"%d");
@@ -121,6 +195,8 @@ void NameGenerator::clear() {
     m_usedLabels.clear();
     m_namedValues.clear();
     m_labels.clear();
+    m_types.clear();
+    m_formulas.clear();
     m_nLastFoundIdentifier = 0;
     m_nLastFoundLabel = 0;
 }
