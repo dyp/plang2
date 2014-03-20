@@ -97,6 +97,7 @@ public:
         printQuantifier(_node.getQuantifier());
         return true;
     }
+
     virtual bool visitLemmaDeclaration(ir::LemmaDeclaration &_node) {
         printLemmaStatus(_node.getStatus());
         PrettyPrinterFlatBase::visitLemmaDeclaration(_node);
