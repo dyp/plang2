@@ -1,0 +1,18 @@
+/*
+
+<test>
+    //e1//Type = nat[1..10]
+    //e2//Type = {string : nat}
+    //e3//Type = (nat a, nat b)
+</test>
+
+*/
+
+array(nat, 1..10) a;
+map(string, nat) m = [{"a": 1, "b": 2, "c": 3}];
+struct( nat a, b ) s;
+
+var
+    e1 = a with [ 1: a[2] ],
+    e2 = m with [{ "a": m["b"] }],
+    e3 = s with (b: s.a);

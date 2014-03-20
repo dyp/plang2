@@ -256,6 +256,7 @@ set(TESTS_INFERENCE
     inference/recognizers.psrc
     inference/accessors.psrc
     inference/recursive_types.psrc
+    inference/replacement.psrc
 )
 
 set(TESTS_REWRITING

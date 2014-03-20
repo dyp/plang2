@@ -1076,7 +1076,13 @@ bool Collector::visitCastExpr(CastExpr &_cast) {
 }
 
 bool Collector::visitReplacement(Replacement &_repl) {
-    _repl.setType(_repl.getObject()->getType());
+    _repl.setType(createFresh(_repl.getType()));
+
+    m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+        _repl.getType(), _repl.getObject()->getType()));
+    m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+        _repl.getType(), _repl.getNewValues()->getType()));
+
     return true;
 }
 
