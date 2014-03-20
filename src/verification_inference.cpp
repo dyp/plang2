@@ -553,7 +553,7 @@ bool Inference::ruleFLC(const If& _if, const ConjunctionPtr& _pTail, const Conju
 bool Inference::ruleFLB(const Call& _call, const ConjunctionPtr& _pTail, const ConjunctionPtr& _pRight) {
     ConjunctionPtr
         pPre = getPreConditionForStatement(&_call, NULL, &m_context),
-        pPost = getPreConditionForStatement(&_call, &m_context);
+        pPost = getPostConditionForStatement(&_call, &m_context);
 
     // |- P_B
     m_context.addCondition(new Sequent(NULL, pPre));
