@@ -484,11 +484,16 @@ bool Binary::matches(const Expression& _other, MatchesPtr _pMatches) const {
     const Binary& other = (const Binary&)_other;
     if (getOperator() != other.getOperator())
         return false;
+
+    MatchesPtr pOldMatches = _pMatches ? new Matches(*_pMatches) : nullptr;
     if (_matches(getLeftSide(), other.getLeftSide(), _pMatches) && _matches(getRightSide(), other.getRightSide(), _pMatches))
         return true;
-    return getOperator() == other.getInverseOperator()
-        ? _matches(getLeftSide(), other.getRightSide(), _pMatches) && _matches(getRightSide(), other.getLeftSide(), _pMatches)
-        : false;
+
+    if (_pMatches)
+        _pMatches->swap(*pOldMatches);
+
+    return isSymmetrical() && _matches(getLeftSide(), other.getRightSide(), _pMatches) &&
+        _matches(getRightSide(), other.getLeftSide(), _pMatches);
 }
 
 NodePtr Binary::clone(Cloner &_cloner) const {
