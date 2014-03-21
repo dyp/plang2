@@ -1,5 +1,11 @@
-type S = struct(
-    nat a, b,
-    real c);
+/*
 
-S s = (c: 0, a: 1, b: 0);
+<test>
+    s1//Type = (nat a)
+    s2//Type = (nat a)
+</test>
+
+*/
+
+struct(nat a)
+    s1, s2 = (a: s1.a);
