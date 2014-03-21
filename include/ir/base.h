@@ -168,6 +168,12 @@ public:
         return _c < m_nodes.size() ? m_nodes[_c] : Auto<_Node>();
     }
 
+    /// Get last element of collection.
+    /// \return Pointer to element or NULL if collection is empty.
+    Auto<_Node> back() const {
+        return !m_nodes.empty() ? m_nodes.back() : Auto<_Node>();
+    }
+
     /// Add element to the collection.
     /// \param _pNode Pointer to node to add.
     Auto<_Node> add(const Auto<_Node> &_pNode) {
