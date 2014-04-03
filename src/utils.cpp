@@ -31,6 +31,10 @@ std::string intToStr(int64_t _n) {
     return buf;
 }
 
+std::wstring intToWideStr(int64_t _n) {
+    return strWiden(intToStr(_n));
+}
+
 std::string natToStr(uint64_t _n) {
     char buf[64];
     snprintf(buf, 64, "%llu", (long long int) _n);

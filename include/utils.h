@@ -27,6 +27,7 @@ Iterator prev(Iterator i) { return -- i; }
 #define WIDEN(_STR)   _WIDEN(_STR)
 
 std::string intToStr(int64_t _n);
+std::wstring intToWideStr(int64_t _n);
 std::string natToStr(uint64_t _n);
 std::string qToDecimalStr(const mpq_class &_q);
 
