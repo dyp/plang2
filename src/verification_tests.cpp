@@ -34,10 +34,10 @@ static bool _handleNotAnOption(const std::string &_strVal, void *_p) {
 
 static bool _parseTestOptions(size_t _cArgs, const char **_pArgs) {
     Option options[] = {
-        { "statement-tree", 'm', NULL, &bStatementTreeMatching, NULL, false },
-        { "statement-tree", 't', NULL, &bStatementTreeTests,    NULL, false },
+        { "statement-tree", 'm',  NULL, &bStatementTreeMatching, NULL, false },
+        { "statement-tree", 't',  NULL, &bStatementTreeTests,    NULL, false },
         { "preconditions",  'p',  NULL, &bPreconditions,         NULL, false },
-        { "cvc3",           'c',  NULL, &bCVC3,                  NULL, false }
+        { "cvc3",           'c',  NULL, &bCVC3,                  NULL, false },
     };
 
     if (!parseOptions(_cArgs, _pArgs, options, NULL, &_handleNotAnOption))

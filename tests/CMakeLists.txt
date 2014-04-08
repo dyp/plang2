@@ -135,10 +135,10 @@ macro(run_st_matching FLAGS TESTS)
     endforeach()
 endmacro()
 
-macro(run_st FLAGS TESTS)
+macro(run_verification_tests FLAGS TESTS)
     foreach(TEST ${TESTS})
         add_test(${TEST}
-            ${PROJECT_SOURCE_DIR}/tools/test_st_t.sh
+            ${PROJECT_SOURCE_DIR}/tools/test_verification_tests.sh
             ${PROJECT_SOURCE_DIR}/tools
             ${PROJECT_BINARY_DIR}/tests
             ${PROJECT_SOURCE_DIR}/tests/${TEST}
@@ -378,7 +378,7 @@ else()
 endif()
 
 run_st_matching("" "${TESTS_STATEMENT_TREE_MATCHING}")
-run_st("" "${TESTS_STATEMENT_TREE}")
+run_verification_tests("-t" "${TESTS_STATEMENT_TREE}")
 run_cond_tests("" "${TESTS_CONDITIONS}")
 run_vf_tests("-t1" "${TESTS_VERIFICATION}")
 run_pvs_tests("-t1" "${TESTS_PVS}")
