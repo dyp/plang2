@@ -350,7 +350,7 @@ bool PrettyPrinterSyntax::visitTypeType(TypeType &_type) {
 bool PrettyPrinterSyntax::traverseNamedReferenceType(NamedReferenceType &_type) {
     VISITOR_ENTER(NamedReferenceType, _type);
     printPath(_type.getDeclaration());
-    m_os << _type.getName();
+    m_os << m_pContext->nameGenerator().getTypeName(_type);
 
     if (!_type.getArgs().empty()) {
         m_os << L"(" << setInline(true);
@@ -993,7 +993,7 @@ bool PrettyPrinterSyntax::traverseTypeDeclaration(TypeDeclaration &_stmt) {
     VISITOR_ENTER(TypeDeclaration, _stmt);
 
     VISITOR_TRAVERSE_NS(Label, StmtLabel, _stmt.getLabel());
-    m_os << L"type " << _stmt.getName();
+    m_os << L"type " << m_pContext->nameGenerator().getTypeName(_stmt);
 
     if (!_stmt.getType())
         VISITOR_EXIT();
@@ -1052,7 +1052,7 @@ bool PrettyPrinterSyntax::traverseFormulaDeclaration(FormulaDeclaration &_node) 
     VISITOR_ENTER(FormulaDeclaration, _node);
     VISITOR_TRAVERSE_NS(Label, StmtLabel, _node.getLabel());
 
-    m_os << L"formula " << _node.getName();
+    m_os << L"formula " << m_pContext->nameGenerator().getFormulaName(_node);
 
     if (!_node.getParams().empty() || _node.getResultType()) {
         m_os << L"(" << setInline(true);
@@ -1481,7 +1481,7 @@ bool PrettyPrinterSyntax::traverseFunctionCall(FunctionCall &_expr) {
 bool PrettyPrinterSyntax::traverseFormulaCall(FormulaCall &_expr) {
     VISITOR_ENTER(FormulaCall, _expr);
     printPath(_expr.getTarget());
-    m_os << _expr.getName() << L"(" << indent;
+    m_os << m_pContext->nameGenerator().getFormulaName(_expr) << L"(" << indent;
     VISITOR_TRAVERSE_COL(Expression, FormulaCallArgs, _expr.getArgs());
     m_os << unindent << L")";
     VISITOR_EXIT();
