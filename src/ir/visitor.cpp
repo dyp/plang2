@@ -699,6 +699,7 @@ bool Visitor::traverseFormulaDeclaration(FormulaDeclaration &_stmt) {
     TRAVERSE_COL(NamedValue, FormulaDeclParams, _stmt.getParams());
     TRAVERSE(Type, FormulaDeclResultType, _stmt.getResultType(), _stmt, FormulaDeclaration, setResultType);
     TRAVERSE(Expression, FormulaDeclBody, _stmt.getFormula(), _stmt, FormulaDeclaration, setFormula);
+    TRAVERSE(Expression, FormulaDeclMeasure, _stmt.getMeasure(), _stmt, FormulaDeclaration, setMeasure);
     EXIT();
 }
 

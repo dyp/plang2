@@ -333,8 +333,9 @@ public:
     /// \param _pType Result type.
     /// \param _pFormula Formula.
     /// \param _pLabel Statement label.
-    FormulaDeclaration(const std::wstring &_strName = L"", const TypePtr &_pType = NULL, const ExpressionPtr &_pFormula = NULL, const LabelPtr &_pLabel = NULL) :
-        m_strName(_strName), m_pFormula(_pFormula), m_pType(_pType)
+    FormulaDeclaration(const std::wstring &_strName = L"", const TypePtr &_pType = NULL, const ExpressionPtr &_pFormula = NULL,
+        const ExpressionPtr &_pMeasure = NULL, const LabelPtr &_pLabel = NULL) :
+        m_strName(_strName), m_pFormula(_pFormula), m_pMeasure(_pMeasure), m_pType(_pType)
     {
         if (!_pType)
             m_pType = new Type(Type::BOOL);
@@ -373,11 +374,15 @@ public:
     /// \param _pFormula Formula.
     void setFormula(const ExpressionPtr &_pFormula) { m_pFormula = _pFormula; }
 
+    const ExpressionPtr& getMeasure() const { return m_pMeasure; }
+    void setMeasure(const ExpressionPtr& _pMeasure) { m_pMeasure = _pMeasure; }
+
     virtual bool less(const Node& _other) const;
     virtual bool equals(const Node& _other) const;
 
     virtual NodePtr clone(Cloner &_cloner) const {
-        const FormulaDeclarationPtr pCopy = NEW_CLONE(this, _cloner, FormulaDeclaration(getName(), _cloner.get(getResultType()), _cloner.get(getFormula()), _cloner.get(getLabel())));
+        const FormulaDeclarationPtr pCopy = NEW_CLONE(this, _cloner, FormulaDeclaration(getName(), _cloner.get(getResultType()),
+            _cloner.get(getFormula()), _cloner.get(getMeasure()), _cloner.get(getLabel())));
         pCopy->getParams().appendClones(getParams(), _cloner);
         pCopy->setLoc(this->getLoc());
         return pCopy;
@@ -386,7 +391,7 @@ public:
 private:
     std::wstring m_strName;
     NamedValues m_params;
-    ExpressionPtr m_pFormula;
+    ExpressionPtr m_pFormula, m_pMeasure;
     TypePtr m_pType;
 };
 

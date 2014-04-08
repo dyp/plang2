@@ -2814,6 +2814,13 @@ FormulaDeclarationPtr Parser::parseFormulaDeclaration(Context &_ctx) {
             return NULL;
     }
 
+    if (pCtx->consume(MEASURE)) {
+        if (ExpressionPtr pMeasure = parseExpression(*pCtx))
+            pDecl->setMeasure(pMeasure);
+        else
+            return NULL;
+    }
+
     _ctx.mergeChildren();
     _ctx.addFormula(pDecl);
 

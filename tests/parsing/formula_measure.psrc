@@ -1,11 +1,11 @@
 /*
 
 <test>
-    foo//Measure = a
+    foo//FormulaDeclMeasure = a
 </test>
 
 */
 
 formula foo(nat a, b: bool)
     = (a = b)
-    measure a;
+    measure a

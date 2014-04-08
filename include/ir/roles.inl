@@ -115,6 +115,7 @@ ROLE(VarDeclGroupElement)
 ROLE(FormulaDeclParams)
 ROLE(FormulaDeclResultType)
 ROLE(FormulaDeclBody)
+ROLE(FormulaDeclMeasure)
 ROLE(LemmaDeclBody)
 
 ROLE(UnionConsFields)

@@ -1065,8 +1065,15 @@ bool PrettyPrinterSyntax::traverseFormulaDeclaration(FormulaDeclaration &_node) 
         m_os << setInline(false) << L")";
     }
 
-    m_os << L" = " << indent;
+    m_os << L" =\n" << indent;
     VISITOR_TRAVERSE_NS(Expression, FormulaDeclBody, _node.getFormula());
+
+    if (_node.getMeasure()) {
+        m_os << L"\nmeasure " << indent;
+        VISITOR_TRAVERSE_NS(Expression, FormulaDeclMeasure, _node.getMeasure());
+        m_os << unindent;
+    }
+
     m_os << unindent;
 
     VISITOR_EXIT();
