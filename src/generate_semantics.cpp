@@ -1857,10 +1857,14 @@ vf::ConjunctionPtr getPreConditionForStatement(const StatementPtr& _pStmt, const
             if (!_pContext)
                 break;
 
-            if (const FormulaDeclarationPtr& pMeasure =_pContext->getMeasure(call))
-                pPre->addExpression(new Binary(Binary::LESS, tr::makeCall(pMeasure, call), tr::makeCall(pMeasure, *_pPred)));
-
             pPre->addExpression(tr::makeCall(_pContext->getPrecondition(call), call));
+
+            const PredicatePtr pPred = !_pPred ?
+                (_pContext ? _pContext->m_pPredicate : PredicatePtr(NULL)) : _pPred;
+
+            if (na::isRecursiveCall(&call, pPred))
+                if (const FormulaDeclarationPtr& pMeasure =_pContext->getMeasure(call))
+                    pPre->addExpression(new Binary(Binary::LESS, tr::makeCall(pMeasure, call), tr::makeCall(pMeasure, *pPred)));
             break;
         }
 
