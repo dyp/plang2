@@ -119,21 +119,24 @@ FormulaCallPtr makeCall(const ir::FormulaDeclarationPtr& _pFormula, ArgsMap& _ar
     return pCall;
 }
 
-FormulaCallPtr makeCall(const ir::FormulaDeclarationPtr& _pFormula, const Predicate& _predicate) {
+FormulaCallPtr makeCall(const ir::FormulaDeclarationPtr& _pFormula, const NamedValues& _params) {
     if (!_pFormula)
         return NULL;
 
-    NamedValues params;
-    getPredicateParams(_predicate, params);
-
     FormulaCallPtr pCall = new FormulaCall(_pFormula);
     for (size_t i = 0; i < _pFormula->getParams().size(); ++i) {
-        size_t cIdx = params.findIdx(*_pFormula->getParams().get(i));
+        const size_t cIdx = _params.findIdx(*_pFormula->getParams().get(i));
         assert(cIdx != (size_t)-1);
-        pCall->getArgs().add(new VariableReference(params.get(cIdx)));
+        pCall->getArgs().add(new VariableReference(_params.get(cIdx)));
     }
 
     return pCall;
+}
+
+FormulaCallPtr makeCall(const ir::FormulaDeclarationPtr& _pFormula, const Predicate& _predicate) {
+    NamedValues params;
+    getPredicateParams(_predicate, params);
+    return makeCall(_pFormula, params);
 }
 
 FormulaCallPtr makeCall(const ir::FormulaDeclarationPtr& _pFormula, const FormulaCall &_call) {

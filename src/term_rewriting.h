@@ -17,6 +17,7 @@ void modifyModule(const ir::ModulePtr& _pModule);
 
 // Arguments addition.
 ir::FormulaCallPtr makeCall(const ir::FormulaDeclarationPtr& _pFormula, na::ArgsMap& _args);
+ir::FormulaCallPtr makeCall(const ir::FormulaDeclarationPtr& _pFormula, const ir::NamedValues& _params);
 ir::FormulaCallPtr makeCall(const ir::FormulaDeclarationPtr& _pFormula, const ir::Predicate& _predicate);
 ir::FormulaCallPtr makeCall(const ir::FormulaDeclarationPtr& _pFormula, const ir::FormulaCall &_call);
 ir::FormulaCallPtr makeCall(const ir::FormulaDeclarationPtr& _pFormula, const ir::Call &_call);
