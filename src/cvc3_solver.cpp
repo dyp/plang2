@@ -54,6 +54,7 @@ private:
     std::string _makeIdentifier(std::wstring _strIdentifier);
     std::string _makeNewVarName(const std::wstring& _strOrigName);
     CVC3::ExprPtr _makeLambdaExpr(const CVC3::ExprPtr& _pVar, const CVC3::ExprPtr& _pPred);
+    bool _isTuple(const StructConstructor& _expr) const;
 
     // Expressions.
     CVC3::ExprPtr _translateLiteral(const Literal& _expr);
@@ -79,6 +80,7 @@ private:
 
     // Constructors.
     CVC3::ExprPtr _translateStructConstructor(const StructConstructor& _expr);
+    CVC3::ExprPtr _translateTupleConstructor(const StructConstructor& _expr);
     CVC3::ExprPtr _translateArrayConstructor(const ArrayConstructor& _expr);
     CVC3::ExprPtr _translateSetConstructor(const SetConstructor& _expr);
     CVC3::ExprPtr _translateMapConstructor(const MapConstructor& _expr);
@@ -310,6 +312,13 @@ CVC3::ExprPtr Solver::_makeLambdaExpr(const CVC3::ExprPtr& _pVar, const CVC3::Ex
         pLambda = NEW(Op, m_pValidityChecker->lambdaExpr(params, *_pPred));
 
     return NEW(Expr, pLambda->getExpr());
+}
+
+bool Solver::_isTuple(const StructConstructor& _expr) const {
+    for (size_t i = 0; i < _expr.size(); ++i)
+        if (!_expr.get(i)->getName().empty())
+            return false;
+    return true;
 }
 
 CVC3::ExprPtr Solver::_translateLiteral(const Literal& _expr) {
@@ -587,6 +596,13 @@ CVC3::ExprPtr Solver::_translateStructConstructor(const StructConstructor& _expr
     return NEW(Expr, m_pValidityChecker->recordExpr(fields, exprs));
 }
 
+CVC3::ExprPtr Solver::_translateTupleConstructor(const StructConstructor& _expr) {
+    std::vector<CVC3::Expr> exprs;
+    for (size_t i = 0; i < _expr.size(); ++i)
+        exprs.push_back(*translateExpr(*_expr.get(i)->getValue()));
+    return NEW(Expr, m_pValidityChecker->tupleExpr(exprs));
+}
+
 template<typename T>
 CVC3::ExprPtr Solver::_translateFiniteArray(const T& _expr) {
     CVC3::TypePtr pType = translateType(*_expr.getType());
@@ -649,8 +665,12 @@ CVC3::ExprPtr Solver::_translateListConstructor(const ListConstructor& _expr) {
 
 CVC3::ExprPtr Solver::_translateConstructor(const Constructor& _expr) {
     switch (_expr.getConstructorKind()) {
-        case Constructor::STRUCT_FIELDS:
-            return _translateStructConstructor((StructConstructor&)_expr);
+        case Constructor::STRUCT_FIELDS: {
+            const StructConstructor& cons = (const StructConstructor&)_expr;
+            return _isTuple(cons) ?
+                _translateTupleConstructor(cons):
+                _translateStructConstructor(cons);
+        }
         case Constructor::ARRAY_ELEMENTS:
             return _translateArrayConstructor((ArrayConstructor&)_expr);
         case Constructor::SET_ELEMENTS:
