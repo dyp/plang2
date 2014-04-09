@@ -1868,6 +1868,7 @@ vf::ConjunctionPtr getPreConditionForStatement(const StatementPtr& _pStmt, const
             break;
         }
 
+#ifdef CONDITIONS_FOR_IF
         case Statement::IF: {
             const If& iff = *_pStmt.as<If>();
             pPre->assign(getPreConditionForExpression(iff.getArg()));
@@ -1887,6 +1888,7 @@ vf::ConjunctionPtr getPreConditionForStatement(const StatementPtr& _pStmt, const
 
             break;
         }
+#endif
 
         case Statement::PARALLEL_BLOCK:
             pPre->assign(getPreConditionForStatement(_pStmt.as<Block>()->get(0), _pPred, _pContext));
@@ -1927,6 +1929,7 @@ vf::ConjunctionPtr getPostConditionForStatement(const StatementPtr& _pStmt, cons
             break;
         }
 
+#ifdef CONDITIONS_FOR_IF
         case Statement::IF: {
             const IfPtr pIf = _pStmt.as<If>();
 
@@ -1945,6 +1948,7 @@ vf::ConjunctionPtr getPostConditionForStatement(const StatementPtr& _pStmt, cons
 
             break;
         }
+#endif
 
         case Statement::PARALLEL_BLOCK:
             pPost->assign(getPostConditionForStatement(_pStmt.as<Block>()->get(0), _pContext));
