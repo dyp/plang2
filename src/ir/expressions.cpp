@@ -659,6 +659,13 @@ bool ArrayPartExpr::matches(const Expression& _other, MatchesPtr _pMatches) cons
     return matchCollections(getIndices(), ((const ArrayPartExpr&)_other).getIndices(), _pMatches);
 }
 
+bool ArrayPartExpr::isRestrict() const {
+    for (size_t i = 0; i < getIndices().size(); ++i)
+        if (getIndices().get(i)->getKind() != Expression::TYPE)
+            return false;
+    return true;
+}
+
 NodePtr ArrayPartExpr::clone(Cloner &_cloner) const {
     ArrayPartExprPtr pExpr = NEW_CLONE(this, _cloner, ArrayPartExpr(_cloner.get(getObject())));
     pExpr->getIndices().appendClones(getIndices(), _cloner);
