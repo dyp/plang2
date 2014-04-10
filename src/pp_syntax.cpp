@@ -1625,6 +1625,15 @@ bool PrettyPrinterSyntax::traverseListElementExpr(ListElementExpr &_expr) {
     VISITOR_EXIT();
 }
 
+bool PrettyPrinterSyntax::traverseCastExpr(ir::CastExpr &_expr) {
+    VISITOR_ENTER(CastExpr, _expr);
+    VISITOR_TRAVERSE(TypeExpr, CastToType, _expr.getToType(), _expr, CastExpr, setToType);
+    m_os << L"(" << setInline(true);
+    VISITOR_TRAVERSE(Expression, CastParam, _expr.getExpression(), _expr, CastExpr, setExpression);
+    m_os << L") " << setInline(false);
+    VISITOR_EXIT();
+}
+
 bool PrettyPrinterSyntax::visitConstructor(Constructor& _expr) {
     if (getRole() == R_CastParam)
         m_os << L" ";

@@ -150,6 +150,7 @@ protected:
     virtual bool traverseFieldExpr(ir::FieldExpr &_expr);
     virtual bool traverseMapElementExpr(ir::MapElementExpr &_expr);
     virtual bool traverseListElementExpr(ir::ListElementExpr &_expr);
+    virtual bool traverseCastExpr(ir::CastExpr &_expr);
     virtual bool visitConstructor(ir::Constructor& _expr);
 
 private:
