@@ -52,7 +52,15 @@ public:
     PrettyPrinterSyntax(_Stream &_os, bool _bCompact = false, int _nFlags = 0, ContextPtr _pContext = NULL) :
         PrettyPrinterBase(_os), m_pNode(NULL), m_nFlags(_nFlags), m_bCompact(_bCompact), m_bSingleLine(false),
         m_pContext(!_pContext ? new Context() : _pContext)
-    {}
+    {
+        if (m_bCompact)
+            m_os.setInline(true);
+    }
+
+    ~PrettyPrinterSyntax() {
+        if (m_bCompact)
+            m_os.setInline(false);
+    }
 
     void run();
     void print(ir::Node &_node);
