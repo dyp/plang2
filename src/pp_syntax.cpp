@@ -1629,9 +1629,6 @@ bool PrettyPrinterSyntax::visitConstructor(Constructor& _expr) {
     return true;
 }
 
-#undef INDENT
-#undef UNINDENT
-
 void PrettyPrinterSyntax::run() {
     if (m_pNode) {
         m_pContext->nameGenerator().collect(*m_pNode);
