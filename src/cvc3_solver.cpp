@@ -136,7 +136,7 @@ CVC3::ExprPtr Solver::translateExpr(const Expression& _expr) {
             return _translateConstructor((Constructor &)_expr);
         // There is no CasExpr.
         default:
-            assert(false);
+            throw CVC3::Exception("Error translate expression with kind: " + intToStr(_expr.getKind()));
     }
 
     return nullptr;
@@ -201,7 +201,7 @@ CVC3::TypePtr Solver::translateType(const Type& _type, bool _bNativeBool) {
             pType = _translateNamedReferenceType((NamedReferenceType&)_type);
             break;
         default:
-            assert(false);
+            throw CVC3::Exception("Error translate type with kind: " + intToStr(_type.getKind()));
     }
 
     m_types.insert({&_type, pType});
@@ -242,6 +242,11 @@ CVC3::TypePtr Solver::_getType(const TypePtr& _pType) {
 }
 
 CVC3::ExprPtr Solver::_declareVariable(const NamedValuePtr& _pValue) {
+    if (!_pValue->getType())
+        throw CVC3::Exception("Error translate NULL variable");
+    if (!_pValue)
+        throw CVC3::Exception("Error translate variable with NULL type");
+
     std::map<NamedValuePtr, CVC3::ExprPtr>::iterator it = m_variables.find(_pValue);
     if (it != m_variables.end())
         return it->second;
@@ -334,7 +339,7 @@ CVC3::ExprPtr Solver::_translateLiteral(const Literal& _expr) {
         case Literal::STRING:
             return NEW(Expr, m_pValidityChecker->stringExpr(strNarrow(_expr.getString())));
         default:
-            assert(false);
+            throw CVC3::Exception("Error translate literal kind " + intToStr(_expr.getKind()));
     }
 
     return nullptr;
@@ -356,7 +361,7 @@ CVC3::ExprPtr Solver::_translateUnary(const Unary& _expr) {
         case Unary::BITWISE_NEGATE:
             return NEW(Expr, m_pValidityChecker->newBVNegExpr(*pSubExpr));
         default:
-            assert(false);
+            throw CVC3::Exception("Error translate unary with operator: " + intToStr(_expr.getOperator()));
     }
 
     return nullptr;
@@ -412,7 +417,7 @@ CVC3::ExprPtr Solver::_translateBinary(const Binary& _expr) {
         case Binary::IFF:
             return NEW(Expr, m_pValidityChecker->iffExpr(*pLeft, *pRight));
         default:
-            assert(false);
+            throw CVC3::Exception("Error translate binary operator " + intToStr(_expr.getOperator()));
     }
 
     return nullptr;
@@ -531,7 +536,8 @@ CVC3::ExprPtr Solver::_translateReplacement(const Replacement& _expr) {
         case Constructor::MAP_ELEMENTS:
             return _translateMapReplacement(*_expr.getObject(), *_expr.getNewValues().as<MapConstructor>());
         default:
-            assert(false);
+            throw CVC3::Exception("Error translate replacement with constructor kind: " +
+                intToStr(constr.getConstructorKind()));
     }
 
     return nullptr;
@@ -551,7 +557,7 @@ CVC3::ExprPtr Solver::_translateComponent(const Component& _expr) {
         case Component::REPLACEMENT:
             return _translateReplacement((Replacement&)_expr);
         default:
-            assert(false);
+            throw CVC3::Exception("Error translate component with kind: " + intToStr(_expr.getComponentKind()));
     }
 
     return nullptr;
@@ -681,7 +687,8 @@ CVC3::ExprPtr Solver::_translateConstructor(const Constructor& _expr) {
             return _translateListConstructor((ListConstructor&)_expr);
         // TODO: ARRAY_ITERATION, UNION_CONSTRUCTOR.
         default:
-            assert(false);
+            throw CVC3::Exception("Error translate constructor with kind: " +
+                intToStr(_expr.getConstructorKind()));
     }
 
     return nullptr;
@@ -902,7 +909,15 @@ public:
         if (!_lemma.getProposition() || na::containsBannedNodes(_lemma.getProposition()))
             return true;
 
-        CVC3::ExprPtr pExpr = translateExpr(*_lemma.getProposition());
+        CVC3::ExprPtr pExpr;
+
+        try {
+            pExpr = translateExpr(*_lemma.getProposition());
+        } catch (CVC3::Exception& ex) {
+            std::wcerr << strWiden(ex.toString()) << L"\n\n";
+            return true;
+        }
+
         CVC3::QueryResult result = getContext().query(*pExpr);
 
         m_result.insert({&_lemma, result});
