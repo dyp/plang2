@@ -134,7 +134,8 @@ CVC3::ExprPtr Solver::translateExpr(const Expression& _expr) {
             return _translateFormula((Formula &)_expr);
         case Expression::CONSTRUCTOR:
             return _translateConstructor((Constructor &)_expr);
-        // There is no CasExpr.
+        case Expression::CAST:
+            return translateExpr(*((CastExpr &)_expr).getExpression());
         default:
             throw CVC3::Exception("Error translate expression with kind: " + intToStr(_expr.getKind()));
     }
