@@ -6,12 +6,17 @@
 
 #include "autoptr.h"
 #include "ir/base.h"
+#include "utils.h"
 
 #include <set>
+#include <functional>
 
 class NameGenerator : public Counted {
 public:
-    NameGenerator() : m_nLastFoundIdentifier(0), m_nLastFoundLabel(0) {}
+    NameGenerator() :
+        m_nLastFoundValue(0), m_nLastFoundType(0), m_nLastFoundFormula(0),
+        m_nLastFoundLabel(0)
+    {}
 
     void collect(ir::Node& _node);
 
@@ -39,11 +44,10 @@ private:
     std::map<ir::FormulaDeclarationPtr, std::wstring> m_formulas;
     std::set<std::wstring> m_usedLabels;
     std::map<ir::LabelPtr, std::wstring> m_labels;
-    int m_nLastFoundIdentifier;
-    int m_nLastFoundLabel;
+    int m_nLastFoundValue, m_nLastFoundType, m_nLastFoundFormula, m_nLastFoundLabel;
 
-    static std::wstring _generateUniqueName(std::set<std::wstring>& _used,
-        int& _cCounter, const std::wstring& _strFormat);
+    static std::wstring _generateUniqueName(std::set<std::wstring>& _used, int& _cCounter,
+        const std::wstring& _strFormat, std::function<std::wstring(int)> _function = &intToWideStr);
 };
 
 #endif /* GENERATE_NAME_H_ */

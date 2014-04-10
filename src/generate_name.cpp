@@ -86,13 +86,13 @@ void NameGenerator::addFormula(const ir::FormulaDeclarationPtr& _pFormula) {
 }
 
 std::wstring NameGenerator::_generateUniqueName(std::set<std::wstring>& _used,
-    int& _nCounter, const std::wstring& _strFormat)
+    int& _nCounter, const std::wstring& _strFormat, std::function<std::wstring(int)> _function)
 {
     std::wstring strIdent;
 
     do {
         const std::wstring
-            strUniquePart = intToAlpha(_nCounter++);
+            strUniquePart = _function(_nCounter++);
         size_t cSize =
             _strFormat.size() + strUniquePart.size() - 2;
 
@@ -122,7 +122,7 @@ std::wstring NameGenerator::getNamedValueName(NamedValue& _val) {
         iNamedValue->second : L"";
 
     if (strIdent.empty()) {
-        strIdent = _generateUniqueName(m_usedIdentifiers, m_nLastFoundIdentifier, L"%ls");
+        strIdent = _generateUniqueName(m_usedIdentifiers, m_nLastFoundValue, L"%ls", intToAlpha);
         m_namedValues[&_val] = strIdent;
     }
 
@@ -148,7 +148,7 @@ std::wstring NameGenerator::getTypeName(ir::TypeDeclaration& _type) {
         iType->second : L"";
 
     if (strIdent.empty()) {
-        strIdent = _generateUniqueName(m_usedIdentifiers, m_nLastFoundIdentifier, L"T_%ls");
+        strIdent = _generateUniqueName(m_usedIdentifiers, m_nLastFoundType, L"T_%ls");
         m_types[&_type] = strIdent;
     }
 
@@ -157,7 +157,7 @@ std::wstring NameGenerator::getTypeName(ir::TypeDeclaration& _type) {
 
 std::wstring NameGenerator::getTypeName(ir::NamedReferenceType& _type) {
     return !_type.getDeclaration() ?
-        _generateUniqueName(m_usedIdentifiers, m_nLastFoundIdentifier, L"UnknownType_%ls") :
+        _generateUniqueName(m_usedIdentifiers, m_nLastFoundType, L"UnknownType_%ls") :
         getTypeName(*_type.getDeclaration());
 }
 
@@ -167,7 +167,7 @@ std::wstring NameGenerator::getFormulaName(ir::FormulaDeclaration& _formula) {
         iFormula->second : L"";
 
     if (strIdent.empty()) {
-        strIdent = _generateUniqueName(m_usedIdentifiers, m_nLastFoundIdentifier, L"f_%ls");
+        strIdent = _generateUniqueName(m_usedIdentifiers, m_nLastFoundFormula, L"f_%ls");
         m_formulas[&_formula] = strIdent;
     }
 
@@ -176,7 +176,7 @@ std::wstring NameGenerator::getFormulaName(ir::FormulaDeclaration& _formula) {
 
 std::wstring NameGenerator::getFormulaName(ir::FormulaCall& _formula) {
     return !_formula.getTarget() ?
-        _generateUniqueName(m_usedIdentifiers, m_nLastFoundIdentifier, L"unknownFormula_%ls") :
+        _generateUniqueName(m_usedIdentifiers, m_nLastFoundFormula, L"unknownFormula_%ls") :
         getFormulaName(*_formula.getTarget());
 }
 
@@ -197,6 +197,8 @@ void NameGenerator::clear() {
     m_labels.clear();
     m_types.clear();
     m_formulas.clear();
-    m_nLastFoundIdentifier = 0;
+    m_nLastFoundValue = 0;
+    m_nLastFoundType = 0;
+    m_nLastFoundFormula = 0;
     m_nLastFoundLabel = 0;
 }
