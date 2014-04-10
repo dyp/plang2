@@ -25,9 +25,8 @@ public:
         if (!pExpr)
             return true;
 
-        tr::normalizeExpressions(pExpr);
-        pp::prettyPrintSyntax(*pExpr, m_os);
-        m_os << L"\n";
+        pExpr = tr::normalizeExpressions(pExpr).as<ir::Expression>();
+        pp::prettyPrintSyntax(*pExpr, m_os, nullptr, true);
         return true;
     }
 
@@ -42,20 +41,16 @@ public:
             pConjPost = getPostConditionForStatement(&_stmt);
 
         ir::ExpressionPtr pExpr = pConjPre->mergeToExpression();
-        tr::normalizeExpressions(pExpr);
+        pExpr = tr::normalizeExpressions(pExpr).as<ir::Expression>();
 
-        if (!pConjPre->empty() && pExpr) {
-            pp::prettyPrintSyntax(*pExpr, m_os);
-            m_os << L"\n";
-        }
+        if (!pConjPre->empty() && pExpr)
+            pp::prettyPrintSyntax(*pExpr, m_os, nullptr, true);
 
         pExpr = pConjPost->mergeToExpression();
-        tr::normalizeExpressions(pExpr);
+        pExpr = tr::normalizeExpressions(pExpr).as<ir::Expression>();
 
-        if (!pConjPost->empty() && pExpr) {
-            pp::prettyPrintSyntax(*pExpr, m_os);
-            m_os << L"\n";
-        }
+        if (!pConjPost->empty() && pExpr)
+            pp::prettyPrintSyntax(*pExpr, m_os, nullptr, true);
 
         return true;
     }
