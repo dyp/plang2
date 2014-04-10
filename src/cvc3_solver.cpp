@@ -588,6 +588,8 @@ CVC3::ExprPtr Solver::_translateFormula(const Formula& _expr) {
 }
 
 CVC3::ExprPtr Solver::_translateFormulaCall(const FormulaCall& _expr) {
+    if (_expr.getTarget()->getParams().empty())
+        return translateExpr(*_expr.getTarget()->getFormula());
     CVC3::OpPtr pOp = _declareFormula(_expr.getTarget());
 
     std::vector<CVC3::Expr> args;
