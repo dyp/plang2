@@ -53,7 +53,7 @@ void getArgsMap(const ir::Call &_call, ArgsMap& _args);
 bool isRecursiveCall(const ir::CallPtr& _pCall, const ir::PredicatePtr& _pPred);
 
 // Quantifier formulas.
-ir::FormulaPtr generalize(const ir::ExpressionPtr& _pExpr);
+ir::ExpressionPtr generalize(const ir::ExpressionPtr& _pExpr);
 ir::FormulaPtr setQuantifier(int _quantifier, const ir::ExpressionPtr& _pExpr, const ValuesSet& _bound);
 
 // Case resolving.

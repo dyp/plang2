@@ -351,9 +351,12 @@ bool isRecursiveCall(const ir::CallPtr& _pCall, const ir::PredicatePtr& _pPred) 
         && _pCall->getPredicate().as<PredicateReference>()->getTarget() == _pPred;
 }
 
-ir::FormulaPtr generalize(const ExpressionPtr& _pExpr) {
+ir::ExpressionPtr generalize(const ExpressionPtr& _pExpr) {
     ValuesSet freeValues;
     collectValues(_pExpr, freeValues);
+
+    if (freeValues.empty())
+        return _pExpr;
 
     FormulaPtr pFormula = new Formula(Formula::UNIVERSAL, _pExpr);
     pFormula->getBoundVariables().prepend(freeValues.begin(), freeValues.end());
