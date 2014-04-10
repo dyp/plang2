@@ -104,8 +104,6 @@ int main(int _argc, const char ** _argv) {
         if (Options::instance().verify != V_NONE)
             pModule = vf::verify(pModule);
 
-        if (Options::instance().bOptimize)
-            optimize(*pModule);
 
 #ifdef USE_CVC3
         if (Options::instance().bCheckValidity)
@@ -122,6 +120,9 @@ int main(int _argc, const char ** _argv) {
             tr::moveOutExpressions(pModule);
             tr::moveOutStructuredTypes(pModule);
         }
+
+        if (Options::instance().bOptimize)
+            optimize(*pModule);
 
         if (Options::instance().prettyPrint & PP_FLAT)
             prettyPrintFlatTree(*pModule);
