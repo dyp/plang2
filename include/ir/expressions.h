@@ -903,6 +903,8 @@ public:
     virtual bool equals(const Node& _other) const;
     virtual bool matches(const Expression& _other, MatchesPtr _pMatches = NULL) const;
 
+    bool isRestrict() const;
+
     virtual NodePtr clone(Cloner &_cloner) const;
 
 private:
