@@ -119,7 +119,7 @@ public:
     void append(const Conjunction& _conjunction)
         { getConjuncts().insert(_conjunction.getConjuncts().begin(), _conjunction.getConjuncts().end()); }
     void append(const Auto<Conjunction>& _pConjunction)
-        { getConjuncts().insert(_pConjunction->getConjuncts().begin(), _pConjunction->getConjuncts().end()); }
+        { if (_pConjunction) append(*_pConjunction); }
 
     bool hasLogic() const;
     void getFreeValues(na::ValuesSet& _container) const;
