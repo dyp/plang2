@@ -1674,10 +1674,4 @@ void prettyPrintSyntax(Node &_node, size_t nDepth, std::wostream & _os) {
     PrettyPrinterSyntax(_node, _os, nDepth).run();
 }
 
-void prettyPrintCompact(Node &_node, std::wostream &_os, int _nFlags, const ContextPtr& _pContext) {
-    std::wstringstream wstringstream;
-    PrettyPrinterSyntax(wstringstream, true, _nFlags, _pContext).print(_node);
-    _os << removeRedundantSymbols(wstringstream.str(), L"\r\n ");
-}
-
 }

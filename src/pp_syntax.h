@@ -166,8 +166,6 @@ private:
 void prettyPrintSyntax(ir::Node &_node, std::wostream & _os = std::wcout, const ContextPtr& _pContext = NULL,  bool _bNewLine = false);
 void prettyPrintSyntax(ir::Node &_node, size_t nDepth, std::wostream & _os = std::wcout);
 
-void prettyPrintCompact(ir::Node &_node, std::wostream &_os, int _nFlags, const ContextPtr& _pContext = NULL);
-
 std::wstring fmtRule(size_t _cRuleInd = 0);
 void prettyPrint(const vf::ConjunctPtr& _pConjunct, std::wostream &_os = std::wcout, const ContextPtr& _pContext = NULL);
 void prettyPrint(const vf::ConjunctionPtr& _pConj, std::wostream &_os = std::wcout, const ContextPtr& _pContext = NULL);
@@ -177,8 +175,8 @@ void prettyPrint(const vf::Context& _context, std::wostream &_os = std::wcout, c
 }
 
 template<typename _Stream>
-void prettyPrintCompact(ir::Node &_node, _Stream &_os, int _nFlags = 0) {
-    pp::PrettyPrinterSyntax(_os, true, _nFlags).print(_node);
+void prettyPrintCompact(ir::Node &_node, _Stream &_os, int _nFlags = 0, const pp::ContextPtr & _pContext = nullptr) {
+    pp::PrettyPrinterSyntax(_os, true, _nFlags, _pContext).print(_node);
 }
 
 #endif /* PP_SYNTAX_H_ */
