@@ -402,7 +402,7 @@ bool VariableReference::equals(const Node& _other) const {
 bool VariableReference::matches(const Expression& _other, MatchesPtr _pMatches) const {
     if (!Expression::equals(_other))
         return Expression::matches(_other, _pMatches);
-    return *getTarget() == *((const VariableReference&)_other).getTarget();
+    return _equals(getTarget(), ((const VariableReference&)_other).getTarget());
 }
 
 NodePtr VariableReference::clone(Cloner &_cloner) const {
