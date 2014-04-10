@@ -61,6 +61,7 @@ public:
         return true;
     }
 
+    // Things, that must be ordered, and can contains same things.
     TRAVERSE_GROUP(Module)
     TRAVERSE_GROUP(TypeDeclaration)
     TRAVERSE_GROUP(Predicate)
@@ -76,6 +77,7 @@ public:
         return true;                                                    \
     }
 
+    // Things, that must be ordered.
     VISIT_DECLARATION(TypeDeclaration)
     VISIT_DECLARATION(FormulaDeclaration)
     VISIT_DECLARATION(VariableDeclaration)
