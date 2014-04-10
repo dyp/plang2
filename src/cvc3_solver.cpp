@@ -575,8 +575,12 @@ CVC3::ExprPtr Solver::_translateComponent(const Component& _expr) {
 
 CVC3::ExprPtr Solver::_translateFormula(const Formula& _expr) {
     std::vector<CVC3::Expr> vars;
-    for (size_t i = 0; i < _expr.getBoundVariables().size(); ++i)
-        vars.push_back(*_declareVariable(_expr.getBoundVariables().get(i)));
+    for (size_t i = 0; i < _expr.getBoundVariables().size(); ++i) {
+        CVC3::ExprPtr pVar = _declareVariable(_expr.getBoundVariables().get(i));
+        if (!pVar)
+            return nullptr;
+        vars.push_back(*pVar);
+    }
 
     CVC3::ExprPtr
         pBody = translateExpr(*_expr.getSubformula()),
