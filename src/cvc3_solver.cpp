@@ -368,6 +368,13 @@ CVC3::ExprPtr Solver::_translateUnary(const Unary& _expr) {
     return nullptr;
 }
 
+static inline bool _isBool(const Binary& _expr) {
+    return _expr.getLeftSide() && _expr.getLeftSide()->getType() &&
+        _expr.getLeftSide()->getType()->getKind() == Type::BOOL &&
+        _expr.getRightSide() && _expr.getRightSide()->getType() &&
+        _expr.getRightSide()->getType()->getKind() == Type::BOOL;
+}
+
 CVC3::ExprPtr Solver::_translateBinary(const Binary& _expr) {
     CVC3::ExprPtr
         pLeft = NEW(Expr, *translateExpr(*_expr.getLeftSide())),
@@ -396,7 +403,9 @@ CVC3::ExprPtr Solver::_translateBinary(const Binary& _expr) {
         case Binary::GREATER_OR_EQUALS:
             return NEW(Expr, m_pValidityChecker->geExpr(*pLeft, *pRight));
         case Binary::EQUALS:
-            return NEW(Expr, m_pValidityChecker->eqExpr(*pLeft, *pRight));
+            return _isBool(_expr)
+                ? NEW(Expr, m_pValidityChecker->iffExpr(*pLeft, *pRight))
+                : NEW(Expr, m_pValidityChecker->eqExpr(*pLeft, *pRight));
         case Binary::NOT_EQUALS: {
             CVC3::ExprPtr pEq = NEW(Expr, m_pValidityChecker->eqExpr(*pLeft, *pRight));
             return NEW(Expr, m_pValidityChecker->notExpr(*pEq));
