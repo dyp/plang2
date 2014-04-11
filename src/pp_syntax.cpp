@@ -13,30 +13,30 @@ namespace pp {
 typedef std::multimap<NodePtr, NodePtr> Graph;
 typedef std::pair<const NodePtr, NodePtr> Edge;
 
+static std::list<ModulePtr> getModulePath(const std::list<Visitor::Loc>& _path) {
+    std::list<ModulePtr> path;
+    for(auto& i: _path) {
+        if (i.pNode && i.pNode->getNodeKind() == Node::MODULE)
+            path.push_back(NodePtr(i.pNode).as<Module>());
+    }
+    return path;
+}
+
 class CollectPaths : public Visitor {
 public:
     CollectPaths(std::map<NodePtr, std::list<ModulePtr>>& _paths) :
         m_paths(_paths)
     {}
 
-    void makePath(const NodePtr& _pNode) {
-        std::list<ModulePtr> path;
-        for(auto& i: m_path) {
-            if (i.pNode && i.pNode->getNodeKind() == Node::MODULE)
-                path.push_back(NodePtr(i.pNode).as<Module>());
-        }
-        m_paths.insert({_pNode, path});
+#define DECLARATION(_TYPE)                               \
+    virtual bool visit##_TYPE(_TYPE & _node) {           \
+        m_paths.insert({&_node, getModulePath(m_path)}); \
+        return true;                                     \
     }
 
-#define DECLARATION(_TYPE, _METHOD)              \
-    virtual bool visit##_TYPE(_TYPE & _node) {   \
-        makePath(_METHOD);                       \
-        return true;                             \
-    }
-
-    DECLARATION(TypeDeclaration, &_node)
-    DECLARATION(FormulaDeclaration, &_node)
-    DECLARATION(VariableDeclaration, _node.getVariable())
+    DECLARATION(TypeDeclaration)
+    DECLARATION(FormulaDeclaration)
+    DECLARATION(VariableDeclaration)
 
 private:
     std::map<NodePtr, std::list<ModulePtr>>& m_paths;
@@ -271,7 +271,10 @@ bool PrettyPrinterSyntax::traverseModule(Module &_module) {
         }
 
         m_os << L"\n";
-        VISITOR_TRAVERSE_ITEM_NS(Node, Decl, sortedDecls, c);
+        if (sortedDecls.get(c)->getNodeKind() == Node::MODULE)
+            VISITOR_TRAVERSE_NS(Module, Decl, sortedDecls.get(c).as<Module>());
+        else
+            VISITOR_TRAVERSE_ITEM_NS(Node, Decl, sortedDecls, c);
     }
 
     if (!_module.getName().empty())
@@ -282,16 +285,24 @@ bool PrettyPrinterSyntax::traverseModule(Module &_module) {
 }
 
 void PrettyPrinterSyntax::printPath(const NodePtr& _pNode) {
-    std::list<ModulePtr> container;
-    m_pContext->getPath(_pNode, container);
+    std::list<ModulePtr> targetPath, currentPath;
 
-    bool bCanPrint = false;
-    for (auto& i: container) {
-        if (bCanPrint)
-            m_os << i->getName() << L".";
-        if (i == m_pCurrentModule)
-            bCanPrint = true;
+    m_pContext->getPath(_pNode, targetPath);
+    currentPath = getModulePath(m_path);
+
+    for (std::list<ModulePtr>::iterator i = currentPath.begin(), j = targetPath.begin();
+        i != currentPath.end() && j != targetPath.end(); ++i, ++j) {
+        if (*i != *j)
+            break;
+
+        i = currentPath.erase(i);
+        j = targetPath.erase(j);
+        --i;
+        --j;
     }
+
+    for (auto i: targetPath)
+        m_os << i->getName() << L".";
 }
 
 // NODE / LABEL
@@ -1365,7 +1376,9 @@ bool PrettyPrinterSyntax::visitLiteral(Literal &_node) {
 }
 
 bool PrettyPrinterSyntax::visitVariableReference(VariableReference &_node) {
-    printPath(_node.getTarget());
+    if (_node.getTarget() && (_node.getTarget()->getKind() == NamedValue::LOCAL ||
+        _node.getTarget()->getKind() == NamedValue::GLOBAL))
+        printPath(_node.getTarget().as<Variable>()->getDeclaration());
     m_os << (_node.getName().empty() ?
         m_pContext->nameGenerator().getNamedValueName(*_node.getTarget()) : _node.getName());
     return false;
