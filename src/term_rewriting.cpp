@@ -70,12 +70,23 @@ std::pair<NodePtr, NodePtr> extractFirstCall(const Node& _node) {
     return std::make_pair(pCall, pTail);
 }
 
+class ExcludeCasts : public Visitor {
+public:
+    ExcludeCasts() : Visitor(CHILDREN_FIRST) {}
+    virtual bool visitCastExpr(CastExpr& _expr) {
+        callSetter(_expr.getExpression());
+        return true;
+    }
+};
+
 StatementPtr modifyStatement(const StatementPtr& _pStatement) {
     st::StmtVertex top(_pStatement);
     top.expand();
     top.modifyForVerification();
     top.simplify();
-    return top.mergeForVerification();
+    StatementPtr pStatment = top.mergeForVerification();
+    ExcludeCasts().traverseNode(*pStatment);
+    return pStatment;
 }
 
 class ModifyStatements : public Visitor {
