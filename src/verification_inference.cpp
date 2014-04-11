@@ -742,10 +742,13 @@ class PredicateTraverser : public Visitor {
 public:
     PredicateTraverser() : m_pTheories(new Module()) {}
     virtual bool visitPredicate(Predicate& _pred);
-    ModulePtr getTheories() { return m_pTheories; }
+    void declareLemmas(const Context& _context, const ModulePtr& _pTheory);
+    ModulePtr getTheories();
 
 private:
     ModulePtr m_pTheories;
+    std::set<FormulaDeclarationPtr> m_declaredFormulas;
+    Context m_context;
 };
 
 bool PredicateTraverser::visitPredicate(Predicate& _pred) {
@@ -763,27 +766,52 @@ bool PredicateTraverser::visitPredicate(Predicate& _pred) {
         std::wcout << L"\n\n";
     }
 
-    Context context;
-    context.m_pPredicate = &_pred;
-    context.m_conditions.push_back(std::make_pair(new Correctness(pNewBody,
-        Conjunction::getConjunction(makeCall(context.getPrecondition(_pred), _pred)),
-        Conjunction::getConjunction(makeCall(context.getPostcondition(_pred), _pred))), true));
+    m_context.clear();
+    m_context.m_pPredicate = &_pred;
+    m_context.m_conditions.push_back(std::make_pair(new Correctness(pNewBody,
+        Conjunction::getConjunction(makeCall(m_context.getPrecondition(_pred), _pred)),
+        Conjunction::getConjunction(makeCall(m_context.getPostcondition(_pred), _pred))), true));
 
-    verify(context);
+    verify(m_context);
 
-    if (verifyFormulas())
+    declareLemmas(m_context, pTheory);
+
+    if (verifyFormulas()) {
         std::wcout << L"Formulas for " << _pred.getName() << L":\n";
-
-    for (std::list<std::pair<ir::ExpressionPtr, bool> >::iterator i = context.m_lemmas.begin();
-        i != context.m_lemmas.end(); ++i) {
-        declareLemma(pTheory, i->first);
-        if (verifyFormulas()) {
-            pp::prettyPrintSyntax(*i->first, std::wcout);
-            std::wcout << "\n";
-        }
+        for (auto i: m_context.m_lemmas)
+            pp::prettyPrintSyntax(*i.first, std::wcout, nullptr, true);
     }
 
     return true;
+}
+
+void PredicateTraverser::declareLemmas(const Context& _context, const ModulePtr& _pTheory) {
+    std::set<FormulaDeclarationPtr> formulas, diff;
+
+    for (auto i: _context.m_lemmas)
+        declareLemma(i.first, formulas, _pTheory);
+
+    std::set_difference(formulas.begin(), formulas.end(), m_declaredFormulas.begin(),
+        m_declaredFormulas.end(), std::inserter(diff, diff.begin()));
+
+    if (!diff.empty())
+        _pTheory->getImports().push_back(L"Formulas");
+
+    m_declaredFormulas.insert(formulas.begin(), formulas.end());
+}
+
+ModulePtr PredicateTraverser::getTheories() {
+    ModulePtr
+        pTheories = new Module(),
+        pFormulas = new Module(L"Formulas");
+
+    pFormulas->getFormulas().insert(pFormulas->getFormulas().begin(),
+        m_declaredFormulas.begin(), m_declaredFormulas.end());
+
+    pTheories->getModules().assign(m_pTheories->getModules());
+    pTheories->getModules().prepend(pFormulas);
+
+    return pTheories;
 }
 
 ModulePtr verify(const ModulePtr &_pModule) {

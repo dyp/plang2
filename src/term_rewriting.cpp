@@ -160,13 +160,12 @@ FormulaCallPtr makeCall(const ir::FormulaDeclarationPtr& _pFormula, const Call &
 
 class FormulasCollector : public Visitor {
 public:
-    FormulasCollector(const ModulePtr& _pModule) :
-        m_pModule(_pModule) {}
+    FormulasCollector(std::set<FormulaDeclarationPtr>& _formulas) :
+        m_pTraversedFormulas(_formulas) {}
     virtual bool traverseFormulaCall(FormulaCall& _call);
 
 private:
-    ModulePtr m_pModule;
-    std::set<FormulaDeclarationPtr> m_pTraversedFormulas;
+    std::set<FormulaDeclarationPtr>& m_pTraversedFormulas;
 };
 
 bool FormulasCollector::traverseFormulaCall(FormulaCall& _call) {
@@ -175,15 +174,16 @@ bool FormulasCollector::traverseFormulaCall(FormulaCall& _call) {
     if (!m_pTraversedFormulas.insert(_call.getTarget()).second)
         return true;
 
-    m_pModule->getFormulas().add(_call.getTarget());
     traverseNode(*_call.getTarget());
 
     return true;
 }
 
-void declareLemma(const ModulePtr& _pModule, const ExpressionPtr& _pProposition) {
-    FormulasCollector(_pModule).traverseNode(*_pProposition);
-    _pModule->getLemmas().add(new LemmaDeclaration(_pProposition));
+void declareLemma(const ExpressionPtr& _pProposition, std::set<FormulaDeclarationPtr>& _declarations,
+    const ModulePtr& _pModule)
+{
+    FormulasCollector(_declarations).traverseNode(*_pProposition);
+    _pModule->getLemmas().add(new LemmaDeclaration(_pProposition, new Label(L"")));
 }
 
 typedef std::map<TypePtr, NamedReferenceTypePtr, PtrLess<Type>> TypesMap;

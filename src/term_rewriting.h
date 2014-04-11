@@ -23,7 +23,8 @@ ir::FormulaCallPtr makeCall(const ir::FormulaDeclarationPtr& _pFormula, const ir
 ir::FormulaCallPtr makeCall(const ir::FormulaDeclarationPtr& _pFormula, const ir::Call &_call);
 
 // Declare lemma and required formulas.
-void declareLemma(const ir::ModulePtr& _pModule, const ir::ExpressionPtr& _pProposition);
+void declareLemma(const ir::ExpressionPtr& _pProposition, std::set<ir::FormulaDeclarationPtr>& _declarations,
+    const ir::ModulePtr& _pModule);
 
 // Moving out in theory modules.
 void moveOutStructuredTypes(const ir::ModulePtr& _pModule);
