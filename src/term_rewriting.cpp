@@ -220,6 +220,9 @@ public:
             || _type.getKind() == Type::NAMED_REFERENCE)
             return true;
 
+        if (_type.getKind() == Type::ARRAY && getRole() == R_ArrayBaseType)
+            return true;
+
         NamedReferenceTypePtr pReference;
 
         auto iReference = m_container.find(&_type);
