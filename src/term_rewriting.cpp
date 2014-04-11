@@ -56,17 +56,13 @@ std::pair<NodePtr, NodePtr> extractFirstCall(const Node& _node) {
     if (!containsCall(&_node))
         return std::make_pair(NodePtr(NULL), &_node);
 
-    const FunctionCallPtr pFunctionCall = ReplaceCall(&_node, NULL).run();
+    const NodePtr pNode = clone(_node);
+
+    const FunctionCallPtr pFunctionCall = ReplaceCall(pNode, NULL).run();
     const VariableReferencePtr pVar = new VariableReference(new NamedValue(L"", pFunctionCall->getType()));
     const CallPtr pCall = getCallFromFunctionCall(*pFunctionCall, *pVar);
 
-    NodePtr pTail;
-    if (&_node != pFunctionCall.ptr()) {
-        pTail = clone(_node);
-        ReplaceCall(pTail, pVar).run();
-    } else
-        pTail = pVar;
-
+    NodePtr pTail = Expression::substitute(pNode, pFunctionCall, pVar);
     return std::make_pair(pCall, pTail);
 }
 
