@@ -426,6 +426,7 @@ public:
     void setBits(int _nBits) { m_nBits = _nBits; }
 
     enum {
+        ORD_ANY     = 0,
         ORD_UNKNOWN = 0x01,
         ORD_NONE    = 0x02,
         ORD_SUB     = 0x04,
@@ -434,7 +435,15 @@ public:
     };
 
     static int inverse(int _nOrder) {
-        return _nOrder == ORD_SUB ? ORD_SUPER : (_nOrder == ORD_SUPER ? ORD_SUB : _nOrder);
+        int nResult = _nOrder & (ORD_UNKNOWN | ORD_NONE | ORD_EQUALS);
+
+        if (_nOrder & ORD_SUB)
+            nResult |= ORD_SUPER;
+
+        if (_nOrder & ORD_SUPER)
+            nResult |= ORD_SUB;
+
+        return nResult;
     }
 
     // Subtyping.
@@ -474,6 +483,22 @@ public:
     virtual bool hasParameters() const { return m_kind == INT || m_kind == NAT || m_kind == REAL; }
 
 protected:
+    class Order {
+    public:
+        Order(int _nOrder = 0) : m_nOrder(_nOrder) {}
+        Order &in(int _nOrder);
+        Order &in(const Type &_lhs, const Type &_rhs);
+        Order &out(int _nOrder);
+        Order &out(const Type &_lhs, const Type &_rhs);
+        operator int() const { return m_nOrder; }
+
+    private:
+        int m_nOrder;
+
+        template<typename _Table>
+        Order &_update(int _nOrder, const _Table &_table);
+    };
+
     /// Default constructor.
     /// Only descendant classes should use this.
     Type() : m_kind (0), m_nBits(0) {}

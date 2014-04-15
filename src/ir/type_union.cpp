@@ -28,7 +28,7 @@ int UnionType::compare(const Type &_other) const {
 
     const UnionType &other = (const UnionType &)_other;
     size_t cUnmatched = 0, cOtherUnmatched = other.getConstructors().size();
-    size_t cSub = 0, cSuper = 0, cUnknown = 0;
+    Order order(ORD_EQUALS);
 
     for (size_t i = 0; i < m_constructors.size(); ++i) {
         const UnionConstructorDeclaration &cons = *m_constructors.get(i);
@@ -40,15 +40,7 @@ int UnionType::compare(const Type &_other) const {
             if (!cons.getFields() || !otherCons.getFields())
                 return ORD_NONE;
 
-            const int cmp = cons.getFields()->compare(*otherCons.getFields());
-
-            if (cmp == ORD_SUB)
-                ++cSub;
-            else if (cmp == ORD_SUPER)
-                ++cSuper;
-            else if (cmp == ORD_UNKNOWN)
-                ++cUnknown;
-            else if (cmp == ORD_NONE)
+            if (order.out(*cons.getFields(), *otherCons.getFields()) == ORD_NONE)
                 return ORD_NONE;
 
             --cOtherUnmatched;
@@ -56,28 +48,13 @@ int UnionType::compare(const Type &_other) const {
             ++cUnmatched;
     }
 
-    if (cUnmatched > 0 && cOtherUnmatched > 0)
-        return ORD_NONE;
-
-    if (cSub > 0 && cSuper > 0)
-        return ORD_NONE;
-
-    if (cUnknown > 0)
-        return ORD_UNKNOWN;
-
-    if (cUnmatched == 0 && cOtherUnmatched == 0) {
-        if (cSub > 0)
-            return ORD_SUB;
-        if (cSuper > 0)
-            return ORD_SUPER;
-        return ORD_EQUALS;
-    }
-
     if (cUnmatched > 0)
-        return cSub > 0 ? ORD_NONE : ORD_SUPER;
+        order.out(ORD_SUPER);
 
-    // cOtherUnmatched > 0
-    return cSuper > 0 ? ORD_NONE : ORD_SUB;
+    if (cOtherUnmatched > 0)
+        order.out(ORD_SUB);
+
+    return order;
 }
 
 bool UnionType::hasFresh() const {

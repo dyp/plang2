@@ -126,38 +126,41 @@ int Subtype::compare(const Type &_other) const {
         return ORD_SUPER;
 
     if (_other.getKind() == SUBTYPE) {
-        const Subtype& other= (const Subtype&)_other;
-        switch (getParam()->getType()->compare(*other.getParam()->getType())) {
-            case ORD_EQUALS:
-                if (Expression::matches(getExpression(), other.getExpression()))
-                    return ORD_EQUALS;
-                if (Expression::implies(getExpression(), other.getExpression()))
-                    return ORD_SUB;
-                if (Expression::implies(other.getExpression(), getExpression()))
-                    return ORD_SUPER;
-                return ORD_UNKNOWN;
+        const Subtype &other = (const Subtype &)_other;
+        const int nOrder = getParam()->getType()->compare(*other.getParam()->getType());
+        int nResult = nOrder & (ORD_NONE | ORD_UNKNOWN);
 
-            case ORD_SUB:      return Expression::implies(getExpression(), other.getExpression()) ? ORD_SUB : ORD_UNKNOWN;
-            case ORD_SUPER:    return Expression::implies(other.getExpression(), getExpression()) ? ORD_SUPER : ORD_UNKNOWN;
-            case ORD_UNKNOWN:  return ORD_UNKNOWN;
-            case ORD_NONE:     return ORD_NONE;
+        if (nOrder & ORD_EQUALS) {
+            if (Expression::matches(getExpression(), other.getExpression()))
+                nResult |= ORD_EQUALS;
+            else if (Expression::implies(getExpression(), other.getExpression()))
+                nResult |= ORD_SUB;
+            else if (Expression::implies(other.getExpression(), getExpression()))
+                nResult |= ORD_SUPER;
+            else
+                nResult |= ORD_UNKNOWN;
         }
+
+        if (nOrder & ORD_SUB)
+            nResult |= Expression::implies(getExpression(),
+                    other.getExpression()) ? ORD_SUB : ORD_UNKNOWN;
+
+        if (nOrder & ORD_SUPER)
+            nResult |= Expression::implies(other.getExpression(),
+                    getExpression()) ? ORD_SUPER : ORD_UNKNOWN;
+
+        return nResult;
     }
 
+    int nOrder = getParam()->getType()->compare(_other);
 
-    switch (getParam()->getType()->compare(_other)) {
-        case ORD_NONE:
-            return ORD_NONE;
-        case ORD_SUPER:
-        case ORD_UNKNOWN:
-            return ORD_UNKNOWN;
-        case ORD_SUB:
-        case ORD_EQUALS:
-            return ORD_SUB;
-    }
+    if (nOrder & ORD_SUPER)
+        nOrder = (nOrder & ~ORD_SUPER) | ORD_UNKNOWN;
 
-    assert(false && "Unreachable");
-    return ORD_UNKNOWN;
+    if (nOrder & ORD_EQUALS)
+        nOrder = (nOrder & ~ORD_EQUALS) | ORD_SUB;
+
+    return nOrder;
 }
 
 int Subtype::getMonotonicity(const Type &_var) const {

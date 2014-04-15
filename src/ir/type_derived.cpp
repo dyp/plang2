@@ -130,39 +130,9 @@ int MapType::compare(const Type &_other) const {
     if (_other.getKind() != getKind())
         return ORD_NONE;
 
-    switch (m_pIndexType->compare(*((const MapType &)_other).getIndexType())) {
-        case ORD_UNKNOWN:
-            return ORD_UNKNOWN;
-        case ORD_NONE:
-            return ORD_NONE;
-        case ORD_EQUALS:
-            return getBaseType()->compare(*((const MapType &)_other).getBaseType());
-        case ORD_SUB:
-            switch (getBaseType()->compare(*((const MapType &)_other).getBaseType())) {
-                case ORD_UNKNOWN:
-                    return ORD_UNKNOWN;
-                case ORD_NONE:
-                case ORD_SUB:
-                    return ORD_NONE;
-                case ORD_EQUALS:
-                case ORD_SUPER:
-                    return ORD_SUPER;
-            }
-            break;
-        case ORD_SUPER:
-            switch (getBaseType()->compare(*((const MapType &)_other).getBaseType())) {
-                case ORD_UNKNOWN:
-                    return ORD_UNKNOWN;
-                case ORD_NONE:
-                case ORD_SUPER:
-                    return ORD_NONE;
-                case ORD_EQUALS:
-                case ORD_SUB:
-                    return ORD_SUB;
-            }
-    }
-
-    return ORD_NONE;
+    const MapType &other = static_cast<const MapType &>(_other);
+    return Order().out(*getBaseType(), *other.getBaseType()).in(
+            *getIndexType(), *other.getIndexType());
 }
 
 bool MapType::less(const Type &_other) const {
