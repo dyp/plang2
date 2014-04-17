@@ -3002,8 +3002,18 @@ bool Parser::parseDeclarations(Context &_ctx, Module &_module) {
                     ERROR(*pCtx, false, L"Failed parsing submodule");
                 break;
             case IDENTIFIER:
-                if (!pCtx->getType(pCtx->getValue()) &&
-                        !pCtx->getModule(pCtx->getValue()))
+                if (pCtx->nextIs(COLON)) {
+                    const std::wstring strLabel = pCtx->scan(2, 0);
+                    const LemmaDeclarationPtr pLemma = parseLemmaDeclaration(*pCtx);
+                    if (!pLemma)
+                        ERROR(*pCtx, false, L"Failed parsing lemma declaration");
+                    pLemma->setLabel(new Label(strLabel));
+                    _module.getLemmas().add(pLemma);
+                    if (!typecheck(*pCtx, *pLemma))
+                        return false;
+                    break;
+                } else if (!pCtx->getType(pCtx->getValue()) &&
+                    !pCtx->getModule(pCtx->getValue()))
                 {
                     if (PredicatePtr pPred = parsePredicate(*pCtx)) {
                         _module.getPredicates().add(pPred);
