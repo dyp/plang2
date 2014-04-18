@@ -836,8 +836,6 @@ class Component : public Expression {
 public:
     /// Component kind.
     enum {
-        /// None component
-        NONE_COMPONENT,
         /// Part of an array (itself is another array).
         ARRAY_PART,
         /// Field of a structure.
@@ -855,8 +853,6 @@ public:
         RECOGNIZER,
         /// Union accessor.
         ACCESSOR,
-        /// Array replacement
-        ARRAY_REPLACEMENT,
     };
 
     /// Default constructor.
@@ -869,7 +865,7 @@ public:
 
     /// Get component kind (implemented in descendants).
     /// \return Component kind.
-    virtual int getComponentKind() const { return NONE_COMPONENT; }
+    virtual int getComponentKind() const = 0;
 
     /// Get expression to which the subscript is applied.
     /// \return Expression of compound type.
@@ -1104,87 +1100,6 @@ public:
 
 private:
     ExpressionPtr m_pConstructor;
-};
-
-/// Definition of array part.Consider array generator:
-/// \code
-/// a = for (0..10 i) {
-///   case 0..4  : 'a'
-///   case 5..10 : 'b'
-/// }
-/// \endcode
-/// In the above example "case 0..4  : 'a'" and "case 5..10  : 'b'" are array parts.
-class ArrayPartDefinition : public Node {
-public:
-    /// Default constructor.
-    /// \param _pExpression Expression.
-    ArrayPartDefinition(const ExpressionPtr &_pExpression = NULL) : m_pExpression(_pExpression) {}
-
-    virtual int getNodeKind() const { return Node::ARRAY_PART_DEFINITION; }
-
-    /// Get \c case conditions.
-    /// \return List of expressions (can contain ranges).
-    Collection<Expression> &getConditions() { return m_conditions; }
-    const Collection<Expression> &getConditions() const { return m_conditions; }
-
-    /// Get expression.
-    /// \return Expression.
-    const ExpressionPtr &getExpression() const { return m_pExpression; }
-
-    /// Set expression.
-    /// \param _pExpression Expression.
-    /// \param _bReparent If specified (default) also sets parent of _pExpression to this node.
-    void setExpression(const ExpressionPtr &_pExpression) { m_pExpression = _pExpression; }
-
-    virtual bool less(const Node& _other) const;
-    virtual bool equals(const Node& _other) const;
-
-    virtual NodePtr clone(Cloner &_cloner) const {
-        ArrayPartDefinitionPtr pCopy = NEW_CLONE(this, _cloner, ArrayPartDefinition(_cloner.get(getExpression())));
-        pCopy->getConditions().appendClones(getConditions(), _cloner);
-        return pCopy;
-    }
-
-private:
-    ExpressionPtr m_pExpression;
-    Collection<Expression> m_conditions;
-};
-
-class ArrayReplacement : public Collection<ArrayPartDefinition, Component> {
-public:
-    /// Default constructor.
-    /// \param _pDefault Expression.
-    /// \param _pObject Expression
-    ArrayReplacement(const ExpressionPtr &_pObject = NULL, const ExpressionPtr &_pDefault = NULL) :
-        m_pDefault(_pDefault)
-    {}
-
-    virtual int getComponentKind() const { return ARRAY_REPLACEMENT; }
-
-    /// Get list of iterator variables.
-    /// \return Iterator variables.
-    NamedValues &getIterators() { return m_iterators; }
-    const NamedValues &getIterators() const { return m_iterators; }
-
-    /// Get expression for default alternative.
-    /// \return Expression.
-    const ExpressionPtr &getDefault() const { return m_pDefault; }
-
-    /// Set expression for default alternative.
-    /// \param _pExpression Expression.
-    void setDefault(const ExpressionPtr &_pExpression) { m_pDefault = _pExpression; }
-
-    virtual bool less(const Node& _other) const;
-    virtual bool equals(const Node& _other) const;
-    virtual bool matches(const Expression& _other, MatchesPtr _pMatches = NULL) const;
-
-    virtual NodePtr clone(Cloner &_cloner) const;
-
-private:
-    ExpressionPtr m_pDefault;
-    NamedValues m_iterators;
-
-    typedef Collection<ArrayPartDefinition, Component> Base;
 };
 
 /// Function call as a part of an expression.
@@ -1719,6 +1634,50 @@ public:
     virtual int getConstructorKind() const { return LIST_ELEMENTS; }
 
     virtual NodePtr clone(Cloner &_cloner) const;
+};
+
+/// Definition of array part.Consider array generator:
+/// \code
+/// a = for (0..10 i) {
+///   case 0..4  : 'a'
+///   case 5..10 : 'b'
+/// }
+/// \endcode
+/// In the above example "case 0..4  : 'a'" and "case 5..10  : 'b'" are array parts.
+class ArrayPartDefinition : public Node {
+public:
+    /// Default constructor.
+    /// \param _pExpression Expression.
+    ArrayPartDefinition(const ExpressionPtr &_pExpression = NULL) : m_pExpression(_pExpression) {}
+
+    virtual int getNodeKind() const { return Node::ARRAY_PART_DEFINITION; }
+
+    /// Get \c case conditions.
+    /// \return List of expressions (can contain ranges).
+    Collection<Expression> &getConditions() { return m_conditions; }
+    const Collection<Expression> &getConditions() const { return m_conditions; }
+
+    /// Get expression.
+    /// \return Expression.
+    const ExpressionPtr &getExpression() const { return m_pExpression; }
+
+    /// Set expression.
+    /// \param _pExpression Expression.
+    /// \param _bReparent If specified (default) also sets parent of _pExpression to this node.
+    void setExpression(const ExpressionPtr &_pExpression) { m_pExpression = _pExpression; }
+
+    virtual bool less(const Node& _other) const;
+    virtual bool equals(const Node& _other) const;
+
+    virtual NodePtr clone(Cloner &_cloner) const {
+        ArrayPartDefinitionPtr pCopy = NEW_CLONE(this, _cloner, ArrayPartDefinition(_cloner.get(getExpression())));
+        pCopy->getConditions().appendClones(getConditions(), _cloner);
+        return pCopy;
+    }
+
+private:
+    ExpressionPtr m_pExpression;
+    Collection<Expression> m_conditions;
 };
 
 /// Array constructor by means of iteration. \extends Constructor

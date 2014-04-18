@@ -787,40 +787,6 @@ NodePtr AccessorExpr::clone(Cloner &_cloner) const {
     return _cloneTypeTo(NEW_CLONE(this, _cloner, AccessorExpr(m_pConstructor, _cloner.get(getObject()))), _cloner);
 }
 
-bool ArrayReplacement::less(const Node& _other) const {
-    if (!Base::equals(_other))
-        return Base::less(_other);
-    const ArrayReplacement& other = (const ArrayReplacement&)_other;
-    if (!_equals(getObject(), other.getObject()))
-        return _less(getObject(), other.getObject());
-    if (!_equals(getDefault(), other.getDefault()))
-        return _less(getDefault(), other.getDefault());
-    return getIterators() < other.getIterators();
-}
-
-bool ArrayReplacement::equals(const Node& _other) const {
-    if (!Base::equals(_other))
-        return false;
-    const ArrayReplacement& other = (const ArrayReplacement&)_other;
-    return _equals(getObject(), other.getObject()) && _equals(getDefault(), other.getDefault())
-        && getIterators() == other.getIterators();
-}
-
-bool ArrayReplacement::matches(const Expression& _other, MatchesPtr _pMatches) const {
-    if (!Base::equals(_other))
-        return Base::matches(_other, _pMatches);
-    const ArrayReplacement& other = (const ArrayReplacement&)_other;
-    return _equals(getObject(), other.getObject()) && _equals(getDefault(), other.getDefault())
-        && matchNamedValues(getIterators(), other.getIterators());
-}
-
-NodePtr ArrayReplacement::clone(Cloner &_cloner) const {
-    ArrayReplacementPtr pCopy = NEW_CLONE(this, _cloner, ArrayReplacement(_cloner.get(getObject()), _cloner.get(getDefault())));
-    pCopy->appendClones(*this, _cloner);
-    pCopy->getIterators().appendClones(getIterators(), _cloner);
-    return _cloneTypeTo(pCopy, _cloner);
-}
-
 bool FunctionCall::less(const Node& _other) const {
     if (!Expression::equals(_other))
         return Expression::less(_other);
