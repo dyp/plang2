@@ -369,6 +369,59 @@ ir::FormulaPtr setQuantifier(int _quantifier, const ir::ExpressionPtr& _pExpr, c
     return pFormula;
 }
 
+ExpressionPtr resolveCase(const NamedValue& _index, const ExpressionPtr& _pCase) {
+    if (_pCase->getKind() != Expression::TYPE ||
+        (_pCase.as<TypeExpr>()->getContents()->getKind() != Type::RANGE &&
+        _pCase.as<TypeExpr>()->getContents()->getKind() != Type::SUBTYPE))
+        return new Binary(Binary::EQUALS, new VariableReference(L"", &_index), _pCase);
+
+    const SubtypePtr pContents =
+        _pCase.as<TypeExpr>()->getContents()->getKind() != Type::SUBTYPE ?
+            _pCase.as<TypeExpr>()->getContents().as<Range>()->asSubtype() :
+            _pCase.as<TypeExpr>()->getContents().as<Subtype>();
+
+    ExpressionPtr pCase = clone(pContents->getExpression());
+
+    return Expression::substitute(pCase,
+        new VariableReference(L"", pContents->getParam()),
+        new VariableReference(L"", &_index)).as<Expression>();
+}
+
+ExpressionPtr resolveCase(const NamedValues& _indexes, const ExpressionPtr& _pCase) {
+    if (_indexes.empty())
+        return new Literal(true);
+    if (_indexes.size() == 1)
+        return resolveCase(*_indexes.get(0), _pCase);
+
+    if (_pCase->getKind() != Expression::CONSTRUCTOR &&
+        _pCase.as<Constructor>()->getConstructorKind() != Constructor::STRUCT_FIELDS)
+        return nullptr;
+
+    const StructConstructor& tuple = *_pCase.as<StructConstructor>();
+
+    if (tuple.size() != _indexes.size())
+        return nullptr;
+
+    std::list<ExpressionPtr> conds;
+    for (size_t i = 0; i < _indexes.size(); ++i)
+        conds.push_back(resolveCase(*_indexes.get(i), tuple.get(i)->getValue()));
+
+    return new Binary(Binary::BOOL_AND, conds);
+}
+
+ExpressionPtr resolveCase(const NamedValues& _indexes, const Collection<Expression>& _case) {
+    if (_case.empty())
+        return new Literal(true);
+    if (_case.size() == 1)
+        return resolveCase(_indexes, _case.get(0));
+
+    std::list<ExpressionPtr> conds;
+    for (size_t i = 0; i < _case.size(); ++i)
+        conds.push_back(resolveCase(_indexes, _case.get(i)));
+
+    return new Binary(Binary::BOOL_OR, conds);
+}
+
 FormulaDeclarationPtr declareFormula(const std::wstring &_strName, const ExpressionPtr &_pExpr) {
     NamedValues params;
     collectValues(_pExpr, params);

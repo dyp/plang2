@@ -55,6 +55,11 @@ bool isRecursiveCall(const ir::CallPtr& _pCall, const ir::PredicatePtr& _pPred);
 ir::FormulaPtr generalize(const ir::ExpressionPtr& _pExpr);
 ir::FormulaPtr setQuantifier(int _quantifier, const ir::ExpressionPtr& _pExpr, const ValuesSet& _bound);
 
+// Case resolving.
+ir::ExpressionPtr resolveCase(const ir::NamedValue& _index, const ir::ExpressionPtr& _pCase);
+ir::ExpressionPtr resolveCase(const ir::NamedValues& _indexes, const ir::ExpressionPtr& _pCase);
+ir::ExpressionPtr resolveCase(const ir::NamedValues& _indexes, const ir::Collection<ir::Expression>& _case);
+
 // Formula declaration.
 ir::FormulaDeclarationPtr declareFormula(const std::wstring &_strName, const ir::ExpressionPtr &_pExpr);
 ir::FormulaDeclarationPtr declareFormula(const std::wstring &_strName, const ir::ExpressionPtr &_pExpr, const ir::NamedValues& _params);
