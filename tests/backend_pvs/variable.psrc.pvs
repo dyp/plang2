@@ -1,0 +1,11 @@
+A : THEORY
+BEGIN
+
+a : nat =
+    0
+
+b : nat =
+    bv2nat(NOT nat2bv(a))
+
+END A
+

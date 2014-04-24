@@ -1,0 +1,3 @@
+module A {
+    type En = enum(red, green, blue);
+}

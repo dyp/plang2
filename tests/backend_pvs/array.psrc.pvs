@@ -1,0 +1,84 @@
+A : THEORY
+BEGIN
+
+Range : TYPE =
+    {d: nat | (d <= 4) AND (d >= 1)}
+
+ArrType : TYPE =
+    [{e: nat | (e <= 4) AND (e >= 1)} -> nat]
+
+Dim : TYPE =
+    {f: nat | (f <= 3) AND (f >= 1)}
+
+Array1 : TYPE =
+    [[{g: nat | (g <= 3) AND (g >= 1)}, {g: nat | (g <= 3) AND (g >= 1)}] -> nat]
+
+a : [{h: nat | (h <= 4) AND (h >= 1)} -> nat] =
+    LAMBDA (k: {l: nat | (l = 0) OR (l = 1) OR (l = 2) OR (l = 3)}) : nat =
+        COND
+            k = 0 -> 1,
+            k = 1 -> 2,
+            k = 2 -> 3,
+            k = 3 -> 4
+        ENDCOND
+
+b : [{m: nat | (m <= 4) AND (m >= 1)} -> nat] =
+    LAMBDA (i: nat) : nat =
+        COND
+            (i <= 2) AND (i >= 1) -> 0,
+            ELSE -> 2 * i
+        ENDCOND
+
+e1 : nat =
+    a(1) + a(2) + a(3)
+
+e2 : nat =
+    b(1) + b(2) + b(3)
+
+c : [[{n: nat | (n <= 3) AND (n >= 1)}, {o: nat | (o <= 3) AND (o >= 1)}] -> nat] =
+    LAMBDA (i: {p: nat | (p <= 3) AND (p >= 1)}, j: {p: nat | (p <= 3) AND (p >= 1)}) : nat =
+        COND
+            (i = 1) AND (j = 1) -> 0,
+            (i <= 3) AND (i >= 2) AND (j <= 3) AND (j >= 2) -> 1,
+            ELSE -> 2
+        ENDCOND
+
+e3 : [{q: nat | (q <= 3) AND (q >= 1)} -> nat] =
+    restrict[[{n: nat | (n <= 3) AND (n >= 1)}, {o: nat | (o <= 3) AND (o >= 1)}], {r: nat | (r <= 2) AND (r >= 1)}, nat] (c)
+
+a_cons : [{s: nat | (s <= 4) AND (s >= 1)} -> nat] =
+    LAMBDA (t: {u: nat | (u = 0) OR (u = 1) OR (u = 2) OR (u = 3)}) : nat =
+        COND
+            t = 0 -> 1,
+            t = 1 -> 2,
+            t = 2 -> 3,
+            t = 3 -> 4
+        ENDCOND
+
+b_cons (arr: [{v: nat | (v <= 4) AND (v >= 1)} -> nat]) : [{v: nat | (v <= 4) AND (v >= 1)} -> nat] =
+    LAMBDA (i: nat) : nat =
+        COND
+            (i <= 2) AND (i >= 1) -> 0,
+            i = 3 -> 1,
+            ELSE -> arr(i)
+        ENDCOND
+
+c_cons : [[{w: nat | (w <= 3) AND (w >= 1)}, {w: nat | (w <= 3) AND (w >= 1)}] -> nat] =
+    LAMBDA (i: {x: nat | (x <= 3) AND (x >= 1)}, j: {x: nat | (x <= 3) AND (x >= 1)}) : nat =
+        COND
+            (i = 1) AND (j = 1) -> 0,
+            (i <= 3) AND (i >= 2) AND (j <= 3) AND (j >= 2) -> 1,
+            ELSE -> 2
+        ENDCOND
+
+LEMMA
+    FORALL (a: [{y: nat | (y <= 4) AND (y >= 1)} -> nat]): a = a_cons
+
+LEMMA
+    FORALL (a: [{z: nat | (z <= 4) AND (z >= 1)} -> nat], b: [{ba: nat | (ba <= 4) AND (ba >= 1)} -> nat]): b = b_cons(a)
+
+LEMMA
+    FORALL (c: [[{bb: nat | (bb <= 3) AND (bb >= 1)}, {bc: nat | (bc <= 3) AND (bc >= 1)}] -> nat]): c = c_cons
+
+END A
+

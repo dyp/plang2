@@ -1,0 +1,14 @@
+A : THEORY
+BEGIN
+
+s1 : setof[nat] =
+    {a: nat | a = 1 OR a = 2 OR a = 3}
+
+s2 : setof[nat] =
+    {a: nat | a = 4 OR a = 5 OR a = 6}
+
+LEMMA
+    member(1, s1)
+
+END A
+
