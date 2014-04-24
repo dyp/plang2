@@ -1,0 +1,13 @@
+/*
+
+<test>
+    //A//label1
+    //A//label2
+</test>
+
+*/
+
+module A {
+    label1: formula foo(:bool) = true;
+    label2: formula foo();
+}

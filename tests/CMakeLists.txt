@@ -229,6 +229,7 @@ set(TESTS_PARSING
     parsing/accessors.psrc
     parsing/recognizers.psrc
     parsing/function_call_without_arguments.psrc
+    parsing/label_in_module.psrc
 )
 
 set(TESTS_INFERENCE
