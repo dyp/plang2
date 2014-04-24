@@ -1609,9 +1609,10 @@ public:
     Semantics() : m_pPrecondition(new Conjunction()) {}
 
     void nonZero(const ExpressionPtr& _pExpr);
-    static ExpressionPtr isElement(const SubtypePtr& _pSubtype, const ExpressionPtr& _pExpr);
-    static ExpressionPtr notIntersect(const SubtypePtr& _pSub1, const SubtypePtr& _pSub2);
-    void checkIntersect(const ExpressionPtr& _pExpr1, const ExpressionPtr& _pExpr2);
+    ConjunctionPtr isElement(const SubtypePtr& _pSubtype, const ExpressionPtr& _pExpr);
+    ConjunctionPtr isElement(const Collection<Type>& _dims, const ExpressionPtr& _pIndex);
+    ConjunctionPtr notIntersect(const SubtypePtr& _pSub1, const SubtypePtr& _pSub2);
+    ConjunctionPtr checkIntersect(const ExpressionPtr& _pExpr1, const ExpressionPtr& _pExpr2);
     void arrayUnion(const ArrayTypePtr& _pArr1, const ArrayTypePtr& _pArr2);
     void arrayConstructor(const ArrayType& _type, const ArrayConstructor& _constructor);
     void subtract(const ExpressionPtr& _pLeft, const ExpressionPtr& _pRight);
@@ -1627,8 +1628,12 @@ public:
         return m_pPrecondition;
     }
 
+    template <class T>
+    Auto<T> clone(const Auto<T>& _ptr) { return m_cloner.get(_ptr); }
+
 private:
     ConjunctionPtr m_pPrecondition;
+    Cloner m_cloner;
 };
 
 void Semantics::nonZero(const ExpressionPtr& _pExpr) {
@@ -1637,41 +1642,62 @@ void Semantics::nonZero(const ExpressionPtr& _pExpr) {
     m_pPrecondition->addExpression(new Binary(Binary::NOT_EQUALS, _pExpr, new Literal()));
 }
 
-ExpressionPtr Semantics::isElement(const SubtypePtr& _pSubtype, const ExpressionPtr& _pExpr) {
+ConjunctionPtr Semantics::isElement(const SubtypePtr& _pSubtype, const ExpressionPtr& _pExpr) {
     if (!_pSubtype || !_pExpr)
-        return NULL;
-    return Expression::substitute(clone(_pSubtype->getExpression()),
-        new VariableReference(_pSubtype->getParam()), _pExpr).as<Expression>();
+        return nullptr;
+
+    return Conjunction::getConjunction(Expression::substitute(clone(_pSubtype->getExpression()),
+        new VariableReference(_pSubtype->getParam()), _pExpr).as<Expression>());
 }
 
-ExpressionPtr Semantics::notIntersect(const SubtypePtr& _pSub1, const SubtypePtr& _pSub2) {
+ConjunctionPtr Semantics::isElement(const Collection<Type>& _dims, const ExpressionPtr& _pIndex) {
+    if (_dims.size() == 1) {
+        return _dims.get(0)->getKind() == Type::SUBTYPE
+            ? isElement(_dims.get(0).as<Subtype>(), _pIndex)
+            : nullptr;
+    }
+
+    if (_pIndex->getKind() != Expression::CONSTRUCTOR
+        || _pIndex.as<Constructor>()->getKind() != Constructor::STRUCT_FIELDS)
+        return nullptr;
+
+    const StructConstructor& cons = *_pIndex.as<StructConstructor>();
+    vf::ConjunctionPtr pConj = new Conjunction();
+
+    for (size_t i = 0; i < _dims.size(); ++i)
+        if (_dims.get(i)->getKind() == Type::SUBTYPE)
+            pConj->append(isElement(_dims.get(i).as<Subtype>(), cons.get(i)->getValue()));
+
+    return pConj;
+}
+
+ConjunctionPtr Semantics::notIntersect(const SubtypePtr& _pSub1, const SubtypePtr& _pSub2) {
     const VariableReferencePtr
-        pVar = new VariableReference(clone(_pSub1->getParam()));
+        pVar = new VariableReference(_pSub1->getParam());
 
-    const ExpressionPtr pExpr =
-        new Unary(Unary::BOOL_NEGATE,
-            new Binary(Binary::BOOL_AND, isElement(_pSub1, pVar), isElement(_pSub2, pVar)));
+    const ConjunctionPtr
+        pConj = isElement(_pSub1, pVar);
 
-    return pExpr;
+    pConj->append(isElement(_pSub2, pVar));
+    pConj->negate();
+
+    return pConj;
 }
 
-void Semantics::checkIntersect(const ExpressionPtr& _pExpr1, const ExpressionPtr& _pExpr2) {
+ConjunctionPtr Semantics::checkIntersect(const ExpressionPtr& _pExpr1, const ExpressionPtr& _pExpr2) {
     if (!_pExpr1 || !_pExpr2)
-        return;
+        return nullptr;
 
     if (_pExpr1->getKind() != Expression::TYPE && _pExpr2 != Expression::TYPE) {
-        m_pPrecondition->addExpression(new Binary(Binary::NOT_EQUALS, _pExpr1, _pExpr2));
-        return;
+        return Conjunction::getConjunction(new Binary(Binary::NOT_EQUALS, _pExpr1, _pExpr2));
     }
 
     if (_pExpr1->getKind() == Expression::TYPE && _pExpr2->getKind() == Expression::TYPE) {
         assert(_pExpr1.as<TypeExpr>()->getContents()->getKind() == Type::SUBTYPE);
         assert(_pExpr2.as<TypeExpr>()->getContents()->getKind() == Type::SUBTYPE);
 
-        m_pPrecondition->addExpression(notIntersect(_pExpr1.as<TypeExpr>()->getContents().as<Subtype>(),
-            _pExpr2.as<TypeExpr>()->getContents().as<Subtype>()));
-
-        return;
+        return notIntersect(_pExpr1.as<TypeExpr>()->getContents().as<Subtype>(),
+            _pExpr2.as<TypeExpr>()->getContents().as<Subtype>());
     }
 
     const ExpressionPtr& pExpr = _pExpr1->getKind() != Expression::TYPE ? _pExpr1 : _pExpr2;
@@ -1679,7 +1705,13 @@ void Semantics::checkIntersect(const ExpressionPtr& _pExpr1, const ExpressionPtr
         ? _pExpr1.as<TypeExpr>()->getContents() : _pExpr2.as<TypeExpr>()->getContents();
 
     assert(pType->getKind() == Type::SUBTYPE);
-    m_pPrecondition->addExpression(new Unary(Unary::BOOL_NEGATE, isElement(pType.as<Subtype>(), pExpr)));
+
+    ConjunctionPtr pResult = isElement(pType.as<Subtype>(), pExpr);
+    if (!pResult)
+        return nullptr;
+
+    pResult->negate();
+    return pResult;
 }
 
 void Semantics::arrayUnion(const ArrayTypePtr& _pArr1, const ArrayTypePtr& _pArr2) {
@@ -1704,20 +1736,26 @@ void Semantics::arrayUnion(const ArrayTypePtr& _pArr1, const ArrayTypePtr& _pArr
     if (dimLeft->getKind() != Type::SUBTYPE || dimRight->getKind() != Type::SUBTYPE)
         return;
 
-    m_pPrecondition->addExpression(na::generalize(notIntersect(dimLeft.as<Subtype>(), dimRight.as<Subtype>())));
+    ConjunctionPtr pConj = notIntersect(dimLeft.as<Subtype>(), dimRight.as<Subtype>());
+    if (!pConj)
+        return;
+
+    m_pPrecondition->addExpression(na::generalize(pConj->mergeToExpression()));
 }
 
 void Semantics::arrayConstructor(const ArrayType& _type, const ArrayConstructor& _constructor) {
     if (_type.getDimensionType()->getKind() != Type::SUBTYPE)
         return;
 
-    const Subtype& dim = *_type.getDimensionType().as<Subtype>();
+    //const Subtype& dim = *_type.getDimensionType().as<Subtype>();
+    Collection<Type> dims;
+    _type.getDimensions(dims);
+
 
     for (size_t i = 0; i < _constructor.size(); ++i) {
         ElementDefinitionPtr pDef = _constructor.get(i);
-        ExpressionPtr pExpr = isElement(&dim, pDef->getIndex());
 
-        m_pPrecondition->append(Conjunction::getConjunction(pExpr));
+        m_pPrecondition->append(isElement(dims, pDef->getIndex()));
 
         for (size_t j = i + 1; j < _constructor.size(); ++j)
             m_pPrecondition->addExpression(new Binary(Binary::NOT_EQUALS,
@@ -1733,9 +1771,8 @@ void Semantics::subtract(const ExpressionPtr& _pLeft, const ExpressionPtr& _pRig
             m_pPrecondition->addExpression(new Binary(Binary::GREATER_OR_EQUALS, _pLeft, _pRight));
             break;
         case Type::SUBTYPE: {
-            ExpressionPtr pCondition = isElement(_pLeft->getType().as<Subtype>(),
-                new Binary(Binary::SUBTRACT, _pLeft, _pRight));
-            m_pPrecondition->append(Conjunction::getConjunction(pCondition));
+            m_pPrecondition->append(isElement(_pLeft->getType().as<Subtype>(),
+                new Binary(Binary::SUBTRACT, _pLeft, _pRight)));
             break;
         }
     }
@@ -1802,18 +1839,21 @@ bool Semantics::visitArrayIteration(ArrayIteration &_ai) {
 
                         assert(tuple1.size() == tuple2.size());
 
+                        Conjunction conj;
                         for (size_t k = 0; k < tuple1.size(); ++k)
-                            checkIntersect(tuple1.get(k)->getValue(), tuple2.get(k)->getValue());
+                            conj.disjunct(checkIntersect(tuple1.get(k)->getValue(), tuple2.get(k)->getValue()));
+
+                        m_pPrecondition->append(conj);
 
                         continue;
                     }
 
-                    checkIntersect(pExpr1, pExpr2);
+                    if (ConjunctionPtr pConj = checkIntersect(pExpr1, pExpr2))
+                        m_pPrecondition->append(*pConj);
                 }
         }
     return true;
 }
-
 bool Semantics::visitArrayPartExpr(ArrayPartExpr& _ap) {
     if (!_ap.getObject() || !_ap.getObject()->getType())
         return true;
@@ -1828,7 +1868,7 @@ bool Semantics::visitArrayPartExpr(ArrayPartExpr& _ap) {
 
     size_t j = 0;
     for (auto i = dims.begin(); i != dims.end(); ++i, ++j)
-        m_pPrecondition->append(Conjunction::getConjunction(isElement((*i).as<Subtype>(), _ap.getIndices().get(j))));
+        m_pPrecondition->append(isElement((*i).as<Subtype>(), _ap.getIndices().get(j)));
 
     return true;
 }
@@ -1889,6 +1929,20 @@ vf::ConjunctionPtr getPreConditionForStatement(const StatementPtr& _pStmt, const
             break;
         }
 #endif
+
+        case Statement::BLOCK: {
+            pPre->assign(getPreConditionForStatement(_pStmt.as<Block>()->get(0), _pPred, _pContext));
+
+            const ConjunctionPtr
+                pFirstPost = getPostConditionForStatement(_pStmt.as<Block>()->get(0), _pContext),
+                pSecondPre = getPreConditionForStatement(_pStmt.as<Block>()->get(1), _pPred, _pContext);
+
+            if (!pSecondPre || pSecondPre->empty())
+                break;
+
+            pPre->append(Conjunction::implies(pFirstPost, pSecondPre));
+            break;
+        }
 
         case Statement::PARALLEL_BLOCK:
             pPre->assign(getPreConditionForStatement(_pStmt.as<Block>()->get(0), _pPred, _pContext));
@@ -1953,6 +2007,11 @@ vf::ConjunctionPtr getPostConditionForStatement(const StatementPtr& _pStmt, cons
         case Statement::PARALLEL_BLOCK:
             pPost->assign(getPostConditionForStatement(_pStmt.as<Block>()->get(0), _pContext));
             pPost->append(getPostConditionForStatement(_pStmt.as<Block>()->get(1), _pContext));
+            break;
+
+        case Statement::BLOCK:
+            pPost->assign(getPostConditionForStatement(_pStmt.as<Block>()->get(0), _pContext));
+            pPost->assign(getPostConditionForStatement(_pStmt.as<Block>()->get(1), _pContext));
             break;
     }
 
