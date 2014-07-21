@@ -281,48 +281,6 @@ bool Solver::runCompound(Operation _operation, int &_result) {
     return bModified;
 }
 
-typedef std::map<tc::FreshTypePtr, std::pair<size_t, size_t>, PtrLess<tc::FreshType> > ExtraBoundsCount;
-
-class FreshTypeEnumerator : public ir::Visitor {
-public:
-    FreshTypeEnumerator(FreshTypeSet &_types, const TypePtr &_pRoot = NULL,
-            const tc::TypeNode *_pCurrentBounds = NULL, ExtraBoundsCount *_pExtraBounds = NULL) :
-        m_types(_types), m_pRoot(_pRoot), m_pCurrentBounds(_pCurrentBounds), m_pExtraBounds(_pExtraBounds) {}
-
-    virtual bool visitType(ir::Type &_type) {
-        if (_type.getKind() == Type::FRESH) {
-            if (m_pRoot) {
-                const int mt = m_pRoot->getMonotonicity(_type);
-
-                assert(m_pCurrentBounds != NULL);
-                assert(m_pExtraBounds != NULL);
-
-                if (mt == Type::MT_NONE)
-                    m_types.insert(ptr(&(tc::FreshType &)_type));
-                else if (mt != Type::MT_CONST) {
-                    const tc::Relations *pLowers = &m_pCurrentBounds->lowers;
-                    const tc::Relations *pUppers = &m_pCurrentBounds->uppers;
-
-                    if (mt == Type::MT_ANTITONE)
-                        std::swap(pLowers, pUppers);
-
-                    (*m_pExtraBounds)[&_type].first += pLowers ? pLowers->size() : 0;
-                    (*m_pExtraBounds)[&_type].second += pUppers ? pUppers->size() : 0;
-                }
-            } else
-                m_types.insert(ptr(&(tc::FreshType &)_type));
-        }
-
-        return true;
-    }
-
-private:
-    FreshTypeSet &m_types;
-    TypePtr m_pRoot;
-    const tc::TypeNode *m_pCurrentBounds;
-    ExtraBoundsCount *m_pExtraBounds;
-};
-
 bool Solver::guess(int & _result) {
     return tc::Operation::guess()->run(_result);
 }
