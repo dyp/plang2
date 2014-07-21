@@ -41,6 +41,7 @@ set(SOURCES_ST
     ../src/cvc3_solver.cpp
     ../src/typecheck/operations.cpp
     ../src/typecheck/guess.cpp
+    ../src/typecheck/expand.cpp
 )
 
 add_executable(${TARGET_ST} ${SOURCES_ST})

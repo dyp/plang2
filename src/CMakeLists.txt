@@ -52,6 +52,7 @@ set(SOURCES
     callgraph.cpp
     generate_callgraph.cpp
     typecheck/guess.cpp
+    typecheck/expand.cpp
     typecheck/operations.cpp
 )
 

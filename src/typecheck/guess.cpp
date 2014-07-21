@@ -5,7 +5,7 @@
 
 #include <list>
 
-using namespace tc;
+namespace tc {
 
 class Guess : public OperationOnLattice {
 public:
@@ -133,4 +133,6 @@ ir::TypePtr Guess::_matchEqualizableUpperBound(const tc::FreshTypePtr& _pType, c
 
 Auto<Operation> Operation::guess() {
     return new Guess();
+}
+
 }
