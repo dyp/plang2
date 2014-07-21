@@ -127,7 +127,8 @@ int StructType::compare(const Type & _other) const {
         return ORD_NONE;
 
     const StructType & other = (const StructType &) _other;
-    size_t cSub = 0, cSuper = 0, cUnknown = 0;
+    Order order(ORD_EQUALS);
+
     const size_t cOrdFields = getNamesOrd().size() + getTypesOrd().size();
     const size_t cOrdFieldsOther = other.getNamesOrd().size() + other.getTypesOrd().size();
 
@@ -141,25 +142,11 @@ int StructType::compare(const Type & _other) const {
             if (pField->getName() != pFieldOther->getName())
                 return ORD_NONE;
 
-        const int cmp = pField->getType()->compare(*pFieldOther->getType());
-
-        if (cmp == ORD_SUB)
-            ++cSub;
-        else if (cmp == ORD_SUPER)
-            ++cSuper;
-        else if (cmp == ORD_UNKNOWN)
-            ++cUnknown;
-        else if (cmp == ORD_NONE)
+        if (order.out(*pField->getType(), *pFieldOther->getType()) == ORD_NONE)
             return ORD_NONE;
     }
 
-    if (cOrdFields > cOrdFieldsOther)
-        ++cSub;
-    else if (cOrdFields < cOrdFieldsOther)
-        ++cSuper;
-
-    if (cSub > 0 && cSuper > 0)
-        return ORD_NONE;
+    assert(order != ORD_NONE);
 
     typedef std::map<std::wstring, std::pair<NamedValuePtr, NamedValuePtr> > NameMap;
     NameMap fields;
@@ -191,36 +178,15 @@ int StructType::compare(const Type & _other) const {
         NamedValuePtr pOtherField = i->second.second;
 
         if (!pField)
-            ++cSuper;
+            order.out(ORD_SUPER);
         else if (!pOtherField)
-            ++cSub;
-        else {
-            const int cmp = pField->getType()->compare(*pOtherField->getType());
-
-            if (cmp == ORD_SUB)
-                ++cSub;
-            else if (cmp == ORD_SUPER)
-                ++cSuper;
-            else if (cmp == ORD_UNKNOWN)
-                ++cUnknown;
-            else if (cmp == ORD_NONE)
-                return ORD_NONE;
-        }
+            order.out(ORD_SUB);
+        else if (order.out(*pField->getType(),
+                *pOtherField->getType()) == ORD_NONE)
+            return ORD_NONE;
     }
 
-    if (cSub > 0 && cSuper > 0)
-        return ORD_NONE;
-
-    if (cUnknown > 0)
-        return ORD_UNKNOWN;
-
-    if (cSub > 0)
-        return ORD_SUB;
-
-    if (cSuper > 0)
-        return ORD_SUPER;
-
-    return ORD_EQUALS;
+    return order;
 }
 
 TypePtr StructType::getMeet(ir::Type &_other) {

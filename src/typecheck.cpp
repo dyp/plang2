@@ -231,30 +231,49 @@ bool Formula::isSymmetric() const {
     }
 }
 
+static
+int _orderToValue(int _nOrder, int _nTest, bool _bInverse = false) {
+    if (_nOrder == _nTest)
+        return _bInverse ? Formula::FALSE : Formula::TRUE;
+    if (_nOrder & _nTest)
+        return Formula::UNKNOWN;
+    return _bInverse ? Formula::TRUE : Formula::FALSE;
+}
+
 int Formula::eval() const {
     assert(getKind() != COMPOUND);
 
     const int nCmp = getLhs()->compare(*getRhs());
 
-    if (nCmp == ir::Type::ORD_UNKNOWN /*|| nCmp == ir::Type::ORD_NONE*/)
+    if (nCmp & ir::Type::ORD_UNKNOWN)
         return UNKNOWN;
 
     switch (getKind()) {
         case EQUALS:
-            return nCmp == ir::Type::ORD_EQUALS ? TRUE : FALSE;
+            return _orderToValue(nCmp, ir::Type::ORD_EQUALS, false);
+
         case SUBTYPE:
-            return (nCmp == ir::Type::ORD_SUB || nCmp == ir::Type::ORD_EQUALS) ? TRUE : FALSE;
+            if (!(nCmp & (ir::Type::ORD_SUB | ir::Type::ORD_EQUALS)))
+                return FALSE;
+            if (!(nCmp & ~(ir::Type::ORD_SUB | ir::Type::ORD_EQUALS)))
+                return TRUE;
+            return UNKNOWN;
+
         case SUBTYPE_STRICT:
-            return nCmp == ir::Type::ORD_SUB ? TRUE : FALSE;
+            return _orderToValue(nCmp, ir::Type::ORD_SUB, false);
+
         case COMPARABLE:
-            return nCmp == ir::Type::ORD_NONE ? FALSE : TRUE;
+            return _orderToValue(nCmp, ir::Type::ORD_NONE, true);
+
         case INCOMPARABLE:
-            return nCmp == ir::Type::ORD_NONE ? TRUE : FALSE;
+            return _orderToValue(nCmp, ir::Type::ORD_NONE, false);
+
         case NO_JOIN:
         case HAS_JOIN:
             if (ir::TypePtr pJoin = getLhs()->getJoin(*getRhs()))
                 return (pJoin->getKind() == ir::Type::TOP) == (getKind() == NO_JOIN) ? TRUE : FALSE;
             break;
+
         case NO_MEET:
         case HAS_MEET:
             if (ir::TypePtr pMeet = getLhs()->getMeet(*getRhs()))

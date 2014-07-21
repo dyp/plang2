@@ -79,21 +79,8 @@ int ArrayType::compare(const Type &_other) const {
         return ORD_NONE;
 
     const ArrayType& other = (const ArrayType&)_other;
-
-    const int
-        nBaseOrd = getBaseType()->compare(*other.getBaseType()),
-        nDimOrd = getDimensionType()->compare(*other.getDimensionType());
-
-    if (nDimOrd == ORD_NONE || nBaseOrd == ORD_NONE)
-        return ORD_NONE;
-    if (nDimOrd == ORD_UNKNOWN || nBaseOrd == ORD_UNKNOWN)
-        return ORD_UNKNOWN;
-    if (nBaseOrd == ORD_EQUALS)
-        return inverse(nDimOrd);
-    if (nDimOrd == ORD_EQUALS || nBaseOrd == inverse(nDimOrd))
-        return nBaseOrd;
-
-    return ORD_NONE;
+    return Order().out(*getBaseType(), *other.getBaseType()).in(
+            *getDimensionType(), *other.getDimensionType());
 }
 
 int ArrayType::getMonotonicity(const Type &_var) const {

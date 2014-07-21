@@ -138,29 +138,12 @@ int PredicateType::compare(const Type &_other) const {
     if (getOutParams().size() != other.getOutParams().size())
         return ORD_NONE;
 
-    bool bSub = false, bSuper = false;
+    Order order(ORD_EQUALS);
 
-    for (size_t i = 0; i < getInParams().size(); ++i) {
-        const Param &p = *getInParams().get(i);
-        const Param &q = *other.getInParams().get(i);
-
-        switch (p.getType()->compare(*q.getType())) {
-            case ORD_UNKNOWN:
-                return ORD_UNKNOWN;
-            case ORD_NONE:
-                return ORD_NONE;
-            case ORD_SUPER:
-                if (bSuper)
-                    return ORD_NONE;
-                bSub = true;
-                break;
-            case ORD_SUB:
-                if (bSub)
-                    return ORD_NONE;
-                bSuper = true;
-                break;
-        }
-    }
+    for (size_t i = 0; i < getInParams().size(); ++i)
+        if (order.in(*getInParams().get(i)->getType(),
+                *other.getInParams().get(i)->getType()) == ORD_NONE)
+            return ORD_NONE;
 
     for (size_t j = 0; j < getOutParams().size(); ++j) {
         const Branch &b = *getOutParams().get(j);
@@ -169,31 +152,12 @@ int PredicateType::compare(const Type &_other) const {
         if (b.size() != c.size())
             return ORD_NONE;
 
-        for (size_t i = 0; i < b.size(); ++ i) {
-            const Param &p = *b.get(i);
-            const Param &q = *c.get(i);
-
-            // Sub/Super is inverted for output parameters.
-            switch (p.getType()->compare(*q.getType())) {
-                case ORD_UNKNOWN:
-                    return ORD_UNKNOWN;
-                case ORD_NONE:
-                    return ORD_NONE;
-                case ORD_SUB:
-                    if (bSuper)
-                        return ORD_NONE;
-                    bSub = true;
-                    break;
-                case ORD_SUPER:
-                    if (bSub)
-                        return ORD_NONE;
-                    bSuper = true;
-                    break;
-            }
-        }
+        for (size_t i = 0; i < b.size(); ++ i)
+            if (order.out(*b.get(i)->getType(), *c.get(i)->getType()) == ORD_NONE)
+                return ORD_NONE;
     }
 
-    return bSub ? ORD_SUB : (bSuper ? ORD_SUPER : ORD_EQUALS);
+    return order;
 }
 
 TypePtr PredicateType::getMeet(ir::Type &_other) {

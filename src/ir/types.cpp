@@ -10,6 +10,93 @@
 
 using namespace ir;
 
+namespace {
+
+struct Rule {
+    int nCurrent, nValue, nResult;
+};
+
+}
+
+Type::Order &Type::Order::in(int _nOrder) {
+    static const Rule rules[] = {
+            { ORD_ANY,      ORD_UNKNOWN,    ORD_UNKNOWN },
+            { ORD_UNKNOWN,  ORD_ANY,        ORD_UNKNOWN },
+            { ORD_ANY,      ORD_NONE,       ORD_NONE },
+            { ORD_NONE,     ORD_ANY,        ORD_NONE },
+            { ORD_SUB,      ORD_SUB,        ORD_NONE },
+            { ORD_SUB,      ORD_SUPER,      ORD_SUB },
+            { ORD_SUB,      ORD_EQUALS,     ORD_SUB },
+            { ORD_SUPER,    ORD_SUB,        ORD_SUPER },
+            { ORD_SUPER,    ORD_SUPER,      ORD_NONE },
+            { ORD_SUPER,    ORD_EQUALS,     ORD_SUPER },
+            { ORD_EQUALS,   ORD_SUB,        ORD_SUPER },
+            { ORD_EQUALS,   ORD_SUPER,      ORD_SUB },
+            { ORD_EQUALS,   ORD_EQUALS,     ORD_EQUALS },
+    };
+
+    if (m_nOrder == 0) {
+        m_nOrder = inverse(_nOrder);
+        return *this;
+    }
+
+    return _update(_nOrder, rules);
+}
+
+Type::Order &Type::Order::in(const Type &_lhs, const Type &_rhs) {
+    return in(_lhs.compare(_rhs));
+}
+
+Type::Order &Type::Order::out(int _nOrder) {
+    static const Rule rules[] = {
+            { ORD_ANY,      ORD_UNKNOWN,    ORD_UNKNOWN },
+            { ORD_UNKNOWN,  ORD_ANY,        ORD_UNKNOWN },
+            { ORD_ANY,      ORD_NONE,       ORD_NONE },
+            { ORD_NONE,     ORD_ANY,        ORD_NONE },
+            { ORD_SUB,      ORD_SUB,        ORD_SUB },
+            { ORD_SUB,      ORD_SUPER,      ORD_NONE },
+            { ORD_SUB,      ORD_EQUALS,     ORD_SUB },
+            { ORD_SUPER,    ORD_SUB,        ORD_NONE },
+            { ORD_SUPER,    ORD_SUPER,      ORD_SUPER },
+            { ORD_SUPER,    ORD_EQUALS,     ORD_SUPER },
+            { ORD_EQUALS,   ORD_SUB,        ORD_SUB },
+            { ORD_EQUALS,   ORD_SUPER,      ORD_SUPER },
+            { ORD_EQUALS,   ORD_EQUALS,     ORD_EQUALS },
+    };
+
+    if (m_nOrder == 0) {
+        m_nOrder = _nOrder;
+        return *this;
+    }
+
+    return _update(_nOrder, rules);
+}
+
+Type::Order &Type::Order::out(const Type &_lhs, const Type &_rhs) {
+    return out(_lhs.compare(_rhs));
+}
+
+template<typename _Table>
+Type::Order &Type::Order::_update(int _nOrder, const _Table &_table) {
+    // Exact match only.
+    if (_nOrder == ORD_NONE)
+        m_nOrder = ORD_NONE;
+
+    if (m_nOrder == ORD_NONE)
+        return *this;
+
+    const int nCurrent = m_nOrder;
+
+    m_nOrder = 0;
+
+    for (const auto &rule : _table)
+        if ((nCurrent & rule.nCurrent) == rule.nCurrent &&
+                (_nOrder & rule.nValue) == rule.nValue)
+            m_nOrder |= rule.nResult;
+
+    return *this;
+}
+
 bool Type::hasFresh() const {
     return getKind() == FRESH;
 }
@@ -98,8 +185,9 @@ int Type::compare(const Type &_other) const {
     return ORD_NONE;
 }
 
-bool Type::compare(const Type &_other, int _order) const {
-    return (compare(_other) & _order) != 0;
+bool Type::compare(const Type &_other, int _nRequested) const {
+    const int nOrder = compare(_other);
+    return (nOrder & _nRequested) != 0 && (nOrder & ~_nRequested) == 0;
 }
 
 bool Type::less(const Type &_other) const {
@@ -111,9 +199,9 @@ bool Type::less(const Type &_other) const {
     const int nOrder = Type::compare(_other);
 
     // Should be comparable.
-    assert(nOrder == ORD_SUB || nOrder == ORD_SUPER || nOrder == ORD_EQUALS);
+    assert(nOrder & (ORD_SUB | ORD_SUPER | ORD_EQUALS));
 
-    return nOrder == ORD_SUB;
+    return (nOrder & (ORD_SUPER | ORD_EQUALS)) == 0;
 }
 
 bool Type::less(const Node& _other) const {
@@ -171,13 +259,11 @@ int maxBitsIntNat(int _bitsInt, int _bitsNat) {
 
     const int nOrd = compare(_other);
 
-    switch (nOrd) {
-        case ORD_SUB:
-            return std::make_pair(&_other, false);
-        case ORD_SUPER:
-        case ORD_EQUALS:
-            return std::make_pair(this, false);
-    }
+    if ((nOrd & ORD_SUB) && !(nOrd & ~(ORD_SUB | ORD_EQUALS)))
+        return {&_other, false};
+
+    if ((nOrd & (ORD_SUPER | ORD_EQUALS)) && !(nOrd & ~(ORD_SUPER | ORD_EQUALS)))
+        return {this, false};
 
     typedef std::pair<int, int> P;
     P kinds(getKind(), _other.getKind());
@@ -220,13 +306,11 @@ int maxBitsIntNat(int _bitsInt, int _bitsNat) {
 
     const int nOrd = compare(_other);
 
-    switch (nOrd) {
-        case ORD_SUB:
-        case ORD_EQUALS:
-            return std::make_pair(this, false);
-        case ORD_SUPER:
-            return std::make_pair(&_other, false);
-    }
+    if ((nOrd & (ORD_SUB | ORD_EQUALS)) && !(nOrd & ~(ORD_SUB | ORD_EQUALS)))
+        return {this, false};
+
+    if ((nOrd & ORD_SUPER) && !(nOrd & ~(ORD_SUPER | ORD_EQUALS)))
+        return {&_other, false};
 
     typedef std::pair<int, int> P;
     P kinds(getKind(), _other.getKind());
