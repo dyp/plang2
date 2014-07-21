@@ -22,6 +22,7 @@ public:
     // Operations.
     static Auto<Operation> guess();
     static Auto<Operation> expand();
+    static Auto<Operation> infer();
 
 protected:
     Formulas::iterator m_iCurrentCF, m_iLastCF;

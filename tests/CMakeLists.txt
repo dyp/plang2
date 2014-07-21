@@ -42,6 +42,7 @@ set(SOURCES_ST
     ../src/typecheck/operations.cpp
     ../src/typecheck/guess.cpp
     ../src/typecheck/expand.cpp
+    ../src/typecheck/infer.cpp
 )
 
 add_executable(${TARGET_ST} ${SOURCES_ST})
