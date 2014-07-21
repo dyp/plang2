@@ -117,6 +117,16 @@ public:
         return false;
     }
 
+    virtual bool traverseArrayIteration(ArrayIteration &_expr) {
+        ValuesSet oldBound = m_bound;
+
+        m_bound.insert(_expr.getIterators().begin(), _expr.getIterators().end());
+        const bool bResult = Visitor::traverseArrayIteration(_expr);
+        m_bound.swap(oldBound);
+
+        return bResult;
+    }
+
     virtual bool traverseFormula(Formula &_node) {
         VISITOR_ENTER(Formula, _node);
 
