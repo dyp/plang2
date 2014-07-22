@@ -65,6 +65,7 @@ struct Options {
     bool bCheckValidity;
     bool bVerbose;
     bool bKeepNames;
+    bool bSolveTypes;
 
     Options();
     static bool init(size_t _cArgs, const char **_pArgs);

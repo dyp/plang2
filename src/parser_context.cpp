@@ -6,6 +6,7 @@
 #include "parser_context.h"
 #include "ir/numbers.h"
 #include "ir/builtins.h"
+#include "typecheck.h"
 
 using namespace lexer;
 using namespace ir;
@@ -175,7 +176,7 @@ Context *Context::createChild(bool _bScope, int _flags) {
     if (m_pChild)
         delete m_pChild;
 
-    m_pChild = new Context(m_loc, _bScope, _flags);
+    m_pChild = new Context(m_loc, _bScope, _flags | (getFlags() & PARSE_INTERNAL_TYPES));
     m_pChild->setParent(this);
 
     return m_pChild;
@@ -380,6 +381,25 @@ void Context::addConstructor(const ir::UnionConstructorDeclarationPtr &_pCons) {
     if (!m_constructors)
         m_constructors = new ConsMap();
     m_constructors->insert(std::make_pair(_pCons->getName(), _pCons));
+}
+
+tc::FreshTypePtr Context::getFreshType(const std::wstring & _strName) {
+    if (m_pParent)
+        return m_pParent->getFreshType(_strName);
+
+    if (!m_freshTypes)
+        m_freshTypes = new FreshTypeMap();
+
+    auto iFresh = m_freshTypes->find(_strName);
+    tc::FreshTypePtr pFresh;
+
+    if (iFresh == m_freshTypes->end()) {
+        pFresh = new tc::FreshType();
+        m_freshTypes->insert({_strName, pFresh});
+    } else
+        pFresh = iFresh->second;
+
+    return pFresh;
 }
 
 bool Context::consume(int _token1, int _token2, int _token3, int _token4) {

@@ -151,6 +151,9 @@ public:
     ExpressionPtr parseCallResult(Context &_ctx, VariableDeclarationPtr &_pDecl);
     bool parseCallResults(Context &_ctx, Call &_call, Collection<Expression> &_list);
 
+    tc::FormulaPtr parseTypeConstraint(Context & _ctx);
+    bool parseTypeConstraintPart(Context & _ctx, tc::Formulas & _formulas);
+
     Context *parsePragma(Context &_ctx);
 
     bool parseDeclarations(Context &_ctx, Module &_module);
@@ -1691,8 +1694,18 @@ TypePtr Parser::parseType(Context &_ctx) {
     if (bBuiltinType && !pType)
         ERROR(ctx, NULL, L"Error parsing type reference");
 
-    if (!pType && ctx.is(IDENTIFIER))
-        pType = parseTypeReference(ctx);
+    if (!pType && ctx.is(IDENTIFIER)) {
+        if (ctx.getFlags() & Context::PARSE_INTERNAL_TYPES) {
+            pType = ctx.getFreshType(ctx.scan());
+            if (ctx.consume(ASTERISK))
+                pType.as<tc::FreshType>()->addFlags(tc::FreshType::PARAM_IN | tc::FreshType::PARAM_OUT);
+            else if (ctx.consume(PLUS))
+                pType.as<tc::FreshType>()->addFlags(tc::FreshType::PARAM_IN);
+            else if (ctx.consume(MINUS))
+                pType.as<tc::FreshType>()->addFlags(tc::FreshType::PARAM_OUT);
+        } else
+            pType = parseTypeReference(ctx);
+    }
 
     if (!pType)
         pType = parseRange(ctx);
@@ -3187,4 +3200,105 @@ ModulePtr parse(Tokens &_tokens) {
     }
 
     return NULL;
+}
+
+bool Parser::parseTypeConstraintPart(Context & _ctx, tc::Formulas & _formulas) {
+    if (!_ctx.consume(LPAREN))
+        UNEXPECTED(_ctx, "(");
+
+    do {
+        if (tc::FormulaPtr pFormula = parseTypeConstraint(_ctx))
+            _formulas.insert(pFormula);
+        else
+            ERROR(_ctx, false, L"Failed parsing subformula");
+
+        if (_ctx.is(RPAREN))
+            break;
+    } while (_ctx.consume(AND));
+
+    if (!_ctx.consume(RPAREN))
+        UNEXPECTED(_ctx, ")");
+
+    return true;
+}
+
+tc::FormulaPtr Parser::parseTypeConstraint(Context & _ctx) {
+    Context *pCtx = _ctx.createChild(false);
+    tc::FormulaPtr pFormula = new tc::Formula(tc::Formula::EQUALS);
+
+    if (pCtx->is(LPAREN)) {
+        tc::CompoundFormulaPtr pCF = new tc::CompoundFormula();
+
+        do
+            if (!parseTypeConstraintPart(*pCtx, pCF->addPart()))
+                ERROR(*pCtx, NULL, L"Failed parsing compound formula");
+        while (pCtx->consume(OR));
+
+        pFormula = pCF;
+    } else {
+        if (TypePtr pType = parseType(*pCtx))
+            pFormula->setLhs(pType);
+        else
+            ERROR(*pCtx, NULL, L"Failed parsing LHS type");
+
+        switch (pCtx->getToken()) {
+            case EQ:
+                pFormula->setKind(tc::Formula::EQUALS);
+                break;
+            case LT:
+                pFormula->setKind(tc::Formula::SUBTYPE_STRICT);
+                break;
+            case LTE:
+                pFormula->setKind(tc::Formula::SUBTYPE);
+                break;
+            default:
+                ERROR(*pCtx, NULL, L"Type relation expected");
+        }
+
+        pCtx->skip();
+
+        if (TypePtr pType = parseType(*pCtx))
+            pFormula->setRhs(pType);
+        else
+            ERROR(*pCtx, NULL, L"Failed parsing RHS type");
+    }
+
+    _ctx.mergeChildren();
+
+    return pFormula;
+}
+
+tc::ContextPtr parseTypeConstraints(lexer::Tokens & _tokens,
+        tc::Formulas & _constraints, FreshTypeNames & _freshTypeNames)
+{
+    Loc loc = _tokens.begin();
+    Parser parser(_tokens);
+    Context ctx(loc, true, Context::PARSE_INTERNAL_TYPES);
+
+    tc::ContextStack::push(::ref(&_constraints));
+
+    do {
+        if (ctx.is(END_OF_FILE))
+            break;
+
+        if (tc::FormulaPtr pFormula = parser.parseTypeConstraint(ctx))
+            _constraints.insert(pFormula);
+        else {
+            ctx.mergeChildren(true);
+            std::wcerr << L"Failed parsing type constraint at line " <<
+                    ctx.loc()->getLine() << std::endl;
+            for (const StatusMessage &msg : ctx.getMessages())
+                std::wcerr << msg;
+            return NULL;
+        }
+    } while (ctx.consume(SEMICOLON));
+
+    if (ctx.getFreshTypes())
+        for (auto p : *ctx.getFreshTypes())
+            _freshTypeNames[p.second->getOrdinal()] = p.first;
+
+    tc::ContextPtr pContext = tc::ContextStack::top();
+    tc::ContextStack::pop();
+
+    return pContext;
 }

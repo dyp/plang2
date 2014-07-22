@@ -35,6 +35,7 @@
 #include "cvc3_solver.h"
 #include "name_reset.h"
 #include "check_assignments.h"
+#include "type_lattice.h"
 
 using namespace lexer;
 
@@ -64,6 +65,21 @@ int main(int _argc, const char ** _argv) {
                     << " (" << fmtInt(tok.getKind(), L"%3d") << ")"
                     << " \"" << tok.getValue() << "\"" << std::endl;
         }
+    }
+
+    if (Options::instance().bSolveTypes) {
+        tc::Formulas formulas;
+        bool bResult = false;
+        FreshTypeNames names;
+
+        if (tc::ContextPtr pCtx = parseTypeConstraints(tokens, formulas, names)) {
+            bResult = tc::solve(pCtx);
+            PrettyPrinterBase::setFreshTypeNames(names);
+            prettyPrint(*pCtx, std::wcout);
+        }
+
+        std::wcout << (bResult ? L"Success" : L"Failed") << std::endl;
+        return bResult ? EXIT_SUCCESS : EXIT_FAILURE;
     }
 
     if (ir::ModulePtr pModule = parse(tokens)) {

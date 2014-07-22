@@ -127,7 +127,11 @@ static std::wstring fmtLabel(const LabelPtr &_pLabel) {
     return fmtQuote(_pLabel ? _pLabel->getName() : L"");
 }
 
-std::map<size_t, std::wstring> g_freshTypes;
+FreshTypeNames g_freshTypes;
+
+void PrettyPrinterBase::setFreshTypeNames(const FreshTypeNames & _names) {
+    g_freshTypes = _names;
+}
 
 std::wstring PrettyPrinterBase::fmtFreshType(tc::FreshType &_type) {
     std::wstring strName = g_freshTypes[_type.getOrdinal()];

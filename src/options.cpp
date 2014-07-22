@@ -120,11 +120,12 @@ void _printUsage() {
         << "    -e, --verify=TYPE             Generate logical conditions for proving program correctness,\n"
         << "                                  where TYPE is 'none' (0), 'nothing' (1), 'formulas' (2), 'verbose' (3)\n"
         << "    -o, --output=FILE             Output file name\n"
-        << "    -v, --verbose                 Print debug info\n"
         << "    -O, --optimize                Optimize logical expressions\n"
         << "    -s, --check-semantics         Generate logical conditions for proving semantic correctness\n"
         << "    -a, --check-validity          Check validity of declared lemmas\n"
         << "    -k, --keep-names              Keep names of variables\n"
+        << "    -y, --solve-types             Read list of type constraints and try to find a solution\n"
+        << "    -v, --verbose                 Print debug info\n"
         << "        --help                    Show this message\n";
 }
 
@@ -143,6 +144,7 @@ bool Options::init(size_t _cArgs, const char **_pArgs) {
         { "check-semantics", 's', NULL,               &instance().bCheckSemantics, NULL,                          false },
         { "check-validity",  'a', NULL,               &instance().bCheckValidity,  NULL,                          false },
         { "keep-names",      'k', NULL,               &instance().bKeepNames,      NULL,                          false },
+        { "solve-types",     'y', NULL,               &instance().bSolveTypes,     NULL,                          false },
         { NULL,               0,  NULL,               NULL,                        NULL,                          false }
     };
 
@@ -174,7 +176,8 @@ Options::Options() :
     bCheckSemantics(false),
     bCheckValidity(false),
     bVerbose(false),
-    bKeepNames(false)
+    bKeepNames(false),
+    bSolveTypes(false)
 {
 }
 

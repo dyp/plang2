@@ -85,15 +85,20 @@ private:
     ir::Overflow m_overflow;
 };
 
+namespace tc {
+class FreshType;
+}
+
 namespace ir {
 
 class Context {
 public:
     // Parsing constants.
     enum {
-        ALLOW_FORMULAS =      0x01,
-        RESTRICT_TYPES =      0x02,
-        MERGE_CONSTRUCTORS =  0x04,
+        ALLOW_FORMULAS          = 0x01,
+        RESTRICT_TYPES          = 0x02,
+        MERGE_CONSTRUCTORS      = 0x04,
+        PARSE_INTERNAL_TYPES    = 0x08,
     };
 
     typedef std::map<std::wstring, ir::ModulePtr> ModuleMap;
@@ -106,6 +111,7 @@ public:
     typedef std::map<std::wstring, ir::ProcessPtr> ProcessMap;
     typedef std::map<std::wstring, ir::FormulaDeclarationPtr> FormulaMap;
     typedef std::multimap<std::wstring, ir::UnionConstructorDeclarationPtr> ConsMap;
+    typedef std::map<std::wstring, Auto<tc::FreshType> > FreshTypeMap;
 
 public:
     Context(lexer::Loc _loc, bool _bScope = false, int _flags = 0)
@@ -193,6 +199,9 @@ public:
     void addConstructor(const ir::UnionConstructorDeclarationPtr &_pCons);
     bool hasConstructor(const std::wstring &_strName) const;
 
+    Auto<tc::FreshType> getFreshType(const std::wstring & _strName);
+    const FreshTypeMap * getFreshTypes() const { return m_freshTypes; }
+
     // Constructor-parsing stuff.
     ir::UnionConstructorPtr getCurrentConstructor() const {
         return m_pCons ? m_pCons : (m_pParent ? m_pParent->getCurrentConstructor() : ir::UnionConstructorPtr());
@@ -228,6 +237,7 @@ private:
     ProcessMap *m_processes = nullptr;
     FormulaMap *m_formulas = nullptr;
     ConsMap *m_constructors = nullptr;
+    FreshTypeMap *m_freshTypes = nullptr;
     bool m_bFailed = false;
     Pragma m_pragma;
     ir::UnionConstructorPtr m_pCons;

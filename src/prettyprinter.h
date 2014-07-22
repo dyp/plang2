@@ -6,6 +6,7 @@
 #define PRETTYPRINTER_H_
 
 #include <iostream>
+#include <map>
 
 #include "ir/declarations.h"
 #include "typecheck.h"
@@ -13,10 +14,14 @@
 #include "ir/visitor.h"
 #include "indenting_stream.h"
 
+using FreshTypeNames = std::map<size_t, std::wstring>;
+
 class PrettyPrinterBase: public ir::Visitor {
 public:
     template<typename _Stream>
     PrettyPrinterBase(_Stream &_os) : m_os(_os) {}
+
+    static void setFreshTypeNames(const FreshTypeNames & _names);
 
 protected:
     IndentingStream<wchar_t> m_os;
