@@ -9,6 +9,9 @@ using namespace ir;
 namespace tc {
 
 class Expand : public Operation {
+public:
+    Expand() : Operation(L"Expand", true) {}
+
 protected:
     virtual bool _run(int & _nResult);
 

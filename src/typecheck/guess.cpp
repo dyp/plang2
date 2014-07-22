@@ -9,7 +9,7 @@ namespace tc {
 
 class Guess : public OperationOnLattice {
 public:
-    Guess() {}
+    Guess() : OperationOnLattice(L"Guess", true), m_uLowersCount(0), m_uUppersCount(0) {}
 
 private:
     size_t m_uLowersCount, m_uUppersCount;

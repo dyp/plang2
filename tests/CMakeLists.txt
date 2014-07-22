@@ -39,10 +39,17 @@ set(SOURCES_ST
     ../src/generate_name.cpp
     ../src/verification_context.cpp
     ../src/cvc3_solver.cpp
-    ../src/typecheck/operations.cpp
-    ../src/typecheck/guess.cpp
+    ../src/typecheck/compact.cpp
+    ../src/typecheck/eval.cpp
     ../src/typecheck/expand.cpp
+    ../src/typecheck/explode.cpp
+    ../src/typecheck/guess.cpp
     ../src/typecheck/infer.cpp
+    ../src/typecheck/lift.cpp
+    ../src/typecheck/operations.cpp
+    ../src/typecheck/prune.cpp
+    ../src/typecheck/refute.cpp
+    ../src/typecheck/unify.cpp
 )
 
 add_executable(${TARGET_ST} ${SOURCES_ST})

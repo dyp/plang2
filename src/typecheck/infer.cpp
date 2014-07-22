@@ -9,6 +9,9 @@ using namespace ir;
 namespace tc {
 
 class Infer : public Operation {
+public:
+    Infer() : Operation(L"Infer", true) {}
+
 protected:
     virtual bool _run(int & _nResult);
 };

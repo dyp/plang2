@@ -104,6 +104,8 @@ bool tc::Operation::_runCompound(int & _result) {
 
 void tc::Operation::_clear() {
     m_nCurrentCFPart = -1;
+    m_iCurrentCF = m_iLastCF = _context()->end();
+    m_redundantParts.clear();
 }
 
 class FreshTypeEnumerator : public ir::Visitor {
