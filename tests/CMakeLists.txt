@@ -383,6 +383,7 @@ endif()
 
 run_st_matching("" "${TESTS_STATEMENT_TREE_MATCHING}")
 run_verification_tests("-t" "${TESTS_STATEMENT_TREE}")
+run_verification_tests("-f" "verification/conjunctive_normal_form.psrc")
 run_cond_tests("" "${TESTS_CONDITIONS}")
 run_vf_tests("-t1" "${TESTS_VERIFICATION}")
 run_pvs_tests("-t1" "${TESTS_PVS}")

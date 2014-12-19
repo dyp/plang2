@@ -348,4 +348,73 @@ NodePtr normalizeExpressions(const NodePtr& _pNode) {
     return Normalizer(_pNode).run();
 }
 
+ExpressionPtr conjunctiveNormalForm(const ExpressionPtr& _pExpr) {
+    if (!_pExpr)
+        return ExpressionPtr();
+
+    struct{ ExpressionPtr pFrom, pTo; } rules[] = {
+        // Rule 1.1: A -> B  =>  !A or B
+        new Binary(Binary::IMPLIES, new Wild(L"a"), new Wild(L"b")),
+        new Binary(Binary::BOOL_OR, new Unary(Unary::BOOL_NEGATE, new Wild(L"a")), new Wild(L"b")),
+
+        // Rule 1.2: A <-> B => (!A or B) and (A or !B)
+        new Binary(Binary::IFF, new Wild(L"a"), new Wild(L"b")),
+        new Binary(Binary::BOOL_AND,
+            new Binary(Binary::BOOL_OR, new Unary(Unary::BOOL_NEGATE, new Wild(L"a")), new Wild(L"b")),
+            new Binary(Binary::BOOL_OR, new Wild(L"b"), new Unary(Unary::BOOL_NEGATE, new Wild(L"b")))),
+
+        // Rule 2.1: !(A or B) => !A and !B
+        new Unary(Unary::BOOL_NEGATE, new Binary(Binary::BOOL_OR, new Wild(L"a"), new Wild(L"b"))),
+        new Binary(Binary::BOOL_AND,
+            new Unary(Unary::BOOL_NEGATE, new Wild(L"a")),
+            new Unary(Unary::BOOL_NEGATE, new Wild(L"b"))),
+
+        // Rule 2.2: !(A and B) => !A or !B
+        new Unary(Unary::BOOL_NEGATE, new Binary(Binary::BOOL_AND, new Wild(L"a"), new Wild(L"b"))),
+        new Binary(Binary::BOOL_OR,
+            new Unary(Unary::BOOL_NEGATE, new Wild(L"a")),
+            new Unary(Unary::BOOL_NEGATE, new Wild(L"b"))),
+
+        // Rule 3: !!A => A
+        new Unary(Unary::BOOL_NEGATE, new Unary(Unary::BOOL_NEGATE, new Wild(L"a"))),
+        new Wild(L"a"),
+
+        // Rule 4.1: A or (B and C) => (A or B) and (A or C)
+        new Binary(Binary::BOOL_OR,
+            new Wild(L"a"),
+            new Binary(Binary::BOOL_AND, new Wild(L"b"), new Wild(L"c"))),
+        new Binary(Binary::BOOL_AND,
+            new Binary(Binary::BOOL_OR, new Wild(L"a"), new Wild(L"b")),
+            new Binary(Binary::BOOL_OR, new Wild(L"a"), new Wild(L"c"))),
+
+        // Rule 4.2: (A and B) or (A and C) => A and (B or C)
+        new Binary(Binary::BOOL_OR,
+            new Binary(Binary::BOOL_AND, new Wild(L"a"), new Wild(L"b")),
+            new Binary(Binary::BOOL_AND, new Wild(L"a"), new Wild(L"c"))),
+        new Binary(Binary::BOOL_AND,
+            new Wild(L"a"),
+            new Binary(Binary::BOOL_OR, new Wild(L"b"), new Wild(L"c"))),
+
+        // End.
+        ExpressionPtr(), ExpressionPtr()
+    };
+
+    auto mutate = [&] (const ExpressionPtr& _pOrigin) {
+        ExpressionPtr pExpr = clone(_pOrigin);
+        for (size_t i = 0; rules[i].pFrom; ++i)
+            pExpr = Expression::substitute(pExpr, rules[i].pFrom, rules[i].pTo).as<Expression>();
+        return pExpr;
+    };
+
+    ExpressionPtr pCurrent = _pExpr, pLast;
+
+    do {
+        pLast = pCurrent;
+        pCurrent = mutate(pCurrent);
+    } while (*pCurrent != *pLast);
+
+    return pCurrent;
+
+}
+
 } // namespace tr

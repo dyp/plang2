@@ -23,7 +23,8 @@ bool
     bStatementTreeMatching = false,
     bStatementTreeTests = false,
     bPreconditions = false,
-    bCVC3 = false;
+    bCVC3 = false,
+    bConjunctiveNormalForm = false;
 
 std::string strFile;
 
@@ -38,6 +39,7 @@ static bool _parseTestOptions(size_t _cArgs, const char **_pArgs) {
         { "statement-tree", 't',  NULL, &bStatementTreeTests,    NULL, false },
         { "preconditions",  'p',  NULL, &bPreconditions,         NULL, false },
         { "cvc3",           'c',  NULL, &bCVC3,                  NULL, false },
+        { "cnf",            'f',  NULL, &bConjunctiveNormalForm, NULL, false },
     };
 
     if (!parseOptions(_cArgs, _pArgs, options, NULL, &_handleNotAnOption))
@@ -81,6 +83,15 @@ int main(int _argc, const char ** _argv) {
 
     if (bStatementTreeTests) {
         tr::modifyModule(pModule);
+        prettyPrintFlatTree(*pModule);
+    }
+
+    if (bConjunctiveNormalForm) {
+        for (size_t i = 0; i < pModule->getVariables().size(); ++i) {
+            ir::VariableDeclarationPtr pVar = pModule->getVariables().get(i);
+            pVar->setValue(tr::conjunctiveNormalForm(pVar->getValue()));
+        }
+        tr::normalizeExpressions(pModule);
         prettyPrintFlatTree(*pModule);
     }
 

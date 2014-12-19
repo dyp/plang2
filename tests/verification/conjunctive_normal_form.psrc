@@ -1,0 +1,18 @@
+/*
+
+<test>
+    //e1/VarDeclInit = (a or a or b) & (a or a or c)
+    //e2/VarDeclInit = (b or !a) & (!a or !b) & (!a or !c)
+    //e3/VarDeclInit = (a or d or !c) & (b or d or !c)
+    //e4/VarDeclInit = b or d or !b or !c
+</test>
+
+*/
+
+bool a, b, c, d;
+
+bool
+    e1 = !(!a and !(a or (c and b))),
+    e2 = (a => b) & ((!b => c) => !a),
+    e3 = a & b or (c => d),
+    e4 = (b & c) => (b or d)
