@@ -27,6 +27,7 @@ void declareLemma(const ir::ModulePtr& _pModule, const ir::ExpressionPtr& _pProp
 
 // Moving out in theory modules.
 void moveOutStructuredTypes(const ir::ModulePtr& _pModule);
+void moveOutExpressions(const ir::ModulePtr& _pModule);
 
 // Make instance for parameterized module.
 void instantiateModule(const ir::ModulePtr& _pModule, const ir::Collection<ir::Expression>& _args);

@@ -1,0 +1,22 @@
+/*
+    type Range = 1 .. 3;
+    type T = array(nat, Range);
+
+    formula f(: T)
+        = [1, 2, 4]
+
+    lemma forall T a. a = f()
+
+<test>
+    //TypeDeclaration == type \w* = nat\[\w*\]
+    //FormulaDeclaration ~~ formula \w*\(: \w*\)
+</test>
+
+*/
+
+module A {
+    array(nat, 1..3)
+        a = [1, 2, 4];
+
+    lemma forall array(nat, 1..3) a. a = [1, 2, 4]
+}
