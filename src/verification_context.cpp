@@ -225,6 +225,18 @@ void Conjunction::disjunct(const ConjunctionPtr& _pOther) {
     assign(_disjunct(this, _pOther));
 }
 
+void Conjunction::implies(const Auto<Conjunction>& _pOther) {
+    Conjunction container;
+    _implies(this, _pOther, container);
+    m_conjuncts.swap(container.getConjuncts());
+}
+
+Auto<Conjunction> Conjunction::implies(const Auto<Conjunction>& _pLeft, const Auto<Conjunction>& _pRight) {
+    ConjunctionPtr pResult = new Conjunction();
+    _implies(_pLeft, _pRight, *pResult);
+    return pResult;
+}
+
 bool Conjunction::releaseAssignments() {
     bool bIsReleased = false;
     while (_releaseFirstAssignment())
@@ -309,6 +321,24 @@ ConjunctionPtr Conjunction::_disjunct(const ConjunctionPtr& _pLeft, const Conjun
                 i->mergeToExpression(), j->mergeToExpression()));
 
     return pResult;
+}
+
+void Conjunction::_implies(const Auto<Conjunction>& _pLeft, const Auto<Conjunction>& _pRight, Conjunction& _result) {
+    if (!_pLeft && !_pRight)
+        return;
+    if (!_pLeft) {
+        _result.assign(_pRight);
+        return;
+    }
+    if (!_pRight) {
+        _result.assign(_pLeft);
+        _result.negate();
+        return;
+    }
+
+    for (auto i: _pLeft->getConjuncts())
+        for (auto j: _pRight->getConjuncts())
+            _result.addExpression(new Binary(Binary::IMPLIES, i->mergeToExpression(), j->mergeToExpression()));
 }
 
 bool Conjunction::_releaseFirstAssignment() {
