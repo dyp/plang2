@@ -129,6 +129,9 @@ public:
 
     void disjunct(const Auto<Conjunction>& _pOther);
 
+    void implies(const Auto<Conjunction>& _pOther);
+    Auto<Conjunction> implies(const Auto<Conjunction>& _pLeft, const Auto<Conjunction>& _pRight);
+
     bool releaseAssignments();
     std::pair<ConjunctPtr, Auto<Conjunction> > extractLogic() const;
 
@@ -142,6 +145,7 @@ private:
     bool _releaseFirstAssignment();
     void _normalize();
     static Auto<Conjunction> _disjunct(const Auto<Conjunction>& _pLeft, const Auto<Conjunction>& _pRight);
+    static void _implies(const Auto<Conjunction>& _pLeft, const Auto<Conjunction>& _pRight, Conjunction& _result);
 
 };
 typedef Auto<Conjunction> ConjunctionPtr;
