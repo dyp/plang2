@@ -555,8 +555,8 @@ bool Inference::ruleFLB(const Call& _call, const ConjunctionPtr& _pTail, const C
         pPre = getPreConditionForStatement(&_call, NULL, &m_context),
         pPost = getPostConditionForStatement(&_call, &m_context);
 
-    // |- P_B
-    m_context.addCondition(new Sequent(NULL, pPre));
+    // R |- P_B
+    m_context.addCondition(new Sequent(_pTail, pPre));
 
     ConjunctionPtr pConj = new Conjunction();
     pConj->assign(_pTail);

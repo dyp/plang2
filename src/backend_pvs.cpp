@@ -16,7 +16,7 @@ using namespace ir;
 class GeneratePvs : public Visitor {
 public:
     GeneratePvs(std::wostream &_os) :
-        m_os(_os)
+        m_os(_os), m_nLemmaIndex(0)
     {}
 
     std::wstring namedValueName(const NamedValuePtr& pValue) {
@@ -697,8 +697,16 @@ public:
     virtual bool traverseLemmaDeclaration(ir::LemmaDeclaration &_stmt) {
         VISITOR_ENTER(LemmaDeclaration, _stmt);
 
+        switch (_stmt.getStatus()) {
+            case ir::LemmaDeclaration::VALID:
+                m_os << L"%VALID\n";
+                break;
+            case ir::LemmaDeclaration::INVALID:
+                m_os << L"%INVALID\n";
+                break;
+        }
         VISITOR_TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
-        m_os << L"LEMMA\n" << indent;
+        m_os << L"L" << ++m_nLemmaIndex << L": LEMMA\n" << indent;
         VISITOR_TRAVERSE(Expression, LemmaDeclBody, _stmt.getProposition(), _stmt, LemmaDeclaration, setProposition);
         m_os << unindent;
 
@@ -863,6 +871,7 @@ public:
 private:
     pp::Context m_context;
     IndentingStream<wchar_t> m_os;
+    size_t m_nLemmaIndex;
 };
 
 void generatePvs(Module &_module, std::wostream & _os) {
