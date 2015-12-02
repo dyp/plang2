@@ -98,8 +98,10 @@ public:
     Conjunction() {}
     Conjunction(const ConjunctPtr& _pConjunct) { m_conjuncts.insert(_pConjunct); }
 
-    std::set<ConjunctPtr>& getConjuncts() { return m_conjuncts; }
-    const std::set<ConjunctPtr>& getConjuncts() const { return m_conjuncts; }
+    typedef std::set<ConjunctPtr> Conjuncts;
+
+    Conjuncts& getConjuncts() { return m_conjuncts; }
+    const Conjuncts& getConjuncts() const { return m_conjuncts; }
 
     const ConjunctPtr& front() const { return *(m_conjuncts.begin()); }
     const ConjunctPtr& back() const { return *(::prev(m_conjuncts.end())); }
@@ -125,26 +127,27 @@ public:
 
     static Auto<Conjunction> getConjunction(const ir::ExpressionPtr& _pExpr, bool _bExpandCalls = false);
     bool split(const na::ValuesSet& _leftValues, Conjunction& _left, const na::ValuesSet& _rightValues, Conjunction& _right);
-    void negate();
 
+    void negate();
     void disjunct(const Auto<Conjunction>& _pOther);
 
+    static Auto<Conjunction> implies(const Auto<Conjunction>& _pLeft, const Auto<Conjunction>& _pRight);
     void implies(const Auto<Conjunction>& _pOther);
-    Auto<Conjunction> implies(const Auto<Conjunction>& _pLeft, const Auto<Conjunction>& _pRight);
 
     bool releaseAssignments();
     std::pair<ConjunctPtr, Auto<Conjunction> > extractLogic() const;
 
 private:
-    std::set<ConjunctPtr> m_conjuncts;
+    Conjuncts m_conjuncts;
 
     bool _split(const na::ValuesSet& _leftValues, Conjunction& _left, const na::ValuesSet& _rightValues, Conjunction& _right,
         const std::set<ir::FormulaDeclarationPtr>& _traversedFormulas);
-    static void _negate(const ConjunctPtr& _pConjunct, Conjunction& _result);
-    static void _normalize(const ConjunctPtr& _pConjunct, Conjunction& _result);
     bool _releaseFirstAssignment();
     void _normalize();
-    static Auto<Conjunction> _disjunct(const Auto<Conjunction>& _pLeft, const Auto<Conjunction>& _pRight);
+
+    static void _negate(const ConjunctPtr& _pConjunct, Conjunction& _result);
+    static void _normalize(const ConjunctPtr& _pConjunct, Conjunction& _result);
+    static void _disjunct(const Auto<Conjunction>& _pLeft, const Auto<Conjunction>& _pRight, Conjunction& _result);
     static void _implies(const Auto<Conjunction>& _pLeft, const Auto<Conjunction>& _pRight, Conjunction& _result);
 
 };

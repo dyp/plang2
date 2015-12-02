@@ -220,9 +220,9 @@ void Conjunction::negate() {
 }
 
 void Conjunction::disjunct(const ConjunctionPtr& _pOther) {
-    if (!_pOther)
-        return;
-    assign(_disjunct(this, _pOther));
+    Conjunction container;
+    _disjunct(this, _pOther, container);
+    m_conjuncts.swap(container.getConjuncts());
 }
 
 void Conjunction::implies(const Auto<Conjunction>& _pOther) {
@@ -306,21 +306,22 @@ void Conjunction::_normalize() {
     m_conjuncts.swap(container.getConjuncts());
 }
 
-ConjunctionPtr Conjunction::_disjunct(const ConjunctionPtr& _pLeft, const ConjunctionPtr& _pRight) {
+void Conjunction::_disjunct(const ConjunctionPtr& _pLeft, const ConjunctionPtr& _pRight, Conjunction& _result) {
     if (!_pLeft || !_pRight)
-        return nullptr;
+        return;
     if (_pLeft->empty() && _pRight->empty())
-        return new Conjunction();
-    if (_pLeft->empty() || _pRight->empty())
-        return _pLeft->empty() ? _pRight : _pLeft;
+        return;
+    if (_pLeft->empty() || _pRight->empty()) {
+        _result.clear();
+        _result.append(_pLeft);
+        _result.append(_pRight);
+        return;
+    }
 
-    ConjunctionPtr pResult = new Conjunction();
     for (auto i: _pLeft->getConjuncts())
         for (auto j: _pRight->getConjuncts())
-            pResult->addExpression(new Binary(Binary::BOOL_OR,
+            _result.addExpression(new Binary(Binary::BOOL_OR,
                 i->mergeToExpression(), j->mergeToExpression()));
-
-    return pResult;
 }
 
 void Conjunction::_implies(const Auto<Conjunction>& _pLeft, const Auto<Conjunction>& _pRight, Conjunction& _result) {

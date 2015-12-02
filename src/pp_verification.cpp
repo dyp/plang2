@@ -86,8 +86,8 @@ void prettyPrint(const ConjunctionPtr& _pConj, std::wostream &_os, const Context
     ContextPtr pContext = !_pContext ? new Context() : _pContext;
     _updateContext(_pConj, pContext);
 
-    const std::set<ConjunctPtr>& conjuncts = _pConj->getConjuncts();
-    for (std::set<ConjunctPtr>::const_iterator i = conjuncts.begin(); i != conjuncts.end(); ++i) {
+    const auto& conjuncts = _pConj->getConjuncts();
+    for (auto i = conjuncts.begin(); i != conjuncts.end(); ++i) {
         prettyPrint(*i, _os, pContext);
         if (::next(i) != conjuncts.end())
             _os << L" \x2227 ";

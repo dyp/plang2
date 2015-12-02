@@ -599,12 +599,11 @@ bool Inference::split(const Sequent& _sequent) {
 
     ConjunctionPtr pTail = new Conjunction();
 
-    const std::set<ConjunctPtr>& _conjucts = _sequent.right()->getConjuncts();
-    for (std::set<ConjunctPtr>::iterator i = _conjucts.begin(); i != _conjucts.end(); ++i)
-        if ((*i)->hasLogic())
-            m_context.addCondition(new Sequent(_sequent.left(), new Conjunction(*i)));
+    for (auto i: _sequent.right()->getConjuncts())
+        if (i->hasLogic())
+            m_context.addCondition(new Sequent(_sequent.left(), new Conjunction(i)));
         else
-            pTail->addConjunct(*i);
+            pTail->addConjunct(i);
 
     // A |- B & L(C) =>
     //    A |- B
