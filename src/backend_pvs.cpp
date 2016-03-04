@@ -852,7 +852,7 @@ public:
         VISITOR_TRAVERSE_COL(Node, Decl, sorted);
         VISITOR_TRAVERSE_COL(LemmaDeclaration, LemmaDecl, _module.getLemmas());
 
-        m_os << L"END " << cyrillicToASCII(_module.getName()) << L"\n";
+        m_os << L"END " << cyrillicToASCII(_module.getName()) << L"\n\n";
 
         return true;
     }
