@@ -837,6 +837,12 @@ public:
         VISITOR_EXIT();
     }
 
+    bool traverseCastExpr(CastExpr &_expr) {
+        VISITOR_ENTER(CastExpr, _expr);
+        VISITOR_TRAVERSE(Expression, CastParam, _expr.getExpression(), _expr, CastExpr, setExpression);
+        VISITOR_EXIT();
+    }
+
     bool visitPredicate(ir::Predicate &_pred) {
         return false;
     }
