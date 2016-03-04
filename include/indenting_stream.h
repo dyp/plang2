@@ -144,7 +144,7 @@ class IndentingStream : public std::basic_ostream<_Char, _Traits> {
 
             std::streamsize nWritten = 0;
 
-            for (size_t cPos = 0; cPos < _nCount; ++cPos) {
+            for (size_t cPos = 0; static_cast<std::streamsize>(cPos) < _nCount; ++cPos) {
                 _Char c = _pChars[cPos];
 
                 if (isInline()) {
@@ -184,9 +184,9 @@ class IndentingStream : public std::basic_ostream<_Char, _Traits> {
                 }
             }
 
-            assert(cBegin <= _nCount);
+            assert(static_cast<std::streamsize>(cBegin) <= _nCount);
 
-            if (cBegin == _nCount) {
+            if (static_cast<std::streamsize>(cBegin) == _nCount) {
                 m_bLastCharIsPending = bLastCharIsPending;
                 m_chLast = chLast;
                 return _nCount;
@@ -219,8 +219,8 @@ class IndentingStream : public std::basic_ostream<_Char, _Traits> {
             if (m_strPending.empty())
                 return true;
 
-            const std::streamsize cWritten = m_pSlave->sputn(
-                    m_strPending.data(), m_strPending.size());
+            const size_t cWritten = static_cast<size_t>(m_pSlave->sputn(
+                    m_strPending.data(), m_strPending.size()));
 
             if (cWritten < m_strPending.size()) {
                 m_strPending = m_strPending.substr(cWritten, std::string::npos);
