@@ -934,7 +934,14 @@ public:
             return true;
         }
 
-        CVC3::QueryResult result = getContext().query(*pExpr);
+        CVC3::QueryResult result;
+
+        try {
+            result = getContext().query(*pExpr);
+        } catch (CVC3::Exception& ex) {
+            std::wcerr << strWiden(ex.toString()) << L"\n\n";
+            return true;
+        }
 
         m_result.insert({&_lemma, result});
 
