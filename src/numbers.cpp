@@ -8,14 +8,13 @@
 
 #include <stdlib.h>
 #include <float.h>
-#include <math.h>
+#include <cmath>
 
 #include <limits>
 
 #ifdef _MSC_VER
 #define INFINITY std::numeric_limits<float>::infinity()
 #define NAN std::numeric_limits<float>::quiet_NaN()
-#define isfinite(_X) (_finite(_X))
 
 #define snprintf _snprintf
 
@@ -152,7 +151,7 @@ Number Number::makeNat(uint64_t _n) {
 }
 
 Number Number::makeReal(long double _f) {
-    if (!isfinite(_f)) {
+    if (!std::isfinite(_f)) {
         Number n;
         n.m_fSpecial = _f;
         return n;
@@ -201,7 +200,7 @@ std::wstring Number::toString() const {
 
     *s = 0;
 
-    if (!isfinite(m_fSpecial)) {
+    if (!std::isfinite(m_fSpecial)) {
         swprintf(s, sz, L"%llf", m_fSpecial);
         return s;
     }
@@ -225,7 +224,7 @@ std::wstring Number::toString() const {
 }
 
 long double Number::getFloat() const {
-    if (!isfinite(m_fSpecial))
+    if (!std::isfinite(m_fSpecial))
         return m_fSpecial;
 
     const double
