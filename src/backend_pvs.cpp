@@ -842,9 +842,6 @@ public:
     }
 
     bool traverseModule(ir::Module &_module) {
-        m_context.clear();
-        m_context.nameGenerator().collect(_module);
-
         if (_module.getName().empty())
             return Visitor::traverseModule(_module);
 
@@ -860,11 +857,16 @@ public:
         return true;
     }
 
+    void run(Node & _node) {
+        m_context.nameGenerator().collect(_node);
+        traverseNode(_node);
+    }
+
 private:
     pp::Context m_context;
     IndentingStream<wchar_t> m_os;
 };
 
 void generatePvs(Module &_module, std::wostream & _os) {
-    GeneratePvs(_os).traverseNode(_module);
+    GeneratePvs(_os).run(_module);
 }
