@@ -566,9 +566,9 @@ public:
         switch (_node.getOperator()) {
             case Binary::REMAINDER: {
                 m_os << L"rem(";
-                VISITOR_TRAVERSE(Expression, BinarySubexpression, _node.getLeftSide(), _node, Binary, setLeftSide);
-                m_os << L")(";
                 VISITOR_TRAVERSE(Expression, BinarySubexpression, _node.getRightSide(), _node, Binary, setRightSide);
+                m_os << L")(";
+                VISITOR_TRAVERSE(Expression, BinarySubexpression, _node.getLeftSide(), _node, Binary, setLeftSide);
                 m_os << L")";
                 VISITOR_EXIT();
             }
