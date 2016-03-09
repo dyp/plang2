@@ -30,7 +30,6 @@ lemma forall nat a, b . P(a, b) & a != b & a < b => b - a >= 1;
 lemma forall nat a, b . P(a, b) & a != b & a >= b => a - b >= 1;
 
 // Verification:
-formula P(nat a, b) = a >= 1 & b >= 1;
 formula Q(nat a, b, c) = НОД(c, a, b);
 formula m(nat a, b : nat) = a + b;
 lemma forall nat a, b. P(a, b) & a = b => exists nat c. c = a;

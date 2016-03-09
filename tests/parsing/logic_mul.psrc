@@ -27,7 +27,6 @@ formula P(nat a, b) = a >= 0 & b >= 0;
 lemma forall nat a, b . P(a, b) & a != 0 => a - 1 >= 0;
 
 // Verification:
-formula P(nat a, b) = a >= 0 & b >= 0;
 formula Q(nat a, b, c) = c = (a * b);
 formula m(nat a : nat) = a;
 lemma forall nat a, b. P(a, b) & a = 0 => exists nat c. c = 0;

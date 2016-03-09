@@ -130,7 +130,6 @@ public:
     BinderPtr parseBinder(Context &_ctx, Expression &_base);
     ReplacementPtr parseReplacement(Context &_ctx, Expression &_base);
     LambdaPtr parseLambda(Context &_ctx);
-    bool parsePredicateParamsAndBody(Context &_ctx, AnonymousPredicate &_pred);
     PredicatePtr parsePredicate(Context &_ctx);
     ProcessPtr parseProcess(Context &_ctx);
 
@@ -208,6 +207,9 @@ public:
     size_t findByNameIdx(const Collection<_T> &_list, const std::wstring &_name);
 
     typedef std::map<std::wstring, BranchPtr> branch_map_t;
+
+    bool parsePredicateParams(Context &_ctx, AnonymousPredicate &_pred, branch_map_t & _branches);
+    bool parsePredicateBody(Context &_ctx, AnonymousPredicate &_pred, branch_map_t & _branches);
 
     template<class _Pred>
     bool parsePreconditions(Context &_ctx, _Pred &_pred, branch_map_t &_branches);
@@ -576,8 +578,10 @@ LambdaPtr Parser::parseLambda(Context &_ctx) {
         UNEXPECTED(ctx, "predicate");
 
     LambdaPtr pLambda = new Lambda();
+    branch_map_t branches;
 
-    if (!parsePredicateParamsAndBody(ctx, pLambda->getPredicate()))
+    if (!parsePredicateParams(ctx, pLambda->getPredicate(), branches) ||
+        !parsePredicateBody(ctx, pLambda->getPredicate(), branches))
         return NULL;
 
     if (!pLambda->getPredicate().getBlock())
@@ -1087,14 +1091,13 @@ bool Parser::fixupAsteriskedParameters(Context &_ctx, Params &_in, Params &_out)
     return bResult;
 }
 
-bool Parser::parsePredicateParamsAndBody(Context &_ctx, AnonymousPredicate &_pred) {
+bool Parser::parsePredicateParams(Context &_ctx, AnonymousPredicate &_pred, branch_map_t & _branches) {
     if (!_ctx.consume(LPAREN))
         ERROR(_ctx, NULL, L"Expected \"(\", got: %ls", TOK_S(_ctx));
 
     if (!parseParamList(_ctx, _pred.getInParams(), &Parser::parseParam, ALLOW_ASTERSK | ALLOW_EMPTY_NAMES))
         ERROR(_ctx, false, L"Failed to parse input parameters");
 
-    branch_map_t branches;
     bool bHasAsterisked = false;
 
     while (_ctx.consume(COLON)) {
@@ -1124,7 +1127,7 @@ bool Parser::parsePredicateParamsAndBody(Context &_ctx, AnonymousPredicate &_pre
 
             ++_ctx;
 
-            if (!branches.insert(std::make_pair(strLabel, pBranch)).second)
+            if (!_branches.insert(std::make_pair(strLabel, pBranch)).second)
                 ERROR(_ctx, false, L"Duplicate branch name \"%ls\"", strLabel.c_str());
 
             pBranch->setLabel(_ctx.createLabel(strLabel));
@@ -1149,16 +1152,20 @@ bool Parser::parsePredicateParamsAndBody(Context &_ctx, AnonymousPredicate &_pre
             if (!pBranch->getLabel()) {
                 pBranch->setLabel(new Label(fmtInt(i + 1)));
                 _ctx.addLabel(pBranch->getLabel());
-                branches[pBranch->getLabel()->getName()] = pBranch;
+                _branches[pBranch->getLabel()->getName()] = pBranch;
             }
         }
     }
 
+    return true;
+}
+
+bool Parser::parsePredicateBody(Context &_ctx, AnonymousPredicate &_pred, branch_map_t & _branches) {
     if (!_ctx.consume(RPAREN))
         ERROR(_ctx, false, L"Expected \")\", got: %ls", TOK_S(_ctx));
 
     if (_ctx.is(PRE))
-        if (!parsePreconditions(_ctx, _pred, branches))
+        if (!parsePreconditions(_ctx, _pred, _branches))
             ERROR(_ctx, false, L"Failed parsing preconditions");
 
     if (_ctx.is(LBRACE)) {
@@ -1169,7 +1176,7 @@ bool Parser::parsePredicateParamsAndBody(Context &_ctx, AnonymousPredicate &_pre
     }
 
     if (_ctx.is(POST))
-        if (!parsePostconditions(_ctx, _pred, branches))
+        if (!parsePostconditions(_ctx, _pred, _branches))
             ERROR(_ctx, false, L"Failed parsing postconditions");
 
     if (_ctx.is(MEASURE))
@@ -1180,19 +1187,25 @@ bool Parser::parsePredicateParamsAndBody(Context &_ctx, AnonymousPredicate &_pre
 }
 
 PredicatePtr Parser::parsePredicate(Context &_ctx) {
-    Context *pCtx = _ctx.createChild(false);
+    Context *pCtx = _ctx.createChild(true);
 
     if (!pCtx->is(IDENTIFIER))
         return NULL;
 
+    branch_map_t branches;
     PredicatePtr pPred = new Predicate(pCtx->scan());
 
-    pCtx->addPredicate(pPred);
-    pCtx = pCtx->createChild(true);
+    if (!parsePredicateParams(*pCtx, *pPred, branches))
+        return nullptr;
+
+    if (!_ctx.addPredicate(pPred))
+        ERROR(*pCtx, NULL, L"Predicate '%ls' was redefined", pPred->getName().c_str());
+
+    //pCtx = pCtx->createChild(true);
 
     pPred->setLoc(&*_ctx.loc());
 
-    if (!parsePredicateParamsAndBody(*pCtx, *pPred))
+    if (!parsePredicateBody(*pCtx, *pPred, branches))
         return NULL;
 
     if (!pPred->getBlock() && !pCtx->consume(SEMICOLON))
@@ -2797,7 +2810,9 @@ FormulaDeclarationPtr Parser::parseFormulaDeclaration(Context &_ctx) {
 
     pDecl->setLoc(&*_ctx.loc());
 
-    pCtx->addFormula(pDecl);
+    if (!pCtx->addFormula(pDecl))
+        ERROR(*pCtx, NULL, L"Formula '%ls' was redefined", pDecl->getName().c_str());
+
     pCtx = pCtx->createChild(true, Context::ALLOW_FORMULAS);
 
     if (!pCtx->consume(LPAREN))

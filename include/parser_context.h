@@ -174,7 +174,7 @@ public:
 
     bool getPredicates(const std::wstring &_strName, ir::Predicates &_predicates) const;
     ir::PredicatePtr getPredicate(const std::wstring &_strName) const;
-    void addPredicate(const ir::PredicatePtr &_pPred);
+    bool addPredicate(const ir::PredicatePtr &_pPred);
 
     ir::NamedValuePtr getVariable(const std::wstring &_strName, bool _bLocal = false) const;
     void addVariable(const ir::NamedValuePtr &_pVar);
@@ -193,7 +193,7 @@ public:
     void addProcess(const ir::ProcessPtr &_pProcess);
 
     ir::FormulaDeclarationPtr getFormula(const std::wstring &_strName) const;
-    void addFormula(const ir::FormulaDeclarationPtr &_pFormula);
+    bool addFormula(const ir::FormulaDeclarationPtr &_pFormula);
 
     bool getConstructors(const std::wstring &_strName, ir::UnionConstructorDeclarations &_cons) const;
     void addConstructor(const ir::UnionConstructorDeclarationPtr &_pCons);

@@ -251,10 +251,23 @@ ir::PredicatePtr Context::getPredicate(const std::wstring &_strName) const {
     return ir::Builtins::instance().find(_strName);
 }
 
-void Context::addPredicate(const ir::PredicatePtr &_pPred) {
+bool Context::addPredicate(const ir::PredicatePtr &_pPred) {
     if (m_predicates == NULL)
         m_predicates = new PredicateMap();
+
+    Predicates predicates;
+    getPredicates(_pPred->getName(), predicates);
+
+    for (size_t i = 0; i < predicates.size(); ++i) {
+        const PredicatePtr& pPred = predicates.get(i);
+        if (pPred->getInParams() == _pPred->getInParams() &&
+            pPred->getOutParams() == _pPred->getOutParams() &&
+            pPred->getBlock())
+            return false;
+    }
+
     m_predicates->insert(std::make_pair(_pPred->getName(), _pPred));
+    return true;
 }
 
 ir::NamedValuePtr Context::getVariable(const std::wstring &_strName, bool _bLocal) const {
@@ -352,10 +365,15 @@ ir::FormulaDeclarationPtr Context::getFormula(const std::wstring &_strName) cons
     return m_pParent ? m_pParent->getFormula(_strName) : ir::FormulaDeclarationPtr();
 }
 
-void Context::addFormula(const ir::FormulaDeclarationPtr &_pFormula) {
+bool Context::addFormula(const ir::FormulaDeclarationPtr &_pFormula) {
     if (m_formulas == NULL)
         m_formulas = new FormulaMap();
+    const FormulaDeclarationPtr pFormula = getFormula(_pFormula->getName());
+    if (pFormula && pFormula->getFormula())
+        return false;
+
     (*m_formulas)[_pFormula->getName()] = _pFormula;
+    return true;
 }
 
 bool Context::getConstructors(const std::wstring &_strName, ir::UnionConstructorDeclarations &_cons) const {

@@ -1,0 +1,15 @@
+/*
+
+<test>
+    ~ Predicate 'foo' was redefined
+</test>
+
+*/
+
+module Predicates;
+
+foo(nat a: nat b);
+
+foo(nat a: nat b) { b = a }
+
+foo(nat a: nat b) { b = a + 1 }

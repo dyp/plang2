@@ -1,0 +1,15 @@
+/*
+
+<test>
+    ~ Formula 'foo' was redefined
+</test>
+
+*/
+
+module Predicates;
+
+formula foo(nat a);
+
+formula foo(nat a) = a = 1;
+
+formula foo(nat a, nat b) = a = b;
