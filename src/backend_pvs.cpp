@@ -44,14 +44,6 @@ public:
         return bResult;
     }
 
-    bool traverseVariable(Variable &_val) {
-        VISITOR_ENTER(Variable, _val);
-        m_os << namedValueName(&_val) << L" : " << setInline(true);
-        VISITOR_TRAVERSE(Type, VariableType, _val.getType(), _val, NamedValue, setType);
-        m_os << setInline(false);
-        VISITOR_EXIT();
-    }
-
     bool printCond(const std::list<std::pair<ExpressionPtr, ExpressionPtr>>& _cases, const ExpressionPtr& _pElse) {
         m_os << L"COND\n" << indent;
 
@@ -124,7 +116,9 @@ public:
 
     bool traverseVariableDeclaration(VariableDeclaration &_stmt) {
         VISITOR_ENTER(VariableDeclaration, _stmt);
-        VISITOR_TRAVERSE(Variable, VarDeclVar, _stmt.getVariable(), _stmt, VariableDeclaration, setVariable);
+        m_os << namedValueName(_stmt.getVariable()) << L" : " << setInline(true);
+        traverseType(*_stmt.getVariable()->getType());
+        m_os << setInline(false);
         if (_stmt.getValue()) {
             m_os << L" =\n" << indent;
             VISITOR_TRAVERSE(Expression, VarDeclInit, _stmt.getValue(), _stmt, VariableDeclaration, setValue);
