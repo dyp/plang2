@@ -241,6 +241,8 @@ set(TESTS_PARSING
     parsing/label_in_module.psrc
     parsing/redefined_predicates.psrc
     parsing/redefined_formulas.psrc
+    parsing/redefined_variables.psrc
+    parsing/not_redefined_variables.psrc
 )
 
 set(TESTS_INFERENCE

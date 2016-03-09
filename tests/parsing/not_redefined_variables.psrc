@@ -1,0 +1,17 @@
+/*
+
+<test>
+    //Module = Predicates
+</test>
+
+*/
+
+module Predicates;
+
+foo(:) {
+    nat a, b;
+    {
+        array(nat, nat) a;
+        b = a[1]
+    }
+}

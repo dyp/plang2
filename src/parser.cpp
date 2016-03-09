@@ -1250,7 +1250,9 @@ VariableDeclarationPtr Parser::parseVariableDeclaration(Context &_ctx, int _nFla
     pDecl->setLoc(&*_ctx.loc());
 
     _ctx.mergeChildren();
-    _ctx.addVariable(pDecl->getVariable());
+
+    if (!_ctx.addVariable(pDecl->getVariable()))
+        ERROR(_ctx, NULL, L"Variable '%ls' was redefined", pDecl->getName().c_str());
 
     return pDecl;
 }
@@ -1550,7 +1552,7 @@ EnumTypePtr Parser::parseEnumType(Context &_ctx) {
 }
 
 SubtypePtr Parser::parseSubtype(Context &_ctx) {
-    Context &ctx = *_ctx.createChild(false);
+    Context &ctx = *_ctx.createChild(true);
 
     if (!ctx.consume(SUBTYPE))
         UNEXPECTED(ctx, "subtype");
@@ -1863,7 +1865,9 @@ NamedValuePtr Parser::parseNamedValue(Context &_ctx) {
     pVar->setLoc(&*_ctx.loc());
 
     _ctx.mergeChildren();
-    _ctx.addVariable(pVar);
+
+    if (!_ctx.addVariable(pVar))
+        ERROR(_ctx, NULL, L"Variable '%ls' was redefined", pVar->getName().c_str());
 
     return pVar;
 }
@@ -2054,7 +2058,7 @@ UnionConstructorPtr Parser::parseConstructor(Context &_ctx, const UnionTypePtr &
 }
 
 UnionConstructorDeclarationPtr Parser::parseConstructorDeclaration(Context &_ctx) {
-    Context &ctx = *_ctx.createChild(false);
+    Context &ctx = *_ctx.createChild(true, Context::MERGE_CONSTRUCTORS);
 
     if (!ctx.is(IDENTIFIER))
         ERROR(ctx, NULL, L"Constructor name expected.");
@@ -2084,7 +2088,8 @@ EnumValuePtr Parser::parseEnumValue(Context &_ctx) {
 
     EnumValuePtr pVar = new EnumValue(_ctx.scan());
 
-    _ctx.addVariable(pVar);
+    if (!_ctx.addVariable(pVar))
+        ERROR(_ctx, NULL, L"Enum value '%ls' was redefined", pVar->getName().c_str());
 
     pVar->setLoc(&*::prev(_ctx.loc()));
 

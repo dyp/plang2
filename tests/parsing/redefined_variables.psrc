@@ -1,0 +1,18 @@
+/*
+
+<test>
+    ~ Variable 'a' was redefined
+</test>
+
+*/
+
+module Predicates;
+
+foo(:) {
+    nat a, b;
+    {
+        array(nat, nat) a;
+        nat a;
+        b = a[1]
+    }
+}

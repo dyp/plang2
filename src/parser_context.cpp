@@ -277,13 +277,15 @@ ir::NamedValuePtr Context::getVariable(const std::wstring &_strName, bool _bLoca
             return i->second;
     }
 
-    return (m_pParent && (!_bLocal || !m_bScope)) ? m_pParent->getVariable(_strName) : ir::NamedValuePtr();
+    return (m_pParent && (!_bLocal || !m_bScope)) ? m_pParent->getVariable(_strName, _bLocal) : ir::NamedValuePtr();
 }
 
-void Context::addVariable(const ir::NamedValuePtr &_pVar) {
+bool Context::addVariable(const ir::NamedValuePtr &_pVar) {
     if (m_variables == NULL)
         m_variables = new VariableMap();
-    (*m_variables)[_pVar->getName()] = _pVar;
+    if (getVariable(_pVar->getName(), true))
+        return false;
+    return m_variables->insert({_pVar->getName(), _pVar}).second;
 }
 
 ir::TypeDeclarationPtr Context::getType(const std::wstring &_strName) const {

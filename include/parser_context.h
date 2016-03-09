@@ -177,7 +177,7 @@ public:
     bool addPredicate(const ir::PredicatePtr &_pPred);
 
     ir::NamedValuePtr getVariable(const std::wstring &_strName, bool _bLocal = false) const;
-    void addVariable(const ir::NamedValuePtr &_pVar);
+    bool addVariable(const ir::NamedValuePtr &_pVar);
 
     ir::TypeDeclarationPtr getType(const std::wstring &_strName) const;
     void addType(const ir::TypeDeclarationPtr &_pType);
