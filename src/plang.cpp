@@ -32,7 +32,11 @@
 #include "predicate_ordering.h"
 #include "transformations/tail_recursion_elimination.h"
 #include "transformations/predicate_inlining.h"
+
+#ifdef USE_CVC3
 #include "cvc3_solver.h"
+#endif
+
 #include "name_reset.h"
 #include "check_assignments.h"
 #include "type_lattice.h"
@@ -102,8 +106,10 @@ int main(int _argc, const char ** _argv) {
         if (Options::instance().bOptimize)
             optimize(*pModule);
 
+#ifdef USE_CVC3
         if (Options::instance().bCheckValidity)
             cvc3::checkValidity(pModule);
+#endif
 
         if (Options::instance().transformation & OT_TRE)
             tailRecursionElimination(*pModule);

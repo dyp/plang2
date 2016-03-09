@@ -46,7 +46,6 @@ set(SOURCES
     verification_inference.cpp
     verification_context.cpp
     pp_verification.cpp
-    cvc3_solver.cpp
     name_reset.cpp
     predicate_ordering.cpp
     callgraph.cpp
@@ -64,13 +63,20 @@ set(SOURCES
     typecheck/unify.cpp
 )
 
+if (CVC3 AND CVC3LIB_FOUND)
+    set(SOURCES ${SOURCES} cvc3_solver.cpp)
+endif()
+
 add_definitions(
     -fmessage-length=0 -Wall -Werror
 )
 
 add_executable(${TARGET} ${SOURCES})
 
-target_link_libraries(${TARGET} ${CVC3LIB_LIBRARIES})
+if (NOT CVC3 STREQUAL "0" AND CVC3LIB_FOUND)
+    set_target_properties(${TARGET} PROPERTIES COMPILE_DEFINITIONS "USE_CVC3")
+    target_link_libraries(${TARGET} ${CVC3LIB_LIBRARIES})
+endif()
 
 include_directories (
     ../include
