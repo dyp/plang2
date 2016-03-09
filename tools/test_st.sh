@@ -10,7 +10,7 @@ echo "[ Test   ]" `basename $TEST`
 EXPECTED=$TEST.dot
 RESULT=`mktemp`
 
-$BIN_DIR/verbose -m $TEST |sort > $RESULT
+$BIN_DIR/verification_tests -m $TEST |sort > $RESULT
 
 sort $EXPECTED| diff -b -B $RESULT - >/dev/null 2>&1
 
