@@ -298,10 +298,20 @@ ir::TypeDeclarationPtr Context::getType(const std::wstring &_strName) const {
     return m_pParent ? m_pParent->getType(_strName) : ir::TypeDeclarationPtr();
 }
 
-void Context::addType(const ir::TypeDeclarationPtr &_pType) {
+bool Context::addType(const ir::TypeDeclarationPtr &_pType) {
     if (m_types == NULL)
         m_types = new TypeMap();
+
+    const ir::TypeDeclarationPtr pDecl = getType(_pType->getName());
+    if (pDecl && pDecl->getType() && _pType->getType() &&
+        (pDecl->getType()->getKind() != Type::PARAMETERIZED ||
+            pDecl->getType().as<ParameterizedType>()->getActualType()) &&
+        (_pType->getType()->getKind() != Type::PARAMETERIZED ||
+            _pType->getType().as<ParameterizedType>()->getActualType()))
+        return false;
+
     (*m_types)[_pType->getName()] = _pType;
+    return true;
 }
 
 ir::LabelPtr Context::getLabel(const std::wstring &_strName) const {

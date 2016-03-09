@@ -180,7 +180,7 @@ public:
     bool addVariable(const ir::NamedValuePtr &_pVar);
 
     ir::TypeDeclarationPtr getType(const std::wstring &_strName) const;
-    void addType(const ir::TypeDeclarationPtr &_pType);
+    bool addType(const ir::TypeDeclarationPtr &_pType);
 
     ir::LabelPtr getLabel(const std::wstring &_strName) const;
     ir::LabelPtr createLabel(const std::wstring &_strName);

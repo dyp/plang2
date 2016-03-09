@@ -1,0 +1,13 @@
+/*
+
+<test>
+    ~ Type 'T' was redefined
+</test>
+
+*/
+
+type T;
+
+type T = nat;
+
+type T = real;

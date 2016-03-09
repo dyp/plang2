@@ -1778,7 +1778,8 @@ bool Parser::parseParamList(Context &_ctx, Collection<_Param> &_params,
             TypeDeclarationPtr pDecl = pType.as<TypeType>()->getDeclaration();
 
             pDecl->setName(pParam->getName());
-            _ctx.addType(pDecl);
+            if (!_ctx.addType(pDecl))
+                ERROR(ctx, NULL, L"Type '%ls' was redefined", pDecl->getName().c_str());
         }
 
         pParam->setType(pType);
@@ -2127,11 +2128,16 @@ TypeDeclarationPtr Parser::parseTypeDeclaration(Context &_ctx) {
             ERROR(*pCtx, NULL, L"Expected \")\", got: %ls", TOK_S(*pCtx));
     }
 
+
+    const TypeDeclarationPtr pOld = _ctx.getType(pDecl->getName());
     _ctx.addType(pDecl); // So that recursive definitions would work.
 
     pDecl->setLoc(&*_ctx.loc());
 
     if (pCtx->consume(EQ)) {
+        if (pOld && pOld->getType())
+            ERROR(*pCtx, NULL, L"Type '%ls' was redefined", pDecl->getName().c_str());
+
         TypePtr pType = parseType(* pCtx);
 
         if (!pType)
