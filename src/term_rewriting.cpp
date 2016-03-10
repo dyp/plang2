@@ -233,6 +233,74 @@ void moveOutStructuredTypes(const ir::ModulePtr& _pModule) {
     MoveOutStructuredTypes(container).traverseNode(*_pModule);
 }
 
+typedef std::map<ExpressionPtr, FormulaDeclarationPtr, PtrLess<Expression>> ExpressionMap;
+
+class MoveOutExpressions : public Visitor {
+public:
+    MoveOutExpressions(ExpressionMap& _container) :
+        Visitor(CHILDREN_FIRST), m_container(_container)
+    {}
+
+    virtual bool traverseModule(Module& _module) {
+        ExpressionMap last;
+        last.swap(m_container);
+
+        const bool bResult = Visitor::traverseModule(_module);
+
+        for (auto i: m_container)
+            _module.getFormulas().add(i.second);
+
+        m_container.swap(last);
+        return bResult;
+    }
+
+    virtual bool traverseVariableDeclaration(VariableDeclaration& _var) {
+        return true;
+    }
+
+    void moveOut(Expression& _expr) {
+        NamedValues params;
+
+        // TODO: Should use lexical context instead of collect values.
+        na::collectValues(&_expr, params);
+
+        auto iReference = m_container.find(&_expr);
+        const FormulaDeclarationPtr
+            pFormula = iReference == m_container.end() ?
+                declareFormula(L"", &_expr) : iReference->second;
+
+        if (iReference == m_container.end())
+            m_container.insert(std::make_pair(&_expr, pFormula));
+
+        callSetter(makeCall(pFormula, params));
+    }
+
+    virtual bool visitReplacement(Replacement& _expr) {
+        if (_expr.getNewValues()->getConstructorKind() == Constructor::ARRAY_ITERATION)
+            moveOut(_expr);
+        return true;
+    }
+
+    virtual bool visitArrayIteration(ArrayIteration &_expr) {
+        if (getRole() != R_ReplacementValue)
+            moveOut(_expr);
+        return true;
+    }
+
+    virtual bool visitArrayConstructor(ArrayConstructor &_expr) {
+        moveOut(_expr);
+        return true;
+    }
+
+private:
+     ExpressionMap & m_container;
+};
+
+void moveOutExpressions(const ir::ModulePtr& _pModule) {
+    ExpressionMap container;
+    MoveOutExpressions(container).traverseNode(*_pModule);
+}
+
 class Instantiate : public Visitor {
 public:
     Instantiate(const NamedValues& _params, const Collection<Expression>& _args) :

@@ -119,6 +119,7 @@ int main(int _argc, const char ** _argv) {
             predicateInlining(*pModule);
 
         if (Options::instance().bMoveOut) {
+            tr::moveOutExpressions(pModule);
             tr::moveOutStructuredTypes(pModule);
         }
 

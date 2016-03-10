@@ -344,6 +344,11 @@ set(TESTS_STATEMENT_TREE
     statement_tree/moving_out_call.psrc
 )
 
+set(TESTS_MOVING_OUT
+    moving_out/example.psrc
+    moving_out/array_constructor.psrc
+)
+
 set(TESTS_CONDITIONS
     semantics/example.psrc
 )
@@ -405,6 +410,7 @@ endif()
 
 run_st_matching("" "${TESTS_STATEMENT_TREE_MATCHING}")
 run_verification_tests("-t" "${TESTS_STATEMENT_TREE}")
+run_tests("-m -t1" "${TESTS_MOVING_OUT}")
 run_cond_tests("" "${TESTS_CONDITIONS}")
 run_vf_tests("-t1" "${TESTS_VERIFICATION}")
 run_pvs_tests("-t1" "${TESTS_PVS}")

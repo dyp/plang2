@@ -1,0 +1,29 @@
+/*
+    type Range = 1 .. 10;
+    type T = array(nat, Range);
+
+    formula f(T a, T b: T)
+        = a with for(Range i) {
+            case i: b[i]
+        };
+
+    lemma
+        forall T a, T b.
+            a = f(a, b);
+
+<test>
+    //TypeDeclaration == type \w* = nat\[\w*\]
+    //FormulaDeclaration ~~ formula \w*\(\w* b, \w* a : \w*\)
+</test>
+
+*/
+
+module A {
+    type Range = 1 .. 10;
+
+    lemma
+        forall array(nat, Range) a, b.
+            a = a with (for(Range i) {
+                case i: b[i]
+            });
+}
