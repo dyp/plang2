@@ -358,7 +358,12 @@ set(TESTS_VERIFICATION
 )
 
 set(TESTS_PVS
-    backend_pvs/example.psrc
+    backend_pvs/enum.psrc
+    backend_pvs/variable.psrc
+    backend_pvs/formula.psrc
+    backend_pvs/list.psrc
+    backend_pvs/set.sprc
+    backend_pvs/array.psrc
 )
 
 set(TESTS_CVC3

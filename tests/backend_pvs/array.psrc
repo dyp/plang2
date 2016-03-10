@@ -1,0 +1,46 @@
+module A {
+    type Range = 1..4;
+    type ArrType = array(nat, Range);
+
+    formula a_cons( : ArrType) = [1, 2, 3, 4];
+
+    formula b_cons(ArrType arr: ArrType)
+        = arr with (for(nat i) {
+            case 1..2: 0
+            case 3: 1
+        });
+
+    lemma forall ArrType a. a = a_cons();
+    lemma forall ArrType a, b. b = b_cons(a);
+
+    ArrType
+        a = [1, 2, 3, 4],
+        b = a with (for(nat i) {
+            case 1..2: 0
+            default: i*2
+        });
+
+    nat
+        e1 = a[1] + a[2] + a[3],
+        e2 = b[1] + b[2] + b[3];
+
+    type Dim = 1..3;
+    type Array1 = array(nat, Dim, Dim);
+
+    formula c_cons(: Array1)
+        = for(Dim i, Dim j) {
+            case (1, 1): 0
+            case (2..3, 2..3): 1
+            default: 2
+        }
+
+    lemma forall Array1 c. c = c_cons();
+
+    Array1 c = for(Dim i, Dim j) {
+        case (1, 1): 0
+        case (2..3, 2..3): 1
+        default: 2
+    };
+
+    var e3 = c[1..2];
+}

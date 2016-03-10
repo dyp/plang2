@@ -1,0 +1,12 @@
+A : THEORY
+BEGIN
+
+En : TYPE =
+    {
+        red, 
+        green, 
+        blue
+    }
+
+END A
+

@@ -1,0 +1,14 @@
+A : THEORY
+BEGIN
+
+l1 : list[nat] =
+    cons(1, cons(2, cons(3, null)))
+
+l2 : list[nat] =
+    cons(4, cons(5, cons(6, null)))
+
+LEMMA
+    (l1 + l2) = (cons(1, cons(2, cons(3, cons(4, cons(5, cons(6, null)))))))
+
+END A
+

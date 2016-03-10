@@ -1,0 +1,5 @@
+module A {
+    nat
+        a = 0,
+        b = ~a;
+}

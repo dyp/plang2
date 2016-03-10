@@ -7,6 +7,9 @@
 #include "prettyprinter.h"
 #include "pp_syntax.h"
 #include "utils.h"
+#include "node_analysis.h"
+
+#include <list>
 
 using namespace ir;
 
@@ -32,34 +35,101 @@ public:
         }
     }
 
+    bool traverseStatement(Statement& _stmt) {
+        const bool bResult = Visitor::traverseStatement(_stmt);
+
+        if (_stmt.getKind() >= Statement::TYPE_DECLARATION)
+            m_os << L"\n\n";
+
+        return bResult;
+    }
+
     bool traverseVariable(Variable &_val) {
         VISITOR_ENTER(Variable, _val);
-        m_os << namedValueName(&_val) << L" : VAR ";
+        m_os << namedValueName(&_val) << L" : " << setInline(true);
         VISITOR_TRAVERSE(Type, VariableType, _val.getType(), _val, NamedValue, setType);
+        m_os << setInline(false);
         VISITOR_EXIT();
     }
 
-    void printArrayDeclaration(const NamedValuePtr& _pValue, const ArrayConstructorPtr& _pConstructor) {
-        const TypePtr& pArrayType = _pValue->getType()->getKind() == Type::ARRAY
-            ? _pValue->getType() : _pConstructor->getType();
-        m_os << namedValueName(_pValue);
-        printArrayConstructor(*_pConstructor, pArrayType.as<ArrayType>(), true);
+    bool printCond(const std::list<std::pair<ExpressionPtr, ExpressionPtr>>& _cases, const ExpressionPtr& _pElse) {
+        m_os << L"COND\n" << indent;
+
+        for (auto i: _cases) {
+            VISITOR_TRAVERSE_NS(Expression, Expression, i.first);
+            m_os << L" -> " << indent;
+            VISITOR_TRAVERSE_NS(Expression, Expression, i.second);
+            m_os << unindent;
+
+            if (i != *::prev(_cases.end()) || _pElse)
+                m_os << L",\n";
+        }
+
+        if (_pElse) {
+            m_os << "ELSE -> " << indent;
+            VISITOR_TRAVERSE_NS(Expression, Expression, _pElse);
+            m_os << unindent;
+        }
+
+        m_os << unindent << L"\nENDCOND";
+        return true;
+    }
+
+    bool printTupleTypes(Collection<Type>& _types) {
+        if (_types.empty())
+            return true;
+        if (_types.size() == 1) {
+            VISITOR_TRAVERSE_NS(Type, Type, _types.get(0));
+            return true;
+        }
+
+        m_os << L"[" << setInline(true);
+
+        for (size_t c = 0; c < _types.size(); ++c) {
+            if (c > 0)
+                m_os << L", ";
+            VISITOR_TRAVERSE_ITEM_NS(Type, Type, _types, c);
+        }
+
+        m_os << L"]" << setInline(false);
+
+        return true;
+    }
+
+    bool printRestrict(Collection<Type>& _orig, Collection<Type>& _restricted,
+        const TypePtr& _pResult, const ExpressionPtr& _pArg)
+    {
+        m_os << L"restrict[" << setInline(true);
+        printTupleTypes(_orig);
+        m_os << L", ";
+        printTupleTypes(_restricted);
+        m_os << L", ";
+        VISITOR_TRAVERSE_NS(Type, Type, _pResult);
+        m_os << L"] (";
+        VISITOR_TRAVERSE_NS(Expression, Expression, _pArg);
+        m_os << L")" << setInline(false);
+        return true;
+    }
+
+    bool printLambda(NamedValues& _params, const TypePtr& _pResult, const ExpressionPtr& _pBody) {
+        m_os << L"LAMBDA (" << setInline(true);
+        VISITOR_TRAVERSE_COL(NamedValue, PredicateInParam, _params);
+        m_os << L") : ";
+        VISITOR_TRAVERSE_NS(Type, Type, _pResult);
+        m_os << setInline(false) << " =\n" << indent;
+        VISITOR_TRAVERSE_NS(Expression, Expression, _pBody);
+        m_os << unindent;
+        return true;
     }
 
     bool traverseVariableDeclaration(VariableDeclaration &_stmt) {
         VISITOR_ENTER(VariableDeclaration, _stmt);
-        if (_stmt.getValue() && _stmt.getValue()->getKind() == Expression::CONSTRUCTOR
-            && _stmt.getValue().as<Constructor>()->getConstructorKind() == Constructor::ARRAY_ELEMENTS) {
-            printArrayDeclaration(_stmt.getVariable(), _stmt.getValue().as<ArrayConstructor>());
-            m_os << L"\n";
-            VISITOR_EXIT();
-        }
         VISITOR_TRAVERSE(Variable, VarDeclVar, _stmt.getVariable(), _stmt, VariableDeclaration, setVariable);
         if (_stmt.getValue()) {
-            m_os << L" = ";
+            m_os << L" =\n" << indent;
             VISITOR_TRAVERSE(Expression, VarDeclInit, _stmt.getValue(), _stmt, VariableDeclaration, setValue);
+            m_os << unindent;
         }
-        m_os << L"\n";
         VISITOR_EXIT();
     }
 
@@ -67,7 +137,7 @@ public:
         VISITOR_ENTER(TypeDeclaration, _stmt);
 
         VISITOR_TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
-        m_os << _stmt.getName();
+        m_os << m_context.nameGenerator().getTypeName(_stmt);
 
         if (_stmt.getType()->getKind() == Type::PARAMETERIZED) {
             m_os << L"(";
@@ -78,11 +148,11 @@ public:
         m_os << L" : TYPE";
 
         if (_stmt.getType()) {
-            m_os << L" = ";
+            m_os << L" =\n" << indent;
             VISITOR_TRAVERSE(Type, TypeDeclBody, _stmt.getType(), _stmt, TypeDeclaration, setType);
+            m_os << unindent;
         }
 
-        m_os << L"\n";
         VISITOR_EXIT();
     }
 
@@ -96,19 +166,19 @@ public:
         VISITOR_ENTER(Subtype, _type);
         m_os << L"{";
         VISITOR_TRAVERSE(NamedValue, SubtypeParam, _type.getParam(), _type, Subtype, setParam);
-        m_os << L" | ";
+        m_os << L" | " << setInline(true);
         VISITOR_TRAVERSE(Expression, SubtypeCond, _type.getExpression(), _type, Subtype, setExpression);
-        m_os << "}";
+        m_os << "}" << setInline(false);
         VISITOR_EXIT();
     }
 
     bool traverseRange(Range &_type) {
         VISITOR_ENTER(Range, _type);
-        m_os << L"subrange(";
+        m_os << L"subrange(" << setInline(true);
         VISITOR_TRAVERSE(Expression, RangeMin, _type.getMin(), _type, Range, setMin);
         m_os << L", ";
         VISITOR_TRAVERSE(Expression, RangeMax, _type.getMax(), _type, Range, setMax);
-        m_os << ")";
+        m_os << ")" << setInline(false);
         VISITOR_EXIT();
     }
 
@@ -118,12 +188,12 @@ public:
         if (!_type.getDeclaration())
             VISITOR_EXIT();
 
-        m_os << _type.getDeclaration()->getName();
+        m_os << m_context.nameGenerator().getTypeName(_type);
 
         if (!_type.getArgs().empty()) {
-            m_os << L"(";
+            m_os << L"(" << setInline(true);
             VISITOR_TRAVERSE_COL(Expression, NamedTypeArg, _type.getArgs());
-            m_os << L")";
+            m_os << L")" << setInline(false);
         }
 
         VISITOR_EXIT();
@@ -137,46 +207,43 @@ public:
 
         m_os << L"[";
 
-        for (size_t c = 0; c < dims.size(); ++c) {
-            if (c > 0)
-                m_os << L", ";
-            VISITOR_TRAVERSE_ITEM_NS(Type, ArrayDimType, dims, c);
-        }
+        if (!printTupleTypes(dims))
+            return false;
 
-        m_os << L" -> ";
+        m_os << L" -> " << setInline(true);
         VISITOR_TRAVERSE_NS(Type, ArrayBaseType, pBaseType);
-        m_os << L"]";
+        m_os << L"]" << setInline(false);
 
         return false;
     }
 
     bool traverseEnumValue(EnumValue &_val) {
         printComma();
-        m_os << _val.getName();
+        m_os << L"\n" << _val.getName();
         return true;
     }
 
     bool traverseEnumType(EnumType &_type) {
         VISITOR_ENTER(EnumType, _type);
-        m_os << L"{";
+        m_os << L"{" << indent;
         VISITOR_TRAVERSE_COL(EnumValue, EnumValueDecl, _type.getValues());
-        m_os << L"}";
+        m_os << unindent << L"\n}";
         VISITOR_EXIT();
     }
 
     bool traverseListType(ListType &_type) {
         VISITOR_ENTER(ListType, _type);
-        m_os << L"list[";
+        m_os << L"list[" << setInline(true);
         VISITOR_TRAVERSE(Type, ListBaseType, _type.getBaseType(), _type, DerivedType, setBaseType);
-        m_os << L"]";
+        m_os << L"]" << setInline(false);
         VISITOR_EXIT();
     }
 
     bool traverseSetType(SetType &_type) {
         VISITOR_ENTER(SetType, _type);
-        m_os << L"setof[";
+        m_os << L"setof[" << setInline(true);
         VISITOR_TRAVERSE(Type, SetBaseType, _type.getBaseType(), _type, DerivedType, setBaseType);
-        m_os << L"]";
+        m_os << L"]" << setInline(false);
         VISITOR_EXIT();
     }
 
@@ -228,6 +295,7 @@ public:
             return false;
 
         switch (nChildKind) {
+            case ir::Expression::COMPONENT:
             case ir::Expression::FORMULA_CALL:
             case ir::Expression::FUNCTION_CALL:
             case ir::Expression::LITERAL:
@@ -337,7 +405,7 @@ public:
     }
 
     bool visitNamedValue(ir::NamedValue &_value) {
-        if (!m_path.empty() && getLoc().role == R_VarDeclVar)
+        if (!m_path.empty() && getRole() == R_VarDeclVar)
             return true;
         printComma();
         m_os << cyrillicToASCII(m_context.nameGenerator().getNamedValueName(_value)) << ": ";
@@ -395,15 +463,6 @@ public:
         VISITOR_EXIT();
     }
 
-    bool traverseArrayPartExpr(ArrayPartExpr &_expr) {
-        VISITOR_ENTER(ArrayPartExpr, _expr);
-        VISITOR_TRAVERSE(Expression, ArrayPartObject, _expr.getObject(), _expr, Component, setObject);
-        m_os << L"(";
-        VISITOR_TRAVERSE_COL(Expression, ArrayPartIndex, _expr.getIndices());
-        m_os << L")";
-        VISITOR_EXIT();
-    }
-
     bool traverseStructFieldDefinition(StructFieldDefinition &_cons) {
         VISITOR_ENTER(StructFieldDefinition, _cons);
         printComma();
@@ -433,55 +492,27 @@ public:
         return false;
     }
 
-    bool printArrayConstructor(const ArrayConstructor& _array, const ArrayTypePtr& _pType = NULL, bool bNeedType = false) {
-        if (!_array.getType())
-            return true;
+    bool traverseArrayConstructor(ArrayConstructor& _array) {
+        VISITOR_ENTER(ArrayConstructor, _array);
 
-        const ArrayType& array = !_pType ? *_array.getType().as<ArrayType>() : *_pType;
+        const NamedValuePtr pIndex = new NamedValue(L"", _array.getType().as<ArrayType>()->getDimensionType());
 
-        Collection<Type> dims;
-        array.getDimensions(dims);
-
-        StructConstructor index;
-        std::vector<NamedValuePtr> indexes;
-
-        m_os << L"(";
-        for (auto i = dims.begin(); i != dims.end(); ++i) {
-            indexes.push_back(new NamedValue(L"", *i));
-            VISITOR_TRAVERSE_NS(NamedValue, ArrayIterator, indexes.back());
-            index.add(new StructFieldDefinition(new VariableReference(indexes.back())));
-        }
+        m_os << L"LAMBDA (";
+        VISITOR_TRAVERSE_NS(NamedValue, ArrayIterator, pIndex);
         m_os << L") : ";
+        VISITOR_TRAVERSE_NS(Type, Type, _array.getType().as<ArrayType>()->getRootType());
+        m_os << L" =\n" << indent;
 
-        if (bNeedType) {
-            const TypePtr& pRootType = array.getRootType();
-            VISITOR_TRAVERSE_NS(Type, Type, pRootType);
-            m_os << L" = ";
-        }
+        std::list<std::pair<ExpressionPtr, ExpressionPtr>> cases;
+        for (auto i: _array)
+            cases.push_back({new Binary(Binary::EQUALS, new VariableReference(L"", pIndex), i->getIndex()),
+                i->getValue()});
 
-        ExpressionPtr pIndex = &index;
-        if (indexes.size() == 1)
-            pIndex = new VariableReference(indexes.back());
+        printCond(cases, nullptr);
 
-        m_os << L"COND ";
-        for (size_t i = 0; i < _array.size(); ++i) {
-            if (i != 0)
-                m_os << L", ";
+        m_os << unindent;
 
-            VISITOR_TRAVERSE_NS(Expression, Expression, pIndex);
-            m_os << L" = ";
-            VISITOR_TRAVERSE_NS(Expression, Expression, _array.get(i)->getIndex());
-            m_os << L" -> ";
-            VISITOR_TRAVERSE_NS(Expression, Expression, _array.get(i)->getValue());
-        }
-        m_os << L" ENDCOND";
-        return true;
-    }
-
-    bool visitArrayConstructor(ArrayConstructor& _array) {
-        m_os << L"LAMBDA ";
-        printArrayConstructor(_array);
-        return false;
+        VISITOR_EXIT();
     }
 
     bool traverseSetConstructor(SetConstructor &_expr) {
@@ -633,6 +664,7 @@ public:
         VISITOR_TRAVERSE(Expression, TernarySubexpression, _node.getThen(), _node, Ternary, setThen);
         m_os << " ELSE ";
         VISITOR_TRAVERSE(Expression, TernarySubexpression, _node.getElse(), _node, Ternary, setElse);
+        m_os << " ENDIF";
         VISITOR_EXIT();
     }
 
@@ -650,11 +682,14 @@ public:
     }
 
     virtual bool traverseFormulaCall(ir::FormulaCall &_node) {
-        m_os << cyrillicToASCII(_node.getName());
+        m_os << m_context.nameGenerator().getFormulaName(_node);
 
-        m_os << "(";
+        if (_node.getArgs().empty())
+            return true;
+
+        m_os << L"(";
         const bool bResult = Visitor::traverseFormulaCall(_node);
-        m_os << ")";
+        m_os << L")";
 
         return bResult;
     }
@@ -663,9 +698,9 @@ public:
         VISITOR_ENTER(LemmaDeclaration, _stmt);
 
         VISITOR_TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
-        m_os << "LEMMA\n    ";
+        m_os << L"LEMMA\n" << indent;
         VISITOR_TRAVERSE(Expression, LemmaDeclBody, _stmt.getProposition(), _stmt, LemmaDeclaration, setProposition);
-        m_os << "\n";
+        m_os << unindent;
 
         VISITOR_EXIT();
     }
@@ -673,69 +708,60 @@ public:
     virtual bool traverseFormulaDeclaration(ir::FormulaDeclaration &_node) {
         VISITOR_ENTER(FormulaDeclaration, _node);
 
-        m_os << cyrillicToASCII(_node.getName());
+        m_os << m_context.nameGenerator().getFormulaName(_node);
 
-        m_os << " (";
-        VISITOR_TRAVERSE_COL(NamedValue, FormulaDeclParams, _node.getParams());
-        m_os << ")";
+        if (!_node.getParams().empty()) {
+            m_os << L" (";
+            VISITOR_TRAVERSE_COL(NamedValue, FormulaDeclParams, _node.getParams());
+            m_os << L")";
+        }
+        m_os << L" : ";
 
-        if (_node.getResultType()) {
-            m_os << " : ";
+        if (_node.getMeasure())
+            m_os << L"RECURSIVE ";
+
+        if (_node.getResultType())
             VISITOR_TRAVERSE_NS(Type, FormulaDeclResultType, _node.getResultType());
+        else
+            m_os << L"bool";
+
+        m_os << L" =\n" << indent;
+        VISITOR_TRAVERSE(Expression, FormulaDeclBody, _node.getFormula(), _node, FormulaDeclaration, setFormula);
+
+        if (_node.getMeasure()) {
+            m_os << L"\nMEASURE ";
+            VISITOR_TRAVERSE_NS(Expression, FormulaDeclBody, _node.getMeasure());
         }
 
-        m_os << " = ";
-        VISITOR_TRAVERSE(Expression, FormulaDeclBody, _node.getFormula(), _node, FormulaDeclaration, setFormula);
-        m_os << "\n";
+        m_os << unindent;
 
         VISITOR_EXIT();
     }
 
-    bool printArrayDimTypes(const ArrayType& _array) {
-        Collection<Type> dims;
-        _array.getDimensions(dims);
+    bool traverseArrayPartExpr(ArrayPartExpr &_expr) {
+        if (!_expr.getObject() || !_expr.getObject()->getType())
+            return true;
 
-        if (dims.size() > 1)
-            m_os << L"[";
+        if (_expr.isRestrict()) {
+            Collection<Type> orig, restricted;
+            _expr.getObject()->getType().as<ArrayType>()->getDimensions(orig);
+            for (auto i: _expr.getIndices())
+                restricted.add(i.as<TypeExpr>()->getContents());
+            return printRestrict(orig, restricted, _expr.getObject()->
+                getType().as<ArrayType>()->getRootType(), _expr.getObject());
+        }
 
-        VISITOR_TRAVERSE_COL(Type, ArrayDimType, dims);
+        for (auto i: _expr.getIndices())
+            if (i->getKind() == Expression::TYPE)
+                return true;
 
-        if (dims.size() > 1)
-            m_os << L"]";
-
-        return true;
-    }
-
-    bool printArrayPartIndices(Collection<Expression>& _indices) {
-        if (_indices.size() > 1)
-            m_os << L"[";
-
-        VISITOR_TRAVERSE_COL(Expression, Expression, _indices);
-
-        if (_indices.size() > 1)
-            m_os << L"]";
-
-        return true;
-    }
-
-    bool visitArrayPartExpr(ArrayPartExpr &_expr) {
-        if (!_expr.getType())
-            return false;
-
-        const ArrayType& array = *_expr.getObject()->getType().as<ArrayType>();
-        m_os << L"restrict[";
-        printArrayDimTypes(array);
-        m_os << L", ";
-        printArrayPartIndices(_expr.getIndices());
-        m_os << L", ";
-        VISITOR_TRAVERSE_NS(Type, Type, array.getRootType());
-        m_os << L"]";
-
+        VISITOR_ENTER(ArrayPartExpr, _expr);
+        m_os << setInline(true);
+        VISITOR_TRAVERSE(Expression, ArrayPartObject, _expr.getObject(), _expr, Component, setObject);
         m_os << L"(";
-        VISITOR_TRAVERSE_NS(Expression, Expression, _expr.getObject());
-        m_os << L")";
-
-        return false;
+        VISITOR_TRAVERSE_COL(Expression, ArrayPartIndex, _expr.getIndices());
+        m_os << L")" << setInline(false);
+        VISITOR_EXIT();
     }
 
     bool traverseArrayPartDefinition(ArrayPartDefinition &_cons) {
@@ -746,80 +772,68 @@ public:
         VISITOR_EXIT();
     }
 
-    bool printCondition(const NamedValuePtr& _pValue, const ExpressionPtr& _pExpr) {
-        if (!_pValue || !_pExpr)
-            return true;
-
-        if (_pExpr->getKind() != Expression::TYPE) {
-            m_os << _pValue->getName();
-            m_os << L" = ";
-            VISITOR_TRAVERSE_NS(Expression, Expression, _pExpr);
-            return true;
-        }
-
-        if (_pExpr.as<TypeExpr>()->getContents()->getKind() != Type::SUBTYPE)
-            return true;
-
-        const Subtype& sub = *_pExpr.as<TypeExpr>()->getContents().as<Subtype>();
-
-        ExpressionPtr pCond = clone(sub.getExpression());
-        pCond = Expression::substitute(pCond, new VariableReference(sub.getParam()), new VariableReference(_pValue)).as<Expression>();
-
-        m_os << L"(";
-        VISITOR_TRAVERSE_NS(Expression, Expression, pCond);
-        m_os << L")";
-
-        return true;
-    }
-
     bool traverseArrayIteration(ArrayIteration & _expr) {
         VISITOR_ENTER(ArrayIteration, _expr);
-        m_os << L"(LAMBDA (";
+
+        if (!_expr.getType())
+            return true;
+
+        m_os << L"LAMBDA (";
         VISITOR_TRAVERSE_COL(NamedValue, ArrayIterator, _expr.getIterators());
-        m_os << L") : COND ";
+        m_os << L") : ";
+        VISITOR_TRAVERSE_NS(Type, Type, _expr.getType().as<ArrayType>()->getRootType());
+        m_os << L" =\n" << indent;
 
-        for (size_t i = 0; i < _expr.size(); ++i) {
-            if (i != 0)
-                m_os << L", ";
+        std::list<std::pair<ExpressionPtr, ExpressionPtr>> cases;
+        for (size_t i = 0; i < _expr.size(); ++i)
+            cases.push_back({
+                na::resolveCase(_expr.getIterators(), _expr.get(i)->getConditions()),
+                _expr.get(i)->getExpression()});
 
-            const ArrayPartDefinitionPtr& pDef = _expr.get(i);
+        if (!printCond(cases, _expr.getDefault()))
+            return false;
 
-            m_os << L"(";
+        m_os << unindent;
 
-            for (size_t j = 0; j < pDef->getConditions().size(); ++j) {
-                if (j != 0)
-                    m_os << L" OR ";
+        VISITOR_EXIT();
+    }
 
-                const ExpressionPtr& pCond = pDef->getConditions().get(j);
-                if (pCond->getKind() == Expression::CONSTRUCTOR
-                    && pCond.as<Constructor>()->getConstructorKind() == Constructor::STRUCT_FIELDS) {
-                    const StructConstructor& tuple = *pCond.as<StructConstructor>();
+    bool traverseReplacement(Replacement& _expr) {
+        VISITOR_ENTER(Replacement, _expr);
 
-                    m_os << L"(";
-                    for (size_t k = 0; k < tuple.size(); ++k) {
-                        if (k != 0)
-                            m_os << L" AND ";
-                        printCondition(_expr.getIterators().get(k), tuple.get(k)->getValue());
-                    }
-                    m_os << L")";
+        if (_expr.getNewValues()->getConstructorKind() != Constructor::ARRAY_ITERATION || !_expr.getType())
+            VISITOR_EXIT();
 
-                    continue;
-                }
+        Expression& array = *_expr.getObject();
+        ArrayIteration& iteration = *_expr.getNewValues().as<ArrayIteration>();
 
-                printCondition(_expr.getIterators().get(0), pCond);
-            }
+        m_os << L"LAMBDA (";
+        VISITOR_TRAVERSE_COL(NamedValue, ArrayIterator, iteration.getIterators());
+        m_os << L") : ";
+        VISITOR_TRAVERSE_NS(Type, Type, array.
+            getType().as<ArrayType>()->getRootType());
+        m_os << L" =\n" << indent;
 
-            m_os << L") -> ";
+        std::list<std::pair<ExpressionPtr, ExpressionPtr>> cases;
+        for (size_t i = 0; i < iteration.size(); ++i)
+            cases.push_back({
+                na::resolveCase(iteration.getIterators(), iteration.get(i)->getConditions()),
+                iteration.get(i)->getExpression()});
 
-            VISITOR_TRAVERSE_NS(Expression, Expression, pDef->getExpression());
+        ExpressionPtr pDefault = iteration.getDefault();
+
+        if (!pDefault) {
+            pDefault = new ArrayPartExpr(&array);
+            for (size_t i = 0; i < iteration.getIterators().size(); ++i)
+                pDefault.as<ArrayPartExpr>()->getIndices().
+                    add(new VariableReference(L"", iteration.getIterators().get(i)));
         }
 
-        if (_expr.getDefault()) {
-            m_os << L", ELSE -> ";
-            VISITOR_TRAVERSE(Expression, ArrayIterationDefault, _expr.getDefault(), _expr, ArrayIteration, setDefault);
-        }
+        if (!printCond(cases, pDefault))
+            return false;
 
-        m_os << L" ENDCOND)";
+        m_os << unindent;
+
         VISITOR_EXIT();
     }
 
@@ -839,19 +853,16 @@ public:
         Nodes sorted;
         na::sortModule(_module, sorted);
         VISITOR_TRAVERSE_COL(Node, Decl, sorted);
-
-        m_os << L"\n";
-
         VISITOR_TRAVERSE_COL(LemmaDeclaration, LemmaDecl, _module.getLemmas());
 
-        m_os << L"\nEND " << cyrillicToASCII(_module.getName()) << L"\n";
+        m_os << L"END " << cyrillicToASCII(_module.getName()) << L"\n";
 
         return true;
     }
 
 private:
     pp::Context m_context;
-    std::wostream &m_os;
+    IndentingStream<wchar_t> m_os;
 };
 
 void generatePvs(Module &_module, std::wostream & _os) {
