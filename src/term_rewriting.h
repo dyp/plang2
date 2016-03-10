@@ -36,6 +36,9 @@ void instantiateModule(const ir::ModulePtr& _pModule, const ir::Collection<ir::E
 // Make expression an ordered.
 ir::NodePtr normalizeExpressions(const ir::NodePtr& _pNode, bool _bIgnoreTypes = false);
 
+// Make Conjunctive Normal Form.
+ir::ExpressionPtr conjunctiveNormalForm(const ir::ExpressionPtr& _pExpr);
+
 } // namespace tr
 
 #endif // TERM_REWRITING_H_
