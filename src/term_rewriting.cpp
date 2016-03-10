@@ -273,60 +273,83 @@ void instantiateModule(const ModulePtr& _pModule, const Collection<Expression>& 
 class Normalizer : public Visitor {
 public:
     typedef std::multiset<ExpressionPtr, PtrLess<Expression> > Operands;
-    Normalizer(const NodePtr& _pRoot) :
-        Visitor(CHILDREN_FIRST), m_pRoot(_pRoot)
+    Normalizer(const NodePtr& _pRoot, bool _bIgnoreTypes) :
+        Visitor(CHILDREN_FIRST), m_pRoot(_pRoot), m_bIgnoreTypes(_bIgnoreTypes)
     {}
 
     static void extractBinaryOperands(const BinaryPtr& _pBinary, int _nOperator,
-            Operands& _container);
+            const TypePtr & _pType, Operands& _container, bool _bIgnoreTypes, bool _bFirst);
     virtual bool visitBinary(Binary& _bin);
 
     NodePtr run();
 
 private:
     NodePtr m_pRoot;
+    bool m_bIgnoreTypes;
+
+    static bool _canContinueNormalize(int _nPrevOperator, int _nOperator,
+            const TypePtr & _pPrevType, const TypePtr & _pLeftType,
+            const TypePtr & _pRightType, bool _bIgnoreTypes);
 };
 
 void Normalizer::extractBinaryOperands(const BinaryPtr& _pBinary,
-        int _nOperator, Operands& _container)
+        int _nOperator, const TypePtr & _pType, Operands& _container,
+        bool _bIgnoreTypes, bool _bFirst)
 {
     if (!_pBinary)
         return;
-    if (_pBinary->getOperator() != _nOperator) {
+
+    if (!_bFirst && !_canContinueNormalize(_nOperator, _pBinary->getOperator(), _pType,
+            _pBinary->getLeftSide() ? _pBinary->getLeftSide()->getType() : nullptr,
+            _pBinary->getRightSide() ? _pBinary->getRightSide()->getType() : nullptr,
+            _bIgnoreTypes))
+    {
         _container.insert(_pBinary);
         return;
     }
 
     if (_pBinary->getLeftSide()) {
         if (_pBinary->getLeftSide()->getKind() == Expression::BINARY)
-            extractBinaryOperands(_pBinary->getLeftSide().as<Binary>(), _nOperator, _container);
+            extractBinaryOperands(_pBinary->getLeftSide().as<Binary>(),
+                    _nOperator, _pType, _container, _bIgnoreTypes, false);
         else
             _container.insert(_pBinary->getLeftSide());
     }
 
     if (_pBinary->getRightSide()) {
         if (_pBinary->getRightSide()->getKind() == Expression::BINARY)
-            extractBinaryOperands(_pBinary->getRightSide().as<Binary>(), _nOperator, _container);
+            extractBinaryOperands(_pBinary->getRightSide().as<Binary>(),
+                    _nOperator, _pType, _container, _bIgnoreTypes, false);
         else
             _container.insert(_pBinary->getRightSide());
     }
 }
 
 bool Normalizer::visitBinary(Binary& _bin) {
-    if (!_bin.isSymmetrical())
+    if (!_canContinueNormalize(_bin.getOperator(), _bin.getOperator(),
+            nullptr, nullptr, nullptr, true))
         return true;
 
     const Node* pParent = getParent();
+
     if (pParent &&
-        pParent->getNodeKind() == Node::EXPRESSION &&
-        ((Expression*)pParent)->getKind() == Expression::BINARY &&
-        ((Binary*)pParent)->getOperator() == _bin.getOperator())
-        return true;
+            pParent->getNodeKind() == Node::EXPRESSION &&
+            ((Expression*)pParent)->getKind() == Expression::BINARY)
+    {
+        const BinaryPtr pPrevBinary = ((Binary*)pParent);
+        if (_canContinueNormalize(pPrevBinary->getOperator(), _bin.getOperator(),
+                pPrevBinary->getType(),
+                _bin.getLeftSide() ? _bin.getLeftSide()->getType() : nullptr,
+                _bin.getRightSide() ? _bin.getRightSide()->getType() : nullptr,
+                m_bIgnoreTypes))
+            return true;
+    }
 
     BinaryPtr pBin = &_bin;
     Operands operands;
 
-    extractBinaryOperands(pBin, pBin->getOperator(), operands);
+    extractBinaryOperands(pBin, pBin->getOperator(), pBin->getType(),
+            operands, m_bIgnoreTypes, true);
     pBin = new Binary(pBin->getOperator(), operands);
 
     if (m_pRoot.ptr() == &_bin)
@@ -337,15 +360,49 @@ bool Normalizer::visitBinary(Binary& _bin) {
     return true;
 }
 
+bool Normalizer::_canContinueNormalize(int _nPrevOperator, int _nOperator,
+            const TypePtr & _pPrevType, const TypePtr & _pLeftType,
+            const TypePtr & _pRightType, bool _bIgnoreTypes)
+{
+    if (_nPrevOperator != _nOperator)
+        return false;
+
+    if (_nOperator == Binary::ADD || _nOperator == Binary::MULTIPLY ||
+            _nOperator == Binary::BOOL_AND || _nOperator == Binary::BOOL_OR ||
+            _nOperator == Binary::BOOL_XOR || _nOperator == Binary::IFF)
+        return true;
+
+    if (_nOperator != Binary::EQUALS && _nOperator != Binary::NOT_EQUALS)
+        return false;
+
+    if (_bIgnoreTypes)
+        return true;
+
+    if (!_pPrevType || !_pLeftType || !_pRightType)
+        return false;
+
+    if (*_pPrevType == *_pLeftType && *_pPrevType == *_pRightType)
+        return true;
+
+    const auto primitiveType = [](const Type & _type) {
+        return _type.getKind() >= Type::BOTTOM &&
+                _type.getKind() >= Type::STRING;
+    };
+
+    return primitiveType(*_pPrevType) && primitiveType(*_pLeftType) &&
+            primitiveType(*_pRightType) && _pPrevType->getKind() == _pLeftType->getKind() &&
+            _pPrevType->getKind() == _pRightType->getKind();
+}
+
 NodePtr Normalizer::run() {
     traverseNode(*m_pRoot);
     return m_pRoot;
 }
 
-NodePtr normalizeExpressions(const NodePtr& _pNode) {
+NodePtr normalizeExpressions(const NodePtr& _pNode, bool _bIgnoreTypes /* = false */) {
     if (!_pNode)
         return nullptr;
-    return Normalizer(_pNode).run();
+    return Normalizer(_pNode, _bIgnoreTypes).run();
 }
 
 } // namespace tr

@@ -41,13 +41,13 @@ public:
             pConjPost = getPostConditionForStatement(&_stmt);
 
         ir::ExpressionPtr pExpr = pConjPre->mergeToExpression();
-        pExpr = tr::normalizeExpressions(pExpr).as<ir::Expression>();
+        pExpr = tr::normalizeExpressions(pExpr, true).as<ir::Expression>();
 
         if (!pConjPre->empty() && pExpr)
             pp::prettyPrintSyntax(*pExpr, m_os, nullptr, true);
 
         pExpr = pConjPost->mergeToExpression();
-        pExpr = tr::normalizeExpressions(pExpr).as<ir::Expression>();
+        pExpr = tr::normalizeExpressions(pExpr, true).as<ir::Expression>();
 
         if (!pConjPost->empty() && pExpr)
             pp::prettyPrintSyntax(*pExpr, m_os, nullptr, true);
