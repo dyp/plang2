@@ -3173,6 +3173,9 @@ ModulePtr Parser::parseModule(Context &_ctx, bool _bTopLevel) {
 
     ModulePtr pModule = new Module(ctx.scan());
 
+    if (_ctx.getModule(pModule->getName(), true))
+        ERROR(ctx, NULL, L"Module '%ls' was redefined", pModule->getName().c_str());
+
     pModule->setLoc(&*_ctx.loc());
 
     if (ctx.consume(LPAREN)) {

@@ -1,0 +1,15 @@
+/*
+
+<test>
+    ~ Module 'M' was redefined
+</test>
+
+*/
+
+module M {
+    foo() {}
+}
+
+module M {
+    bar() {}
+}

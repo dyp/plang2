@@ -166,7 +166,7 @@ public:
 
     const StatusMessages &getMessages() const { return m_messages; }
 
-    ir::ModulePtr getModule(const std::wstring &_strName) const;
+    ir::ModulePtr getModule(const std::wstring &_strName, bool _bTopLevel = false) const;
     void addModule(const ir::ModulePtr &_pModule);
 
     Context* getModuleCtx(const std::wstring &_strName) const;

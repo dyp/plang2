@@ -182,14 +182,14 @@ Context *Context::createChild(bool _bScope, int _flags) {
     return m_pChild;
 }
 
-ir::ModulePtr Context::getModule(const std::wstring &_strName) const {
+ir::ModulePtr Context::getModule(const std::wstring &_strName, bool _bTopLevel /* = false */) const {
     if (m_modules) {
         ModuleMap::const_iterator i = m_modules->find(_strName);
         if (i != m_modules->end())
             return i->second;
     }
 
-    return m_pParent ? m_pParent->getModule(_strName) : ir::ModulePtr();
+    return m_pParent && !_bTopLevel ? m_pParent->getModule(_strName) : ir::ModulePtr();
 }
 
 void Context::addModule(const ir::ModulePtr &_pModule) {
