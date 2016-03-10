@@ -1868,7 +1868,8 @@ bool Semantics::visitArrayPartExpr(ArrayPartExpr& _ap) {
 
     size_t j = 0;
     for (auto i = dims.begin(); i != dims.end(); ++i, ++j)
-        m_pPrecondition->append(isElement((*i).as<Subtype>(), _ap.getIndices().get(j)));
+        if ((*i)->getKind() == Type::SUBTYPE)
+            m_pPrecondition->append(isElement((*i).as<Subtype>(), _ap.getIndices().get(j)));
 
     return true;
 }
