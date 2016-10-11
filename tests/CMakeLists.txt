@@ -38,6 +38,7 @@ set(SOURCES_ST
     ../src/generate_semantics.cpp
     ../src/generate_name.cpp
     ../src/verification_context.cpp
+    ../src/cvc3_solver.cpp
     ../src/typecheck/compact.cpp
     ../src/typecheck/eval.cpp
     ../src/typecheck/expand.cpp
@@ -51,18 +52,11 @@ set(SOURCES_ST
     ../src/typecheck/unify.cpp
 )
 
-if (CVC3 AND CVC3LIB_FOUND)
-	set(SOURCES_ST ${SOURCES_ST} cvc3_solver.cpp)
-endif()
-
 add_executable(${TARGET_ST} ${SOURCES_ST})
 
 set_target_properties(${TARGET_ST} PROPERTIES COMPILE_DEFINITIONS "CONDITIONS_FOR_IF")
 
-if (NOT CVC3 STREQUAL "0" AND CVC3LIB_FOUND)
-	set_target_properties(${TARGET_ST} PROPERTIES COMPILE_DEFINITIONS "USE_CVC3")
-	target_link_libraries(${TARGET_ST} ${CVC3LIB_LIBRARIES})
-endif()
+target_link_libraries(${TARGET_ST} ${CVC3LIB_LIBRARIES})
 
 include_directories (
     ../include
@@ -401,9 +395,7 @@ run_verification_tests("-t" "${TESTS_STATEMENT_TREE}")
 run_cond_tests("" "${TESTS_CONDITIONS}")
 run_vf_tests("-t1" "${TESTS_VERIFICATION}")
 run_pvs_tests("-t1" "${TESTS_PVS}")
-if (CVC3 AND CVC3LIB_FOUND)
-	run_cvc3_tests("" "${TESTS_CVC3}")
-endif()
+run_cvc3_tests("" "${TESTS_CVC3}")
 run_ot_tr_tests("-t2" "${TESTS_TRASFORMATION_TAIL_RECURSION}")
 run_ot_pi_tests("-t2" "${TESTS_TRASFORMATION_PREDICATE_INLINING}")
 run_indenting_stream_tests("${TESTS_INDENTING_STREAM}")

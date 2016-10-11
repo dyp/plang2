@@ -122,9 +122,7 @@ void _printUsage() {
         << "    -o, --output=FILE             Output file name\n"
         << "    -O, --optimize                Optimize logical expressions\n"
         << "    -s, --check-semantics         Generate logical conditions for proving semantic correctness\n"
-#ifdef USE_CVC3
         << "    -a, --check-validity          Check validity of declared lemmas\n"
-#endif
         << "    -k, --keep-names              Keep names of variables\n"
         << "    -y, --solve-types             Read list of type constraints and try to find a solution\n"
         << "    -v, --verbose                 Print debug info\n"
@@ -144,9 +142,7 @@ bool Options::init(size_t _cArgs, const char **_pArgs) {
         { "help",            'h', NULL,               &bHelp,                      NULL,                          false },
         { "optimize",        'O', NULL,               &instance().bOptimize,       NULL,                          false },
         { "check-semantics", 's', NULL,               &instance().bCheckSemantics, NULL,                          false },
-#ifdef USE_CVC3
         { "check-validity",  'a', NULL,               &instance().bCheckValidity,  NULL,                          false },
-#endif
         { "keep-names",      'k', NULL,               &instance().bKeepNames,      NULL,                          false },
         { "solve-types",     'y', NULL,               &instance().bSolveTypes,     NULL,                          false },
         { NULL,               0,  NULL,               NULL,                        NULL,                          false }

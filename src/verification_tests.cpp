@@ -11,9 +11,7 @@
 #include "pp_flat_tree.h"
 #include "test_statement_tree.h"
 #include "test_preconditions.h"
-#ifdef USE_CVC3
 #include "test_cvc3_solver.h"
-#endif
 #include "term_rewriting.h"
 #include "prettyprinter.h"
 #include "options.h"
@@ -24,10 +22,8 @@ using namespace lexer;
 bool
     bStatementTreeMatching = false,
     bStatementTreeTests = false,
-    bPreconditions = false;
-#ifdef USE_CVC3
-bool bCVC3 = false;
-#endif
+    bPreconditions = false,
+    bCVC3 = false;
 
 std::string strFile;
 
@@ -41,9 +37,7 @@ static bool _parseTestOptions(size_t _cArgs, const char **_pArgs) {
         { "statement-tree", 'm',  NULL, &bStatementTreeMatching, NULL, false },
         { "statement-tree", 't',  NULL, &bStatementTreeTests,    NULL, false },
         { "preconditions",  'p',  NULL, &bPreconditions,         NULL, false },
-#ifdef USE_CVC3
         { "cvc3",           'c',  NULL, &bCVC3,                  NULL, false },
-#endif
     };
 
     if (!parseOptions(_cArgs, _pArgs, options, NULL, &_handleNotAnOption))
@@ -72,11 +66,7 @@ int main(int _argc, const char ** _argv) {
         return EXIT_FAILURE;
     }
 
-    if (bPreconditions
-#ifdef USE_CVC3
-            || bCVC3
-#endif
-        )
+    if (bPreconditions || bCVC3)
         Options::instance().typeCheck = TC_FULL;
     else
         Options::instance().typeCheck = TC_NONE;
@@ -96,10 +86,8 @@ int main(int _argc, const char ** _argv) {
 
     if (bPreconditions)
         PreconditionsPrinter(std::wcout).traverseNode(*pModule);
-#ifdef USE_CVC3
     else if (bCVC3)
         Cvc3Printer().traverseNode(*pModule);
-#endif
 
     return EXIT_SUCCESS;
 }

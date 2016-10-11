@@ -13,17 +13,13 @@ endif()
 
 include(FindPkgConfig)
 
-set(CVC3 "auto" CACHE STRING "Use CVC3 solver")
+pkg_check_modules(CVC3LIB cvc3)
 
-if (NOT CVC3 STREQUAL "0")
-	pkg_check_modules(CVC3LIB cvc3)
-	if (NOT CVC3LIB_FOUND AND CVC3 STREQUAL "1")
-		message(FATAL_ERROR "CVC3LIB not found.")
-	endif()
-	if (CVC3LIB_FOUND)
-		include_directories(${CVC3LIB_INCLUDE_DIRS})
-	endif()
+if (NOT CVC3LIB_FOUND)
+    message(FATAL_ERROR "CVC3LIB not found.")
 endif()
+
+include_directories(${CVC3LIB_INCLUDE_DIRS})
 
 add_subdirectory(src)
 add_subdirectory(tests)
