@@ -40,6 +40,7 @@
 #include "name_reset.h"
 #include "check_assignments.h"
 #include "type_lattice.h"
+#include "term_rewriting.h"
 
 using namespace lexer;
 
@@ -116,6 +117,10 @@ int main(int _argc, const char ** _argv) {
 
         if (Options::instance().transformation & OT_PI)
             predicateInlining(*pModule);
+
+        if (Options::instance().bMoveOut) {
+            tr::moveOutStructuredTypes(pModule);
+        }
 
         if (Options::instance().prettyPrint & PP_FLAT)
             prettyPrintFlatTree(*pModule);

@@ -128,6 +128,7 @@ void _printUsage() {
         << "    -k, --keep-names              Keep names of variables\n"
         << "    -y, --solve-types             Read list of type constraints and try to find a solution\n"
         << "    -v, --verbose                 Print debug info\n"
+        << "    -m, --move-out                Move out some syntax constructions\n"
         << "        --help                    Show this message\n";
 }
 
@@ -149,6 +150,7 @@ bool Options::init(size_t _cArgs, const char **_pArgs) {
 #endif
         { "keep-names",      'k', NULL,               &instance().bKeepNames,      NULL,                          false },
         { "solve-types",     'y', NULL,               &instance().bSolveTypes,     NULL,                          false },
+        { "move-out",        'm', NULL,               &instance().bMoveOut,        NULL,                          false },
         { NULL,               0,  NULL,               NULL,                        NULL,                          false }
     };
 
@@ -181,7 +183,8 @@ Options::Options() :
     bCheckValidity(false),
     bVerbose(false),
     bKeepNames(false),
-    bSolveTypes(false)
+    bSolveTypes(false),
+    bMoveOut(false)
 {
 }
 

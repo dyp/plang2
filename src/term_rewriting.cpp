@@ -179,6 +179,60 @@ void declareLemma(const ModulePtr& _pModule, const ExpressionPtr& _pProposition)
     _pModule->getLemmas().add(new LemmaDeclaration(_pProposition));
 }
 
+typedef std::map<TypePtr, NamedReferenceTypePtr, PtrLess<Type>> TypesMap;
+
+class MoveOutStructuredTypes : public Visitor {
+public:
+    MoveOutStructuredTypes(TypesMap& _container) :
+        Visitor(CHILDREN_FIRST), m_container(_container)
+    {}
+
+    virtual bool traverseModule(Module& _module) {
+        TypesMap last;
+        last.swap(m_container);
+
+        const bool bResult = Visitor::traverseModule(_module);
+
+        for (auto i: m_container)
+            _module.getTypes().add(i.second->getDeclaration());
+
+        m_container.swap(last);
+        return bResult;
+    }
+
+    virtual bool visitType(Type& _type) {
+        if (getParent() && getParent()->getNodeKind() == Node::STATEMENT &&
+            ((Statement*)getParent())->getKind() == Statement::TYPE_DECLARATION)
+            return true;
+
+        if (_type.getKind() < Type::ENUM
+            || _type.getKind() == Type::NAMED_REFERENCE)
+            return true;
+
+        NamedReferenceTypePtr pReference;
+
+        auto iReference = m_container.find(&_type);
+        if (iReference == m_container.end()) {
+            TypeDeclarationPtr pDedclaration = new TypeDeclaration(L"", &_type);
+            pReference = new NamedReferenceType(pDedclaration);
+            m_container.insert(std::make_pair(&_type, pReference));
+        } else
+            pReference = iReference->second;
+
+        callSetter(pReference);
+
+        return true;
+    }
+
+private:
+     TypesMap & m_container;
+};
+
+void moveOutStructuredTypes(const ir::ModulePtr& _pModule) {
+    TypesMap container;
+    MoveOutStructuredTypes(container).traverseNode(*_pModule);
+}
+
 class Instantiate : public Visitor {
 public:
     Instantiate(const NamedValues& _params, const Collection<Expression>& _args) :
