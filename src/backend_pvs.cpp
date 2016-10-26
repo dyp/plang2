@@ -837,7 +837,7 @@ public:
         m_os << cyrillicToASCII(_module.getName()) << L" : THEORY\nBEGIN\n\n";
 
         Nodes sorted;
-        m_context.sortModule(_module, sorted);
+        na::sortModule(_module, sorted);
         VISITOR_TRAVERSE_COL(Node, Decl, sorted);
 
         m_os << L"\n";

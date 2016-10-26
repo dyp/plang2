@@ -61,6 +61,7 @@ set(SOURCES
     typecheck/prune.cpp
     typecheck/refute.cpp
     typecheck/unify.cpp
+    sort_module.cpp
 )
 
 if (CVC3 AND CVC3LIB_FOUND)

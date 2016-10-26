@@ -8,6 +8,7 @@
 #include "ir/base.h"
 #include "ir/expressions.h"
 #include "ir/declarations.h"
+#include "ir/visitor.h"
 
 namespace na {
 
@@ -59,6 +60,11 @@ ir::FormulaPtr setQuantifier(int _quantifier, const ir::ExpressionPtr& _pExpr, c
 ir::FormulaDeclarationPtr declareFormula(const std::wstring &_strName, const ir::ExpressionPtr &_pExpr);
 ir::FormulaDeclarationPtr declareFormula(const std::wstring &_strName, const ir::ExpressionPtr &_pExpr, const ir::NamedValues& _params);
 ir::FormulaDeclarationPtr declareFormula(const std::wstring &_strName, const ir::Predicate &_predicate, const ir::Expression &_expr);
+
+// Make module an ordered.
+std::list<ir::ModulePtr> getModulePath(const std::list<ir::Visitor::Loc>& _path);
+void sortModule(const ir::Module & _module, ir::Nodes & _sorted);
+
 
 } // namespace na
 

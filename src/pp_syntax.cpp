@@ -2,7 +2,7 @@
 #include "prettyprinter.h"
 #include "utils.h"
 #include "options.h"
-#include "pp_syntax.h"
+#include "node_analysis.h"
 
 #include <sstream>
 
@@ -10,28 +10,16 @@ using namespace ir;
 
 namespace pp {
 
-typedef std::multimap<NodePtr, NodePtr> Graph;
-typedef std::pair<const NodePtr, NodePtr> Edge;
-
-static std::list<ModulePtr> getModulePath(const std::list<Visitor::Loc>& _path) {
-    std::list<ModulePtr> path;
-    for(auto& i: _path) {
-        if (i.pNode && i.pNode->getNodeKind() == Node::MODULE)
-            path.push_back(NodePtr(i.pNode).as<Module>());
-    }
-    return path;
-}
-
 class CollectPaths : public Visitor {
 public:
     CollectPaths(std::map<NodePtr, std::list<ModulePtr>>& _paths) :
         m_paths(_paths)
     {}
 
-#define DECLARATION(_TYPE)                               \
-    virtual bool visit##_TYPE(_TYPE & _node) {           \
-        m_paths.insert({&_node, getModulePath(m_path)}); \
-        return true;                                     \
+#define DECLARATION(_TYPE)                                   \
+    virtual bool visit##_TYPE(_TYPE & _node) {               \
+        m_paths.insert({&_node, na::getModulePath(m_path)}); \
+        return true;                                         \
     }
 
     DECLARATION(TypeDeclaration)
@@ -40,157 +28,6 @@ public:
 
 private:
     std::map<NodePtr, std::list<ModulePtr>>& m_paths;
-};
-
-class GetDeclarations : public Visitor {
-public:
-    GetDeclarations(Graph& _decls) : m_decls(_decls) {}
-
-#define TRAVERSE_GROUP(_TYPE)                                           \
-    virtual bool traverse##_TYPE(_TYPE& _node) {                        \
-        if (m_pKey)                                                     \
-            m_decls.insert(Edge(m_pKey, &_node));                       \
-        const NodePtr pOldKey = m_pKey;                                 \
-        m_pKey = &_node;                                                \
-        const bool bResult = Visitor::traverse##_TYPE(_node);           \
-        m_pKey = pOldKey;                                               \
-        return bResult;                                                 \
-    }
-
-    virtual bool traverseTypeType(TypeType& _node) {
-        return true;
-    }
-
-    // Things, that must be ordered, and can contains same things.
-    TRAVERSE_GROUP(Module)
-    TRAVERSE_GROUP(TypeDeclaration)
-    TRAVERSE_GROUP(Predicate)
-    TRAVERSE_GROUP(FormulaDeclaration)
-
-#undef TRAVERSE_GROUP
-
-#define VISIT_DECLARATION(_TYPE)                                        \
-    virtual bool visit##_TYPE(_TYPE& _decl) {                           \
-        if (m_pKey != (NodePtr)&_decl                                   \
-            && getLoc().role != R_UnionCostructorVarDecl)               \
-            m_decls.insert(Edge(m_pKey, &_decl));                       \
-        return true;                                                    \
-    }
-
-    // Things, that must be ordered.
-    VISIT_DECLARATION(TypeDeclaration)
-    VISIT_DECLARATION(FormulaDeclaration)
-    VISIT_DECLARATION(VariableDeclaration)
-    VISIT_DECLARATION(Module)
-    VISIT_DECLARATION(Predicate)
-
-#undef VISIT_DECLARATION
-
-    void run(const NodePtr& _pNode) {
-        m_decls.clear();
-        if (_pNode)
-            traverseNode(*_pNode);
-    }
-
-private:
-    NodePtr m_pKey;
-    Graph& m_decls;
-};
-
-static bool _depthFirstTraversal(const Graph& _graph, const Edge& _edge, const NodePtr& _vertex) {
-    if (_vertex == _edge.first)
-        return true;
-
-    std::pair<Graph::const_iterator, Graph::const_iterator>
-        its = _graph.equal_range(_vertex);
-    for (Graph::const_iterator i = its.first; i != its.second; ++i)
-        if (_depthFirstTraversal(_graph, _edge, i->second))
-            return true;
-
-    return false;
-}
-
-static bool _hasLoops(const Graph& _graph, const Edge& _edge) {
-    return _depthFirstTraversal(_graph, _edge, _edge.second);
-}
-
-class GetDeclDependencies : public Visitor {
-public:
-    GetDeclDependencies(const Graph& _decls, Graph& _graph) :
-        m_graph(_graph), m_decls(_decls)
-    {}
-
-#define TRAVERSE_DECLARATION(_TYPE)                             \
-    virtual bool traverse##_TYPE(_TYPE& _node) {                \
-        if (m_pSuper || (NodePtr)&_node == m_pRoot)             \
-            return Visitor::traverse##_TYPE(_node);             \
-        m_pSuper = &_node;                                      \
-        const bool bResult = Visitor::traverse##_TYPE(_node);   \
-        m_pSuper = NULL;                                        \
-        return bResult;                                         \
-    }
-
-    TRAVERSE_DECLARATION(TypeDeclaration)
-    TRAVERSE_DECLARATION(FormulaDeclaration)
-    TRAVERSE_DECLARATION(VariableDeclaration)
-    TRAVERSE_DECLARATION(Predicate)
-
-#undef VISIT_DECLARATION
-
-    virtual bool traverseModule(Module& _module) {
-        return (&_module == m_pRoot.ptr())
-            ? Visitor::traverseModule(_module)
-            : false;
-    }
-
-    void addEdge(const Edge& _edge) {
-        if (!_hasLoops(m_graph, _edge)) {
-            m_graph.insert(_edge);
-            return;
-        }
-        //TODO Resolve loops.
-    }
-
-    void addToGraph(NodePtr _pSub) {
-        if (m_pSuper == _pSub)
-            return;
-        if (std::find(m_decls.begin(), m_decls.end(), Edge(m_pRoot, m_pSuper)) != m_decls.end()
-            && std::find(m_decls.begin(), m_decls.end(), Edge(m_pRoot, _pSub)) != m_decls.end())
-            addEdge(Edge(m_pSuper, _pSub));
-    }
-
-    virtual bool visitNamedReferenceType(NamedReferenceType& _type) {
-        addToGraph(_type.getDeclaration());
-        return true;
-    }
-
-    virtual bool visitMapElementExpr(MapElementExpr& _node) {
-        return false;
-    }
-
-    virtual bool visitVariableReference(VariableReference& _var) {
-        if (_var.getTarget()->getKind() == NamedValue::LOCAL
-            || _var.getTarget()->getKind() == NamedValue::GLOBAL)
-            addToGraph(_var.getTarget().as<Variable>()->getDeclaration());
-        return true;
-    }
-
-    virtual bool visitFormulaCall(FormulaCall& _call) {
-        addToGraph(_call.getTarget());
-        return true;
-    }
-
-    void run(const NodePtr& _pNode) {
-        m_pRoot = _pNode;
-        m_graph.clear();
-        if (_pNode)
-            traverseNode(*_pNode);
-    }
-
-private:
-    NodePtr m_pRoot, m_pSuper;
-    Graph& m_graph;
-    const Graph& m_decls;
 };
 
 void Context::collectPaths(Node &_node) {
@@ -204,35 +41,7 @@ void Context::getPath(const ir::NodePtr& _pNode, std::list<ir::ModulePtr>& _cont
     _container = i->second;
 }
 
-void Context::_buildDependencies(NodePtr _pRoot) {
-    GetDeclarations(m_decls).run(_pRoot);
-    GetDeclDependencies(m_decls, m_deps).run(_pRoot);
-}
-
-void Context::_topologicalSort(const NodePtr& _pDecl, Nodes& _sorted) {
-    if (std::find(_sorted.begin(), _sorted.end(), _pDecl) != _sorted.end())
-        return;
-    std::pair<Graph::iterator, Graph::iterator> its = m_deps.equal_range(_pDecl);
-    for (Graph::iterator i = its.first; i != its.second; ++i)
-        _topologicalSort(i->second, _sorted);
-    _sorted.add(_pDecl);
-}
-
-void Context::sortModule(Module &_module, Nodes& _sorted) {
-    _buildDependencies(&_module);
-
-    if (!_module.getPredicates().empty())
-        for (size_t i = _module.getPredicates().size() - 1; i > 0; --i)
-            m_deps.insert(std::pair<NodePtr, NodePtr>(_module.getPredicates().get(i), _module.getPredicates().get(i-1)));
-
-    std::pair<Graph::iterator, Graph::iterator> its = m_decls.equal_range(&_module);
-    for (Graph::iterator i = its.first; i != its.second; ++i)
-        _topologicalSort(i->second, _sorted);
-}
-
 void Context::clear() {
-    m_deps.clear();
-    m_decls.clear();
     m_names.clear();
 }
 
@@ -256,7 +65,7 @@ bool PrettyPrinterSyntax::traverseModule(Module &_module) {
 
     Nodes sortedDecls;
 
-    m_pContext->sortModule(_module, sortedDecls);
+    na::sortModule(_module, sortedDecls);
 
     sortedDecls.append(_module.getLemmas());
     sortedDecls.append(_module.getMessages());
@@ -288,7 +97,7 @@ void PrettyPrinterSyntax::printPath(const NodePtr& _pNode) {
     std::list<ModulePtr> targetPath, currentPath;
 
     m_pContext->getPath(_pNode, targetPath);
-    currentPath = getModulePath(m_path);
+    currentPath = na::getModulePath(m_path);
 
     for (std::list<ModulePtr>::iterator i = currentPath.begin(), j = targetPath.begin();
         i != currentPath.end() && j != targetPath.end(); ++i, ++j) {

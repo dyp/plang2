@@ -21,16 +21,11 @@ public:
     void collectPaths(ir::Node &_node);
 
     void getPath(const ir::NodePtr& _pNode, std::list<ir::ModulePtr>& _container);
-    void sortModule(ir::Module &_module, ir::Nodes& _sorted);
     void clear();
 
 private:
-    std::multimap<ir::NodePtr, ir::NodePtr> m_decls, m_deps;
     std::map<ir::NodePtr, std::list<ir::ModulePtr>> m_paths;
     NameGenerator m_names;
-
-    void _buildDependencies(ir::NodePtr _pRoot);
-    void _topologicalSort(const ir::NodePtr& _pDecl, ir::Nodes& _sorted);
 };
 typedef Auto<Context> ContextPtr;
 

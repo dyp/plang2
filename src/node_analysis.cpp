@@ -395,4 +395,13 @@ FormulaDeclarationPtr declareFormula(const std::wstring &_strName, const Predica
     return declareFormula(_strName, &_expr, params);
 }
 
+std::list<ModulePtr> getModulePath(const std::list<Visitor::Loc>& _path) {
+    std::list<ModulePtr> path;
+    for(auto& i: _path) {
+        if (i.pNode && i.pNode->getNodeKind() == Node::MODULE)
+            path.push_back(NodePtr(i.pNode).as<Module>());
+    }
+    return path;
+}
+
 } // namespace na

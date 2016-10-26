@@ -1,0 +1,10 @@
+module Test;
+
+module B {
+    formula bar(nat b: nat) = b;
+}
+
+module A {
+    import B;
+    formula foo(nat a: nat) = B.bar(a);
+}

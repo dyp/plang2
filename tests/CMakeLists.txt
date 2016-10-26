@@ -50,6 +50,7 @@ set(SOURCES_ST
     ../src/typecheck/prune.cpp
     ../src/typecheck/refute.cpp
     ../src/typecheck/unify.cpp
+    ../src/sort_module.cpp
 )
 
 add_executable(${TARGET_ST} ${SOURCES_ST})
@@ -303,6 +304,7 @@ set(TESTS_PRETTYPRINTER
     prettyprinter/union_element.psrc
     prettyprinter/decls_order.psrc
     prettyprinter/identifier_path.psrc
+    prettyprinter/module_ordering.psrc
 )
 
 set(TESTS_CALLGRAPH
