@@ -696,15 +696,15 @@ void Collector::collectParam(const NamedValuePtr &_pParam, int _nFlags) {
         return;
     }
 
-    tc::FreshTypePtr pFresh = createFresh(pType);
-
     assert(pType);
 
-    if (pType && pType->getKind() != Type::GENERIC && !getKnownType(pType))
-        m_constraints.insert(new tc::Formula(tc::Formula::EQUALS, pFresh, pType));
-
-    _pParam->setType(pFresh);
-    pFresh->addFlags(_nFlags);
+    if (TC::isFresh(pType))
+        TC::setType(_pParam, pType);
+    else {
+        tc::FreshTypePtr pFresh = createFresh(pType);
+        _pParam->setType(pType);
+        pFresh->addFlags(_nFlags);
+    }
 }
 
 static const TypePtr _getContentsType(const ExpressionPtr _pExpr) {
