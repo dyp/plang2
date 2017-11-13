@@ -5,11 +5,13 @@
 #include <map>
 
 #include "cvc3_solver.h"
+#ifndef USE_CVC4
 #include "cvc3/vc.h"
 #include "cvc3/expr.h"
 #include "cvc3/type.h"
 #include "cvc3/variable.h"
 #include "cvc3/command_line_flags.h"
+#endif
 #include "ir/visitor.h"
 #include "node_analysis.h"
 #include "utils.h"
@@ -17,7 +19,6 @@
 namespace CVC3 {
 
 typedef std::shared_ptr<CVC3::ValidityChecker> ValidityCheckerPtr;
-typedef std::shared_ptr<CVC3::Variable> VariablePtr;
 typedef std::shared_ptr<CVC3::Expr> ExprPtr;
 typedef std::shared_ptr<CVC3::Type> TypePtr;
 typedef std::shared_ptr<CVC3::Op> OpPtr;

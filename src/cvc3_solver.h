@@ -8,7 +8,15 @@
 #include <map>
 
 #include "ir/expressions.h"
+#ifdef USE_CVC4
+#undef __DEPRECATED
+#include "cvc4/compat/cvc3_compat.h"
+#define __DEPRECATED
+#endif
+
+#ifndef USE_CVC4
 #include "cvc3/queryresult.h"
+#endif
 
 namespace cvc3 {
 

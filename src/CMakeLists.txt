@@ -64,7 +64,7 @@ set(SOURCES
     sort_module.cpp
 )
 
-if (CVC3 AND CVC3LIB_FOUND)
+if ((CVC3 AND CVC3LIB_FOUND) OR CVC4 STREQUAL "1")
     set(SOURCES ${SOURCES} cvc3_solver.cpp)
 endif()
 
@@ -74,9 +74,8 @@ add_definitions(
 
 add_executable(${TARGET} ${SOURCES})
 
-if (NOT CVC3 STREQUAL "0" AND CVC3LIB_FOUND)
+if ((NOT CVC3 STREQUAL "0" AND CVC3LIB_FOUND) OR CVC4 STREQUAL "1")
     set_target_properties(${TARGET} PROPERTIES COMPILE_DEFINITIONS "USE_CVC3")
-    target_link_libraries(${TARGET} ${CVC3LIB_LIBRARIES})
 endif()
 
 include_directories (
@@ -84,10 +83,7 @@ include_directories (
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-target_link_libraries(${TARGET}
-    gmpxx
-    gmp
-)
+target_link_libraries(${TARGET} gmpxx gmp ${CVCLIB})
 
 install(TARGETS plang
   RUNTIME DESTINATION bin)
