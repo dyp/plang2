@@ -803,7 +803,9 @@ bool Collector::visitArrayType(ArrayType &_type) {
 }
 
 bool Collector::visitVariableReference(VariableReference &_var) {
-    _var.setType(_var.getTarget()->getType());
+    _var.getTarget()->setName(_var.getName());
+    TC::printInfo(_var);
+    TC::setType(_var, _var.getTarget()->getType());
     return true;
 }
 
