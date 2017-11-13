@@ -3,12 +3,15 @@
 
 #include <iostream>
 #include <stack>
+#include <sstream>
 
 #include <assert.h>
 
 #include "typecheck.h"
 #include "options.h"
 #include "type_lattice.h"
+#include "prettyprinter.h"
+#include "pp_syntax.h"
 
 #include <ir/statements.h>
 #include <ir/builtins.h>
@@ -17,6 +20,151 @@
 
 using namespace ir;
 
+class TC {
+public:
+    static bool isSubtype(TypePtr _t1, TypePtr _t2);
+    static bool isEqual(const TypePtr &_t1, const TypePtr &_t2);
+    static bool isKind (TypePtr _type, int _kind);
+    static TypePtr getJoin(const TypePtr &_t1, const TypePtr &_t2);
+    static void setType (Expression &_expr, const TypePtr &_type);
+    static void setType (const NodePtr &_expr, const TypePtr &_type);
+    static std::wstring nodeToString (Node &_node);
+    static void typeError (std::string _msg, bool _b = false);
+    static bool isFresh(const TypePtr &_t);
+    static SubtypePtr rangeToSubtype (TypePtr _t);
+    static void printInfo (Node &_node);
+};
+
+//-----------TC------------
+std::wstring TC::nodeToString (Node &_node) {
+    std::wstring s;
+    std::wostringstream ss;
+    pp::prettyPrintSyntax(_node, ss, NULL, true);
+    s = ss.str();
+    s.pop_back();
+    return s;
+}
+
+void TC::printInfo (Node &_node){
+    if (Options::instance().bTypeInfo) {
+        std::wcout << L"\n\033[32m  Type check: \033[49m" + nodeToString(_node);
+    }
+}
+
+bool TC::isSubtype(TypePtr _t1, TypePtr _t2) {
+    bool b = _t1->compare(*_t2, Type::ORD_SUB) || _t1->compare(*_t2, Type::ORD_EQUALS);
+    if (Options::instance().bTypeInfo) {
+
+        std::wcout << L"\n\033[34m    Subtyping \033[49m" + nodeToString(*_t1) + L" <: " + nodeToString(*_t2);
+        if (b)
+            std::wcout << L"\033[32m   Correct\033[49m";
+        else
+            std::wcout << L"\033[31m   Incorrect\033[49m";
+    }
+    return b;
+}
+
+bool TC::isEqual(const TypePtr &_t1, const TypePtr &_t2) {
+    bool b = isSubtype(_t1, _t2) && isSubtype(_t2, _t1);
+    if (Options::instance().bTypeInfo) {
+        std::wcout << L"\n\033[34m    Subtyping \033[49m" + nodeToString(*_t1) + L" = " + nodeToString(*_t2);
+        if (b)
+            std::wcout << L"\033[32m   Correct\033[49m";
+        else
+            std::wcout << L"\033[31m   Incorrect\033[49m";
+    }
+    return b;
+}
+
+void TC::typeError (std::string _msg, bool _b) {
+    if (!_b)
+        throw std::runtime_error(_msg);
+}
+
+SubtypePtr TC::rangeToSubtype (TypePtr _t) {
+    TypePtr tMin = _t.as<Range>()->getMin()->getType();
+    TypePtr tMax = _t.as<Range>()->getMax()->getType();
+    TypePtr tJoin =TC::getJoin(tMin, tMax);
+    SubtypePtr st = _t.as<Range>()->asSubtype();
+    TC::setType(st->getParam(),tJoin);
+    return st;
+}
+
+void TC::setType (Expression &_expr, const TypePtr &_type) {
+    TypePtr type = _type;
+    if (_type->getKind() == Type::RANGE)
+        type = rangeToSubtype(_type);
+    _expr.setType(type);
+    if (Options::instance().bTypeInfo) {
+        std::wcout.fill( '.' );
+        std::wcout << L"\n\033[34m    Set Type \033[49m [" + nodeToString(*type) + L"] " + nodeToString(_expr);
+    }
+}
+
+void TC::setType (const NodePtr &_expr, const TypePtr &_type) {
+    TypePtr type = _type;
+    if (_type->getKind() == Type::RANGE)
+        type = rangeToSubtype(_type);
+    if (_expr->getNodeKind() == Node::NAMED_VALUE)
+        _expr.as<NamedValue>()->setType(type);
+    else if (_expr->getNodeKind() == Node::EXPRESSION)
+        _expr.as<Expression>()->setType(type);
+    else
+        typeError("setType");
+    if (Options::instance().bTypeInfo) {
+        std::wcout << L"\n\033[34m    Set Type \033[49m [" + nodeToString(*type) + L"] " + nodeToString(*_expr);
+    }
+}
+
+bool TC::isKind (TypePtr _type, int _kind) {
+    if (_type.ptr()->getKind() == _kind)
+        return true;
+    if (_type->getKind() == Type::RANGE) {
+        TypePtr tMin = _type.as<Range>()->getMin()->getType();
+        TypePtr tMax = _type.as<Range>()->getMax()->getType();
+        TypePtr tJoin = getJoin(tMin, tMax);
+        _type = _type.as<Range>()->asSubtype();
+        TC::setType(_type.as<Subtype>()->getParam(), tJoin);
+    }
+    if (_type->getKind() == Type::SUBTYPE) {
+        TypePtr t = _type.as<Subtype>()->getParam()->getType();
+        if (t->getKind() == _kind)
+            return true;
+        if (t->getKind() == Type::SUBTYPE)
+            return isKind(t, _kind);
+    }
+    return false;
+}
+
+TypePtr TC::getJoin(const TypePtr &_t1, const TypePtr &_t2) {
+    TypePtr t;
+    if (_t1->getKind() == Type::SUBTYPE)
+        t = getJoin(_t1.as<Subtype>()->getParam()->getType(), _t2);
+    else if (_t1->getKind() == Type::RANGE)
+        t = getJoin(getJoin(_t1.as<Range>()->getMin()->getType() ,
+                            _t1.as<Range>()->getMax()->getType()), _t2);
+    else if (_t2->getKind() == Type::SUBTYPE)
+        t = getJoin(_t2.as<Subtype>()->getParam()->getType(), _t1);
+    else if (_t2->getKind() == Type::RANGE)
+        t = getJoin(getJoin(_t2.as<Range>()->getMin()->getType() ,
+                            _t2.as<Range>()->getMax()->getType()), _t1);
+    else
+        t = _t1->getJoin(*_t2);
+    if (Options::instance().bTypeInfo) {
+        std::wcout.fill( '.' );
+        std::wcout << L"\n\033[34m    Get Join \033[49m" + nodeToString(*_t1) + L", " + nodeToString(*_t2) +
+                      L" -> " + nodeToString(*t);
+    }
+    return t;
+}
+
+bool TC::isFresh(const TypePtr &_t) {
+    if (_t->getKind() == Type::FRESH or _t->getKind() == Type::GENERIC)
+        return true;
+    return false;
+}
+
+//-----------Collector------------
 class Collector : public Visitor {
 public:
     Collector(tc::Formulas & _constraints, ir::Context & _ctx);
