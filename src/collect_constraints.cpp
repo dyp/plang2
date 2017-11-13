@@ -810,28 +810,30 @@ bool Collector::visitVariableReference(VariableReference &_var) {
 }
 
 bool Collector::visitPredicateReference(PredicateReference &_ref) {
+    TC::printInfo(_ref);
     Predicates funcs;
-
     if (! m_ctx.getPredicates(_ref.getName(), funcs))
         assert(false);
-
-    _ref.setType(createFresh(_ref.getType()));
-
-    if (funcs.size() > 1) {
-        tc::CompoundFormulaPtr pConstraint = new tc::CompoundFormula();
-
-        for (size_t i = 0; i < funcs.size(); ++ i) {
-            PredicatePtr pPred = funcs.get(i);
-            tc::Formulas & part = pConstraint->addPart();
-
-            part.insert(new tc::Formula(tc::Formula::EQUALS, pPred->getType(), _ref.getType()));
-        }
-
-        m_constraints.insert(pConstraint);
+    if (funcs.size() == 1) {
+        TC::setType(_ref, funcs.get(0)->getType());
     } else {
-        m_constraints.insert(new tc::Formula(tc::Formula::EQUALS, funcs.get(0)->getType(), _ref.getType()));
-    }
+        _ref.setType(createFresh(_ref.getType()));
 
+        if (funcs.size() > 1) {
+            tc::CompoundFormulaPtr pConstraint = new tc::CompoundFormula();
+
+            for (size_t i = 0; i < funcs.size(); ++ i) {
+                PredicatePtr pPred = funcs.get(i);
+                tc::Formulas & part = pConstraint->addPart();
+
+                part.insert(new tc::Formula(tc::Formula::EQUALS, pPred->getType(), _ref.getType()));
+            }
+
+            m_constraints.insert(pConstraint);
+        } else {
+            m_constraints.insert(new tc::Formula(tc::Formula::EQUALS, funcs.get(0)->getType(), _ref.getType()));
+        }
+    }
     return true;
 }
 
