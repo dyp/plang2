@@ -12,6 +12,7 @@
 #include "type_lattice.h"
 #include "prettyprinter.h"
 #include "pp_syntax.h"
+#include "cvc3_solver.h"
 
 #include <ir/statements.h>
 #include <ir/builtins.h>
@@ -19,6 +20,35 @@
 #include <utils.h>
 
 using namespace ir;
+
+class SMT {
+public:
+    static bool isContains(ExpressionPtr _expr, TypePtr _type);
+    static void addLemma(const ExpressionPtr &_expr);
+    static void addTheorem(const ExpressionPtr &_expr);
+    static void delLemma(const ExpressionPtr &_expr);
+    static void delTheorem(const ExpressionPtr &_expr);
+    static bool prove();
+    static bool proveTheorem(const ExpressionPtr &_expr);
+    static ExpressionPtr cookExpr(const ExpressionPtr &_expr);
+    static std::vector<ExpressionPtr> delDupLemmas (const std::vector<ExpressionPtr> &_exprs);
+    static std::vector<ExpressionPtr> getLemmas();
+    static std::vector<ExpressionPtr> getTheorems();
+    static ExpressionPtr createConjunct (const std::vector<ExpressionPtr> &_exprs);
+    static VariableReferencePtr getNewVar(const std::wstring _name);
+    static std::vector<ExpressionPtr> getSubExpression (const NodePtr &_expr, int _kind1=-1, int _kind2=-1,
+                                                        int kind3=-1, int kind4=-1);
+    static void changeSubexpr (ExpressionPtr &_expr, const ExpressionPtr &_old, const ExpressionPtr &_new);
+    static void setVarType(VariableReferencePtr _var, const TypePtr _type);
+private:
+    static int nVar;
+    static std::map<FormulaDeclarationPtr, FormulaDeclarationPtr> m_formulas;
+    static std::map<std::wstring, NamedValuePtr> m_variables;
+    static std::map<ExpressionPtr, ExpressionPtr> m_lemmas;
+    static std::map<ExpressionPtr, ExpressionPtr> m_theorems;
+    static std::vector<ExpressionPtr> m_conditions;
+    static ModulePtr m_module;
+};
 
 class TC {
 public:
@@ -34,6 +64,376 @@ public:
     static SubtypePtr rangeToSubtype (TypePtr _t);
     static void printInfo (Node &_node);
 };
+
+//-----------SMT------------
+int SMT::nVar = 0;
+std::vector<ExpressionPtr> SMT::m_conditions = std::vector<ExpressionPtr>();
+std::map<FormulaDeclarationPtr, FormulaDeclarationPtr> SMT::m_formulas =
+        std::map<FormulaDeclarationPtr, FormulaDeclarationPtr>();
+std::map<std::wstring, NamedValuePtr> SMT::m_variables = std::map<std::wstring, NamedValuePtr>();
+std::map<ExpressionPtr, ExpressionPtr> SMT::m_lemmas = std::map<ExpressionPtr, ExpressionPtr>();
+std::map<ExpressionPtr, ExpressionPtr> SMT::m_theorems = std::map<ExpressionPtr, ExpressionPtr>();
+ModulePtr SMT::m_module = new Module(L"SMT");
+
+void SMT::delLemma(const ExpressionPtr &_expr){
+    std::map<ExpressionPtr, ExpressionPtr>::iterator it = m_lemmas.find(_expr);
+    if (it != m_lemmas.end())
+        m_lemmas.erase(it);
+}
+
+void SMT::addLemma(const ExpressionPtr &_expr) {
+    m_conditions = std::vector<ExpressionPtr>();
+
+    ExpressionPtr expr = cookExpr(_expr);
+    ExpressionPtr cond = createConjunct(delDupLemmas(m_conditions));
+    m_lemmas.insert({_expr, new Binary(Binary::BOOL_AND, expr, cond)});
+    if (Options::instance().bTypeInfo)
+        std::wcout << L"\n\033[34m    Add lemma \033[49m" + TC::nodeToString(*expr);
+}
+
+void SMT::delTheorem(const ExpressionPtr &_expr){
+    std::map<ExpressionPtr, ExpressionPtr>::iterator it = m_theorems.find(_expr);
+    if (it != m_theorems.end())
+        m_theorems.erase(it);
+    it = m_lemmas.find(_expr);
+    if (it != m_lemmas.end())
+        m_lemmas.erase(it);
+}
+
+void SMT::addTheorem(const ExpressionPtr &_expr) {
+    m_conditions = std::vector<ExpressionPtr>();
+    ExpressionPtr expr = cookExpr(_expr).as<Expression>();
+    m_theorems.insert({_expr, expr});
+    if (Options::instance().bTypeInfo)
+        std::wcout << L"\n\033[34m    Add theorem \033[49m" + TC::nodeToString(*expr);
+    ExpressionPtr cond = createConjunct(delDupLemmas(m_conditions));
+    m_lemmas.insert({_expr, cond});
+    if (Options::instance().bTypeInfo)
+        std::wcout << L"\n\033[34m    Add lemma \033[49m" + TC::nodeToString(*cond);
+}
+
+
+std::vector<ExpressionPtr> SMT::getSubExpression (const NodePtr &_expr, int _kind1,
+                                                  int _kind2, int _kind3, int _kind4) {
+    class Searcher : public Visitor {
+    public:
+        std::vector<ExpressionPtr> exprs;
+        int m_kind1, m_kind2, m_kind3, m_kind4;
+        Searcher(int i1, int i2, int i3, int i4): m_kind1(i1), m_kind2(i2),
+                                                  m_kind3(i3), m_kind4(i4){};
+        virtual bool traverseExpression(Expression &expr) {
+            int kind = expr.getKind();
+            if (m_kind1 == -1) {
+                exprs.push_back(&expr);
+                return Visitor::traverseExpression(expr);
+            }
+            if (kind == m_kind1 or kind == m_kind2 or
+                kind == m_kind3 or kind == m_kind4)
+                exprs.push_back(&expr);
+            return Visitor::traverseExpression(expr);
+        }
+    };
+    Searcher s = Searcher(_kind1, _kind2, _kind3, _kind4);
+    s.traverseNode(*_expr);
+    return s.exprs;
+}
+
+VariableReferencePtr SMT::getNewVar(const std::wstring _name) {
+    std::map<std::wstring, NamedValuePtr>::iterator it = m_variables.find(_name);
+    if (it != m_variables.end()) {
+        return new VariableReference(it->second->getName(), it->second);
+    } else {
+        NamedValuePtr newName = new NamedValue(_name + std::to_wstring(nVar));
+        nVar++;
+        m_variables.insert({_name, newName});
+        m_variables.insert({newName->getName(), newName});
+        return new VariableReference(newName->getName(), newName);
+    }
+}
+
+void SMT::setVarType(VariableReferencePtr _var, const TypePtr _type) {
+    _var->setType(_type);
+    _var->getTarget()->setType(_type);
+}
+
+ExpressionPtr SMT::cookExpr(const ExpressionPtr &_expr) {
+
+    ExpressionPtr expr = clone(_expr);
+
+    //func to var
+    for (auto i: getSubExpression(expr, Expression::FUNCTION_CALL)) {
+        FunctionCallPtr func = i.as<FunctionCall>();
+        VariableReferencePtr var = getNewVar(func->getPredicate().as<PredicateReference>()->getName());
+        setVarType(var, func->getType());
+        changeSubexpr(expr, func, var);
+        ExpressionPtr postCond = cookExpr(func->getPredicate().as<PredicateReference>()
+                                                  ->getTarget()->getPostCondition());
+        if (postCond) {
+            std::wstring resultName = func->getPredicate().as<PredicateReference>()
+                    ->getTarget()->getOutParams().get(0)->get(0)->getName();
+            for (auto j : getSubExpression(postCond, Expression::VAR)) {
+                VariableReferencePtr postVar = i.as<VariableReference>();
+                if (postVar->getName() == resultName)
+                    postVar->setTarget(var->getTarget());
+            }
+            m_conditions.push_back(postCond);
+            for (size_t j = 0; j < func->getArgs().size(); j++) {
+                ExpressionPtr left = func->getArgs().get(j);
+                ExpressionPtr right = new VariableReference(func->getPredicate().as<PredicateReference>()->
+                        getTarget()->getInParams().get(j));
+                ExpressionPtr cond = new Binary(Binary::EQUALS, left, right);
+                m_conditions.push_back(cookExpr(cond));
+            }
+        }
+    }
+
+    //formula call
+    for (auto i: getSubExpression(expr, Expression::FORMULA_CALL)) {
+        FormulaCallPtr fc = i.as<FormulaCall>();
+        for (auto arg : fc->getArgs())
+            changeSubexpr(arg, arg, cookExpr(arg));
+        std::map<FormulaDeclarationPtr, FormulaDeclarationPtr>::iterator it = m_formulas.find(fc->getTarget());
+        if (it != m_formulas.end()) {
+            fc->setTarget(it->second);
+        } else {
+            FormulaDeclarationPtr formula = new FormulaDeclaration(fc->getName());
+            m_formulas.insert({fc->getTarget(), formula});
+            m_formulas.insert({formula, formula});
+            for (auto param: fc->getTarget()->getParams()) {
+                VariableReferencePtr v = new VariableReference(param->getName(), param);
+                formula->getParams().add(cookExpr(v).as<VariableReference>()->getTarget());
+            }
+            formula->setFormula(cookExpr(fc->getTarget()->getFormula()));
+            fc->setTarget(formula);
+            m_module->getFormulas().add(formula);
+            if (Options::instance().bTypeInfo)
+                std::wcout << L"\n\033[34m    CVC4 Add formula \033[49m" + TC::nodeToString(*formula);
+        }
+    }
+
+    //rem subtype and nat types
+    for (auto i: getSubExpression(expr, Expression::VAR)) {
+        VariableReferencePtr var = i.as<VariableReference>();
+        TypePtr type = var->getType();
+        VariableReferencePtr newVar = getNewVar(var->getName());
+        switch (type->getKind()) {
+            case Type::NAT: {
+                setVarType(newVar, new Type(Type::INT, Number::GENERIC));
+                LiteralPtr zero = new Literal(Number::makeInt(0));
+                zero->setType(new Type(Type::INT, Number::GENERIC));
+                m_conditions.push_back(cookExpr(new Binary(Binary::GREATER_OR_EQUALS, newVar, zero)));
+                break;
+            }
+            case Type::RANGE: {
+                TypePtr tMin = type.as<Range>()->getMin()->getType();
+                TypePtr tMax = type.as<Range>()->getMax()->getType();
+                TypePtr tJoin =TC::getJoin(tMin, tMax);
+                type = type.as<Range>()->asSubtype();
+                type.as<Subtype>()->getParam()->setType(tJoin);
+                type.as<Subtype>()->getParam()->setName(L"x");
+                // no break
+            }
+
+            case Type::SUBTYPE: {
+                setVarType(newVar, type.as<Subtype>()->getParam()->getType());
+                newVar = cookExpr(newVar).as<VariableReference>();
+                ExpressionPtr subtypeExpr = type.as<Subtype>()->getExpression();
+                for (auto j : getSubExpression(subtypeExpr, Expression::VAR)) {
+                    VariableReferencePtr subtypeVar = j.as<VariableReference>();
+                    if (subtypeVar->getTarget() == type.as<Subtype>()->getParam()) {
+                        subtypeVar->setName(newVar.as<VariableReference>()->getTarget()->getName());
+                        subtypeVar->setType(newVar.as<VariableReference>()->getTarget()->getType());
+                        subtypeVar->setTarget(newVar.as<VariableReference>()->getTarget());
+                    }
+                }
+                subtypeExpr = cookExpr(subtypeExpr);
+                m_conditions.push_back(subtypeExpr);
+                break;
+            }
+            case Type::ARRAY: {
+                ArrayTypePtr tArray = new ArrayType(type.as<ArrayType>()->getBaseType(), new Type(Type::INT,  Number::GENERIC));
+                VariableReferencePtr v = getNewVar(L"x");
+                setVarType(v, tArray->getBaseType());
+                tArray->setBaseType(cookExpr(v)->getType());  //FIXME
+                setVarType(newVar, tArray);
+                break;
+            }
+            case Type::CHAR: {
+                setVarType(newVar, new Type(Type::INT,  Number::GENERIC));
+                break;
+            }
+            default:
+                setVarType(newVar, type);
+        }
+        changeSubexpr(expr, var, newVar);
+    }
+
+    for (auto e: getSubExpression(expr)) {
+        TypePtr type = e->getType();
+        if (type) {
+            switch (type->getKind()) {
+                case Type::NAT:
+                    e->setType(new Type(Type::INT, Number::GENERIC));
+                    break;
+                case Type::RANGE: {
+                    TypePtr tMin = type.as<Range>()->getMin()->getType();
+                    TypePtr tMax = type.as<Range>()->getMax()->getType();
+                    TypePtr tJoin =TC::getJoin(tMin, tMax);
+                    e->setType(tJoin);
+                    break;
+                }
+
+                case Type::SUBTYPE:
+                    e->setType(type.as<Subtype>()->getParam()->getType());
+                    break;
+                case Type::ARRAY: {
+                    ArrayTypePtr tArray = new ArrayType(type.as<ArrayType>()->getBaseType(), new Type(Type::INT,  Number::GENERIC)); //FIXME
+                    VariableReferencePtr var = getNewVar(L"x");
+                    setVarType(var, tArray->getBaseType());
+                    tArray->setBaseType(cookExpr(var)->getType());
+                    e->setType(tArray);
+                    break;
+                }
+                case Type::CHAR: {
+                    if (e->getKind() == Expression::LITERAL) {
+                        changeSubexpr(expr, e, new Literal(Number::makeInt(0)));
+                    }
+                    e->setType(new Type(Type::INT,  Number::GENERIC));
+                    break;
+                }
+            }
+        }
+    }
+
+    for (auto i: getSubExpression(expr, Expression::FORMULA)) {
+        FormulaPtr f = i.as<Formula>();
+        if (f->getBoundVariables().size()==0)
+            SMT::changeSubexpr(expr, i, f->getSubformula());
+        else {
+            for (size_t j = 0; j<f->getBoundVariables().size(); j++) {
+                VariableReferencePtr newVar = getNewVar(f->getBoundVariables().get(j)->getName());
+                setVarType(newVar, f->getBoundVariables().get(j)->getType());
+                f->getBoundVariables().remove(j);
+                f->getBoundVariables().insert(j, newVar->getTarget());
+            }
+        };
+    }
+
+    return expr;
+}
+
+bool SMT::proveTheorem(const ExpressionPtr &_expr) {
+    addTheorem(_expr);
+    bool b = prove();
+    delTheorem(_expr);
+    return b;
+}
+
+ExpressionPtr SMT::createConjunct (const std::vector<ExpressionPtr> &_exprs) {
+    if (_exprs.size() == 0)
+        return new Literal(true);
+    if (_exprs.size() == 1)
+        return _exprs.at(0);
+    ExpressionPtr expr = _exprs.at(0);
+    for (size_t i = 1; i < _exprs.size(); i++)
+        expr = new Binary(Binary::BOOL_AND, expr, _exprs.at(i));
+    return expr;
+}
+
+std::vector<ExpressionPtr> SMT::getLemmas() {
+    std::set<std::wstring> s;
+    std::vector<ExpressionPtr> exprs;
+    for (auto i: m_lemmas)
+        if (s.count(TC::nodeToString(*i.second)) == 0){
+            s.insert(TC::nodeToString(*i.second));
+            exprs.push_back(i.second);
+        }
+    return exprs;
+}
+
+std::vector<ExpressionPtr> SMT::getTheorems() {
+    std::set<std::wstring> s;
+    std::vector<ExpressionPtr> exprs;
+    for (auto i: m_theorems)
+        if (s.count(TC::nodeToString(*i.second)) == 0){
+            s.insert(TC::nodeToString(*i.second));
+            exprs.push_back(i.second);
+        }
+    return exprs;
+}
+
+std::vector<ExpressionPtr> SMT::delDupLemmas (const std::vector<ExpressionPtr> &_exprs) {
+    std::set<std::wstring> s;
+    std::vector<ExpressionPtr> exprs;
+    std::vector<ExpressionPtr> lemmas = getLemmas();
+    for (auto i : lemmas)
+        s.insert(TC::nodeToString(*i));
+    for (auto i : _exprs)
+        if (s.count(TC::nodeToString(*i)) == 0){
+            s.insert(TC::nodeToString(*i));
+            exprs.push_back(i);
+        }
+    return exprs;
+}
+
+bool SMT::prove(){
+    ExpressionPtr ant = createConjunct(getLemmas());
+    ExpressionPtr con = createConjunct(getTheorems());
+    ExpressionPtr impl = new Binary(Binary::IMPLIES, ant, con);
+    LemmaDeclarationPtr le = new LemmaDeclaration(impl);
+    m_module->getLemmas().add(le);
+    int res;
+    try {
+        cvc3::QueryResult r;
+        cvc3::checkValidity(m_module, r);
+        if (r.count(le) != 0)
+            res = r.at(le);
+        else
+            res = CVC3::QueryResult::UNKNOWN;
+
+    }
+    catch (std::exception e) {
+        res = CVC3::QueryResult::UNKNOWN;
+    }
+    m_module->getLemmas().remove(0);
+    if (Options::instance().bTypeInfo) {
+        std::wcout.fill( '.' );
+        std::wcout << L"\n\033[34m    CVC4 Prove \033[49m" + TC::nodeToString(*impl);
+        if (res == CVC3::QueryResult::VALID)
+            std::wcout << L"\033[32m   Valid\033[49m";
+        else if (res == CVC3::QueryResult::INVALID)
+            std::wcout << L"\033[31m   Invalid\033[49m";
+        else
+            std::wcout << L"\033[34m   Unknown\033[49m";
+    }
+    return (res == CVC3::QueryResult::VALID or res == CVC3::QueryResult::UNKNOWN);
+}
+
+bool SMT::isContains(ExpressionPtr _expr, TypePtr _type) {
+    NamedValuePtr nam = new NamedValue(L"ex", _type);
+    VariableReferencePtr var = new VariableReference(nam);
+    m_conditions = std::vector<ExpressionPtr>();
+    ExpressionPtr newVar = cookExpr(var).as<Expression>();
+    if (m_conditions.size() == 0)
+        return TC::isSubtype(_expr->getType(), _type);
+    ExpressionPtr cond = m_conditions.at(0);
+    for (size_t i = 1; i < m_conditions.size(); i++)
+        cond = new Binary(Binary::BOOL_AND, cond, m_conditions.at(i));
+    m_theorems.insert({_expr, cond});
+    m_conditions = std::vector<ExpressionPtr>();
+    ExpressionPtr expr = new Binary(Binary::EQUALS, newVar, cookExpr(_expr));
+    for (auto i : m_conditions)
+        expr = new Binary(Binary::BOOL_AND, expr, i);
+    m_lemmas.insert({_expr, expr});
+    bool b = prove();
+    m_theorems.erase(_expr);
+    m_lemmas.erase(_expr);
+    return b;
+}
+
+void SMT::changeSubexpr (ExpressionPtr &_expr, const ExpressionPtr &_old, const ExpressionPtr &_new) {
+    _expr = Expression::substitute(_expr, _old, _new).as<Expression>();
+}
 
 //-----------TC------------
 std::wstring TC::nodeToString (Node &_node) {
@@ -52,7 +452,35 @@ void TC::printInfo (Node &_node){
 }
 
 bool TC::isSubtype(TypePtr _t1, TypePtr _t2) {
-    bool b = _t1->compare(*_t2, Type::ORD_SUB) || _t1->compare(*_t2, Type::ORD_EQUALS);
+    bool b = true;
+    int k1 = _t1->getKind();
+    int k2 = _t2->getKind();
+    if (k1 == Type::RANGE) {
+        _t1 = rangeToSubtype(_t1);
+        k1 = Type::SUBTYPE;
+    }
+    if (k2 == Type::RANGE) {
+        _t2 = rangeToSubtype(_t2);
+        k2 = Type::SUBTYPE;
+    }
+    if (k1 == Type::ARRAY && k2 == Type::ARRAY) {
+        ArrayTypePtr tArray1 = _t1.as<ArrayType>();
+        ArrayTypePtr tArray2 = _t2.as<ArrayType>();
+        if(tArray1->getDimensionsCount() != tArray2->getDimensionsCount())
+            return false;
+        Collection<Type> dim1 , dim2;
+        tArray1->getDimensions(dim1);
+        tArray2->getDimensions(dim2);
+        for (size_t i = 0; i<tArray1->getDimensionsCount() && b; i++)
+            b = isEqual(dim1.get(i), dim2.get(i));
+        if(!b)
+            return false;
+        return isSubtype(tArray1->getBaseType(), tArray2->getBaseType());
+    } else if (k1 ==  Type::SUBTYPE && k2 == Type::SUBTYPE) {
+        NamedValuePtr name = new NamedValue(L"sx", _t1);
+        return SMT::isContains(new VariableReference(L"sx", name), _t2);
+    } else
+        b = _t1->compare(*_t2, Type::ORD_SUB) || _t1->compare(*_t2, Type::ORD_EQUALS);
     if (Options::instance().bTypeInfo) {
 
         std::wcout << L"\n\033[34m    Subtyping \033[49m" + nodeToString(*_t1) + L" <: " + nodeToString(*_t2);
@@ -67,7 +495,7 @@ bool TC::isSubtype(TypePtr _t1, TypePtr _t2) {
 bool TC::isEqual(const TypePtr &_t1, const TypePtr &_t2) {
     bool b = isSubtype(_t1, _t2) && isSubtype(_t2, _t1);
     if (Options::instance().bTypeInfo) {
-        std::wcout << L"\n\033[34m    Subtyping \033[49m" + nodeToString(*_t1) + L" = " + nodeToString(*_t2);
+        std::wcout << L"\n\033[34m    Equal \033[49m" + nodeToString(*_t1) + L" = " + nodeToString(*_t2);
         if (b)
             std::wcout << L"\033[32m   Correct\033[49m";
         else
@@ -87,6 +515,9 @@ SubtypePtr TC::rangeToSubtype (TypePtr _t) {
     TypePtr tJoin =TC::getJoin(tMin, tMax);
     SubtypePtr st = _t.as<Range>()->asSubtype();
     TC::setType(st->getParam(),tJoin);
+    for (auto i : SMT::getSubExpression(st->getExpression(), Expression::VAR))
+        if (i.as<VariableReference>()->getTarget() == st->getParam())
+            i->setType(tJoin);
     return st;
 }
 
