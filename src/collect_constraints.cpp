@@ -590,7 +590,13 @@ TypePtr TC::getJoin(const TypePtr &_t1, const TypePtr &_t2) {
 }
 
 bool TC::isFresh(const TypePtr &_t) {
-    if (_t->getKind() == Type::FRESH or _t->getKind() == Type::GENERIC)
+    if ((_t->getKind() == Type::FRESH) || (_t->getKind() == Type::GENERIC) ||
+            (_t->getKind() == Type::ARRAY && isFresh(_t.as<ArrayType>()->getBaseType())) ||
+            (_t->getKind() == Type::RANGE && (isFresh(_t.as<Range>()->getMin()->getType()) ||
+                    isFresh(_t.as<Range>()->getMax()->getType())))||
+            (_t->getKind() == Type::SUBTYPE && isFresh(_t.as<Subtype>()->getParam()->getType())) ||
+            (_t->getKind() == Type::MAP && isFresh(_t.as<MapType>()->getBaseType())) ||
+            (_t->getKind() == Type::LIST && isFresh(_t.as<ListType>()->getBaseType())))
         return true;
     return false;
 }
@@ -764,10 +770,36 @@ bool Collector::visitRange(Range &_type) {
 }
 
 bool Collector::visitArrayType(ArrayType &_type) {
-    // FIXME There is should be finite type.
-    m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
-        _type.getDimensionType(), new Type(Type::INT, Number::GENERIC)));
-    return true;
+    TC::printInfo(_type);
+    if (TC::isFresh(_type.getDimensionType())) {
+        m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                                             _type.getDimensionType(), new Type(Type::INT, Number::GENERIC)));
+        return true;
+    } else {
+        Collection<Type> dimension;
+        _type.getDimensions(dimension);
+        for (auto dem : dimension) {
+            TC::typeError("Array demnsion", TC::isKind(dem, Type::INT) or
+                                            TC::isKind(dem, Type::NAT) or TC::isKind(dem, Type::ENUM) or TC::isKind(dem, Type::CHAR));
+            VariableReferencePtr x = new VariableReference (new NamedValue (L"x", dem));
+            TC::setType(x, x->getTarget()->getType());
+            VariableReferencePtr top = new VariableReference
+                    (new NamedValue (L"top", new Type(Type::INT, Number::GENERIC)));
+            VariableReferencePtr bot = new VariableReference
+                    (new NamedValue (L"bot", new Type(Type::INT, Number::GENERIC))); //FIXME enum and char as int
+            FormulaPtr f1 = new Formula(Formula::EXISTENTIAL, new Binary(Binary::GREATER, top, x));
+            f1->getBoundVariables().add(top->getTarget());
+            FormulaPtr f2 = new Formula(Formula::EXISTENTIAL, new Binary(Binary::GREATER, x, bot));
+            f2->getBoundVariables().add(bot->getTarget());
+            TC::typeError("Array demnsion is infinite",
+                          SMT::proveTheorem(new Binary(Binary::BOOL_AND, f1, f2)));
+            if (dem->getKind() == Type::RANGE) {
+                TC::nodeToString(*TC::rangeToSubtype(dem));
+                _type.rewrite(dem, TC::rangeToSubtype(dem));
+            }
+        }
+        return true;
+    }
 }
 
 bool Collector::visitVariableReference(VariableReference &_var) {
