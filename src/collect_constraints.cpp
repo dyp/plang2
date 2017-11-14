@@ -1142,18 +1142,22 @@ bool Collector::visitUnary(Unary &_unary) {
 }
 
 bool Collector::visitBinary(Binary &_binary) {
-    _binary.setType(createFresh(_binary.getType()));
+    TC::printInfo(_binary);
+    TypePtr tLeftExpr = _binary.getLeftSide()->getType();
+    TypePtr tRightExpr = _binary.getRightSide()->getType();
+    if (TC::isFresh(tLeftExpr) || TC::isFresh(tRightExpr)) {
+        _binary.setType(createFresh(_binary.getType()));
 
-    switch (_binary.getOperator()) {
-        case Binary::ADD:
-        case Binary::SUBTRACT:
-            //                       x : A + y : B = z :C
-            // ----------------------------------------------------------------
-            // (A <= B and C = B and A <= real and B <= real and C <= real)
-            //   or (B < A and C = A and A <= real and B <= real and C <= real)
-            //   or (A <= C and B <= C and C = {D})
-            //   or (A <= C and B <= C and C = [[D]])   /* Operator "+" only. */
-            //   or (A = T1[D1] & B = T2[D2] & C = T3[D3] & T1 <= T3 & T2 <= T3 & D1 <= D3 & D2 <= D3)   /* Operator "+" only. */
+        switch (_binary.getOperator()) {
+            case Binary::ADD:
+            case Binary::SUBTRACT:
+                //                       x : A + y : B = z :C
+                // ----------------------------------------------------------------
+                // (A <= B and C = B and A <= real and B <= real and C <= real)
+                //   or (B < A and C = A and A <= real and B <= real and C <= real)
+                //   or (A <= C and B <= C and C = {D})
+                //   or (A <= C and B <= C and C = [[D]])   /* Operator "+" only. */
+                //   or (A = T1[D1] & B = T2[D2] & C = T3[D3] & T1 <= T3 & T2 <= T3 & D1 <= D3 & D2 <= D3)   /* Operator "+" only. */
             {
                 tc::CompoundFormulaPtr p = new tc::CompoundFormula();
                 tc::Formulas & part1 = p->addPart();
@@ -1161,35 +1165,35 @@ bool Collector::visitBinary(Binary &_binary) {
 
                 // Numeric operations.
                 part1.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                        _binary.getLeftSide()->getType(),
-                        _binary.getRightSide()->getType()));
+                                             _binary.getLeftSide()->getType(),
+                                             _binary.getRightSide()->getType()));
                 part1.insert(new tc::Formula(tc::Formula::EQUALS,
-                        _binary.getType(),
-                        _binary.getRightSide()->getType()));
+                                             _binary.getType(),
+                                             _binary.getRightSide()->getType()));
                 part1.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                        _binary.getLeftSide()->getType(),
-                        new Type(Type::REAL, Number::GENERIC)));
+                                             _binary.getLeftSide()->getType(),
+                                             new Type(Type::REAL, Number::GENERIC)));
                 part1.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                        _binary.getRightSide()->getType(),
-                        new Type(Type::REAL, Number::GENERIC)));
+                                             _binary.getRightSide()->getType(),
+                                             new Type(Type::REAL, Number::GENERIC)));
                 part1.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                        _binary.getType(),
-                        new Type(Type::REAL, Number::GENERIC)));
+                                             _binary.getType(),
+                                             new Type(Type::REAL, Number::GENERIC)));
                 part2.insert(new tc::Formula(tc::Formula::SUBTYPE_STRICT,
-                        _binary.getRightSide()->getType(),
-                        _binary.getLeftSide()->getType()));
+                                             _binary.getRightSide()->getType(),
+                                             _binary.getLeftSide()->getType()));
                 part2.insert(new tc::Formula(tc::Formula::EQUALS,
-                        _binary.getType(),
-                        _binary.getLeftSide()->getType()));
+                                             _binary.getType(),
+                                             _binary.getLeftSide()->getType()));
                 part2.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                        _binary.getLeftSide()->getType(),
-                        new Type(Type::REAL, Number::GENERIC)));
+                                             _binary.getLeftSide()->getType(),
+                                             new Type(Type::REAL, Number::GENERIC)));
                 part2.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                        _binary.getRightSide()->getType(),
-                        new Type(Type::REAL, Number::GENERIC)));
+                                             _binary.getRightSide()->getType(),
+                                             new Type(Type::REAL, Number::GENERIC)));
                 part2.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                        _binary.getType(),
-                        new Type(Type::REAL, Number::GENERIC)));
+                                             _binary.getType(),
+                                             new Type(Type::REAL, Number::GENERIC)));
 
                 // Set operations.
                 tc::Formulas & part3 = p->addPart();
@@ -1198,13 +1202,13 @@ bool Collector::visitBinary(Binary &_binary) {
                 pSet->setBaseType(createFresh());
 
                 part3.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                        _binary.getLeftSide()->getType(),
-                        _binary.getType()));
+                                             _binary.getLeftSide()->getType(),
+                                             _binary.getType()));
                 part3.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                        _binary.getRightSide()->getType(),
-                        _binary.getType()));
+                                             _binary.getRightSide()->getType(),
+                                             _binary.getType()));
                 part3.insert(new tc::Formula(tc::Formula::EQUALS,
-                        _binary.getType(), pSet));
+                                             _binary.getType(), pSet));
 
                 if (_binary.getOperator() == Binary::ADD) {
                     tc::Formulas & part4 = p->addPart();
@@ -1213,135 +1217,135 @@ bool Collector::visitBinary(Binary &_binary) {
                     pList->setBaseType(createFresh());
 
                     part4.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                            _binary.getLeftSide()->getType(),
-                            _binary.getType()));
+                                                 _binary.getLeftSide()->getType(),
+                                                 _binary.getType()));
                     part4.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                            _binary.getRightSide()->getType(),
-                            _binary.getType()));
+                                                 _binary.getRightSide()->getType(),
+                                                 _binary.getType()));
                     part4.insert(new tc::Formula(tc::Formula::EQUALS,
-                            _binary.getType(), pList));
+                                                 _binary.getType(), pList));
 
                     tc::Formulas & part5 = p->addPart();
 
                     ArrayTypePtr
-                        pA = new ArrayType(createFresh(), createFresh()),
-                        pB = new ArrayType(createFresh(), createFresh()),
-                        pC = new ArrayType(new tc::FreshType(tc::FreshType::PARAM_OUT),
-                            new tc::FreshType(tc::FreshType::PARAM_OUT));
+                            pA = new ArrayType(createFresh(), createFresh()),
+                            pB = new ArrayType(createFresh(), createFresh()),
+                            pC = new ArrayType(new tc::FreshType(tc::FreshType::PARAM_OUT),
+                                               new tc::FreshType(tc::FreshType::PARAM_OUT));
 
                     part5.insert(new tc::Formula(tc::Formula::EQUALS,
-                        _binary.getLeftSide()->getType(), pA));
+                                                 _binary.getLeftSide()->getType(), pA));
                     part5.insert(new tc::Formula(tc::Formula::EQUALS,
-                        _binary.getRightSide()->getType(), pB));
+                                                 _binary.getRightSide()->getType(), pB));
                     part5.insert(new tc::Formula(tc::Formula::EQUALS,
-                        _binary.getType(), pC));
+                                                 _binary.getType(), pC));
 
                     part5.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                        pA->getBaseType(), pC->getBaseType()));
+                                                 pA->getBaseType(), pC->getBaseType()));
                     part5.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                        pB->getBaseType(), pC->getBaseType()));
+                                                 pB->getBaseType(), pC->getBaseType()));
                     part5.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                        pA->getDimensionType(), pC->getDimensionType()));
+                                                 pA->getDimensionType(), pC->getDimensionType()));
                     part5.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                        pB->getDimensionType(), pC->getDimensionType()));
+                                                 pB->getDimensionType(), pC->getDimensionType()));
                 }
 
                 m_constraints.insert(p);
             }
-            break;
+                break;
 
-        case Binary::MULTIPLY:
-        case Binary::DIVIDE:
-        case Binary::REMAINDER:
-        case Binary::POWER:
-            //         x : A * y : B = z : C
-            // -----------------------------------
-            // ((A <= B and C = B) or (B < A and C = A)) and A <= real and B <= real and C <= real
+            case Binary::MULTIPLY:
+            case Binary::DIVIDE:
+            case Binary::REMAINDER:
+            case Binary::POWER:
+                //         x : A * y : B = z : C
+                // -----------------------------------
+                // ((A <= B and C = B) or (B < A and C = A)) and A <= real and B <= real and C <= real
             {
                 tc::CompoundFormulaPtr p = new tc::CompoundFormula();
                 tc::Formulas & part1 = p->addPart();
                 tc::Formulas & part2 = p->addPart();
 
                 part1.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                        _binary.getLeftSide()->getType(),
-                        _binary.getRightSide()->getType()));
+                                             _binary.getLeftSide()->getType(),
+                                             _binary.getRightSide()->getType()));
                 part1.insert(new tc::Formula(tc::Formula::EQUALS,
-                        _binary.getType(),
-                        _binary.getRightSide()->getType()));
+                                             _binary.getType(),
+                                             _binary.getRightSide()->getType()));
                 part2.insert(new tc::Formula(tc::Formula::SUBTYPE_STRICT,
-                        _binary.getRightSide()->getType(),
-                        _binary.getLeftSide()->getType()));
+                                             _binary.getRightSide()->getType(),
+                                             _binary.getLeftSide()->getType()));
                 part2.insert(new tc::Formula(tc::Formula::EQUALS,
-                        _binary.getType(),
-                        _binary.getLeftSide()->getType()));
+                                             _binary.getType(),
+                                             _binary.getLeftSide()->getType()));
                 m_constraints.insert(p);
             }
 
-            // Support only numbers for now.
-            m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                    _binary.getLeftSide()->getType(), new Type(Type::REAL, Number::GENERIC)));
-            m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                    _binary.getRightSide()->getType(), new Type(Type::REAL, Number::GENERIC)));
-            m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                    _binary.getType(), new Type(Type::REAL, Number::GENERIC)));
+                // Support only numbers for now.
+                m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                                                     _binary.getLeftSide()->getType(), new Type(Type::REAL, Number::GENERIC)));
+                m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                                                     _binary.getRightSide()->getType(), new Type(Type::REAL, Number::GENERIC)));
+                m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                                                     _binary.getType(), new Type(Type::REAL, Number::GENERIC)));
 
-            break;
+                break;
 
-        case Binary::SHIFT_LEFT:
-        case Binary::SHIFT_RIGHT:
-            m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                    _binary.getLeftSide()->getType(), new Type(Type::INT, Number::GENERIC)));
-            m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                    _binary.getRightSide()->getType(), new Type(Type::INT, Number::GENERIC)));
-            m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                    _binary.getLeftSide()->getType(), _binary.getType()));
-            break;
+            case Binary::SHIFT_LEFT:
+            case Binary::SHIFT_RIGHT:
+                m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                                                     _binary.getLeftSide()->getType(), new Type(Type::INT, Number::GENERIC)));
+                m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                                                     _binary.getRightSide()->getType(), new Type(Type::INT, Number::GENERIC)));
+                m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                                                     _binary.getLeftSide()->getType(), _binary.getType()));
+                break;
 
-        case Binary::LESS:
-        case Binary::LESS_OR_EQUALS:
-        case Binary::GREATER:
-        case Binary::GREATER_OR_EQUALS:
-            m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                    _binary.getLeftSide()->getType(), new Type(Type::REAL, Number::GENERIC)));
-            m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                    _binary.getRightSide()->getType(), new Type(Type::REAL, Number::GENERIC)));
-            // no break;
-        case Binary::EQUALS:
-        case Binary::NOT_EQUALS:
-            //       (x : A = y : B) : C
-            // ----------------------------------
-            //   C = bool and (A <= B or B < A)
-            m_constraints.insert(new tc::Formula(tc::Formula::EQUALS,
-                    _binary.getType(), new Type(Type::BOOL)));
+            case Binary::LESS:
+            case Binary::LESS_OR_EQUALS:
+            case Binary::GREATER:
+            case Binary::GREATER_OR_EQUALS:
+                m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                                                     _binary.getLeftSide()->getType(), new Type(Type::REAL, Number::GENERIC)));
+                m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                                                     _binary.getRightSide()->getType(), new Type(Type::REAL, Number::GENERIC)));
+                // no break;
+            case Binary::EQUALS:
+            case Binary::NOT_EQUALS:
+                //       (x : A = y : B) : C
+                // ----------------------------------
+                //   C = bool and (A <= B or B < A)
+                m_constraints.insert(new tc::Formula(tc::Formula::EQUALS,
+                                                     _binary.getType(), new Type(Type::BOOL)));
 
-            {
-                tc::CompoundFormulaPtr p = new tc::CompoundFormula();
+                {
+                    tc::CompoundFormulaPtr p = new tc::CompoundFormula();
 
-                p->addPart().insert(new tc::Formula(tc::Formula::SUBTYPE,
-                        _binary.getLeftSide()->getType(),
-                        _binary.getRightSide()->getType()));
-                p->addPart().insert(new tc::Formula(tc::Formula::SUBTYPE_STRICT,
-                        _binary.getRightSide()->getType(),
-                        _binary.getLeftSide()->getType()));
+                    p->addPart().insert(new tc::Formula(tc::Formula::SUBTYPE,
+                                                        _binary.getLeftSide()->getType(),
+                                                        _binary.getRightSide()->getType()));
+                    p->addPart().insert(new tc::Formula(tc::Formula::SUBTYPE_STRICT,
+                                                        _binary.getRightSide()->getType(),
+                                                        _binary.getLeftSide()->getType()));
 
-                //_binary.h
+                    //_binary.h
 
-                m_constraints.insert(p);
-            }
-            break;
+                    m_constraints.insert(p);
+                }
+                break;
 
-        case Binary::BOOL_AND:
-        case Binary::BITWISE_AND:
-        case Binary::BOOL_OR:
-        case Binary::BITWISE_OR:
-        case Binary::BOOL_XOR:
-        case Binary::BITWISE_XOR:
-            //       (x : A and y : B) : C
-            // ----------------------------------
-            //   (C = bool and A = bool and B = bool)
-            //     or (A <= B and C = B and B <= int)      (bitwise AND)
-            //     or (B < A and C = A and A <= int)
-            //     or (A <= C and B <= C and C = {D})      (set operations)
+            case Binary::BOOL_AND:
+            case Binary::BITWISE_AND:
+            case Binary::BOOL_OR:
+            case Binary::BITWISE_OR:
+            case Binary::BOOL_XOR:
+            case Binary::BITWISE_XOR:
+                //       (x : A and y : B) : C
+                // ----------------------------------
+                //   (C = bool and A = bool and B = bool)
+                //     or (A <= B and C = B and B <= int)      (bitwise AND)
+                //     or (B < A and C = A and A <= int)
+                //     or (A <= C and B <= C and C = {D})      (set operations)
             {
                 tc::CompoundFormulaPtr p = new tc::CompoundFormula();
                 tc::Formulas & part1 = p->addPart();
@@ -1349,30 +1353,30 @@ bool Collector::visitBinary(Binary &_binary) {
                 tc::Formulas & part3 = p->addPart();
 
                 part1.insert(new tc::Formula(tc::Formula::EQUALS,
-                        _binary.getLeftSide()->getType(), new Type(Type::BOOL)));
+                                             _binary.getLeftSide()->getType(), new Type(Type::BOOL)));
                 part1.insert(new tc::Formula(tc::Formula::EQUALS,
-                        _binary.getRightSide()->getType(), new Type(Type::BOOL)));
+                                             _binary.getRightSide()->getType(), new Type(Type::BOOL)));
                 part1.insert(new tc::Formula(tc::Formula::EQUALS,
-                        _binary.getType(), new Type(Type::BOOL)));
+                                             _binary.getType(), new Type(Type::BOOL)));
 
                 part2.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                        _binary.getLeftSide()->getType(),
-                        _binary.getRightSide()->getType()));
+                                             _binary.getLeftSide()->getType(),
+                                             _binary.getRightSide()->getType()));
                 part2.insert(new tc::Formula(tc::Formula::EQUALS,
-                        _binary.getType(), _binary.getRightSide()->getType()));
+                                             _binary.getType(), _binary.getRightSide()->getType()));
                 part2.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                        _binary.getRightSide()->getType(),
-                        new Type(Type::INT, Number::GENERIC)));
+                                             _binary.getRightSide()->getType(),
+                                             new Type(Type::INT, Number::GENERIC)));
 
                 part3.insert(new tc::Formula(tc::Formula::SUBTYPE_STRICT,
-                        _binary.getRightSide()->getType(),
-                        _binary.getLeftSide()->getType()));
+                                             _binary.getRightSide()->getType(),
+                                             _binary.getLeftSide()->getType()));
                 part3.insert(new tc::Formula(tc::Formula::EQUALS,
-                        _binary.getType(),
-                        _binary.getLeftSide()->getType()));
+                                             _binary.getType(),
+                                             _binary.getLeftSide()->getType()));
                 part3.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                        _binary.getLeftSide()->getType(),
-                        new Type(Type::INT, Number::GENERIC)));
+                                             _binary.getLeftSide()->getType(),
+                                             new Type(Type::INT, Number::GENERIC)));
 
                 // Set operations.
                 tc::Formulas & part4 = p->addPart();
@@ -1381,43 +1385,161 @@ bool Collector::visitBinary(Binary &_binary) {
                 pSet->setBaseType(createFresh());
 
                 part4.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                        _binary.getLeftSide()->getType(),
-                        _binary.getType()));
+                                             _binary.getLeftSide()->getType(),
+                                             _binary.getType()));
                 part4.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                        _binary.getRightSide()->getType(),
-                        _binary.getType()));
+                                             _binary.getRightSide()->getType(),
+                                             _binary.getType()));
                 part4.insert(new tc::Formula(tc::Formula::EQUALS,
-                        _binary.getType(), pSet));
+                                             _binary.getType(), pSet));
 
                 m_constraints.insert(p);
             }
-            break;
+                break;
 
-        case Binary::IMPLIES:
-        case Binary::IFF:
-            m_constraints.insert(new tc::Formula(tc::Formula::EQUALS,
-                    _binary.getLeftSide()->getType(), new Type(Type::BOOL)));
-            m_constraints.insert(new tc::Formula(tc::Formula::EQUALS,
-                    _binary.getRightSide()->getType(), new Type(Type::BOOL)));
-            m_constraints.insert(new tc::Formula(tc::Formula::EQUALS,
-                    _binary.getType(), new Type(Type::BOOL)));
-            break;
+            case Binary::IMPLIES:
+            case Binary::IFF:
+                m_constraints.insert(new tc::Formula(tc::Formula::EQUALS,
+                                                     _binary.getLeftSide()->getType(), new Type(Type::BOOL)));
+                m_constraints.insert(new tc::Formula(tc::Formula::EQUALS,
+                                                     _binary.getRightSide()->getType(), new Type(Type::BOOL)));
+                m_constraints.insert(new tc::Formula(tc::Formula::EQUALS,
+                                                     _binary.getType(), new Type(Type::BOOL)));
+                break;
 
-        case Binary::IN:
+            case Binary::IN:
             {
                 SetTypePtr pSet = new SetType(NULL);
 
                 pSet->setBaseType(createFresh());
                 m_constraints.insert(new tc::Formula(tc::Formula::EQUALS,
-                        _binary.getRightSide()->getType(), pSet));
+                                                     _binary.getRightSide()->getType(), pSet));
                 m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                        _binary.getLeftSide()->getType(), pSet->getBaseType()));
+                                                     _binary.getLeftSide()->getType(), pSet->getBaseType()));
                 m_constraints.insert(new tc::Formula(tc::Formula::EQUALS,
-                        _binary.getType(), new Type(Type::BOOL)));
+                                                     _binary.getType(), new Type(Type::BOOL)));
             }
-            break;
+                break;
+        }
+    } else {
+        TypePtr tJoinExpr = TC::getJoin(tLeftExpr, tRightExpr);
+        int l = tLeftExpr->getKind();
+        int r = tRightExpr->getKind();
+        switch (_binary.getOperator()) {
+            case Binary::ADD:
+                switch (tJoinExpr->getKind()) {
+                    case Type::REAL:
+                    case Type::INT:
+                    case Type::NAT:
+                    case Type::LIST:
+                    case Type::SET:
+                    case Type::ARRAY:
+                        TC::setType(_binary, tJoinExpr);
+                        return true;
+                    default:
+                        TC::typeError("invalid the types of the operands for binary plus");
+                }
+            case Binary::SUBTRACT:
+                switch (tJoinExpr->getKind()) {
+                    case Type::REAL:
+                    case Type::INT:
+                    case Type::SET:
+                        TC::setType(_binary, tJoinExpr);
+                        return true;
+                    case Type::NAT:
+                        TC::setType(_binary, new Type(Type::INT, Number::GENERIC));
+                        return true;
+                    default:
+                        TC::typeError("invalid the types of the operands for binary minus");
+                }
+            case Binary::MULTIPLY:
+            case Binary::DIVIDE:
+                switch (tJoinExpr->getKind()) {
+                    case Type::NAT:
+                    case Type::INT:
+                    case Type::REAL:
+                        TC::setType(_binary, tJoinExpr);
+                        return true;
+                    default:
+                        TC::typeError("invalid the types of the operands for binary operation");
+                }
+            case Binary::LESS:
+            case Binary::LESS_OR_EQUALS:
+            case Binary::GREATER:
+            case Binary::GREATER_OR_EQUALS:
+                switch (tJoinExpr->getKind()) {
+                    case Type::NAT:
+                    case Type::INT:
+                    case Type::REAL:
+                    case Type::ENUM:
+                    case Type::CHAR:
+                        TC::setType(_binary, new Type(Type::BOOL));
+                        return true;
+                    default:
+                        TC::typeError("invalid the types of the operands for binary operation");
+                }
+            case Binary::IMPLIES:
+            case Binary::IFF:
+                switch (tJoinExpr->getKind()) {
+                    case Type::BOOL:
+                        TC::setType(_binary, tJoinExpr);
+                        return true;
+                    default:
+                        TC::typeError("invalid the types of the operands for binary operation");
+                }
+            case Binary::BOOL_AND:
+            case Binary::BOOL_OR:
+            case Binary::BOOL_XOR:
+            case Binary::BITWISE_AND:
+            case Binary::BITWISE_OR:
+            case Binary::BITWISE_XOR:
+                switch (tJoinExpr->getKind()) {
+                    case Type::SET:
+                    case Type::NAT:
+                    case Type::INT:
+                    case Type::BOOL:
+                        TC::setType(_binary, tJoinExpr);
+                        return true;
+                    default:
+                        TC::typeError("invalid the types of the operands for binary operation");
+                }
+            case Binary::REMAINDER:
+            case Binary::SHIFT_LEFT:
+            case Binary::SHIFT_RIGHT:
+                switch (tJoinExpr->getKind()) {
+                    case Type::NAT:
+                    case Type::INT:
+                        TC::setType(_binary, tJoinExpr);
+                        return true;
+                    default:
+                        TC::typeError("invalid the types of the operands for binary operation");
+                }
+            case Binary::EQUALS:
+            case Binary::NOT_EQUALS:
+                if (TC::isSubtype(tLeftExpr, tRightExpr) || TC::isSubtype(tRightExpr, tLeftExpr)) {
+                    TC::setType(_binary, new Type(Type::BOOL));
+                    return true;
+                }
+                else
+                    TC::typeError("invalid the types of the operands for binary operation");
+            case Binary::POWER:
+                if ((r == Type::INT || r == Type::NAT) && (l == Type::NAT || l == Type::INT || l == Type::REAL)) {
+                    TC::setType(_binary, clone(tLeftExpr));
+                    return true;
+                }
+                else
+                    TC::typeError("invalid the types of the operands for binary operation");
+            case Binary::IN:
+                if (tRightExpr->getKind() == Type::SET) { ;
+                    TypePtr tBase = tRightExpr.as<SetType>()->getBaseType();
+                    if (TC::isSubtype(tLeftExpr, tBase)) {
+                        TC::setType(_binary, new Type(Type::BOOL));
+                        return true;
+                    }
+                }
+                TC::typeError("invalid the types of the operands for binary operation");
+        }
     }
-
     return true;
 }
 
