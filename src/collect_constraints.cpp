@@ -853,20 +853,50 @@ bool Collector::visitFormulaCall(FormulaCall &_call){
 }
 
 bool Collector::visitFunctionCall(FunctionCall &_call) {
-    PredicateTypePtr pType = new PredicateType();
+    TC::printInfo(_call);
+    PredicateReferencePtr pred = _call.getPredicate().as<PredicateReference>();
+    Predicates funcs;
+    if (!m_ctx.getPredicates(pred->getName(), funcs))
+        assert(false);
+    TypePtr typeCall;
+    bool isFresh = false;
+    bool isPred = false;
+    for (size_t i = 0; i < funcs.size() && !isFresh; i++) {
+        PredicatePtr f = funcs.get(i);
+        if ((f->getOutParams().size() != 1) || (f->getOutParams().get(0)->size() != 1) ||
+            (f->getInParams().size() != _call.getArgs().size()))
+            continue;
+        bool correct = true;
+        for (size_t j = 0; (j < f->getInParams().size()) && correct && !isFresh; j++) {
+            isFresh = TC::isFresh(_call.getArgs().get(j)->getType()) ||
+                      TC::isFresh(funcs.get(i)->getInParams().get(j)->getType());
+            correct = SMT::isContains(_call.getArgs().get(j), f->getInParams().get(j)->getType());
+        }
+        if (isPred && correct) { //multiple predicates
+            isPred = false;
+            break;
+        }
+        if (!isPred && correct) {
+            isPred = true;
+            typeCall = f->getOutParams().get(0)->get(0)->getType();
+        }
+    }
+    if (isFresh) {
+        PredicateTypePtr pType = new PredicateType();
 
-    _call.setType(createFresh(_call.getType()));
-    pType->getOutParams().add(new Branch());
-    pType->getOutParams().get(0)->add(new Param(L"", _call.getType()));
+        _call.setType(createFresh(_call.getType()));
+        pType->getOutParams().add(new Branch());
+        pType->getOutParams().get(0)->add(new Param(L"", _call.getType()));
 
-    for (size_t i = 0; i < _call.getArgs().size(); ++ i)
-        pType->getInParams().add(new Param(L"", _call.getArgs().get(i)->getType()));
+        for (size_t i = 0; i < _call.getArgs().size(); ++ i)
+            pType->getInParams().add(new Param(L"", _call.getArgs().get(i)->getType()));
 
-    m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
-            _call.getPredicate()->getType(), pType));
-//    m_constraints.insert(new tc::Formula(tc::Formula::Equals,
-//            _call.getPredicate()->getType(), pType));
-
+        m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                                             _call.getPredicate()->getType(), pType));
+    } else {
+        TC::typeError("Function call", isPred);
+        TC::setType(_call, typeCall);
+    }
     return true;
 }
 
