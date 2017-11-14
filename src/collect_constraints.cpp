@@ -935,23 +935,64 @@ bool Collector::visitBinder(Binder &_binder) {
 }
 
 bool Collector::visitCall(Call &_call) {
-    PredicateTypePtr pType = new PredicateType();
+    TC::printInfo(_call);
+    PredicateReferencePtr pred = _call.getPredicate().as<PredicateReference>();
+    Predicates preds;
+    if (!m_ctx.getPredicates(pred->getName(), preds))
+        assert(false);
+    bool isFresh = false;
+    bool isPred = false;
+    for (size_t i = 0; i < preds.size() && !isFresh; i++) {
+        PredicatePtr f = preds.get(i);
+        if ((f->getOutParams().size() != _call.getBranches().size()) ||
+            (f->getInParams().size() != _call.getArgs().size()))
+            continue;
+        bool correct = true;
+        for (size_t j = 0; (j < f->getInParams().size()) && correct && !isFresh; j++) {
+            isFresh = TC::isFresh(_call.getArgs().get(j)->getType()) ||
+                      TC::isFresh(f->getInParams().get(j)->getType());
+            correct = SMT::isContains(_call.getArgs().get(j), f->getInParams().get(j)->getType());
+        }
 
-    for (size_t i = 0; i < _call.getArgs().size(); ++i)
-        pType->getInParams().add(new Param(L"", _call.getArgs().get(i)->getType()));
-
-    for (size_t i = 0; i < _call.getBranches().size(); ++i) {
-        CallBranch &br = *_call.getBranches().get(i);
-
-        pType->getOutParams().add(new Branch());
-
-        for (size_t j = 0; j < br.size(); ++j)
-            pType->getOutParams().get(i)->add(new Param(L"", br.get(j)->getType()));
+        for (size_t j = 0; (j < f->getOutParams().size()) && correct && !isFresh; j++) {
+            if (f->getOutParams().get(j)->size() != _call.getBranches().get(j)->size()) {
+                correct = false;
+                continue;
+            }
+            for (size_t k = 0; (k < f->getOutParams().get(j)->size()) && correct && !isFresh; k++) {
+                isFresh = TC::isFresh(_call.getBranches().get(j)->get(k)->getType()) ||
+                          TC::isFresh(f->getOutParams().get(j)->get(k)->getType());
+                correct = TC::isEqual(_call.getBranches().get(j)->get(k)->getType(),
+                                      f->getOutParams().get(j)->get(k)->getType());
+            }
+        }
+        if (isPred && correct) { //multiple predicates
+            isPred = false;
+            break;
+        }
+        if (!isPred && correct)
+            isPred = true;
     }
+    if (isFresh) {
+        PredicateTypePtr pType = new PredicateType();
 
-    m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
-            _call.getPredicate()->getType(), pType));
+        for (size_t i = 0; i < _call.getArgs().size(); ++i)
+            pType->getInParams().add(new Param(L"", _call.getArgs().get(i)->getType()));
 
+        for (size_t i = 0; i < _call.getBranches().size(); ++i) {
+            CallBranch &br = *_call.getBranches().get(i);
+
+            pType->getOutParams().add(new Branch());
+
+            for (size_t j = 0; j < br.size(); ++j)
+                pType->getOutParams().get(i)->add(new Param(L"", br.get(j)->getType()));
+        }
+
+        m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                                             _call.getPredicate()->getType(), pType));
+    } else {
+        TC::typeError("Predicate call", isPred);
+    }
     return true;
 }
 
