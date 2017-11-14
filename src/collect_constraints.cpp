@@ -837,11 +837,18 @@ bool Collector::visitPredicateReference(PredicateReference &_ref) {
     return true;
 }
 
-bool Collector::visitFormulaCall(FormulaCall &_call) {
-    _call.setType(_call.getTarget()->getResultType());
-    for (size_t i = 0; i < _call.getArgs().size(); ++i)
-        m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
-            _call.getArgs().get(i)->getType(), _call.getTarget()->getParams().get(i)->getType()));
+bool Collector::visitFormulaCall(FormulaCall &_call){
+    TC::printInfo(_call);
+    TC::setType(_call, _call.getTarget()->getResultType());
+    for (size_t i = 0; i < _call.getArgs().size(); ++i) {
+        TypePtr tArg = _call.getArgs().get(i)->getType();
+        TypePtr tParam = _call.getTarget()->getParams().get(i)->getType();
+        if (TC::isFresh(tArg) or TC::isFresh(tParam))
+            m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE, tArg, tParam));
+        else {
+            TC::typeError("Formula call", SMT::isContains(_call.getArgs().get(i), tParam));
+        }
+    }
     return true;
 }
 
