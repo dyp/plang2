@@ -1031,26 +1031,28 @@ bool Collector::visitLiteral(Literal &_lit) {
 }
 
 bool Collector::visitUnary(Unary &_unary) {
-    _unary.setType(createFresh(_unary.getType()));
-
-    switch (_unary.getOperator()) {
-        case Unary::MINUS:
-            // Must contain negative values.
-            m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                    new Type(Type::INT, 1), _unary.getType()));
-            // no break;
-        case Unary::PLUS:
-            m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                    _unary.getExpression()->getType(), _unary.getType()));
-            m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                    _unary.getExpression()->getType(), new Type(Type::REAL, Number::GENERIC)));
-            m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                    _unary.getType(), new Type(Type::REAL, Number::GENERIC)));
-            break;
-        case Unary::BOOL_NEGATE:
-            //               ! x : A = y : B
-            // ------------------------------------------------
-            // (A = bool and B = bool) or (A = {C} and B = {C})
+    TC::printInfo(_unary);
+    TypePtr tExpr = _unary.getExpression()->getType();
+    if (TC::isFresh(tExpr)) {
+        _unary.setType(createFresh(_unary.getType()));
+        switch (_unary.getOperator()) {
+            case Unary::MINUS:
+                // Must contain negative values.
+                m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                                                     new Type(Type::INT, 1), _unary.getType()));
+                // no break;
+            case Unary::PLUS:
+                m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                                                     _unary.getExpression()->getType(), _unary.getType()));
+                m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                                                     _unary.getExpression()->getType(), new Type(Type::REAL, Number::GENERIC)));
+                m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                                                     _unary.getType(), new Type(Type::REAL, Number::GENERIC)));
+                break;
+            case Unary::BOOL_NEGATE:
+                //               ! x : A = y : B
+                // ------------------------------------------------
+                // (A = bool and B = bool) or (A = {C} and B = {C})
             {
                 tc::CompoundFormulaPtr p = new tc::CompoundFormula();
 
@@ -1058,9 +1060,9 @@ bool Collector::visitUnary(Unary &_unary) {
                 tc::Formulas &part1 = p->addPart();
 
                 part1.insert(new tc::Formula(tc::Formula::EQUALS,
-                        _unary.getExpression()->getType(), new Type(Type::BOOL)));
+                                             _unary.getExpression()->getType(), new Type(Type::BOOL)));
                 part1.insert(new tc::Formula(tc::Formula::EQUALS,
-                        _unary.getType(), new Type(Type::BOOL)));
+                                             _unary.getType(), new Type(Type::BOOL)));
 
                 // Set negation.
                 tc::Formulas &part2 = p->addPart();
@@ -1068,21 +1070,74 @@ bool Collector::visitUnary(Unary &_unary) {
 
                 pSet->setBaseType(createFresh());
                 part2.insert(new tc::Formula(tc::Formula::EQUALS,
-                        _unary.getExpression()->getType(), pSet));
+                                             _unary.getExpression()->getType(), pSet));
                 part2.insert(new tc::Formula(tc::Formula::EQUALS,
-                        _unary.getType(), pSet));
+                                             _unary.getType(), pSet));
 
                 m_constraints.insert(p);
             }
 
-            break;
-        case Unary::BITWISE_NEGATE:
-            m_constraints.insert(new tc::Formula(tc::Formula::EQUALS,
-                    _unary.getExpression()->getType(), _unary.getType()));
-            m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                    _unary.getExpression()->getType(), new Type(Type::INT, Number::GENERIC)));
+                break;
+            case Unary::BITWISE_NEGATE:
+                m_constraints.insert(new tc::Formula(tc::Formula::EQUALS,
+                                                     _unary.getExpression()->getType(), _unary.getType()));
+                m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                                                     _unary.getExpression()->getType(), new Type(Type::INT, Number::GENERIC)));
+        }
+    } else {
+        switch (_unary.getOperator()) {
+            case Unary::MINUS:
+                switch (tExpr->getKind()) {
+                    case Type::INT:
+                        TC::setType(_unary, new Type(Type::INT, Number::GENERIC));
+                        return true;
+                    case Type::REAL:
+                        TC::setType(_unary, new Type(Type::REAL, Number::GENERIC));
+                        return true;
+                    case Type::NAT:
+                        TC::setType(_unary, new Type(Type::INT, Number::GENERIC));
+                        return true;
+                    default:
+                        TC::typeError("invalid type for unary minus");
+                }
+            case Unary::PLUS:
+                switch (tExpr->getKind()) {
+                    case Type::INT:
+                        TC::setType(_unary, new Type(Type::INT, Number::GENERIC));
+                        return true;
+                    case Type::REAL:
+                        TC::setType(_unary, new Type(Type::REAL, Number::GENERIC));
+                        return true;
+                    case Type::NAT:
+                        TC::setType(_unary, new Type(Type::INT, Number::GENERIC));
+                        return true;
+                    default:
+                        TC::typeError("invalid type for unary plus");
+                }
+            case Unary::BOOL_NEGATE:
+                switch (tExpr->getKind()) {
+                    case Type::BOOL:
+                        TC::setType(_unary, new Type(Type::BOOL));
+                        return true;
+                    case Type::SET:
+                        TC::setType(_unary, clone(tExpr));
+                        return true;
+                    default:
+                        TC::typeError("invalid type for unary operation");
+                }
+            case Unary::BITWISE_NEGATE:
+                switch (tExpr->getKind()) {
+                    case Type::INT:
+                        TC::setType(_unary, new Type(Type::INT, Number::GENERIC));
+                        return true;
+                    case Type::NAT:
+                        TC::setType(_unary, new Type(Type::INT, Number::GENERIC));
+                        return true;
+                    default:
+                        TC::typeError("invalid type for unary operation");
+                }
+        }
     }
-
     return true;
 }
 
