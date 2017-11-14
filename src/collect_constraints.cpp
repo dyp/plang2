@@ -997,30 +997,31 @@ bool Collector::visitCall(Call &_call) {
 }
 
 bool Collector::visitLiteral(Literal &_lit) {
+    TC::printInfo(_lit);
     switch (_lit.getLiteralKind()) {
         case Literal::UNIT:
-            _lit.setType(new Type(Type::UNIT));
+            TC::setType(_lit, new Type(Type::UNIT));
             break;
         case Literal::NUMBER: {
             const Number &n = _lit.getNumber();
 
             if (n.isNat())
-                _lit.setType(new Type(Type::NAT, n.countBits(false)));
+                TC::setType(_lit, new Type(Type::NAT, Number::GENERIC));
             else if (n.isInt())
-                _lit.setType(new Type(Type::INT, n.countBits(true)));
+                TC::setType(_lit, new Type(Type::INT, Number::GENERIC));
             else
-                _lit.setType(new Type(Type::REAL, n.countBits(false)));
+                TC::setType(_lit, new Type(Type::REAL, Number::GENERIC));
 
             break;
         }
         case Literal::BOOL:
-            _lit.setType(new Type(Type::BOOL));
+            TC::setType(_lit, new Type(Type::BOOL));
             break;
         case Literal::CHAR:
-            _lit.setType(new Type(Type::CHAR));
+            TC::setType(_lit, new Type(Type::CHAR));
             break;
         case Literal::STRING:
-            _lit.setType(new Type(Type::STRING));
+            TC::setType(_lit, new Type(Type::STRING));
             break;
         default:
             break;
