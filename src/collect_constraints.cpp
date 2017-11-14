@@ -901,7 +901,8 @@ bool Collector::visitFunctionCall(FunctionCall &_call) {
 }
 
 bool Collector::visitLambda(Lambda &_lambda) {
-    _lambda.setType(_lambda.getPredicate().getType());
+    TC::printInfo(_lambda);
+    TC::setType(_lambda, _lambda.getPredicate().getType());
     return true;
 }
 
