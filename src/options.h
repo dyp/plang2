@@ -65,7 +65,7 @@ struct Options {
     bool bCheckValidity;
     bool bVerbose;
     bool bKeepNames;
-    bool bSolveTypes,
+    bool bSolveTypes;
     bool bMoveOut;
 
     Options();
