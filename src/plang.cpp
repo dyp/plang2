@@ -52,6 +52,10 @@ int main(int _argc, const char ** _argv) {
 
     const std::string &strFile = Options::instance().strInputFilename;
     std::ifstream ifs(strFile.c_str());
+    if (ifs.fail()) {
+        std::cerr << strFile << ": " << strerror(errno) << std::endl;
+        return EXIT_FAILURE;
+    }
     Tokens tokens;
 
     try {
