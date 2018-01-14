@@ -730,37 +730,16 @@ static ExpressionPtr _getConditionForIndex(const ExpressionPtr& _pIndex, const V
 
 
 bool Collector::visitRange(Range &_type) {
-    TC::printInfo(_type);
-    if (TC::isFresh(_type.getMin()->getType()) ||
-        TC::isFresh(_type.getMax()->getType())) {
-        SubtypePtr pSubtype = _type.asSubtype();
-        collectParam(pSubtype->getParam(), tc::FreshType::PARAM_OUT);
+    SubtypePtr pSubtype = _type.asSubtype();
+    collectParam(pSubtype->getParam(), tc::FreshType::PARAM_OUT);
 
-        m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                                             _type.getMin()->getType(), pSubtype->getParam()->getType()));
-        m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                                             _type.getMax()->getType(), pSubtype->getParam()->getType()));
+    m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+        _type.getMin()->getType(), pSubtype->getParam()->getType()));
+    m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
+        _type.getMax()->getType(), pSubtype->getParam()->getType()));
 
-        callSetter(pSubtype);
-        return true;
-    } else {
-        TypePtr tMin = _type.getMin()->getType();
-        TypePtr tMax = _type.getMax()->getType();
-        TypePtr tJoin = TC::getJoin(tMin, tMax);
-        SubtypePtr pSubtype = _type.asSubtype();
-        TC::setType(pSubtype->getParam(), tJoin);
-        TC::typeError("Range", tJoin->getKind() != Type::TOP);
-        if (TC::isKind(tJoin, Type::INT) or
-            TC::isKind(tJoin, Type::NAT) or
-            TC::isKind(tJoin, Type::ENUM) or
-            TC::isKind(tJoin, Type::CHAR)) {
-            ExpressionPtr expr = new Binary(Binary::GREATER_OR_EQUALS, _type.getMax(), _type.getMin()); //FIXME enum and char as int
-            TC::typeError("Range is empty", SMT::proveTheorem(expr));
-            return true;
-        }
-        TC::typeError("Range");
-        return true;
-    }
+    callSetter(pSubtype);
+    return true;
 }
 
 bool Collector::visitArrayType(ArrayType &_type) {
