@@ -57,11 +57,16 @@ add_executable(${TARGET_ST} ${SOURCES_ST})
 
 set_target_properties(${TARGET_ST} PROPERTIES COMPILE_DEFINITIONS "CONDITIONS_FOR_IF")
 
+target_link_libraries(${TARGET_ST} ${CVC3LIB_LIBRARIES})
+
 include_directories (
     ../include
 )
 
-target_link_libraries(${TARGET_ST} gmpxx gmp ${CVCLIB})
+target_link_libraries(${TARGET_ST}
+    gmpxx
+    gmp
+)
 
 set(SOURCES_INDENTING_STREAM
     ../src/test_indenting_stream.cpp
