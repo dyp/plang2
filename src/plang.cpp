@@ -45,7 +45,7 @@
 using namespace lexer;
 
 int main(int _argc, const char ** _argv) {
-    std::locale::global(std::locale(""));
+    std::locale::global(std::locale(std::locale(""), "C", std::locale::numeric));
 
     if (!Options::init(_argc - 1, _argv + 1))
         return EXIT_FAILURE;
