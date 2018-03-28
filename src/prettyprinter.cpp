@@ -414,7 +414,7 @@ public:
     }
 
     void print(tc::Context &_constraints) {
-        m_os << L"\n";
+        m_os << setInline(false) << L"\n";
 
         size_t c = 0;
 
