@@ -1,0 +1,9 @@
+/*
+
+<test>
+    a/Type = int
+</test>
+
+*/
+
+int a = -1 + 4;

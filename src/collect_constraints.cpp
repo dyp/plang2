@@ -378,79 +378,56 @@ bool Collector::visitBinary(Binary &_binary) {
         case Binary::SUBTRACT:
             //                       x : A + y : B = z :C
             // ----------------------------------------------------------------
-            // (A <= B and C = B and A <= real and B <= real and C <= real)
-            //   or (B < A and C = A and A <= real and B <= real and C <= real)
+            // (A <= C and B <= C and C <= real)
             //   or (A <= C and B <= C and C = {D})
             //   or (A <= C and B <= C and C = [[D]])   /* Operator "+" only. */
             //   or (A = T1[D1] & B = T2[D2] & C = T3[D3] & T1 <= T3 & T2 <= T3 & D1 <= D3 & D2 <= D3)   /* Operator "+" only. */
             {
                 tc::CompoundFormulaPtr p = new tc::CompoundFormula();
                 tc::Formulas & part1 = p->addPart();
-                tc::Formulas & part2 = p->addPart();
 
                 // Numeric operations.
                 part1.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                        _binary.getLeftSide()->getType(),
-                        _binary.getRightSide()->getType()));
-                part1.insert(new tc::Formula(tc::Formula::EQUALS,
-                        _binary.getType(),
-                        _binary.getRightSide()->getType()));
+                        _binary.getRightSide()->getType(),
+                        _binary.getType()));
                 part1.insert(new tc::Formula(tc::Formula::SUBTYPE,
                         _binary.getLeftSide()->getType(),
-                        new Type(Type::REAL, Number::GENERIC)));
+                        _binary.getType()));
                 part1.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                        _binary.getRightSide()->getType(),
-                        new Type(Type::REAL, Number::GENERIC)));
-                part1.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                        _binary.getType(),
-                        new Type(Type::REAL, Number::GENERIC)));
-                part2.insert(new tc::Formula(tc::Formula::SUBTYPE_STRICT,
-                        _binary.getRightSide()->getType(),
-                        _binary.getLeftSide()->getType()));
-                part2.insert(new tc::Formula(tc::Formula::EQUALS,
-                        _binary.getType(),
-                        _binary.getLeftSide()->getType()));
-                part2.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                        _binary.getLeftSide()->getType(),
-                        new Type(Type::REAL, Number::GENERIC)));
-                part2.insert(new tc::Formula(tc::Formula::SUBTYPE,
-                        _binary.getRightSide()->getType(),
-                        new Type(Type::REAL, Number::GENERIC)));
-                part2.insert(new tc::Formula(tc::Formula::SUBTYPE,
                         _binary.getType(),
                         new Type(Type::REAL, Number::GENERIC)));
 
                 // Set operations.
-                tc::Formulas & part3 = p->addPart();
+                tc::Formulas & part2 = p->addPart();
                 SetTypePtr pSet = new SetType(NULL);
 
                 pSet->setBaseType(createFresh());
 
-                part3.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                part2.insert(new tc::Formula(tc::Formula::SUBTYPE,
                         _binary.getLeftSide()->getType(),
                         _binary.getType()));
-                part3.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                part2.insert(new tc::Formula(tc::Formula::SUBTYPE,
                         _binary.getRightSide()->getType(),
                         _binary.getType()));
-                part3.insert(new tc::Formula(tc::Formula::EQUALS,
+                part2.insert(new tc::Formula(tc::Formula::EQUALS,
                         _binary.getType(), pSet));
 
                 if (_binary.getOperator() == Binary::ADD) {
-                    tc::Formulas & part4 = p->addPart();
+                    tc::Formulas & part3 = p->addPart();
                     ListTypePtr pList = new ListType(NULL);
 
                     pList->setBaseType(createFresh());
 
-                    part4.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                    part3.insert(new tc::Formula(tc::Formula::SUBTYPE,
                             _binary.getLeftSide()->getType(),
                             _binary.getType()));
-                    part4.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                    part3.insert(new tc::Formula(tc::Formula::SUBTYPE,
                             _binary.getRightSide()->getType(),
                             _binary.getType()));
-                    part4.insert(new tc::Formula(tc::Formula::EQUALS,
+                    part3.insert(new tc::Formula(tc::Formula::EQUALS,
                             _binary.getType(), pList));
 
-                    tc::Formulas & part5 = p->addPart();
+                    tc::Formulas & part4 = p->addPart();
 
                     ArrayTypePtr
                         pA = new ArrayType(createFresh(), createFresh()),
@@ -458,20 +435,20 @@ bool Collector::visitBinary(Binary &_binary) {
                         pC = new ArrayType(new tc::FreshType(tc::FreshType::PARAM_OUT),
                             new tc::FreshType(tc::FreshType::PARAM_OUT));
 
-                    part5.insert(new tc::Formula(tc::Formula::EQUALS,
+                    part4.insert(new tc::Formula(tc::Formula::EQUALS,
                         _binary.getLeftSide()->getType(), pA));
-                    part5.insert(new tc::Formula(tc::Formula::EQUALS,
+                    part4.insert(new tc::Formula(tc::Formula::EQUALS,
                         _binary.getRightSide()->getType(), pB));
-                    part5.insert(new tc::Formula(tc::Formula::EQUALS,
+                    part4.insert(new tc::Formula(tc::Formula::EQUALS,
                         _binary.getType(), pC));
 
-                    part5.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                    part4.insert(new tc::Formula(tc::Formula::SUBTYPE,
                         pA->getBaseType(), pC->getBaseType()));
-                    part5.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                    part4.insert(new tc::Formula(tc::Formula::SUBTYPE,
                         pB->getBaseType(), pC->getBaseType()));
-                    part5.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                    part4.insert(new tc::Formula(tc::Formula::SUBTYPE,
                         pA->getDimensionType(), pC->getDimensionType()));
-                    part5.insert(new tc::Formula(tc::Formula::SUBTYPE,
+                    part4.insert(new tc::Formula(tc::Formula::SUBTYPE,
                         pB->getDimensionType(), pC->getDimensionType()));
                 }
 

@@ -326,6 +326,7 @@ set(TESTS_SEMANTICS
     semantics/arMod.psrc
     semantics/compat.psrc
     semantics/arSum.psrc
+    semantics/natSum.psrc
 )
 
 set(TESTS_TRASFORMATION_TAIL_RECURSION
