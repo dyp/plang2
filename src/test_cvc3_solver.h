@@ -17,22 +17,22 @@ class Cvc3Printer : public ir::Visitor {
 public:
     Cvc3Printer(std::wostream &_os = std::wcout) : m_os(_os) {}
 
-    virtual bool visitVariableDeclaration(ir::VariableDeclaration& _var) {
-        if (_var.getValue()) {
+    bool visitVariableDeclaration(const ir::VariableDeclarationPtr& _var) override {
+        if (_var->getValue()) {
             std::stringstream ss;
-            cvc3::printImage(*_var.getValue(), ss);
+            cvc3::printImage(*_var->getValue(), ss);
             m_os << strWiden(ss.str());
         }
         return true;
     }
-    virtual bool visitLemmaDeclaration(ir::LemmaDeclaration& _lemma) {
+    bool visitLemmaDeclaration(const ir::LemmaDeclarationPtr& _lemma) override {
         std::stringstream ss;
         cvc3::printImage(*_lemma.getProposition(), ss);
         m_os << strWiden(ss.str()) <<
             cvc3::fmtResult(cvc3::checkValidity(_lemma.getProposition())) << "\n";
         return true;
     }
-    virtual bool visitTypeDeclaration(ir::TypeDeclaration& _type) {
+    bool visitTypeDeclaration(const ir::TypeDeclarationPtr& _type) override {
         std::stringstream ss;
         cvc3::printImage(*_type.getType(), ss);
         m_os << strWiden(ss.str());

@@ -46,8 +46,8 @@ class TypeEnumerator : public ir::Visitor {
 public:
     TypeEnumerator(const FormulaPtr &_pFormula, FormulasByType &_t2f) : m_pFormula(_pFormula), m_t2f(_t2f) {}
 
-    virtual bool visitType(ir::Type &_type) {
-        m_t2f.insert(std::make_pair(ptr(&_type), m_pFormula));
+    bool visitType(const ir::TypePtr &_type) override {
+        m_t2f.insert(std::make_pair(_type, m_pFormula));
         return true;
     }
 
@@ -81,12 +81,12 @@ void Lattice::dump() {
         Relations &uppers = i->uppers;
         ir::TypePtr pOrig = i->pType;
 
-        prettyPrintCompact(*pOrig, std::wcerr);
+        prettyPrintCompact(pOrig, std::wcerr);
         std::wcerr << L"\n  uppers:";
 
         for (Relations::iterator iUpper = uppers.begin(); iUpper != uppers.end(); ++iUpper) {
             std::wcerr << L" ";
-            prettyPrintCompact(*uppers.getType(iUpper), std::wcerr);
+            prettyPrintCompact(uppers.getType(iUpper), std::wcerr);
             std::wcerr << ((*iUpper)->bUsed ? L"+" : L"-");
         }
 
@@ -94,7 +94,7 @@ void Lattice::dump() {
 
         for (Relations::iterator iLower = lowers.begin(); iLower != lowers.end(); ++iLower) {
             std::wcerr << L" ";
-            prettyPrintCompact(*(*iLower)->getLhs(), std::wcerr);
+            prettyPrintCompact((*iLower)->getLhs(), std::wcerr);
             std::wcerr << ((*iLower)->bUsed ? L"+" : L"-");
         }
 
@@ -380,16 +380,16 @@ void Lattice::update(RelationHandler _handler, void *_pParam) {
         FormulaPtr pFormula = NULL;
 
         for (TypeMap::iterator j = substs.begin(); j != substs.end(); ++j) {
-            if (!it.get()->contains(j->first))
+            if (!it.get()->contains(*j->first))
                 continue;
 
             if (!pFormula)
-                pFormula = new Formula(*it.get());
+                pFormula = std::make_shared<Formula>(*it.get());
 
             pFormula->rewrite(j->first, j->second, false);
         }
 
-        RelationPtr pRelation = new Relation(pFormula ? *pFormula : *it.get());
+        RelationPtr pRelation = std::make_shared<Relation>(pFormula ? *pFormula : *it.get());
 
         if (pRelation->isStrict() || *pRelation->getLhs() != *pRelation->getRhs()) {
             added.push_back(pRelation);
@@ -407,8 +407,8 @@ void Lattice::update(RelationHandler _handler, void *_pParam) {
         FormulasByType t2f;
 
         for (Relations::iterator i = m_relations.begin(); i != m_relations.end(); ++i) {
-            TypeEnumerator(*i, t2f).traverseType(*(*i)->getLhs());
-            TypeEnumerator(*i, t2f).traverseType(*(*i)->getRhs());
+            TypeEnumerator(*i, t2f).traverseType((*i)->getLhs());
+            TypeEnumerator(*i, t2f).traverseType((*i)->getRhs());
         }
 
         // Rewrite contained types.
@@ -419,55 +419,56 @@ void Lattice::update(RelationHandler _handler, void *_pParam) {
             std::pair<FormulasByType::iterator, FormulasByType::iterator> used = t2f.equal_range(pType);
 
             for (FormulasByType::iterator j = used.first; j != used.second; ++j) {
-                Formula &f = *j->second;
+                const auto f = j->second;
                 FormulaPtr pLowest = clone(f);
                 FormulaPtr pHighest = clone(f);
 
-                pLowest->rewrite(pType, new ir::Type(ir::Type::BOTTOM), false);
-                pHighest->rewrite(pType, new ir::Type(ir::Type::TOP), false);
+                pLowest->rewrite(pType, std::make_shared<ir::Type>(ir::Type::BOTTOM), false);
+                pHighest->rewrite(pType, std::make_shared<ir::Type>(ir::Type::TOP), false);
 
-                const bool bDownwards = pLowest->getLhs()->compare(*f.getLhs(), ir::Type::ORD_SUB | ir::Type::ORD_EQUALS) &&
-                        f.getRhs()->compare(*pLowest->getRhs(), ir::Type::ORD_SUB | ir::Type::ORD_EQUALS);
-                const bool bUpwards = pHighest->getLhs()->compare(*f.getLhs(), ir::Type::ORD_SUB | ir::Type::ORD_EQUALS) &&
-                        f.getRhs()->compare(*pHighest->getRhs(), ir::Type::ORD_SUB | ir::Type::ORD_EQUALS);
+                const bool bDownwards = pLowest->getLhs()->compare(*f->getLhs(), ir::Type::ORD_SUB | ir::Type::ORD_EQUALS) &&
+                        f->getRhs()->compare(*pLowest->getRhs(), ir::Type::ORD_SUB | ir::Type::ORD_EQUALS);
+                const bool bUpwards = pHighest->getLhs()->compare(*f->getLhs(), ir::Type::ORD_SUB | ir::Type::ORD_EQUALS) &&
+                        f->getRhs()->compare(*pHighest->getRhs(), ir::Type::ORD_SUB | ir::Type::ORD_EQUALS);
 
                 if (!bDownwards && !bUpwards)
                     continue;
 
-                const bool bRewriteLeft = *pType == *f.getLhs() || f.getLhs()->contains(pType);
-                const bool bRewriteRight = *pType == *f.getRhs() || f.getRhs()->contains(pType);
-                const int mtl = f.getLhs()->getMonotonicity(*pType);
-                const int mtr = f.getRhs()->getMonotonicity(*pType);
+                const bool bRewriteLeft = *pType == *f->getLhs() || f->getLhs()->contains(*pType);
+                const bool bRewriteRight = *pType == *f->getRhs() || f->getRhs()->contains(*pType);
+                const int mtl = f->getLhs()->getMonotonicity(*pType);
+                const int mtr = f->getRhs()->getMonotonicity(*pType);
 
                 // Substitute pType->lowers into f.
                 if (bDownwards)
                     for (Relations::iterator k = lowers.begin(); k != lowers.end(); ++k) {
                         // lower.pType <= pType (or < if lower.bStrict).
 
-                        if (**k == f)
+                        if (**k == *f)
                             continue;
 
-                        const bool bStrict = (*k)->isStrict() || f.is(Formula::SUBTYPE_STRICT);
-                        RelationPtr pNew = new Relation(clone(*f.getLhs()), clone(*f.getRhs()), bStrict);
+                        const bool bStrict = (*k)->isStrict() || f->is(Formula::SUBTYPE_STRICT);
+                        RelationPtr pNew = std::make_shared<Relation>(clone(f->getLhs()), clone(f->getRhs()), bStrict);
 
                         pNew->rewrite(pType, lowers.getType(k), false);
-                        pNew->inferedFrom.insert(RelationPtrPair(&f, *k));
+                        auto a = *k;
+                        pNew->inferedFrom.insert(RelationPtrPair(f->as<Relation>(), *k));
                         added.push_back(pNew);
 
                         if (bRewriteLeft) {
                             if (mtl == ir::Type::MT_MONOTONE)
-                                added.push_back(new Relation(pNew->getLhs(), f.getLhs(), bStrict));
+                                added.push_back(std::make_shared<Relation>(pNew->getLhs(), f->getLhs(), bStrict));
                             else if (mtl == ir::Type::MT_ANTITONE)
-                                added.push_back(new Relation(f.getLhs(), pNew->getLhs(), bStrict));
+                                added.push_back(std::make_shared<Relation>(f->getLhs(), pNew->getLhs(), bStrict));
 
                             added.back()->inferedFrom.insert(RelationPtrPair(*k, NULL));
                         }
 
                         if (bRewriteRight) {
                             if (mtr == ir::Type::MT_MONOTONE)
-                                added.push_back(new Relation(pNew->getRhs(), f.getRhs(), bStrict));
+                                added.push_back(std::make_shared<Relation>(pNew->getRhs(), f->getRhs(), bStrict));
                             else if (mtr == ir::Type::MT_ANTITONE)
-                                added.push_back(new Relation(f.getRhs(), pNew->getRhs(), bStrict));
+                                added.push_back(std::make_shared<Relation>(f->getRhs(), pNew->getRhs(), bStrict));
 
                             added.back()->inferedFrom.insert(RelationPtrPair(*k, NULL));
                         }
@@ -478,30 +479,30 @@ void Lattice::update(RelationHandler _handler, void *_pParam) {
                     for (Relations::iterator k = uppers.begin(); k != uppers.end(); ++k) {
                         // pType <= upper.pType (or < if upper.bStrict).
 
-                        if (**k == f)
+                        if (**k == *f)
                             continue;
 
-                        const bool bStrict = (*k)->isStrict() || f.is(Formula::SUBTYPE_STRICT);
-                        RelationPtr pNew = new Relation(clone(*f.getLhs()), clone(*f.getRhs()), bStrict);
+                        const bool bStrict = (*k)->isStrict() || f->is(Formula::SUBTYPE_STRICT);
+                        RelationPtr pNew = std::make_shared<Relation>(clone(f->getLhs()), clone(f->getRhs()), bStrict);
 
                         pNew->rewrite(pType, uppers.getType(k), false);
-                        pNew->inferedFrom.insert(RelationPtrPair(&f, *k));
+                        pNew->inferedFrom.insert(RelationPtrPair(f->as<Relation>(), *k));
                         added.push_back(pNew);
 
                         if (bRewriteLeft) {
                             if (mtl == ir::Type::MT_MONOTONE)
-                                added.push_back(new Relation(f.getLhs(), pNew->getLhs(), bStrict));
+                                added.push_back(std::make_shared<Relation>(f->getLhs(), pNew->getLhs(), bStrict));
                             else if (mtl == ir::Type::MT_ANTITONE)
-                                added.push_back(new Relation(pNew->getLhs(), f.getLhs(), bStrict));
+                                added.push_back(std::make_shared<Relation>(pNew->getLhs(), f->getLhs(), bStrict));
 
                             added.back()->inferedFrom.insert(RelationPtrPair(*k, NULL));
                         }
 
                         if (bRewriteRight) {
                             if (mtr == ir::Type::MT_MONOTONE)
-                                added.push_back(new Relation(f.getRhs(), pNew->getRhs(), bStrict));
+                                added.push_back(std::make_shared<Relation>(f->getRhs(), pNew->getRhs(), bStrict));
                             else if (mtr == ir::Type::MT_ANTITONE)
-                                added.push_back(new Relation(pNew->getRhs(), f.getRhs(), bStrict));
+                                added.push_back(std::make_shared<Relation>(pNew->getRhs(), f->getRhs(), bStrict));
 
                             added.back()->inferedFrom.insert(RelationPtrPair(*k, NULL));
                         }
@@ -509,65 +510,65 @@ void Lattice::update(RelationHandler _handler, void *_pParam) {
             }
         }
 
-        // Find new meets: given A <= B, A <= C, D = B/\C, add A <= D, D <= B, D <= C.
+        // Find std::make_shared<meets: given A <= B, A <= C, D = B/\C, add A <= D, D <= B, D <= C.
         for (TypeNodes::iterator i = m_types.begin(); i != m_types.end(); ++i) {
             ir::TypePtr pType = i->pType;
             Relations &lowers = i->lowers;
             Relations &uppers = i->uppers;
 
             for (Relations::iterator j = uppers.begin(); j != uppers.end(); ++j) {
-                const Relation &u = **j;
+                const auto u = *j;
 
                 for (Relations::iterator k = ::next(j); k != uppers.end(); ++k) {
-                    const Relation &v = **k;
-                    ir::TypePtr pMeet = v.getRhs()->getMeet(*u.getRhs());
+                    const auto v = *k;
+                    const auto pMeet = v->getRhs()->getMeet(u->getRhs());
 
                     if (pMeet) {
-                        if (*pMeet != *u.getRhs()) { // pMeet <= u.getRhs()
-                            added.push_back(new Relation(pMeet, u.getRhs()));
+                        if (*pMeet != *u->getRhs()) { // pMeet <= u.getRhs()
+                            added.push_back(std::make_shared<Relation>(pMeet, u->getRhs()));
                         } else { // u.getRhs() <= v.getRhs(), u implies v
-                            added.push_back(new Relation(v));
-                            added.back()->inferedFrom.insert(RelationPtrPair(&u, NULL));
+                            added.push_back(std::make_shared<Relation>(*v));
+                            added.back()->inferedFrom.insert(RelationPtrPair(u, NULL));
                         }
 
-                        if (*pMeet != *v.getRhs()) {// pMeet <= v.getRhs()
-                            added.push_back(new Relation(pMeet, v.getRhs()));
+                        if (*pMeet != *v->getRhs()) {// pMeet <= v.getRhs()
+                            added.push_back(std::make_shared<Relation>(pMeet, v->getRhs()));
                         } else { // v.getRhs() <= u.getRhs(), v implies u
-                            added.push_back(new Relation(u));
-                            added.back()->inferedFrom.insert(RelationPtrPair(&v, NULL));
+                            added.push_back(std::make_shared<Relation>(*u));
+                            added.back()->inferedFrom.insert(RelationPtrPair(v, NULL));
                         }
 
                         if (*pMeet != *pType) // pType <= pMeet
-                            added.push_back(new Relation(pType, pMeet));
+                            added.push_back(std::make_shared<Relation>(pType, pMeet));
                     }
                 }
             }
 
-            // Find new joins: given A <= C, B <= C, D = A\/B, add A <= D, B <= D, D <= C.
+            // Find std::make_shared<joins: given A <= C, B <= C, D = A\/B, add A <= D, B <= D, D <= C.
             for (Relations::iterator j = lowers.begin(); j != lowers.end(); ++j) {
-                Relation &u = **j;
+                const auto u = *j;
 
                 for (Relations::iterator k = ::next(j); k != lowers.end(); ++k) {
-                    Relation &v = **k;
-                    ir::TypePtr pJoin = v.getLhs()->getJoin(*u.getLhs());
+                    const auto v = *k;
+                    const auto pJoin = v->getLhs()->getJoin(u->getLhs());
 
                     if (pJoin) {
-                        if (*pJoin != *u.getLhs()) { // u.getLhs() <= pJoin
-                            added.push_back(new Relation(u.getLhs(), pJoin));
+                        if (*pJoin != *u->getLhs()) { // u.getLhs() <= pJoin
+                            added.push_back(std::make_shared<Relation>(u->getLhs(), pJoin));
                         } else { // v.getLhs() <= u.getLhs(), u implies v
-                            added.push_back(new Relation(v));
-                            added.back()->inferedFrom.insert(RelationPtrPair(&u, NULL));
+                            added.push_back(std::make_shared<Relation>(*v));
+                            added.back()->inferedFrom.insert(RelationPtrPair(u, NULL));
                         }
 
-                        if (*pJoin != *v.getLhs()) { // v.getLhs() <= pJoin
-                            added.push_back(new Relation(v.getLhs(), pJoin));
+                        if (*pJoin != *v->getLhs()) { // v.getLhs() <= pJoin
+                            added.push_back(std::make_shared<Relation>(v->getLhs(), pJoin));
                         } else { // u.getLhs() <= v.getLhs(), v implies u
-                            added.push_back(new Relation(u));
-                            added.back()->inferedFrom.insert(RelationPtrPair(&v, NULL));
+                            added.push_back(std::make_shared<Relation>(*u));
+                            added.back()->inferedFrom.insert(RelationPtrPair(v, NULL));
                         }
 
                         if (*pJoin != *pType) // pJoin <= pType
-                            added.push_back(new Relation(pJoin, pType));
+                            added.push_back(std::make_shared<Relation>(pJoin, pType));
                     }
                 }
             }

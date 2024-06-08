@@ -16,7 +16,7 @@ void ir::printCallGraphNode(const CallGraphNode *_pNode, const CallGraph &_graph
         return;
     }
 
-    PredicatePtr pPred = _pNode->getPredicate();
+    const auto pPred = _pNode->getPredicate()->as<Predicate>();
     assert(pPred->getKind() == Statement::PREDICATE_DECLARATION);
 
     bool bSameName = false;
@@ -30,12 +30,12 @@ void ir::printCallGraphNode(const CallGraphNode *_pNode, const CallGraph &_graph
         }
 
     if (bSameName) {
-        PredicatePtr pPred1 = new Predicate(pPred->getName());
+        const auto pPred1 = std::make_shared<Predicate>(pPred->getName());
         pPred1->getInParams().append(pPred->getInParams());
         pPred1->getOutParams().append(pPred->getOutParams());
 
         std::wstringstream wstringstream;
-        pp::prettyPrintSyntax(*pPred1, wstringstream);
+        pp::prettyPrintSyntax(pPred1, wstringstream);
         std::wstring wstr = wstringstream.str();
         _os << "\"" << wstr << "\"";
     } else

@@ -305,9 +305,9 @@ bool Context::addType(const ir::TypeDeclarationPtr &_pType) {
     const ir::TypeDeclarationPtr pDecl = getType(_pType->getName());
     if (pDecl && pDecl->getType() && _pType->getType() &&
         (pDecl->getType()->getKind() != Type::PARAMETERIZED ||
-            pDecl->getType().as<ParameterizedType>()->getActualType()) &&
+            pDecl->getType()->as<ParameterizedType>()->getActualType()) &&
         (_pType->getType()->getKind() != Type::PARAMETERIZED ||
-            _pType->getType().as<ParameterizedType>()->getActualType()))
+            _pType->getType()->as<ParameterizedType>()->getActualType()))
         return false;
 
     (*m_types)[_pType->getName()] = _pType;
@@ -326,7 +326,7 @@ ir::LabelPtr Context::getLabel(const std::wstring &_strName) const {
 
 ir::LabelPtr Context::createLabel(const std::wstring &_strName) {
     LabelPtr pLabel = getLabel(_strName);
-    return !pLabel ? new Label(_strName) : pLabel;
+    return !pLabel ? std::make_shared<Label>(_strName) : pLabel;
 }
 
 void Context::addLabel(const ir::LabelPtr &_pLabel) {
@@ -418,13 +418,13 @@ tc::FreshTypePtr Context::getFreshType(const std::wstring & _strName) {
         return m_pParent->getFreshType(_strName);
 
     if (!m_freshTypes)
-        m_freshTypes = new FreshTypeMap();
+        m_freshTypes = std::make_shared<FreshTypeMap>();
 
     auto iFresh = m_freshTypes->find(_strName);
     tc::FreshTypePtr pFresh;
 
     if (iFresh == m_freshTypes->end()) {
-        pFresh = new tc::FreshType();
+        pFresh = std::make_shared<tc::FreshType>();
         m_freshTypes->insert({_strName, pFresh});
     } else
         pFresh = iFresh->second;

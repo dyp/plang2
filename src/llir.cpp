@@ -14,96 +14,98 @@
 
 namespace llir {
 
-class Translator {
+using TranslatorPtr = std::shared_ptr<class Translator>;
+
+class Translator : public std::enable_shared_from_this<Translator> {
 public:
-    Translator(Translator * _pParent) :
+    Translator(const TranslatorPtr& _pParent) :
         m_pParent(_pParent),
         m_pModule(_pParent ? _pParent->m_pModule : NULL),
-        m_pFunction(_pParent ? _pParent->m_pFunction : Auto<Function>())
+        m_pFunction(_pParent ? _pParent->m_pFunction : FunctionPtr())
      {}
     ~Translator();
 
-    Translator * addChild();
+    TranslatorPtr addChild();
 
-    Auto<Variable> resolveVariable(const void * _pVar, bool & _bReference);
+    VariablePtr resolveVariable(const void * _pVar, bool & _bReference);
     int resolveLabel(const ir::LabelPtr &);
-    void addVariable(const void * _pOrig, Auto<Variable> _pNew, bool _bReference = false);
+    void addVariable(const void * _pOrig, const VariablePtr& _pNew, bool _bReference = false);
 
-    bool addType(const ir::TypePtr &_pIRType, const Auto<Type> & _pLLIRType);
-    Auto<Type> resolveType(const ir::NodePtr &_pType);
+    bool addType(const ir::TypePtr &_pIRType, const TypePtr & _pLLIRType);
+    TypePtr resolveType(const ir::NodePtr &_pType);
 
-    void addBuiltin(const std::wstring & _strName, const Auto<Function> & _pFunc);
-    Auto<Function> resolveBuiltin(const std::wstring & _strName);
+    void addBuiltin(const std::wstring & _strName, const FunctionPtr & _pFunc);
+    FunctionPtr resolveBuiltin(const std::wstring & _strName);
 
-    void addComparator(const ir::TypePtr &_pType, const Auto<Function> & _pFunc);
-    Auto<Function> resolveComparator(const ir::TypePtr &_pType);
+    void addComparator(const ir::TypePtr &_pType, const FunctionPtr & _pFunc);
+    FunctionPtr resolveComparator(const ir::TypePtr &_pType);
 
-    void translate(const ir::Module & _module, Module & _dest);
+    void translate(const ir::ModulePtr & _module, Module & _dest);
 
-    Auto<Type> translateType(const ir::Type & _type);
-    Auto<FunctionType> translatePredicateType(const ir::PredicateType & _type);
-    Auto<Type> translateNamedReferenceType(const ir::NamedReferenceType & _type);
-    Auto<StructType> translateStructType(const ir::StructType & _type);
-    Auto<StructType> translateUnionType(const ir::UnionType & _type);
-    Auto<StructType> translateUnionConstructorDeclaration(const ir::UnionConstructorDeclaration &_cons);
-    Auto<Function> translatePredicate(const ir::Predicate & _pred);
-    void translateStatement(const ir::Statement & _stmt, Instructions & _instrs);
-    void translateBlock(const ir::Block & _stmt, Instructions & _instrs);
-    void translateIf(const ir::If & _stmt, Instructions & _instrs);
-    void translateWhile(const ir::While & _stmt, Instructions & _instrs);
-    void translateAssignment(const ir::Assignment & _stmt, Instructions & _instrs);
+    TypePtr translateType(const ir::TypePtr & _type);
+    FunctionTypePtr translatePredicateType(const ir::PredicateTypePtr & _type);
+    TypePtr translateNamedReferenceType(const ir::NamedReferenceTypePtr & _type);
+    StructTypePtr translateStructType(const ir::StructTypePtr & _type);
+    StructTypePtr translateUnionType(const ir::UnionTypePtr & _type);
+    StructTypePtr translateUnionConstructorDeclaration(const ir::UnionConstructorDeclarationPtr &_cons);
+    FunctionPtr translatePredicate(const ir::PredicatePtr & _pred);
+    void translateStatement(const ir::StatementPtr & _stmt, Instructions & _instrs);
+    void translateBlock(const ir::BlockPtr & _stmt, Instructions & _instrs);
+    void translateIf(const ir::IfPtr & _stmt, Instructions & _instrs);
+    void translateWhile(const ir::WhilePtr & _stmt, Instructions & _instrs);
+    void translateAssignment(const ir::AssignmentPtr & _stmt, Instructions & _instrs);
     void translateNamedValuePtr(const ir::NamedValuePtr &_pLHS, const ir::ExpressionPtr &_pExpr, Instructions & _instrs);
-    void translateCall(const ir::Call & _stmt, Instructions & _instrs);
-    void translateVariableDeclaration(const ir::VariableDeclaration & _stmt, Instructions & _instrs);
-    void translateJump(const ir::Jump & _stmt, Instructions & _instrs);
-    void translateSwitch(const ir::Switch & _stmt, Instructions & _instrs);
-    void translateSwitchInt(const ir::Switch & _stmt, const Operand & _arg,
+    void translateCall(const ir::CallPtr & _stmt, Instructions & _instrs);
+    void translateVariableDeclaration(const ir::VariableDeclarationPtr & _stmt, Instructions & _instrs);
+    void translateJump(const ir::JumpPtr & _stmt, Instructions & _instrs);
+    void translateSwitch(const ir::SwitchPtr & _stmt, Instructions & _instrs);
+    void translateSwitchInt(const ir::SwitchPtr & _stmt, const Operand & _arg,
             Instructions & _instrs);
-    void translateSwitchUnion(const ir::Switch & _stmt, const Operand & _arg,
+    void translateSwitchUnion(const ir::SwitchPtr & _stmt, const Operand & _arg,
             Instructions & _instrs);
-    Operand translateExpression(const ir::Expression & _expr, Instructions & _instrs);
-    Operand translateBinary(const ir::Binary & _expr, Instructions & _instrs);
-    Operand translateFunctionCall(const ir::FunctionCall & _expr, Instructions & _instrs);
-    Operand translateVariableReference(const ir::VariableReference & _expr, Instructions & _instrs);
-    Operand translatePredicateReference(const ir::PredicateReference & _expr, Instructions & _instrs);
-    Operand translateLiteral(const ir::Literal & _expr, Instructions & _instrs);
+    Operand translateExpression(const ir::ExpressionPtr & _expr, Instructions & _instrs);
+    Operand translateBinary(const ir::BinaryPtr & _expr, Instructions & _instrs);
+    Operand translateFunctionCall(const ir::FunctionCallPtr & _expr, Instructions & _instrs);
+    Operand translateVariableReference(const ir::VariableReferencePtr & _expr, Instructions & _instrs);
+    Operand translatePredicateReference(const ir::PredicateReferencePtr & _expr, Instructions & _instrs);
+    Operand translateLiteral(const ir::LiteralPtr & _expr, Instructions & _instrs);
     Operand translateWstring(const std::wstring & _str, Instructions & _instrs);
-    Operand translateTernary(const ir::Ternary & _expr, Instructions & _instrs);
-    Operand translateComponent(const ir::Component & _expr, Instructions & _instrs);
-    Operand translateFieldExpr(const ir::FieldExpr & _expr, Instructions & _instrs);
-    Operand translateConstructor(const ir::Constructor & _expr, Instructions & _instrs);
+    Operand translateTernary(const ir::TernaryPtr & _expr, Instructions & _instrs);
+    Operand translateComponent(const ir::ComponentPtr & _expr, Instructions & _instrs);
+    Operand translateFieldExpr(const ir::FieldExprPtr & _expr, Instructions & _instrs);
+    Operand translateConstructor(const ir::ConstructorPtr & _expr, Instructions & _instrs);
     Operand translateEq(const ir::TypePtr &_pType, const Operand & _lhs, const Operand & _rhs, Instructions & _instrs);
     Operand translateEqUnion(const ir::UnionTypePtr &_pType, const Operand & _lhs, const Operand & _rhs, Instructions & _instrs);
     Operand translateEqStruct(const ir::NamedValues &_fields, const Operand & _lhs, const Operand & _rhs, Instructions & _instrs);
 
-    void initStruct(const ir::StructConstructor & _expr, Instructions & _instrs, const ir::NamedValues &_fields, const Operand & _ptr);
+    void initStruct(const ir::StructConstructorPtr & _expr, Instructions & _instrs, const ir::NamedValues &_fields, const Operand & _ptr);
 
-    Operand translateStructConstructor(const ir::StructConstructor & _expr, Instructions & _instrs);
-    Operand translateUnionConstructor(const ir::UnionConstructor & _expr, Instructions & _instrs);
-    Operand translateSwitchCond(const ir::Expression & _expr, const Operand & _arg,
+    Operand translateStructConstructor(const ir::StructConstructorPtr & _expr, Instructions & _instrs);
+    Operand translateUnionConstructor(const ir::UnionConstructorPtr & _expr, Instructions & _instrs);
+    Operand translateSwitchCond(const ir::ExpressionPtr & _expr, const Operand & _arg,
             Instructions & _instrs);
 
     // Builtins.
-    bool translateBuiltin(const ir::Call & _stmt, Instructions & _instrs);
-    void translatePrint(const ir::Call & _stmt, Instructions & _instrs);
-    void translatePrintExpr(const ir::Expression & _expr, Instructions & _instrs);
+    bool translateBuiltin(const ir::CallPtr & _stmt, Instructions & _instrs);
+    void translatePrint(const ir::CallPtr & _stmt, Instructions & _instrs);
+    void translatePrintExpr(const ir::ExpressionPtr & _expr, Instructions & _instrs);
 
     //void insertRefs(Instructions & _instrs);
     //void insertUnrefs();
 
 private:
-    typedef std::map<const void *, std::pair<Auto<Variable>, bool> > variable_map_t;
+    typedef std::map<const void *, std::pair<VariablePtr, bool> > variable_map_t;
     typedef std::map<ir::LabelPtr, int> label_numbers_t;
-    typedef std::map<ir::NodePtr, Auto<Type> > type_map_t;
-    typedef std::set<Auto<Type>, PtrLess<Type> > type_set_t;
-    typedef std::map<ir::TypePtr, Auto<Function> > compare_map_t;
-    typedef std::map<std::wstring, Auto<Function> > builtin_map_t;
+    typedef std::map<ir::NodePtr, TypePtr > type_map_t;
+    typedef std::set<TypePtr, PtrLess<Type> > type_set_t;
+    typedef std::map<ir::TypePtr, FunctionPtr > compare_map_t;
+    typedef std::map<std::wstring, FunctionPtr > builtin_map_t;
 
-    Auto<StructType> m_unionType;
-    Translator * m_pParent;
+    StructTypePtr m_unionType;
+    const TranslatorPtr m_pParent;
     Module * m_pModule;
-    Auto<Function> m_pFunction;
-    std::list<Translator *> m_children;
+    FunctionPtr m_pFunction;
+    std::list<TranslatorPtr> m_children;
     variable_map_t m_vars;
     label_numbers_t m_labels;
     type_map_t m_types;
@@ -114,20 +116,19 @@ private:
 };
 
 Translator::~Translator() {
-    for (std::list<Translator *>::iterator iChild = m_children.begin(); iChild != m_children.end(); ++ iChild)
-        delete * iChild;
+    m_children.clear();
 }
 
-void Translator::addVariable(const void * _pOrig, Auto<Variable> _pNew, bool _bReference) {
+void Translator::addVariable(const void * _pOrig, const VariablePtr& _pNew, bool _bReference) {
     m_vars[_pOrig] = std::make_pair(_pNew, _bReference);
 }
 
-Translator * Translator::addChild() {
-    m_children.push_back(new Translator(this));
+TranslatorPtr Translator::addChild() {
+    m_children.push_back(std::make_shared<Translator>(shared_from_this()));
     return m_children.back();
 }
 
-Auto<Variable> Translator::resolveVariable(const void * _pVar, bool & _bReference) {
+VariablePtr Translator::resolveVariable(const void * _pVar, bool & _bReference) {
     variable_map_t::iterator iVar = m_vars.find(_pVar);
 
     if (iVar != m_vars.end()) {
@@ -139,7 +140,7 @@ Auto<Variable> Translator::resolveVariable(const void * _pVar, bool & _bReferenc
         return NULL;
 }
 
-bool Translator::addType(const ir::TypePtr &_pIRType, const Auto<Type> & _pLLIRType) {
+bool Translator::addType(const ir::TypePtr &_pIRType, const TypePtr & _pLLIRType) {
     if (! m_pParent) {
         std::pair<type_set_t::iterator, bool> type = m_generatedTypes.insert(_pLLIRType);
         m_types[_pIRType] = *type.first;
@@ -149,45 +150,45 @@ bool Translator::addType(const ir::TypePtr &_pIRType, const Auto<Type> & _pLLIRT
     return m_pParent->addType(_pIRType, _pLLIRType);
 }
 
-Auto<Type> Translator::resolveType(const ir::NodePtr &_pType) {
+TypePtr Translator::resolveType(const ir::NodePtr &_pType) {
     if (m_pParent)
         return m_pParent->resolveType(_pType);
 
     type_map_t::iterator iType = m_types.find(_pType);
 
-    return (iType == m_types.end()) ? Auto<Type>() : iType->second;
+    return (iType == m_types.end()) ? TypePtr() : iType->second;
 }
 
-void Translator::addBuiltin(const std::wstring & _strName, const Auto<Function> & _pFunc) {
+void Translator::addBuiltin(const std::wstring & _strName, const FunctionPtr & _pFunc) {
     if (! m_pParent)
         m_builtins[_strName] = _pFunc;
     else
         m_pParent->addBuiltin(_strName, _pFunc);
 }
 
-Auto<Function> Translator::resolveBuiltin(const std::wstring & _strName) {
+FunctionPtr Translator::resolveBuiltin(const std::wstring & _strName) {
     if (m_pParent)
         return m_pParent->resolveBuiltin(_strName);
 
     builtin_map_t::iterator iFunc = m_builtins.find(_strName);
 
-    return (iFunc == m_builtins.end()) ? Auto<Function>() : iFunc->second;
+    return (iFunc == m_builtins.end()) ? FunctionPtr() : iFunc->second;
 }
 
-void Translator::addComparator(const ir::TypePtr &_pType, const Auto<Function> & _pFunc) {
+void Translator::addComparator(const ir::TypePtr &_pType, const FunctionPtr & _pFunc) {
     if (! m_pParent)
         m_comparators[_pType] = _pFunc;
     else
         m_pParent->addComparator(_pType, _pFunc);
 }
 
-Auto<Function> Translator::resolveComparator(const ir::TypePtr &_pType) {
+FunctionPtr Translator::resolveComparator(const ir::TypePtr &_pType) {
     if (m_pParent)
         return m_pParent->resolveComparator(_pType);
 
     compare_map_t::iterator iFunc = m_comparators.find(_pType);
 
-    return (iFunc == m_comparators.end()) ? Auto<Function>() : iFunc->second;
+    return (iFunc == m_comparators.end()) ? FunctionPtr() : iFunc->second;
 }
 
 int Translator::resolveLabel(const ir::LabelPtr &_pLabel) {
@@ -201,36 +202,36 @@ int Translator::resolveLabel(const ir::LabelPtr &_pLabel) {
         return -1;
 }
 
-Auto<FunctionType> Translator::translatePredicateType(const ir::PredicateType & _type) {
-    const size_t cBranches = _type.getOutParams().size();
-    Auto<Type> returnType;
+FunctionTypePtr Translator::translatePredicateType(const ir::PredicateTypePtr & _type) {
+    const size_t cBranches = _type->getOutParams().size();
+    TypePtr returnType;
     ir::NamedValuePtr pResult;
 
-    if (cBranches == 1 && _type.getOutParams().get(0)->size() == 1) {
+    if (cBranches == 1 && _type->getOutParams().get(0)->size() == 1) {
         // Trivial predicate: one branch, one output parameter.
-        pResult = _type.getOutParams().get(0)->get(0);
-        returnType = translateType(* pResult->getType());
+        pResult = _type->getOutParams().get(0)->get(0);
+        returnType = translateType(pResult->getType());
     } else if (cBranches < 2) {
         // Pass output params as pointers.
-        returnType = new Type(Type::VOID);
+        returnType = std::make_shared<Type>(Type::VOID);
     } else {
         // Pass output params as pointers, return branch index.
-        returnType = new Type(Type::INT32);
+        returnType = std::make_shared<Type>(Type::INT32);
     }
 
-    Auto<FunctionType> pFunc = new FunctionType(returnType);
+    const auto pFunc = std::make_shared<FunctionType>(returnType);
 
-    for (size_t i = 0; i < _type.getInParams().size(); ++ i) {
-        ir::NamedValuePtr pVar = _type.getInParams().get(i);
-        pFunc->argTypes().push_back(translateType(* pVar->getType()));
+    for (size_t i = 0; i < _type->getInParams().size(); ++ i) {
+        ir::NamedValuePtr pVar = _type->getInParams().get(i);
+        pFunc->argTypes().push_back(translateType(pVar->getType()));
     }
 
     if (! pResult) {
-        for (size_t i = 0; i < _type.getOutParams().size(); ++ i) {
-            ir::Branch & branch = * _type.getOutParams().get(i);
+        for (size_t i = 0; i < _type->getOutParams().size(); ++ i) {
+            ir::Branch & branch = * _type->getOutParams().get(i);
             for (size_t j = 0; j < branch.size(); ++ j) {
                 ir::NamedValuePtr pVar = branch.get(j);
-                pFunc->argTypes().push_back(new PointerType(translateType(* pVar->getType())));
+                pFunc->argTypes().push_back(std::make_shared<PointerType>(translateType(pVar->getType())));
             }
         }
     }
@@ -238,57 +239,57 @@ Auto<FunctionType> Translator::translatePredicateType(const ir::PredicateType & 
     return pFunc;
 }
 
-Auto<Type> Translator::translateNamedReferenceType(const ir::NamedReferenceType & _type) {
-    if (_type.getDeclaration()) {
-        return translateType(* _type.getDeclaration()->getType());
+TypePtr Translator::translateNamedReferenceType(const ir::NamedReferenceTypePtr & _type) {
+    if (_type->getDeclaration()) {
+        return translateType(_type->getDeclaration()->getType());
     }
     assert(false);
     return NULL;
 }
 
-Auto<StructType> Translator::translateStructType(const ir::StructType & _type) {
-    Auto<StructType> structType = resolveType(& _type).as<StructType>();
+StructTypePtr Translator::translateStructType(const ir::StructTypePtr & _type) {
+    auto structType = resolveType(_type)->as<StructType>();
 
     if (structType)
         return structType;
 
-    structType = new StructType();
+    structType = std::make_shared<StructType>();
 
-    assert(_type.getNamesSet().empty());
+    assert(_type->getNamesSet()->empty());
 
     for (size_t j = 0; j < 2; ++j)
-        for (size_t i = 0; i < _type.getAllFields()[j].size(); ++ i)
-            structType->fieldTypes().push_back(translateType(*_type.getAllFields()[j].get(i)->getType()));
+        for (size_t i = 0; i < _type->getAllFields()[j]->size(); ++ i)
+            structType->fieldTypes().push_back(translateType(_type->getAllFields()[j]->get(i)->getType()));
 
-    if (addType(&_type, structType))
+    if (addType(_type, structType))
         m_pModule->types().push_back(structType);
 
-    return resolveType(&_type).as<StructType>();
+    return resolveType(_type)->as<StructType>();
 }
 
-Auto<StructType> Translator::translateUnionType(const ir::UnionType & _type) {
+StructTypePtr Translator::translateUnionType(const ir::UnionTypePtr & _type) {
     if (m_pParent)
         return m_pParent->translateUnionType(_type);
 
     if (!m_unionType) {
-        m_unionType = new StructType();
-        m_unionType->fieldTypes().push_back(new Type(Type::UINT32));
-        m_unionType->fieldTypes().push_back(new PointerType(new Type(Type::VOID)));
-        if (addType(&_type, m_unionType))
+        m_unionType = std::make_shared<StructType>();
+        m_unionType->fieldTypes().push_back(std::make_shared<Type>(Type::UINT32));
+        m_unionType->fieldTypes().push_back(std::make_shared<PointerType>(std::make_shared<Type>(Type::VOID)));
+        if (addType(_type, m_unionType))
             m_pModule->types().push_back(m_unionType);
     } else
-        addType(&_type, m_unionType);
+        addType(_type, m_unionType);
 
-    return resolveType(&_type).as<StructType>();
+    return resolveType(_type)->as<StructType>();
 }
 
-Auto<StructType> Translator::translateUnionConstructorDeclaration(const ir::UnionConstructorDeclaration &_cons) {
-    Auto<StructType> structType = resolveType(& _cons).as<StructType>();
+StructTypePtr Translator::translateUnionConstructorDeclaration(const ir::UnionConstructorDeclarationPtr &_cons) {
+    auto structType = resolveType(_cons)->as<StructType>();
 
 /*    if (! structType.empty())
         return structType;
 
-    structType = new StructType();
+    structType = std::make_shared<StructType();
 
     for (size_t i = 0; i < _type.getFields().size(); ++ i) {
         structType->fieldTypes().push_back(translate(* _type.getFields().get(i)->getType()));
@@ -300,55 +301,54 @@ Auto<StructType> Translator::translateUnionConstructorDeclaration(const ir::Unio
     return structType;
 }
 
-Auto<Type> Translator::translateType(const ir::Type & _type) {
+TypePtr Translator::translateType(const ir::TypePtr & _type) {
+    const int nBits = _type->getBits();
 
-    const int nBits = _type.getBits();
-
-    switch (_type.getKind()) {
+    switch (_type->getKind()) {
         case ir::Type::INT:
             switch (nBits) {
-                case Number::GENERIC: return new Type(Type::GMP_Z);
-                case Number::NATIVE: return new Type(Type::INT32);
+                case Number::GENERIC: return std::make_shared<Type>(Type::GMP_Z);
+                case Number::NATIVE: return std::make_shared<Type>(Type::INT32);
                 default:
-                    if (nBits <= 8) return new Type(Type::INT8);
-                    if (nBits <= 16) return new Type(Type::INT16);
-                    if (nBits <= 32) return new Type(Type::INT32);
-                    if (nBits <= 64) return new Type(Type::INT64);
-                    return new Type(Type::GMP_Z);
+                    if (nBits <= 8) return std::make_shared<Type>(Type::INT8);
+                    if (nBits <= 16) return std::make_shared<Type>(Type::INT16);
+                    if (nBits <= 32) return std::make_shared<Type>(Type::INT32);
+                    if (nBits <= 64) return std::make_shared<Type>(Type::INT64);
+                    return std::make_shared<Type>(Type::GMP_Z);
             }
             break;
         case ir::Type::NAT:
             switch (nBits) {
-                case Number::GENERIC: return new Type(Type::GMP_Z);
-                case Number::NATIVE: return new Type(Type::UINT32);
+                case Number::GENERIC: return std::make_shared<Type>(Type::GMP_Z);
+                case Number::NATIVE: return std::make_shared<Type>(Type::UINT32);
                 default:
-                    if (nBits <= 8) return new Type(Type::UINT8);
-                    if (nBits <= 16) return new Type(Type::UINT16);
-                    if (nBits <= 32) return new Type(Type::UINT32);
-                    if (nBits <= 64) return new Type(Type::UINT64);
-                    return new Type(Type::GMP_Z);
+                    if (nBits <= 8) return std::make_shared<Type>(Type::UINT8);
+                    if (nBits <= 16) return std::make_shared<Type>(Type::UINT16);
+                    if (nBits <= 32) return std::make_shared<Type>(Type::UINT32);
+                    if (nBits <= 64) return std::make_shared<Type>(Type::UINT64);
+                    return std::make_shared<Type>(Type::GMP_Z);
             }
             break;
         case ir::Type::REAL:
             switch (nBits) {
-                case Number::NATIVE: return new Type(Type::DOUBLE);
-                case Number::GENERIC: return new Type(Type::GMP_Q);
+                case Number::NATIVE: return std::make_shared<Type>(Type::DOUBLE);
+                case Number::GENERIC: return std::make_shared<Type>(Type::GMP_Q);
                 default:
-                    if (nBits <= (int) sizeof(float)) return new Type(Type::FLOAT);
-                    if (nBits <= (int) sizeof(double)) return new Type(Type::DOUBLE);
-                    if (nBits <= (int) sizeof(long double)) return new Type(Type::QUAD);
-                    return new Type(Type::GMP_Q);
+                    if (nBits <= (int) sizeof(float)) return std::make_shared<Type>(Type::FLOAT);
+                    if (nBits <= (int) sizeof(double)) return std::make_shared<Type>(Type::DOUBLE);
+                    if (nBits <= (int) sizeof(long double)) return std::make_shared<Type>(Type::QUAD);
+                    return std::make_shared<Type>(Type::GMP_Q);
             }
             break;
-        case ir::Type::BOOL: return new Type(Type::BOOL);
-        case ir::Type::CHAR: return new Type(Type::WCHAR);
-        case ir::Type::STRING: return new PointerType(new Type(Type::WCHAR));
-        case ir::Type::PREDICATE: return translatePredicateType((ir::PredicateType &) _type);
-        case ir::Type::NAMED_REFERENCE: return translateNamedReferenceType((ir::NamedReferenceType &) _type);
-        case ir::Type::STRUCT: return translateStructType((ir::StructType &) _type);
-        case ir::Type::UNION: return translateUnionType((ir::UnionType &) _type);
+        case ir::Type::BOOL: return std::make_shared<Type>(Type::BOOL);
+        case ir::Type::CHAR: return std::make_shared<Type>(Type::WCHAR);
+        case ir::Type::STRING: return std::make_shared<PointerType>(std::make_shared<Type>(Type::WCHAR));
+        case ir::Type::PREDICATE: return translatePredicateType(_type->as<ir::PredicateType>());
+        case ir::Type::NAMED_REFERENCE: return translateNamedReferenceType(_type->as<ir::NamedReferenceType>());
+        case ir::Type::STRUCT: return translateStructType(_type->as<ir::StructType>());
+        case ir::Type::UNION: return translateUnionType(_type->as<ir::UnionType>());
 
-        default: return new Type();
+        default: return std::make_shared<Type>();
     }
 }
 
@@ -363,7 +363,7 @@ static int _selectInstr(int _opKind, int _instrInt, int _instrFloat, int _instrZ
 }
 
 static
-int _selectBinaryInstr(int _op, const Auto<llir::Type> _pType) {
+int _selectBinaryInstr(int _op, const llir::TypePtr& _pType) {
     switch (_op) {
         case ir::Binary::ADD:
             return _selectInstr(_pType->getKind(), Binary::ADD, Binary::FADD, Binary::ZADD, Binary::QADD);
@@ -412,13 +412,13 @@ int _selectBinaryInstr(int _op, const Auto<llir::Type> _pType) {
 }
 
 Operand Translator::translateEqUnion(const ir::UnionTypePtr &_pType, const Operand & _lhs, const Operand & _rhs, Instructions & _instrs) {
-    Auto<Function> func = resolveComparator(_pType);
-    Auto<FunctionType> funcType;
+    auto func = resolveComparator(_pType);
+    FunctionTypePtr funcType;
 
     if (func) {
-        funcType = func->getType().as<FunctionType>();
-        Auto<Variable> funcVar = func;
-        Auto<Call> call = new Call(funcVar, funcType);
+        funcType = func->getType()->as<FunctionType>();
+        const auto funcVar = func;
+        const auto call = std::make_shared<Call>(Operand(funcVar), funcType);
 
         call->args().push_back(_lhs);
         call->args().push_back(_rhs);
@@ -429,56 +429,56 @@ Operand Translator::translateEqUnion(const ir::UnionTypePtr &_pType, const Opera
 
     static int nCmpCount = 0;
 
-    func = new Function(std::wstring(L"cmp_") + fmtInt(nCmpCount ++), new Type(Type::BOOL));
-    funcType = new FunctionType(new Type(Type::BOOL));
+    func = std::make_shared<Function>(std::wstring(L"cmp_") + fmtInt(nCmpCount ++), std::make_shared<Type>(Type::BOOL));
+    funcType = std::make_shared<FunctionType>(std::make_shared<Type>(Type::BOOL));
     funcType->argTypes().push_back(_lhs.getType());
     funcType->argTypes().push_back(_rhs.getType());
-    func->args().push_back(new Variable(_lhs.getType()));
-    func->args().push_back(new Variable(_rhs.getType()));
+    func->args().push_back(std::make_shared<Variable>(_lhs.getType()));
+    func->args().push_back(std::make_shared<Variable>(_rhs.getType()));
     func->setType(funcType);
     addComparator(_pType, func);
     m_pModule->functions().push_back(func);
 
     Instructions & instrs = func->instructions();
-    Translator trans(this);
-    Auto<Label> labelEnd = new Label();
+    Translator trans(shared_from_this());
+    const auto labelEnd = std::make_shared<Label>();
 
     trans.m_pFunction = func;
 
-    instrs.push_back(new Unary(Unary::PTR, Operand(func->args().front())));
+    instrs.push_back(std::make_shared<Unary>(Unary::PTR, Operand(func->args().front())));
 
     Operand lPtr = Operand(instrs.back()->getResult());
 
-    instrs.push_back(new Unary(Unary::PTR, Operand(func->args().back())));
+    instrs.push_back(std::make_shared<Unary>(Unary::PTR, Operand(func->args().back())));
 
     Operand rPtr = Operand(instrs.back()->getResult());
 
-    instrs.push_back(new Field(lPtr, 0));
-    instrs.push_back(new Unary(Unary::LOAD, Operand(instrs.back()->getResult())));
+    instrs.push_back(std::make_shared<Field>(lPtr, 0));
+    instrs.push_back(std::make_shared<Unary>(Unary::LOAD, Operand(instrs.back()->getResult())));
 
     Operand lTag = Operand(instrs.back()->getResult());
 
-    instrs.push_back(new Field(rPtr, 0));
-    instrs.push_back(new Unary(Unary::LOAD, Operand(instrs.back()->getResult())));
+    instrs.push_back(std::make_shared<Field>(rPtr, 0));
+    instrs.push_back(std::make_shared<Unary>(Unary::LOAD, Operand(instrs.back()->getResult())));
 
     Operand rTag = Operand(instrs.back()->getResult());
 
-    instrs.push_back(new Binary(Binary::EQ, lTag, rTag));
+    instrs.push_back(std::make_shared<Binary>(Binary::EQ, lTag, rTag));
 
     if (_pType->getConstructors().empty()) {
-        instrs.push_back(new Unary(Unary::RETURN, instrs.back()->getResult()));
+        instrs.push_back(std::make_shared<Unary>(Unary::RETURN, instrs.back()->getResult()));
     } else {
-        Auto<Variable> varResult = func->getResult();
+        const auto varResult = func->getResult();
 
-        instrs.push_back(new Binary(Binary::SET, varResult, instrs.back()->getResult()));
-        instrs.push_back(new Binary(Binary::JMZ, varResult, Operand(labelEnd)));
+        instrs.push_back(std::make_shared<Binary>(Binary::SET, varResult, instrs.back()->getResult()));
+        instrs.push_back(std::make_shared<Binary>(Binary::JMZ, varResult, Operand(labelEnd)));
 
-        instrs.push_back(new Field(lPtr, 1));
+        instrs.push_back(std::make_shared<Field>(lPtr, 1));
         lPtr = Operand(instrs.back()->getResult());
-        instrs.push_back(new Field(rPtr, 1));
+        instrs.push_back(std::make_shared<Field>(rPtr, 1));
         rPtr = Operand(instrs.back()->getResult());
 
-        Auto<Switch> sw = new Switch(lTag);
+        const auto sw = std::make_shared<Switch>(lTag);
 
         for (size_t i = 0; i < _pType->getConstructors().size(); ++ i) {
             sw->cases().push_back(SwitchCase());
@@ -495,59 +495,59 @@ Operand Translator::translateEqUnion(const ir::UnionTypePtr &_pType, const Opera
             swCase.values.push_back(i);
 
             if (fields.size() == 0) {
-                body.push_back(new Binary(Binary::SET, varResult,
-                        Operand(Literal(new Type(Type::BOOL), Number::makeInt(1)))));
+                body.push_back(std::make_shared<Binary>(Binary::SET, varResult,
+                        Operand(Literal(std::make_shared<Type>(Type::BOOL), Number::makeInt(1)))));
                 continue;
             }
 
             if (fields.size() == 1) {
                 ir::TypePtr pFieldType = resolveBaseType(fields.get(0)->getType());
-                Auto<Type> fieldType = translateType(* pFieldType);
+                const auto fieldType = translateType(pFieldType);
                 Operand l = lPtr, r = rPtr;
 
                 if (fieldType->sizeOf() > Type::sizeOf(Type::POINTER)) {
-                    body.push_back(new Unary(Unary::LOAD, lPtr));
+                    body.push_back(std::make_shared<Unary>(Unary::LOAD, lPtr));
                     l = Operand(body.back()->getResult());
-                    body.push_back(new Unary(Unary::LOAD, rPtr));
+                    body.push_back(std::make_shared<Unary>(Unary::LOAD, rPtr));
                     r = Operand(body.back()->getResult());
                 }
 
-                body.push_back(new Cast(l, new PointerType(fieldType)));
-                body.push_back(new Unary(Unary::LOAD, Operand(body.back()->getResult())));
+                body.push_back(std::make_shared<Cast>(l, std::make_shared<PointerType>(fieldType)));
+                body.push_back(std::make_shared<Unary>(Unary::LOAD, Operand(body.back()->getResult())));
                 l = Operand(body.back()->getResult());
-                body.push_back(new Cast(r, new PointerType(fieldType)));
-                body.push_back(new Unary(Unary::LOAD, Operand(body.back()->getResult())));
+                body.push_back(std::make_shared<Cast>(r, std::make_shared<PointerType>(fieldType)));
+                body.push_back(std::make_shared<Unary>(Unary::LOAD, Operand(body.back()->getResult())));
                 r = Operand(body.back()->getResult());
 
                 Operand eq = trans.translateEq(pFieldType, l, r, body);
 
-                body.push_back(new Binary(Binary::SET, varResult, eq));
+                body.push_back(std::make_shared<Binary>(Binary::SET, varResult, eq));
                 continue;
             }
 
-            Auto<StructType> st = translateUnionConstructorDeclaration(*pCons);
+            const auto st = translateUnionConstructorDeclaration(pCons);
             Operand l = lPtr, r = rPtr;
 
-            body.push_back(new Unary(Unary::LOAD, lPtr));
-            body.push_back(new Cast(Operand(body.back()->getResult()), new PointerType(st)));
-            body.push_back(new Unary(Unary::LOAD, Operand(body.back()->getResult())));
+            body.push_back(std::make_shared<Unary>(Unary::LOAD, lPtr));
+            body.push_back(std::make_shared<Cast>(Operand(body.back()->getResult()), std::make_shared<PointerType>(st)));
+            body.push_back(std::make_shared<Unary>(Unary::LOAD, Operand(body.back()->getResult())));
             l = Operand(body.back()->getResult());
-            body.push_back(new Unary(Unary::LOAD, rPtr));
-            body.push_back(new Cast(Operand(body.back()->getResult()), new PointerType(st)));
-            body.push_back(new Unary(Unary::LOAD, Operand(body.back()->getResult())));
+            body.push_back(std::make_shared<Unary>(Unary::LOAD, rPtr));
+            body.push_back(std::make_shared<Cast>(Operand(body.back()->getResult()), std::make_shared<PointerType>(st)));
+            body.push_back(std::make_shared<Unary>(Unary::LOAD, Operand(body.back()->getResult())));
             r = Operand(body.back()->getResult());
 
             Operand eq = trans.translateEqStruct(fields, l, r, body);
 
-            body.push_back(new Binary(Binary::SET, varResult, eq));
+            body.push_back(std::make_shared<Binary>(Binary::SET, varResult, eq));
         }
 
         instrs.push_back(sw);
-        instrs.push_back(new Instruction());
+        instrs.push_back(std::make_shared<Instruction>());
         instrs.back()->setLabel(labelEnd);
     }
 
-    instrs.push_back(new Unary(Unary::RETURN, func->getResult()));
+    instrs.push_back(std::make_shared<Unary>(Unary::RETURN, func->getResult()));
 
     processLL<MarkEOLs>(* func);
     processLL<CountLabels>(* func);
@@ -555,8 +555,8 @@ Operand Translator::translateEqUnion(const ir::UnionTypePtr &_pType, const Opera
     processLL<CollapseReturns>(* func);
     processLL<RecycleVars>(* func);
 
-    Auto<Variable> funcVar = func;
-    Auto<Call> call = new Call(funcVar, funcType);
+    const auto funcVar = func;
+    const auto call = std::make_shared<Call>(Operand(funcVar), funcType);
 
     call->args().push_back(_lhs);
     call->args().push_back(_rhs);
@@ -567,35 +567,35 @@ Operand Translator::translateEqUnion(const ir::UnionTypePtr &_pType, const Opera
 
 Operand Translator::translateEqStruct(const ir::NamedValues &_fields, const Operand & _lhs, const Operand & _rhs, Instructions & _instrs) {
     if (_fields.empty())
-        return Operand(Literal(new Type(Type::BOOL), Number::makeInt(1)));
+        return Operand(Literal(std::make_shared<Type>(Type::BOOL), Number::makeInt(1)));
 
-    Auto<Label> labelEnd = new Label();
-    Auto<Variable> varResult = new Variable(new Type(Type::BOOL));
+    const auto labelEnd = std::make_shared<Label>();
+    const auto varResult = std::make_shared<Variable>(std::make_shared<Type>(Type::BOOL));
 
     addVariable(NULL, varResult, false);
     m_pFunction->locals().push_back(varResult);
 
-    _instrs.push_back(new Unary(Unary::PTR, _lhs));
+    _instrs.push_back(std::make_shared<Unary>(Unary::PTR, _lhs));
     Operand lPtr = Operand(_instrs.back()->getResult());
-    _instrs.push_back(new Unary(Unary::PTR, _rhs));
+    _instrs.push_back(std::make_shared<Unary>(Unary::PTR, _rhs));
     Operand rPtr = Operand(_instrs.back()->getResult());
 
     for (size_t i = 0; i < _fields.size(); ++ i) {
         ir::TypePtr pFieldType = resolveBaseType(_fields.get(i)->getType());
 
-        _instrs.push_back(new Field(lPtr, i));
-        _instrs.push_back(new Unary(Unary::LOAD, Operand(_instrs.back()->getResult())));
+        _instrs.push_back(std::make_shared<Field>(lPtr, i));
+        _instrs.push_back(std::make_shared<Unary>(Unary::LOAD, Operand(_instrs.back()->getResult())));
         Operand lField = Operand(_instrs.back()->getResult());
-        _instrs.push_back(new Field(rPtr, i));
-        _instrs.push_back(new Unary(Unary::LOAD, Operand(_instrs.back()->getResult())));
+        _instrs.push_back(std::make_shared<Field>(rPtr, i));
+        _instrs.push_back(std::make_shared<Unary>(Unary::LOAD, Operand(_instrs.back()->getResult())));
         Operand rField = Operand(_instrs.back()->getResult());
         Operand cmp = translateEq(pFieldType, lField, rField, _instrs);
 
-        _instrs.push_back(new Binary(Binary::SET, varResult, cmp));
-        _instrs.push_back(new Binary(Binary::JMZ, cmp, Operand(labelEnd)));
+        _instrs.push_back(std::make_shared<Binary>(Binary::SET, varResult, cmp));
+        _instrs.push_back(std::make_shared<Binary>(Binary::JMZ, cmp, Operand(labelEnd)));
     }
 
-    _instrs.push_back(new Instruction()); // nop
+    _instrs.push_back(std::make_shared<Instruction>()); // nop
     _instrs.back()->setLabel(labelEnd);
 
     return Operand(varResult);
@@ -605,14 +605,14 @@ Operand Translator::translateEq(const ir::TypePtr &_pType, const Operand & _lhs,
     std::wcerr << L"!! _pType->getKind() = " << _pType->getKind() << std::endl;
     switch (_pType->getKind()) {
         case ir::Type::UNION:
-            return translateEqUnion(_pType.as<ir::UnionType>(), _lhs, _rhs, _instrs);
+            return translateEqUnion(_pType->as<ir::UnionType>(), _lhs, _rhs, _instrs);
         case ir::Type::STRUCT: {
-            ir::StructTypePtr pStruct = _pType.as<ir::StructType>();
+            const auto pStruct = _pType->as<ir::StructType>();
 
-            if (!pStruct->getNamesOrd().empty())
-                return translateEqStruct(pStruct->getNamesOrd(), _lhs, _rhs, _instrs);
-            if (!pStruct->getTypesOrd().empty())
-                return translateEqStruct(pStruct->getTypesOrd(), _lhs, _rhs, _instrs);
+            if (!pStruct->getNamesOrd()->empty())
+                return translateEqStruct(*pStruct->getNamesOrd(), _lhs, _rhs, _instrs);
+            if (!pStruct->getTypesOrd()->empty())
+                return translateEqStruct(*pStruct->getTypesOrd(), _lhs, _rhs, _instrs);
         }
     }
 
@@ -622,60 +622,60 @@ Operand Translator::translateEq(const ir::TypePtr &_pType, const Operand & _lhs,
         assert(false && "Cannot compare values of this type");
     }
 
-    _instrs.push_back(new Binary(nInstr, _lhs, _rhs));
+    _instrs.push_back(std::make_shared<Binary>(nInstr, _lhs, _rhs));
 
     return Operand(_instrs.back()->getResult());
 }
 
-Operand Translator::translateBinary(const ir::Binary & _expr, Instructions & _instrs) {
-    Operand left = translateExpression(* _expr.getLeftSide(), _instrs);
-    Operand right = translateExpression(* _expr.getRightSide(), _instrs);
+Operand Translator::translateBinary(const ir::BinaryPtr & _expr, Instructions & _instrs) {
+    Operand left = translateExpression(_expr->getLeftSide(), _instrs);
+    Operand right = translateExpression(_expr->getRightSide(), _instrs);
 
-    if (_expr.getOperator() == ir::Binary::EQUALS)
-        return translateEq(resolveBaseType(_expr.getLeftSide()->getType()), left, right, _instrs);
+    if (_expr->getOperator() == ir::Binary::EQUALS)
+        return translateEq(resolveBaseType(_expr->getLeftSide()->getType()), left, right, _instrs);
 
-    int nInstr = _selectBinaryInstr(_expr.getOperator(), left.getType());
+    int nInstr = _selectBinaryInstr(_expr->getOperator(), left.getType());
 
     assert (nInstr >= 0);
 
-    _instrs.push_back(new Binary(nInstr, left, right));
+    _instrs.push_back(std::make_shared<Binary>(nInstr, left, right));
 
     return Operand(_instrs.back()->getResult());
 }
 
-Operand Translator::translateComponent(const ir::Component & _expr, Instructions & _instrs) {
-    switch (_expr.getComponentKind()) {
+Operand Translator::translateComponent(const ir::ComponentPtr & _expr, Instructions & _instrs) {
+    switch (_expr->getComponentKind()) {
         case ir::Component::STRUCT_FIELD:
-            return translateFieldExpr((ir::FieldExpr &) _expr, _instrs);
+            return translateFieldExpr(_expr->as<ir::FieldExpr>(), _instrs);
     }
 
     assert(false && "Unreachable");
     return Operand();
 }
 
-Operand Translator::translateFieldExpr(const ir::FieldExpr & _expr, Instructions & _instrs) {
+Operand Translator::translateFieldExpr(const ir::FieldExprPtr & _expr, Instructions & _instrs) {
 /*    const ir::StructTypePtr &pStruct = _expr.getStructType();
     Auto<StructType> st = translate(* pStruct);
     Operand object = translate(* _expr.getObject(), _instrs);
 
-    _instrs.push_back(new Unary(Unary::Ptr, object));
-    _instrs.push_back(new Field(Operand(_instrs.back()->getResult()), _expr.getFieldIdx()));
-    _instrs.push_back(new Unary(Unary::Load, Operand(_instrs.back()->getResult())));
+    _instrs.push_back(std::make_shared<Unary(Unary::Ptr, object));
+    _instrs.push_back(std::make_shared<Field(Operand(_instrs.back()->getResult()), _expr.getFieldIdx()));
+    _instrs.push_back(std::make_shared<Unary(Unary::Load, Operand(_instrs.back()->getResult())));
 
     return Operand(_instrs.back()->getResult());
 */
     return Operand();
 }
 
-Operand Translator::translateFunctionCall(const ir::FunctionCall & _expr, Instructions & _instrs) {
-    assert(_expr.getPredicate()->getType()->getKind() == ir::Type::PREDICATE);
+Operand Translator::translateFunctionCall(const ir::FunctionCallPtr & _expr, Instructions & _instrs) {
+    assert(_expr->getPredicate()->getType()->getKind() == ir::Type::PREDICATE);
 
-    Operand function = translateExpression(* _expr.getPredicate(), _instrs);
-    Auto<FunctionType> type = translatePredicateType(*_expr.getPredicate()->getType().as<ir::PredicateType>());
-    Call * pCall = new Call(function, type);
+    const auto function = translateExpression(_expr->getPredicate(), _instrs);
+    const auto type = translatePredicateType(_expr->getPredicate()->getType()->as<ir::PredicateType>());
+    const auto pCall = std::make_shared<Call>(function, type);
 
-    for (size_t i = 0; i < _expr.getArgs().size(); ++ i)
-        pCall->args().push_back(translateExpression(* _expr.getArgs().get(i), _instrs));
+    for (size_t i = 0; i < _expr->getArgs().size(); ++ i)
+        pCall->args().push_back(translateExpression(_expr->getArgs().get(i), _instrs));
 
     _instrs.push_back(pCall);
 
@@ -683,53 +683,53 @@ Operand Translator::translateFunctionCall(const ir::FunctionCall & _expr, Instru
 }
 
 Operand Translator::translateWstring(const std::wstring & _str, Instructions & _instrs) {
-    m_pModule->consts().push_back(new Constant(new Literal(/*Literal::String, new Type(Type::WChar)*/)));
-    m_pModule->consts().back()->setType(new Type(Type::WCHAR));
+    m_pModule->consts().push_back(std::make_shared<Constant>(std::make_shared<Literal>(/*Literal::String, std::make_shared<Type(Type::WChar)*/)));
+    m_pModule->consts().back()->setType(std::make_shared<Type>(Type::WCHAR));
     m_pModule->consts().back()->getLiteral()->setString(_str);
 
-    Auto<Variable> var = m_pModule->consts().back();
+    const auto var = m_pModule->consts().back();
 
-    return var;
+    return var->as<Variable>();
 }
 
-Operand Translator::translateLiteral(const ir::Literal & _expr, Instructions & _instrs) {
-    if (_expr.getLiteralKind() == ir::Literal::STRING) {
-        return translateWstring(_expr.getString(), _instrs);
+Operand Translator::translateLiteral(const ir::LiteralPtr & _expr, Instructions & _instrs) {
+    if (_expr->getLiteralKind() == ir::Literal::STRING) {
+        return translateWstring(_expr->getString(), _instrs);
     } else {
-        Literal lit(Literal::NUMBER, translateType(* _expr.getType()));
+        Literal lit(Literal::NUMBER, translateType(_expr->getType()));
 
-        switch (_expr.getLiteralKind()) {
-            case ir::Literal::NUMBER: lit.setNumber(_expr.getNumber()); break;
-            case ir::Literal::BOOL:   lit.setBool(_expr.getBool()); break;
-            case ir::Literal::CHAR:   lit.setChar(_expr.getChar()); break;
+        switch (_expr->getLiteralKind()) {
+            case ir::Literal::NUMBER: lit.setNumber(_expr->getNumber()); break;
+            case ir::Literal::BOOL:   lit.setBool(_expr->getBool()); break;
+            case ir::Literal::CHAR:   lit.setChar(_expr->getChar()); break;
         }
 
         return Operand(lit);
     }
 }
 
-Operand Translator::translateVariableReference(const ir::VariableReference & _expr, Instructions & _instrs) {
+Operand Translator::translateVariableReference(const ir::VariableReferencePtr & _expr, Instructions & _instrs) {
     bool bReference = false;
-    Auto<Variable> pVar = resolveVariable(_expr.getTarget().ptr(), bReference);
+    const auto pVar = resolveVariable(_expr->getTarget().get(), bReference);
 
     assert(pVar);
 
     if (bReference) {
-        _instrs.push_back(new Unary(Unary::LOAD, Operand(pVar)));
+        _instrs.push_back(std::make_shared<Unary>(Unary::LOAD, Operand(pVar)));
         return Operand(_instrs.back()->getResult());
     }
 
     return Operand(pVar);
 }
 
-Operand Translator::translatePredicateReference(const ir::PredicateReference & _expr, Instructions & _instrs) {
+Operand Translator::translatePredicateReference(const ir::PredicateReferencePtr & _expr, Instructions & _instrs) {
     bool bReference = false;
-    Auto<Variable> pVar = resolveVariable(_expr.getTarget().ptr(), bReference);
+    const auto pVar = resolveVariable(_expr->getTarget().get(), bReference);
 
     assert(pVar);
 
     if (bReference) {
-        _instrs.push_back(new Unary(Unary::LOAD, Operand(pVar)));
+        _instrs.push_back(std::make_shared<Unary>(Unary::LOAD, Operand(pVar)));
         return Operand(_instrs.back()->getResult());
     }
 
@@ -747,38 +747,38 @@ bool _isSimpleExpr(const ir::Expression & _expr) {
     return false;
 }
 
-Operand Translator::translateTernary(const ir::Ternary & _expr, Instructions & _instrs) {
-    Operand cond = translateExpression(* _expr.getIf(), _instrs);
+Operand Translator::translateTernary(const ir::TernaryPtr & _expr, Instructions & _instrs) {
+    Operand cond = translateExpression(_expr->getIf(), _instrs);
 
-    if (_isSimpleExpr(* _expr.getThen()) && _isSimpleExpr(* _expr.getElse())) {
-        Operand op1 = translateExpression(* _expr.getThen(), _instrs);
-        Operand op2 = translateExpression(* _expr.getElse(), _instrs);
+    if (_isSimpleExpr(* _expr->getThen()) && _isSimpleExpr(*_expr->getElse())) {
+        Operand op1 = translateExpression(_expr->getThen(), _instrs);
+        Operand op2 = translateExpression(_expr->getElse(), _instrs);
 
-        _instrs.push_back(new Select(cond, op1, op2));
+        _instrs.push_back(std::make_shared<Select>(cond, op1, op2));
 
         return Operand(_instrs.back()->getResult());
     }
 
-    If * pIf = new If(cond);
-    Auto<Type> type = translateType(* _expr.getThen()->getType());
-    Auto<Variable> var = new Variable(type);
+    const auto pIf = std::make_shared<If>(cond);
+    const auto type = translateType(_expr->getThen()->getType());
+    const auto var = std::make_shared<Variable>(type);
 
     _instrs.push_back(pIf);
     m_pFunction->locals().push_back(var);
-    Operand op1 = translateExpression(* _expr.getThen(), pIf->brTrue());
-    Operand op2 = translateExpression(* _expr.getElse(), pIf->brFalse());
-    pIf->brTrue().push_back(new Binary(Binary::SET, Operand(var), op1));
-    pIf->brFalse().push_back(new Binary(Binary::SET, Operand(var), op2));
+    const auto op1 = translateExpression(_expr->getThen(), pIf->brTrue());
+    const auto op2 = translateExpression(_expr->getElse(), pIf->brFalse());
+    pIf->brTrue().push_back(std::make_shared<Binary>(Binary::SET, Operand(var), op1));
+    pIf->brFalse().push_back(std::make_shared<Binary>(Binary::SET, Operand(var), op2));
 
     return Operand(var);
 }
 
-void Translator::initStruct(const ir::StructConstructor & _expr, Instructions & _instrs,
+void Translator::initStruct(const ir::StructConstructorPtr & _expr, Instructions & _instrs,
         const ir::NamedValues &_fields, const Operand & _ptr)
 {
-    for (size_t i = 0; i < _expr.size(); ++ i) {
-        ir::StructFieldDefinitionPtr pFieldDef = _expr.get(i);
-        ir::TypePtr pFieldType = (ir::TypePtr) ir::resolveBaseType(_fields.get(i)->getType());
+    for (size_t i = 0; i < _expr->size(); ++ i) {
+        const auto pFieldDef = _expr->get(i);
+        const auto pFieldType = ir::resolveBaseType(_fields.get(i)->getType());
 
         // FIXME: assumes constant order of constructor values.
 
@@ -786,98 +786,98 @@ void Translator::initStruct(const ir::StructConstructor & _expr, Instructions & 
         if (! pFieldDef->getValue()->getType())
             pFieldDef->getValue()->setType(pFieldType);
 
-        Operand rhs = translateExpression(* _expr.get(i)->getValue(), _instrs);
+        Operand rhs = translateExpression(_expr->get(i)->getValue(), _instrs);
 
-        _instrs.push_back(new Field(_ptr, i));
-        _instrs.push_back(new Binary(Binary::STORE,
+        _instrs.push_back(std::make_shared<Field>(_ptr, i));
+        _instrs.push_back(std::make_shared<Binary>(Binary::STORE,
                 Operand(_instrs.back()->getResult()),
                 rhs));
     }
 }
 
-Operand Translator::translateStructConstructor(const ir::StructConstructor & _expr, Instructions & _instrs) {
-    assert(_expr.getType());
-    assert(_expr.getType()->getKind() == ir::Type::STRUCT);
+Operand Translator::translateStructConstructor(const ir::StructConstructorPtr & _expr, Instructions & _instrs) {
+    assert(_expr->getType());
+    assert(_expr->getType()->getKind() == ir::Type::STRUCT);
 
-    Auto<Type> type = translateType(* _expr.getType());
+    const auto type = translateType(_expr->getType());
 
-    Auto<Variable> var = new Variable(type);
-    Auto<Unary> ptr = new Unary(Unary::PTR, Operand(var));
+    const auto var = std::make_shared<Variable>(type);
+    const auto ptr = std::make_shared<Unary>(Unary::PTR, Operand(var));
 
     m_pFunction->locals().push_back(var);
     _instrs.push_back(ptr);
 
-    ir::StructTypePtr pStruct = _expr.getType().as<ir::StructType>();
+    const auto pStruct = _expr->getType()->as<ir::StructType>();
 
-    if (!pStruct->getNamesOrd().empty())
-        initStruct(_expr, _instrs, pStruct->getNamesOrd(), Operand(ptr->getResult()));
-    else if (!pStruct->getTypesOrd().empty())
-        initStruct(_expr, _instrs, pStruct->getTypesOrd(), Operand(ptr->getResult()));
+    if (!pStruct->getNamesOrd()->empty())
+        initStruct(_expr, _instrs, *pStruct->getNamesOrd(), Operand(ptr->getResult()));
+    else if (!pStruct->getTypesOrd()->empty())
+        initStruct(_expr, _instrs, *pStruct->getTypesOrd(), Operand(ptr->getResult()));
 
     return Operand(var);
 }
 
-Operand Translator::translateUnionConstructor(const ir::UnionConstructor & _expr, Instructions & _instrs) {
-    assert(_expr.getType());
-    assert(_expr.isComplete());
+Operand Translator::translateUnionConstructor(const ir::UnionConstructorPtr & _expr, Instructions & _instrs) {
+    assert(_expr->getType());
+    assert(_expr->isComplete());
 
-    ir::UnionConstructorDeclarationPtr pProto = _expr.getPrototype();
-    Auto<Type> type = translateType(* _expr.getType());
-    Auto<Variable> var = new Variable(type);
-    Auto<Unary> ptr = new Unary(Unary::PTR, Operand(var));
+    const auto pProto = _expr->getPrototype();
+    const auto type = translateType(_expr->getType());
+    const auto var = std::make_shared<Variable>(type);
+    const auto ptr = std::make_shared<Unary>(Unary::PTR, Operand(var));
 
     m_pFunction->locals().push_back(var);
     _instrs.push_back(ptr);
-    _instrs.push_back(new Field(Operand(ptr->getResult()), 0));
-    _instrs.push_back(new Binary(Binary::STORE,
+    _instrs.push_back(std::make_shared<Field>(Operand(ptr->getResult()), 0));
+    _instrs.push_back(std::make_shared<Binary>(Binary::STORE,
             Operand(_instrs.back()->getResult()),
-            Operand(Literal(new Type(Type::UINT32), Number::makeInt(pProto->getOrdinal())))));
+            Operand(Literal(std::make_shared<Type>(Type::UINT32), Number::makeInt(pProto->getOrdinal())))));
 
 //    const ir::StructType & dataType = pProto->getStruct();
 
     ir::NamedValuesPtr pFields = pProto->getStructFields() ?
-        pProto->getStructFields()->mergeFields() : new ir::NamedValues();
+        pProto->getStructFields()->mergeFields() : std::make_shared<ir::NamedValues>();
 
     if (pFields->size() > 1) {
-        Auto<StructType> st = translateUnionConstructorDeclaration(*pProto);
+        const auto st = translateUnionConstructorDeclaration(pProto);
 
-        _instrs.push_back(new Unary(Unary::MALLOC,
-                Operand(Literal(new Type(Type::UINT64), Number::makeInt(st->sizeOf())))));
-        _instrs.push_back(new Cast(_instrs.back()->getResult(), new PointerType(st)));
+        _instrs.push_back(std::make_shared<Unary>(Unary::MALLOC,
+                Operand(Literal(std::make_shared<Type>(Type::UINT64), Number::makeInt(st->sizeOf())))));
+        _instrs.push_back(std::make_shared<Cast>(_instrs.back()->getResult(), std::make_shared<PointerType>(st)));
 
         Operand opBuf(_instrs.back()->getResult());
 
-        _instrs.push_back(new Field(Operand(ptr->getResult()), 1));
-        _instrs.push_back(new Cast(Operand(_instrs.back()->getResult()), new PointerType(new PointerType(st))));
-        _instrs.push_back(new Binary(Binary::STORE,
+        _instrs.push_back(std::make_shared<Field>(Operand(ptr->getResult()), 1));
+        _instrs.push_back(std::make_shared<Cast>(Operand(_instrs.back()->getResult()), std::make_shared<PointerType>(std::make_shared<PointerType>(st))));
+        _instrs.push_back(std::make_shared<Binary>(Binary::STORE,
                 Operand(_instrs.back()->getResult()), opBuf));
 
         initStruct(_expr, _instrs, *pFields, opBuf);
     } else if (!pFields->empty()) {
-        ir::StructFieldDefinitionPtr pFieldDef = _expr.get(0);
-        ir::TypePtr pFieldType = (ir::TypePtr) ir::resolveBaseType(pFields->get(0)->getType());
-        Auto<Type> ft = translateType(* pFieldType);
+        const auto pFieldDef = _expr->get(0);
+        const auto pFieldType = ir::resolveBaseType(pFields->get(0)->getType());
+        const auto ft = translateType(pFieldType);
 
         // Should be done by middle end.
         if (! pFieldDef->getValue()->getType())
             pFieldDef->getValue()->setType(pFieldType);
 
-        Operand rhs = translateExpression(* _expr.get(0)->getValue(), _instrs);
+        Operand rhs = translateExpression(_expr->get(0)->getValue(), _instrs);
 
         if (ft->sizeOf() > Type::sizeOf(Type::POINTER)) {
-            _instrs.push_back(new Unary(Unary::MALLOC,
-                    Operand(Literal(new Type(Type::UINT64), Number::makeInt(ft->sizeOf())))));
-            _instrs.push_back(new Cast(Operand(ptr->getResult()), new PointerType(ft)));
+            _instrs.push_back(std::make_shared<Unary>(Unary::MALLOC,
+                    Operand(Literal(std::make_shared<Type>(Type::UINT64), Number::makeInt(ft->sizeOf())))));
+            _instrs.push_back(std::make_shared<Cast>(Operand(ptr->getResult()), std::make_shared<PointerType>(ft)));
 
             Operand opBuf(_instrs.back()->getResult());
 
-            _instrs.push_back(new Binary(Binary::STORE, opBuf, rhs));
+            _instrs.push_back(std::make_shared<Binary>(Binary::STORE, opBuf, rhs));
             rhs = opBuf;
         }
 
-        _instrs.push_back(new Field(Operand(ptr->getResult()), 1));
-        _instrs.push_back(new Cast(Operand(_instrs.back()->getResult()), new PointerType(ft)));
-        _instrs.push_back(new Binary(Binary::STORE,
+        _instrs.push_back(std::make_shared<Field>(Operand(ptr->getResult()), 1));
+        _instrs.push_back(std::make_shared<Cast>(Operand(_instrs.back()->getResult()), std::make_shared<PointerType>(ft)));
+        _instrs.push_back(std::make_shared<Binary>(Binary::STORE,
                 Operand(_instrs.back()->getResult()), rhs));
     }
 
@@ -885,139 +885,138 @@ Operand Translator::translateUnionConstructor(const ir::UnionConstructor & _expr
 }
 
 
-Operand Translator::translateConstructor(const ir::Constructor & _expr, Instructions & _instrs) {
-    switch (_expr.getConstructorKind()) {
+Operand Translator::translateConstructor(const ir::ConstructorPtr & _expr, Instructions & _instrs) {
+    switch (_expr->getConstructorKind()) {
         case ir::Constructor::STRUCT_FIELDS:
-            return translateStructConstructor((ir::StructConstructor &) _expr, _instrs);
+            return translateStructConstructor(_expr->as<ir::StructConstructor>(), _instrs);
         case ir::Constructor::UNION_CONSTRUCTOR:
-            return translateUnionConstructor((ir::UnionConstructor &) _expr, _instrs);
+            return translateUnionConstructor(_expr->as<ir::UnionConstructor>(), _instrs);
     }
 
     assert(false && "Unreachable");
     return Operand();
 }
 
-Operand Translator::translateExpression(const ir::Expression & _expr, Instructions & _instrs) {
-    switch (_expr.getKind()) {
+Operand Translator::translateExpression(const ir::ExpressionPtr & _expr, Instructions & _instrs) {
+    switch (_expr->getKind()) {
         case ir::Expression::LITERAL:
-            return translateLiteral((ir::Literal &) _expr, _instrs);
+            return translateLiteral(_expr->as<ir::Literal>(), _instrs);
         case ir::Expression::VAR:
-            return translateVariableReference((ir::VariableReference &) _expr, _instrs);
+            return translateVariableReference(_expr->as<ir::VariableReference>(), _instrs);
         case ir::Expression::PREDICATE:
-            return translatePredicateReference((ir::PredicateReference &) _expr, _instrs);
+            return translatePredicateReference(_expr->as<ir::PredicateReference>(), _instrs);
         case ir::Expression::BINARY:
-            return translateBinary((ir::Binary &) _expr, _instrs);
+            return translateBinary(_expr->as<ir::Binary>(), _instrs);
         case ir::Expression::FUNCTION_CALL:
-            return translateFunctionCall((ir::FunctionCall &) _expr, _instrs);
+            return translateFunctionCall(_expr->as<ir::FunctionCall>(), _instrs);
         case ir::Expression::TERNARY:
-            return translateTernary((ir::Ternary &) _expr, _instrs);
+            return translateTernary(_expr->as<ir::Ternary>(), _instrs);
         case ir::Expression::COMPONENT:
-            return translateComponent((ir::Component &) _expr, _instrs);
+            return translateComponent(_expr->as<ir::Component>(), _instrs);
         case ir::Expression::CONSTRUCTOR:
-            return translateConstructor((ir::Constructor &) _expr, _instrs);
+            return translateConstructor(_expr->as<ir::Constructor>(), _instrs);
     }
 
     assert(false);
     return Operand();
 }
 
-void Translator::translateIf(const ir::If & _stmt, Instructions & _instrs) {
-    const Operand cond = translateExpression(* _stmt.getArg(), _instrs);
-    If * pIf = new If(cond);
+void Translator::translateIf(const ir::IfPtr & _stmt, Instructions & _instrs) {
+    const auto cond = translateExpression(_stmt->getArg(), _instrs);
+    const auto pIf = std::make_shared<If>(cond);
 
     _instrs.push_back(pIf);
-    translateStatement(* _stmt.getBody(), pIf->brTrue());
-    if (_stmt.getElse())
-        translateStatement(* _stmt.getElse(), pIf->brFalse());
+    translateStatement(_stmt->getBody(), pIf->brTrue());
+    if (_stmt->getElse())
+        translateStatement(_stmt->getElse(), pIf->brFalse());
 }
 
-void Translator::translateWhile(const ir::While & _stmt, Instructions & _instrs){
-    const Operand cond = translateExpression(* _stmt.getInvariant(), _instrs);
-    While * pWhile = new While(cond);
+void Translator::translateWhile(const ir::WhilePtr & _stmt, Instructions & _instrs){
+    const auto cond = translateExpression(_stmt->getInvariant(), _instrs);
+    const auto pWhile = std::make_shared<While>(cond);
     _instrs.push_back(pWhile);
-    translateStatement(* _stmt.getBody(), pWhile->getBlock());
+    translateStatement(_stmt->getBody(), pWhile->getBlock());
 }
-
 
 void Translator::translateNamedValuePtr(const ir::NamedValuePtr &_pLHS,
         const ir::ExpressionPtr &_pExpr, Instructions & _instrs)
 {
     bool bReference = false;
-    Auto<Variable> pVar = resolveVariable(_pLHS.ptr(), bReference);
+    const auto pVar = resolveVariable(_pLHS.get(), bReference);
 
     assert(pVar);
 
     Operand left = Operand(pVar); //translateComponent(* _stmt.getLValue(), _instrs);
 
-    Operand right = translateExpression(* _pExpr, _instrs);
+    Operand right = translateExpression(_pExpr, _instrs);
 
     if (_pExpr->getType()->getKind() == ir::Type::STRING) {
         // Copy string.
-        _instrs.push_back(new Cast(right,
-                new PointerType(new Type(Type::UINT32))));
-        _instrs.push_back(new Binary(Binary::OFFSET,
+        _instrs.push_back(std::make_shared<Cast>(right,
+                std::make_shared<PointerType>(std::make_shared<Type>(Type::UINT32))));
+        _instrs.push_back(std::make_shared<Binary>(Binary::OFFSET,
                 Operand(_instrs.back()->getResult()),
-                Operand(Literal(new Type(Type::INT32), Number::makeInt(-1)))));
+                Operand(Literal(std::make_shared<Type>(Type::INT32), Number::makeInt(-1)))));
 
         Operand opSrc (_instrs.back()->getResult());
 
-        _instrs.push_back(new Unary(Unary::LOAD,
+        _instrs.push_back(std::make_shared<Unary>(Unary::LOAD,
                 Operand(_instrs.back()->getResult())));
-        _instrs.push_back(new Binary(Binary::MUL,
+        _instrs.push_back(std::make_shared<Binary>(Binary::MUL,
                 Operand(_instrs.back()->getResult()),
-                Literal(new Type(Type::UINT32), Number(
+                Literal(std::make_shared<Type>(Type::UINT32), Number(
                         Number::makeInt(Type::sizeOf(Type::WCHAR))))));
-        _instrs.push_back(new Binary(Binary::ADD,
+        _instrs.push_back(std::make_shared<Binary>(Binary::ADD,
                 Operand(_instrs.back()->getResult()),
-                Literal(new Type(Type::UINT32), Number::makeInt(
+                Literal(std::make_shared<Type>(Type::UINT32), Number::makeInt(
                         Type::sizeOf(Type::WCHAR) + Type::sizeOf(Type::UINT32)))));
 
         Operand opSz (_instrs.back()->getResult());
 
-        _instrs.push_back(new Unary(Unary::MALLOC, opSz));
+        _instrs.push_back(std::make_shared<Unary>(Unary::MALLOC, opSz));
 
         Operand opBuf (_instrs.back()->getResult());
 
-        _instrs.push_back(new Copy(opBuf, opSrc, opSz));
-        _instrs.push_back(new Cast(opBuf,
-                new PointerType(new Type(Type::UINT32))));
-        _instrs.push_back(new Binary(Binary::OFFSET,
+        _instrs.push_back(std::make_shared<Copy>(opBuf, opSrc, opSz));
+        _instrs.push_back(std::make_shared<Cast>(opBuf,
+                std::make_shared<PointerType>(std::make_shared<Type>(Type::UINT32))));
+        _instrs.push_back(std::make_shared<Binary>(Binary::OFFSET,
                 Operand(_instrs.back()->getResult()),
-                Literal(new Type(Type::INT32), Number::makeInt(1))));
-        _instrs.push_back(new Cast(Operand(_instrs.back()->getResult()),
-                new PointerType(new Type(Type::WCHAR))));
+                Literal(std::make_shared<Type>(Type::INT32), Number::makeInt(1))));
+        _instrs.push_back(std::make_shared<Cast>(Operand(_instrs.back()->getResult()),
+                std::make_shared<PointerType>(std::make_shared<Type>(Type::WCHAR))));
 
         right = Operand(_instrs.back()->getResult());
     }
 
     if (bReference)
-        _instrs.push_back(new Binary(Binary::STORE, left, right));
+        _instrs.push_back(std::make_shared<Binary>(Binary::STORE, left, right));
     else
-        _instrs.push_back(new Binary(Binary::SET, left, right));
+        _instrs.push_back(std::make_shared<Binary>(Binary::SET, left, right));
 }
 
-void Translator::translateAssignment(const ir::Assignment & _stmt, Instructions & _instrs) {
-    assert(_stmt.getLValue()->getKind() == ir::Expression::VAR);
+void Translator::translateAssignment(const ir::AssignmentPtr & _stmt, Instructions & _instrs) {
+    assert(_stmt->getLValue()->getKind() == ir::Expression::VAR);
 
-    ir::VariableReferencePtr pLValue = _stmt.getLValue().as<ir::VariableReference>();
+    const auto pLValue = _stmt->getLValue()->as<ir::VariableReference>();
 
-    translateNamedValuePtr(pLValue->getTarget(), _stmt.getExpression(), _instrs);
+    translateNamedValuePtr(pLValue->getTarget(), _stmt->getExpression(), _instrs);
 }
 
-void Translator::translateJump(const ir::Jump & _stmt, Instructions & _instrs) {
-    Literal num(Literal::NUMBER, new Type(Type::INT32));
-    const int nLabel = resolveLabel(_stmt.getDestination());
+void Translator::translateJump(const ir::JumpPtr & _stmt, Instructions & _instrs) {
+    Literal num(Literal::NUMBER, std::make_shared<Type>(Type::INT32));
+    const int nLabel = resolveLabel(_stmt->getDestination());
     num.setNumber(Number::makeInt(nLabel));
-    _instrs.push_back(new Unary(Unary::RETURN, Operand(num)));
+    _instrs.push_back(std::make_shared<Unary>(Unary::RETURN, Operand(num)));
 }
 
-bool Translator::translateBuiltin(const ir::Call & _stmt, Instructions & _instrs) {
-    ir::ExpressionPtr pExpr = _stmt.getPredicate();
+bool Translator::translateBuiltin(const ir::CallPtr & _stmt, Instructions & _instrs) {
+    ir::ExpressionPtr pExpr = _stmt->getPredicate();
 
     if (pExpr->getKind() != ir::Expression::PREDICATE)
         return false;
 
-    ir::PredicateReferencePtr pPredRef = pExpr.as<ir::PredicateReference>();
+    const auto pPredRef = pExpr->as<ir::PredicateReference>();
 
     if (! pPredRef->getTarget()->isBuiltin())
         return false;
@@ -1032,9 +1031,9 @@ bool Translator::translateBuiltin(const ir::Call & _stmt, Instructions & _instrs
     return false;
 }
 
-void Translator::translatePrintExpr(const ir::Expression & _expr, Instructions & _instrs) {
+void Translator::translatePrintExpr(const ir::ExpressionPtr & _expr, Instructions & _instrs) {
     std::wstring strFunc;
-    Auto<Type> type = translateType(* _expr.getType());
+    const auto type = translateType(_expr->getType());
 
     switch (type->getKind()) {
         case llir::Type::BOOL:    strFunc = L"__p_printBool"; break;
@@ -1066,78 +1065,78 @@ void Translator::translatePrintExpr(const ir::Expression & _expr, Instructions &
             strFunc = L"__p_printPtr";
     }
 
-    Auto<Function> pFunc = resolveBuiltin(strFunc);
-    Auto<FunctionType> pFuncType;
+    auto pFunc = resolveBuiltin(strFunc);
+    FunctionTypePtr pFuncType;
 
     if (!pFunc) {
-        pFuncType = new FunctionType(new Type(Type::VOID));
+        pFuncType = std::make_shared<FunctionType>(std::make_shared<Type>(Type::VOID));
         pFuncType->argTypes().push_back(type);
-        pFunc = new Function(strFunc, new Type(Type::VOID));
+        pFunc = std::make_shared<Function>(strFunc, std::make_shared<Type>(Type::VOID));
         pFunc->setType(pFuncType);
         addBuiltin(strFunc, pFunc);
         m_pModule->usedBuiltins().push_back(pFunc);
     } else
-        pFuncType = pFunc->getType().as<FunctionType>();
+        pFuncType = pFunc->getType()->as<FunctionType>();
 
-    Auto<Variable> pFuncVar = pFunc;
-    Auto<Call> pCall = new Call(Operand(pFuncVar), pFuncType);
+    const auto pFuncVar = pFunc;
+    const auto pCall = std::make_shared<Call>(Operand(pFuncVar), pFuncType);
 
     pCall->args().push_back(translateExpression(_expr, _instrs));
     _instrs.push_back(pCall);
 }
 
-void Translator::translatePrint(const ir::Call & _stmt, Instructions & _instrs) {
-    for (size_t i = 0; i < _stmt.getArgs().size(); ++ i) {
-        ir::ExpressionPtr pParam = _stmt.getArgs().get(i);
-        translatePrintExpr(* pParam, _instrs);
+void Translator::translatePrint(const ir::CallPtr & _stmt, Instructions & _instrs) {
+    for (size_t i = 0; i < _stmt->getArgs().size(); ++ i) {
+        const auto pParam = _stmt->getArgs().get(i);
+        translatePrintExpr(pParam, _instrs);
     }
 }
 
-void Translator::translateCall(const ir::Call & _stmt, Instructions & _instrs) {
-    assert(_stmt.getPredicate()->getType()->getKind() == ir::Type::PREDICATE);
+void Translator::translateCall(const ir::CallPtr & _stmt, Instructions & _instrs) {
+    assert(_stmt->getPredicate()->getType()->getKind() == ir::Type::PREDICATE);
 
-    for (size_t i = 0; i < _stmt.getDeclarations().size(); ++ i)
-        translateVariableDeclaration(* _stmt.getDeclarations().get(i), _instrs);
+    for (size_t i = 0; i < _stmt->getDeclarations().size(); ++ i)
+        translateVariableDeclaration(_stmt->getDeclarations().get(i), _instrs);
 
     if (translateBuiltin(_stmt, _instrs))
         return;
 
-    Operand function = translateExpression(* _stmt.getPredicate(), _instrs);
-    ir::PredicateType & predType = * _stmt.getPredicate()->getType().as<ir::PredicateType>();
-    Auto<FunctionType> type = translatePredicateType(predType);
-    Call * pCall = new Call(function, type);
+    Operand function = translateExpression(_stmt->getPredicate(), _instrs);
+    const auto predType = _stmt->getPredicate()->getType()->as<ir::PredicateType>();
+    const auto type = translatePredicateType(predType);
+    const auto pCall = std::make_shared<Call>(function, type);
     Types::const_iterator iType = type->argTypes().begin();
     int cBranch = -1;
     size_t cParam = 0;
 
     for (size_t i = 0; i < type->argTypes().size(); ++ i, ++ iType) {
-        if (i < predType.getInParams().size()) {
-            pCall->args().push_back(translateExpression(* _stmt.getArgs().get(i), _instrs));
+        if (i < predType->getInParams().size()) {
+            pCall->args().push_back(translateExpression(_stmt->getArgs().get(i), _instrs));
         } else {
-            while (cBranch < 0 || cParam >= _stmt.getBranches().get(cBranch)->size()) {
+            while (cBranch < 0 || cParam >= _stmt->getBranches().get(cBranch)->size()) {
                 ++ cBranch;
                 cParam = 0;
-                assert(cBranch < (int) _stmt.getBranches().size());
+                assert(cBranch < (int) _stmt->getBranches().size());
             }
 
-            Operand op = translateExpression(* _stmt.getBranches().get(cBranch)->get(cParam), _instrs);
-            _instrs.push_back(new Unary(Unary::PTR, op));
+            Operand op = translateExpression(_stmt->getBranches().get(cBranch)->get(cParam), _instrs);
+            _instrs.push_back(std::make_shared<Unary>(Unary::PTR, op));
             pCall->args().push_back(Operand(_instrs.back()->getResult()));
         }
     }
 
     _instrs.push_back(pCall);
 
-    if (_stmt.getBranches().size() > 1) {
-        Switch * pSwitch = new Switch(Operand(pCall->getResult()));
+    if (_stmt->getBranches().size() > 1) {
+        const auto pSwitch = std::make_shared<Switch>(Operand(pCall->getResult()));
 
-        for (size_t i = 0; i < _stmt.getBranches().size(); ++ i) {
-            ir::StatementPtr pHandler = _stmt.getBranches().get(i)->getHandler();
+        for (size_t i = 0; i < _stmt->getBranches().size(); ++ i) {
+            ir::StatementPtr pHandler = _stmt->getBranches().get(i)->getHandler();
             if (pHandler) {
                 pSwitch->cases().push_back(SwitchCase());
                 SwitchCase & switchCase = pSwitch->cases().back();
                 switchCase.values.push_back(i);
-                translateStatement(* pHandler, switchCase.body);
+                translateStatement(pHandler, switchCase.body);
             }
         }
 
@@ -1145,70 +1144,71 @@ void Translator::translateCall(const ir::Call & _stmt, Instructions & _instrs) {
     }
 }
 
-void Translator::translateBlock(const ir::Block & _stmt, Instructions & _instrs) {
-    Translator * pTranslator = addChild();
-    for (size_t i = 0; i < _stmt.size(); ++ i)
-        pTranslator->translateStatement(* _stmt.get(i), _instrs);
+void Translator::translateBlock(const ir::BlockPtr & _stmt, Instructions & _instrs) {
+    const auto pTranslator = addChild();
+    for (size_t i = 0; i < _stmt->size(); ++ i)
+        pTranslator->translateStatement(_stmt->get(i), _instrs);
 }
 
-void Translator::translateVariableDeclaration(const ir::VariableDeclaration & _stmt, Instructions & _instrs) {
-    Auto<Type> type = translateType(* _stmt.getVariable()->getType());
+void Translator::translateVariableDeclaration(const ir::VariableDeclarationPtr & _stmt, Instructions & _instrs) {
+    const auto type = translateType(_stmt->getVariable()->getType());
 
-    m_pFunction->locals().push_back(new Variable(type));
-    Auto<Variable> var = m_pFunction->locals().back();
+    m_pFunction->locals().push_back(std::make_shared<Variable>(type));
+    const auto var = m_pFunction->locals().back();
 
-    addVariable(_stmt.getVariable().ptr(), var);
+    addVariable(_stmt->getVariable().get(), var);
 
-    if (_stmt.getValue())
-        translateNamedValuePtr(_stmt.getVariable(), _stmt.getValue(), _instrs);
+    if (_stmt->getValue())
+        translateNamedValuePtr(_stmt->getVariable(), _stmt->getValue(), _instrs);
 }
 
-Operand Translator::translateSwitchCond(const ir::Expression & _expr, const Operand & _arg,
+Operand Translator::translateSwitchCond(const ir::ExpressionPtr & _expr, const Operand & _arg,
         Instructions & _instrs)
 {
-    if (_expr.getKind() == ir::Expression::TYPE) {
-        const ir::TypeExpr & te = (const ir::TypeExpr &) _expr;
-        assert(te.getContents()->getKind() == ir::Type::RANGE);
-        const ir::Range & range = *te.getContents().as<ir::Range>();
+    if (_expr->getKind() == ir::Expression::TYPE) {
+        const auto te = _expr->as<ir::TypeExpr>();
+        assert(te->getContents()->getKind() == ir::Type::RANGE);
+        const auto range = te->getContents()->as<ir::Range>();
 
-        Operand opMin = translateExpression(* range.getMin(), _instrs);
-        Operand opMax = translateExpression(* range.getMax(), _instrs);
-        Binary * pGte = new Binary(Binary::GTE, _arg, opMin);
-        Binary * pLte = new Binary(Binary::LTE, _arg, opMax);
+        Operand opMin = translateExpression(range->getMin(), _instrs);
+        Operand opMax = translateExpression(range->getMax(), _instrs);
+        const auto pGte = std::make_shared<Binary>(Binary::GTE, _arg, opMin);
+        const auto pLte = std::make_shared<Binary>(Binary::LTE, _arg, opMax);
         _instrs.push_back(pGte);
         _instrs.push_back(pLte);
-        _instrs.push_back(new Binary(Binary::BAND,
+        _instrs.push_back(std::make_shared<Binary>(Binary::BAND,
                 Operand(pGte->getResult()),
                 Operand(pLte->getResult())));
         return Operand(_instrs.back()->getResult());
     } else {
         Operand rhs = translateExpression(_expr, _instrs);
-        _instrs.push_back(new Binary(Binary::EQ, _arg, rhs));
+        _instrs.push_back(std::make_shared<Binary>(Binary::EQ, _arg, rhs));
         return Operand(_instrs.back()->getResult());
     }
 }
 
-void Translator::translateSwitchInt(const ir::Switch & _stmt,
+void Translator::translateSwitchInt(const ir::SwitchPtr & _stmt,
         const Operand & _arg, Instructions & _instrs)
 {
     assert(_arg.getType()->getKind() & Type::INTMASK);
 
-    Auto<Switch> pSwitch = new Switch(_arg);
+    const auto pSwitch = std::make_shared<Switch>(_arg);
 
-    std::vector<SwitchCase *> cases(_stmt.size());
-    If * pPrevIf = NULL, * pFirstIf = NULL;
+    std::vector<SwitchCase *> cases(_stmt->size());
+    IfPtr pPrevIf;
+    IfPtr pFirstIf;
     Instructions prefix;
 
-    for (size_t i = 0; i < _stmt.size(); ++ i) {
-        const ir::Collection<ir::Expression> & exprs = _stmt.get(i)->getExpressions();
+    for (size_t i = 0; i < _stmt->size(); ++ i) {
+        const ir::Collection<ir::Expression> & exprs = _stmt->get(i)->getExpressions();
         SwitchCase * pCase = NULL;
-        If * pIf = NULL;
+        IfPtr pIf;
         size_t cComplexConditions = 0;
 
         for (size_t j = 0; j < exprs.size(); ++ j) {
-            const ir::Expression & expr = * exprs.get(j);
+            const auto expr = exprs.get(j);
 
-            if (expr.getKind() != ir::Expression::LITERAL) {
+            if (expr->getKind() != ir::Expression::LITERAL) {
                 ++ cComplexConditions;
                 continue;
             }
@@ -1218,39 +1218,39 @@ void Translator::translateSwitchInt(const ir::Switch & _stmt,
                 pCase = & pSwitch->cases().back();
             }
 
-            pCase->values.push_back(((const ir::Literal &) expr).getNumber().getInt());
+            pCase->values.push_back(expr->as<ir::Literal>()->getNumber().getInt());
         }
 
         for (size_t j = 0; cComplexConditions > 0 && j < exprs.size(); ++ j) {
-            const ir::Expression & expr = * exprs.get(j);
+            const auto expr = exprs.get(j);
 
-            if (expr.getKind() == ir::Expression::LITERAL)
+            if (expr->getKind() == ir::Expression::LITERAL)
                 continue;
 
             -- cComplexConditions;
 
             if (pCase) {
                 if (pCase->body.empty())
-                    pCase->body.push_back(new Instruction());
+                    pCase->body.push_back(std::make_shared<Instruction>());
 
                 if (!pCase->body.front()->getLabel())
-                    pCase->body.front()->setLabel(new Label());
+                    pCase->body.front()->setLabel(std::make_shared<Label>());
 
                 Operand cond = translateSwitchCond(expr, _arg, _instrs);
 
-                _instrs.push_back(new Binary(Binary::JNZ,
+                _instrs.push_back(std::make_shared<Binary>(Binary::JNZ,
                         cond, Operand(pCase->body.front()->getLabel())));
             } else {
                 Instructions & instrs = pPrevIf ? pPrevIf->brFalse() : prefix;
                 Operand cond = translateSwitchCond(expr, _arg, instrs);
 
                 if (pIf) {
-                    instrs.push_back(new Binary(Binary::BOR,
+                    instrs.push_back(std::make_shared<Binary>(Binary::BOR,
                             cond, pIf->getCondition()));
                     pIf->setCondition(Operand(instrs.back()->getResult()));
                 } else {
-                    pIf = new If(Operand(instrs.back()->getResult()));
-                    translateStatement(* _stmt.get(i)->getBody(), pIf->brTrue());
+                    pIf = std::make_shared<If>(Operand(instrs.back()->getResult()));
+                    translateStatement(_stmt->get(i)->getBody(), pIf->brTrue());
                 }
             }
         }
@@ -1267,61 +1267,61 @@ void Translator::translateSwitchInt(const ir::Switch & _stmt,
         if (! pCase)
             continue;
 
-        translateStatement(* _stmt.get(i)->getBody(), pCase->body);
+        translateStatement(_stmt->get(i)->getBody(), pCase->body);
     }
 
     _instrs.insert(_instrs.end(), prefix.begin(), prefix.end());
 
     if (! pSwitch->cases().empty()) {
-        if (_stmt.getDefault())
-            translateStatement(* _stmt.getDefault(), pSwitch->deflt());
+        if (_stmt->getDefault())
+            translateStatement(_stmt->getDefault(), pSwitch->deflt());
         (pPrevIf ? pPrevIf->brFalse() : _instrs).push_back(pSwitch);
-    } else if (_stmt.getDefault())
-        translateStatement(* _stmt.getDefault(), pPrevIf ? pPrevIf->brFalse() : _instrs);
+    } else if (_stmt->getDefault())
+        translateStatement(_stmt->getDefault(), pPrevIf ? pPrevIf->brFalse() : _instrs);
 }
 
-void Translator::translateSwitchUnion(const ir::Switch & _stmt,
+void Translator::translateSwitchUnion(const ir::SwitchPtr & _stmt,
         const Operand & _arg, Instructions & _instrs)
 {
-    ir::TypePtr pParamType = resolveBaseType(_stmt.getArg()->getType());
+    const auto pParamType = resolveBaseType(_stmt->getArg()->getType());
 
     assert(pParamType->getKind() == ir::Type::UNION);
 
-    ir::UnionTypePtr pUnion = pParamType.as<ir::UnionType>();
+    const auto pUnion = pParamType->as<ir::UnionType>();
     std::vector<SwitchCase *> cases;
 
-    cases.assign(_stmt.size(), NULL);
+    cases.assign(_stmt->size(), NULL);
 
-    _instrs.push_back(new Unary(Unary::PTR, _arg));
+    _instrs.push_back(std::make_shared<Unary>(Unary::PTR, _arg));
 
     Operand opStructPtr = Operand(_instrs.back()->getResult());
 
-    _instrs.push_back(new Field(opStructPtr, 0));
-    _instrs.push_back(new Unary(Unary::LOAD, Operand(_instrs.back()->getResult())));
+    _instrs.push_back(std::make_shared<Field>(opStructPtr, 0));
+    _instrs.push_back(std::make_shared<Unary>(Unary::LOAD, Operand(_instrs.back()->getResult())));
 
-    Auto<Switch> pSwitch = new Switch(Operand(_instrs.back()->getResult()));
+    const auto pSwitch = std::make_shared<Switch>(Operand(_instrs.back()->getResult()));
 
-    _instrs.push_back(new Field(opStructPtr, 1));
-    _instrs.push_back(new Unary(Unary::LOAD, Operand(_instrs.back()->getResult())));
+    _instrs.push_back(std::make_shared<Field>(opStructPtr, 1));
+    _instrs.push_back(std::make_shared<Unary>(Unary::LOAD, Operand(_instrs.back()->getResult())));
 
     Operand opContents = Operand(_instrs.back()->getResult());
 
     std::vector<SwitchCase *> caseIdx(pUnion->getConstructors().size());
-    std::vector<Auto<Label> > caseLabels(pUnion->getConstructors().size());
+    std::vector<LabelPtr> caseLabels(pUnion->getConstructors().size());
     std::vector<bool> isConstructor;
 
     // Prepare map.
-    for (size_t i = 0; i < _stmt.size(); ++ i) {
-        const ir::Collection<ir::Expression> & exprs = _stmt.get(i)->getExpressions();
+    for (size_t i = 0; i < _stmt->size(); ++ i) {
+        const auto& exprs = _stmt->get(i)->getExpressions();
 
         for (size_t j = 0; j < exprs.size(); ++ j) {
-            ir::ExpressionPtr pExpr = exprs.get(j);
+            const auto pExpr = exprs.get(j);
             bool bIsConstructor = false;
 
             if (pExpr->getKind() == ir::Expression::CONSTRUCTOR &&
-                    pExpr.as<ir::Constructor>()->getConstructorKind() == ir::Constructor::UNION_CONSTRUCTOR)
+                    pExpr->as<ir::Constructor>()->getConstructorKind() == ir::Constructor::UNION_CONSTRUCTOR)
             {
-                ir::UnionConstructorPtr pCons = pExpr.as<ir::UnionConstructor>();
+                const auto pCons = pExpr->as<ir::UnionConstructor>();
 
                 if (! pCons->isComplete() || pCons->size() == 0) {
                     ir::UnionConstructorDeclarationPtr pProto = pCons->getPrototype();
@@ -1331,7 +1331,7 @@ void Translator::translateSwitchUnion(const ir::Switch & _stmt,
                         pSwitch->cases().push_back(SwitchCase());
                         pSwitch->cases().back().values.push_back(cOrd);
                         caseIdx[cOrd] = & pSwitch->cases().back();
-                        caseLabels[cOrd] = new Label;
+                        caseLabels[cOrd] = std::make_shared<Label>();
                     }
 
                     bIsConstructor = true;
@@ -1345,18 +1345,18 @@ void Translator::translateSwitchUnion(const ir::Switch & _stmt,
     size_t cExprIdx = 0;
     Instructions * pInstrs = & _instrs;
 
-    for (size_t i = 0; i < _stmt.size(); ++ i) {
-        const ir::Collection<ir::Expression> & exprs = _stmt.get(i)->getExpressions();
+    for (size_t i = 0; i < _stmt->size(); ++ i) {
+        const auto& exprs = _stmt->get(i)->getExpressions();
         SwitchCase * pMainCase = NULL;
-        Auto<Label> labelBody = new Label();
+        const auto labelBody = std::make_shared<Label>();
 
         for (size_t j = 0; j < exprs.size(); ++ j, ++ cExprIdx) {
             if (! isConstructor[cExprIdx])
                 continue;
 
             // Got union constructor expression.
-            ir::UnionConstructorPtr pCons = exprs.get(j).as<ir::UnionConstructor>();
-            ir::UnionConstructorDeclarationPtr pProto = pCons->getPrototype().as<ir::UnionConstructorDeclaration>();
+            const auto pCons = exprs.get(j)->as<ir::UnionConstructor>();
+            const auto pProto = pCons->getPrototype()->as<ir::UnionConstructorDeclaration>();
             SwitchCase * pCase = caseIdx[pCons->getPrototype()->getOrdinal()];
 
             assert(pCase != NULL);
@@ -1366,38 +1366,38 @@ void Translator::translateSwitchUnion(const ir::Switch & _stmt,
 
             for (size_t k = 0; k < pCons->getDeclarations().size(); ++ k) {
                 ir::VariableDeclarationPtr pDecl = pCons->getDeclarations().get(k);
-                translateVariableDeclaration(* pDecl, pCase->body);
+                translateVariableDeclaration(pDecl, pCase->body);
             }
 
-            Auto<Label> labelNextCmp = new Label();
+            const auto labelNextCmp = std::make_shared<Label>();
 
             Instructions & body = pCase->body;
             Operand opValue;
             const ir::NamedValuesPtr pFields = pProto->getStructFields() ?
-                pProto->getStructFields()->mergeFields() : new ir::NamedValues();
+                pProto->getStructFields()->mergeFields() : std::make_shared<ir::NamedValues>();
             bool bStruct = pFields->size() > 1;
             bool bPointer = pFields->size() == 1;
             const bool bCompare = pCons->getDeclarations().size() < pCons->size();
 
             if (bPointer) {
-                Auto<Type> fieldType = translateType(* pFields->get(0)->getType());
+                const auto fieldType = translateType(pFields->get(0)->getType());
                 bPointer = (fieldType->sizeOf() > Type::sizeOf(Type::POINTER));
             }
 
             if (bCompare || ! pCons->getDeclarations().empty()) {
                 if (bStruct) {
-                    Auto<StructType> st = translateUnionConstructorDeclaration(*pProto);
+                    const auto st = translateUnionConstructorDeclaration(pProto);
 
-                    body.push_back(new Cast(opContents, new PointerType(st)));
+                    body.push_back(std::make_shared<Cast>(opContents, std::make_shared<PointerType>(st)));
                     opValue = Operand(body.back()->getResult());
                 } else {
-                    Auto<Type> fieldType = translateType(* pFields->get(0)->getType());
+                    const auto fieldType = translateType(pFields->get(0)->getType());
 
                     if (bPointer) {
-                        body.push_back(new Cast(opContents, new PointerType(fieldType)));
-                        body.push_back(new Unary(Unary::LOAD, body.back()->getResult()));
+                        body.push_back(std::make_shared<Cast>(opContents, std::make_shared<PointerType>(fieldType)));
+                        body.push_back(std::make_shared<Unary>(Unary::LOAD, body.back()->getResult()));
                     } else
-                        body.push_back(new Cast(opContents, fieldType));
+                        body.push_back(std::make_shared<Cast>(opContents, fieldType));
                 }
 
                 opValue = Operand(body.back()->getResult());
@@ -1405,28 +1405,28 @@ void Translator::translateSwitchUnion(const ir::Switch & _stmt,
 
             if (bCompare) {
                 for (size_t k = 0; k < pCons->size(); ++ k) {
-                    ir::StructFieldDefinitionPtr pDef = pCons->get(k);
+                    const auto pDef = pCons->get(k);
 
                     if (pDef->getValue()) {
                         // Compare and jump.
                         Operand lhs;
 
                         if (bStruct) {
-                            //body.push_back(new Unary(Unary::Ptr, _arg));
-                            body.push_back(new Field(opValue, k));
+                            //body.push_back(std::make_shared<Unary(Unary::Ptr, _arg));
+                            body.push_back(std::make_shared<Field>(opValue, k));
                             lhs = Operand(body.back()->getResult());
                         } else {
                             assert(k == 0);
                             lhs = opValue;
                         }
 
-                        body.push_back(new Unary(Unary::LOAD, lhs));
+                        body.push_back(std::make_shared<Unary>(Unary::LOAD, lhs));
                         lhs = Operand(body.back()->getResult());
 
-                        Operand rhs = translateExpression(* pDef->getValue(), body);
+                        Operand rhs = translateExpression(pDef->getValue(), body);
 
                         rhs = translateEq(resolveBaseType(pDef->getValue()->getType()), lhs, rhs, body);
-                        body.push_back(new Binary(Binary::JMZ,
+                        body.push_back(std::make_shared<Binary>(Binary::JMZ,
                                 rhs, Operand(labelNextCmp)));
 
                     }
@@ -1439,31 +1439,31 @@ void Translator::translateSwitchUnion(const ir::Switch & _stmt,
                 if (! pDef->getValue()) {
                     // Initialize.
                     Operand opField;
-                    Auto<Variable> pFieldVar;
+                    VariablePtr pFieldVar;
 
                     if (bStruct) {
-                        //body.push_back(new Unary(Unary::Ptr, _arg));
-                        body.push_back(new Field(opValue, k));
-                        pFieldVar = new Variable(body.back()->getResult()->getType());
-                        body.push_back(new Binary(Binary::SET, pFieldVar, Operand(body.back()->getResult())));
+                        //body.push_back(std::make_shared<Unary(Unary::Ptr, _arg));
+                        body.push_back(std::make_shared<Field>(opValue, k));
+                        pFieldVar = std::make_shared<Variable>(body.back()->getResult()->getType());
+                        body.push_back(std::make_shared<Binary>(Binary::SET, pFieldVar, Operand(body.back()->getResult())));
                     } else {
                         assert(k == 0);
                         //opField = opValue;
-                        pFieldVar = new Variable(opValue.getType());
-                        body.push_back(new Binary(Binary::SET, pFieldVar, opValue));
+                        pFieldVar = std::make_shared<Variable>(opValue.getType());
+                        body.push_back(std::make_shared<Binary>(Binary::SET, pFieldVar, opValue));
                     }
 
-                    addVariable(pDef->getField().ptr(), pFieldVar, bStruct);
+                    addVariable(pDef->getField().get(), pFieldVar, bStruct);
                     m_pFunction->locals().push_back(pFieldVar);
                     opField = Operand(pFieldVar);
                     //pFieldVar->setTyoe(opField.getType());
                 }
             }
 
-            body.push_back(new Unary(Unary::JMP, Operand(labelBody)));
+            body.push_back(std::make_shared<Unary>(Unary::JMP, Operand(labelBody)));
 
             if (bCompare) {
-                body.push_back(new Instruction()); // nop
+                body.push_back(std::make_shared<Instruction>()); // nop
                 body.back()->setLabel(labelNextCmp);
             }
         }
@@ -1476,14 +1476,14 @@ void Translator::translateSwitchUnion(const ir::Switch & _stmt,
             if (isConstructor[cExprIdx])
                 continue;
 
-            ir::ExpressionPtr pCond = exprs.get(j);
+            const auto pCond = exprs.get(j);
 
-            Operand rhs = translateExpression(* pCond, * pInstrs);
+            Operand rhs = translateExpression(pCond, * pInstrs);
 
             rhs = translateEq(pParamType, _arg, rhs, * pInstrs);
 
             if (! lhs.empty()) {
-                pInstrs->push_back(new Binary(Binary::BOR, lhs, rhs));
+                pInstrs->push_back(std::make_shared<Binary>(Binary::BOR, lhs, rhs));
                 lhs = Operand(pInstrs->back()->getResult());
             } else
                 lhs = rhs;
@@ -1491,44 +1491,44 @@ void Translator::translateSwitchUnion(const ir::Switch & _stmt,
 
         if (! lhs.empty()) {
             if (pMainCase) {
-                pInstrs->push_back(new Binary(Binary::JNZ, lhs, Operand(labelBody)));
+                pInstrs->push_back(std::make_shared<Binary>(Binary::JNZ, lhs, Operand(labelBody)));
             } else {
-                If * pIf = new If(lhs);
+                const auto pIf = std::make_shared<If>(lhs);
 
                 pInstrs->push_back(pIf);
-                translateStatement(* _stmt.get(i)->getBody(), pIf->brTrue());
+                translateStatement(_stmt->get(i)->getBody(), pIf->brTrue());
                 pInstrs = & pIf->brFalse();
             }
         }
 
         // Actual case body.
-        if (pMainCase == NULL || _stmt.get(i)->getBody())
+        if (pMainCase == NULL || _stmt->get(i)->getBody())
             continue;
 
         Instructions & body = pMainCase->body;
 
-        body.push_back(new Instruction()); // nop
+        body.push_back(std::make_shared<Instruction>()); // nop
         body.back()->setLabel(labelBody);
-        translateStatement(* _stmt.get(i)->getBody(), body);
+        translateStatement(_stmt->get(i)->getBody(), body);
     }
 
-    if (_stmt.getDefault()) {
+    if (_stmt->getDefault()) {
         if (pSwitch->cases().empty())
-            translateStatement(* _stmt.getDefault(), * pInstrs);
+            translateStatement(_stmt->getDefault(), * pInstrs);
         else
-            translateStatement(* _stmt.getDefault(), pSwitch->deflt());
+            translateStatement(_stmt->getDefault(), pSwitch->deflt());
     }
 
     if (! pSwitch->cases().empty())
         pInstrs->push_back(pSwitch);
 }
 
-void Translator::translateSwitch(const ir::Switch & _stmt, Instructions & _instrs) {
-    if (_stmt.getParamDecl())
-        translateVariableDeclaration(* _stmt.getParamDecl(), _instrs);
+void Translator::translateSwitch(const ir::SwitchPtr & _stmt, Instructions & _instrs) {
+    if (_stmt->getParamDecl())
+        translateVariableDeclaration(_stmt->getParamDecl(), _instrs);
 
-    ir::TypePtr pParamType = resolveBaseType(_stmt.getArg()->getType());
-    Operand arg = translateExpression(* _stmt.getArg(), _instrs);
+    const auto pParamType = resolveBaseType(_stmt->getArg()->getType());
+    Operand arg = translateExpression(_stmt->getArg(), _instrs);
 
     if (arg.getType()->getKind() & Type::INTMASK) {
         translateSwitchInt(_stmt, arg, _instrs);
@@ -1540,96 +1540,96 @@ void Translator::translateSwitch(const ir::Switch & _stmt, Instructions & _instr
 
     // Encode as a series of if-s.
 
-    Auto<Switch> pSwitch = new Switch(arg);
+    const auto pSwitch = std::make_shared<Switch>(arg);
     Instructions * pInstrs = & _instrs;
 
-    for (size_t i = 0; i < _stmt.size(); ++ i) {
-        const ir::Collection<ir::Expression> & exprs = _stmt.get(i)->getExpressions();
+    for (size_t i = 0; i < _stmt->size(); ++ i) {
+        const auto& exprs = _stmt->get(i)->getExpressions();
 
         assert(! exprs.empty());
 
-        Operand lhs = translateExpression(* exprs.get(0), * pInstrs);
+        Operand lhs = translateExpression(exprs.get(0), * pInstrs);
         lhs = translateEq(pParamType, arg, lhs, * pInstrs);
 
         for (size_t j = 1; j < exprs.size(); ++ j) {
-            Operand rhs = translateExpression(* exprs.get(j), * pInstrs);
+            Operand rhs = translateExpression(exprs.get(j), * pInstrs);
             rhs = translateEq(pParamType, arg, rhs, * pInstrs);
 
-            pInstrs->push_back(new Binary(Binary::BOR, lhs, rhs));
+            pInstrs->push_back(std::make_shared<Binary>(Binary::BOR, lhs, rhs));
             lhs = Operand(pInstrs->back()->getResult());
         }
 
-        If * pIf = new If(lhs);
+        const auto pIf = std::make_shared<If>(lhs);
 
         pInstrs->push_back(pIf);
-        translateStatement(* _stmt.get(i)->getBody(), pIf->brTrue());
+        translateStatement(_stmt->get(i)->getBody(), pIf->brTrue());
         pInstrs = & pIf->brFalse();
     }
 
-    if (_stmt.getDefault())
-        translateStatement(* _stmt.getDefault(), * pInstrs);
+    if (_stmt->getDefault())
+        translateStatement(_stmt->getDefault(), * pInstrs);
 }
 
-void Translator::translateStatement(const ir::Statement & _stmt, Instructions & _instrs) {
+void Translator::translateStatement(const ir::StatementPtr & _stmt, Instructions & _instrs) {
 
-    switch (_stmt.getKind()) {
+    switch (_stmt->getKind()) {
         case ir::Statement::IF:
-            translateIf((ir::If &) _stmt, _instrs); break;
+            translateIf(_stmt->as<ir::If>(), _instrs); break;
         case ir::Statement::WHILE:
-            translateWhile((ir::While &) _stmt, _instrs); break;
+            translateWhile(_stmt->as<ir::While>(), _instrs); break;
         case ir::Statement::ASSIGNMENT:
-            translateAssignment((ir::Assignment &) _stmt, _instrs); break;
+            translateAssignment(_stmt->as<ir::Assignment>(), _instrs); break;
         case ir::Statement::CALL:
-            translateCall((ir::Call &) _stmt, _instrs); break;
+            translateCall(_stmt->as<ir::Call>(), _instrs); break;
         case ir::Statement::VARIABLE_DECLARATION:
-            translateVariableDeclaration((ir::VariableDeclaration &) _stmt, _instrs); break;
+            translateVariableDeclaration(_stmt->as<ir::VariableDeclaration>(), _instrs); break;
         case ir::Statement::BLOCK:
-            translateBlock((ir::Block &) _stmt, _instrs); break;
+            translateBlock(_stmt->as<ir::Block>(), _instrs); break;
         case ir::Statement::JUMP:
-            translateJump((ir::Jump &) _stmt, _instrs); break;
+            translateJump(_stmt->as<ir::Jump>(), _instrs); break;
         case ir::Statement::SWITCH:
-            translateSwitch((ir::Switch &) _stmt, _instrs); break;
+            translateSwitch(_stmt->as<ir::Switch>(), _instrs); break;
     }
 }
 
-Auto<Function> Translator::translatePredicate(const ir::Predicate & _pred) {
-    Translator * pTranslator = addChild();
-    const size_t cBranches = _pred.getOutParams().size();
-    Auto<Type> returnType;
-    ir::NamedValuePtr pResult = NULL;
+FunctionPtr Translator::translatePredicate(const ir::PredicatePtr & _pred) {
+    const auto pTranslator = addChild();
+    const size_t cBranches = _pred->getOutParams().size();
+    TypePtr returnType;
+    ir::NamedValuePtr pResult;
 
-    if (cBranches == 1 && _pred.getOutParams().get(0)->size() == 1) {
+    if (cBranches == 1 && _pred->getOutParams().get(0)->size() == 1) {
         // Trivial predicate: one branch, one output parameter.
-        pResult = _pred.getOutParams().get(0)->get(0);
-        returnType = pTranslator->translateType(* pResult->getType());
+        pResult = _pred->getOutParams().get(0)->get(0);
+        returnType = pTranslator->translateType(pResult->getType());
     } else if (cBranches < 2) {
         // Pass output params as pointers.
-        returnType = new Type(Type::VOID);
+        returnType = std::make_shared<Type>(Type::VOID);
     } else {
         // Pass output params as pointers, return branch index.
-        returnType = new Type(Type::INT32);
+        returnType = std::make_shared<Type>(Type::INT32);
     }
 
-    Auto<Function> pFunction = new Function(_pred.getName(), returnType);
+    const auto pFunction = std::make_shared<Function>(_pred->getName(), returnType);
 
-    for (size_t i = 0; i < _pred.getInParams().size(); ++ i) {
-        ir::NamedValuePtr pVar = _pred.getInParams().get(i);
-        Auto<Type> type = pTranslator->translateType(* pVar->getType());
-        pFunction->args().push_back(new Variable(type));
-        addVariable(pVar.ptr(), pFunction->args().back());
+    for (size_t i = 0; i < _pred->getInParams().size(); ++ i) {
+        ir::NamedValuePtr pVar = _pred->getInParams().get(i);
+        const auto type = pTranslator->translateType(pVar->getType());
+        pFunction->args().push_back(std::make_shared<Variable>(type));
+        addVariable(pVar.get(), pFunction->args().back());
     }
 
     if (pResult) {
-        pTranslator->addVariable(pResult.ptr(), pFunction->getResult());
+        pTranslator->addVariable(pResult.get(), pFunction->getResult());
     } else {
-        for (size_t i = 0; i < _pred.getOutParams().size(); ++ i) {
-            ir::Branch & branch = * _pred.getOutParams().get(i);
+        for (size_t i = 0; i < _pred->getOutParams().size(); ++ i) {
+            ir::Branch & branch = * _pred->getOutParams().get(i);
             m_labels[branch.getLabel()] = i;
             for (size_t j = 0; j < branch.size(); ++ j) {
                 ir::NamedValuePtr pVar = branch.get(j);
-                Auto<Type> argType = pTranslator->translateType(* pVar->getType());
-                pFunction->args().push_back(new Variable(new PointerType(argType)));
-                addVariable(pVar.ptr(), pFunction->args().back(), true);
+                const auto argType = pTranslator->translateType(pVar->getType());
+                pFunction->args().push_back(std::make_shared<Variable>(std::make_shared<PointerType>(argType)));
+                addVariable(pVar.get(), pFunction->args().back(), true);
             }
         }
     }
@@ -1637,10 +1637,10 @@ Auto<Function> Translator::translatePredicate(const ir::Predicate & _pred) {
     addVariable(& _pred, pFunction);
 
     pTranslator->m_pFunction = pFunction;
-    pTranslator->translateBlock(* _pred.getBlock(), pFunction->instructions());
+    pTranslator->translateBlock(_pred->getBlock(), pFunction->instructions());
 
     if (returnType->getKind() != Type::VOID && pResult)
-        pFunction->instructions().push_back(new Unary(Unary::RETURN, pFunction->getResult()));
+        pFunction->instructions().push_back(std::make_shared<Unary>(Unary::RETURN, pFunction->getResult()));
 
     processLL<MarkEOLs>(* pFunction);
     processLL<CountLabels>(* pFunction);
@@ -1688,13 +1688,13 @@ Auto<Function> Translator::translatePredicate(const ir::Predicate & _pred) {
                 switch (((Binary &) instr).getBinaryKind()) {
                     case Binary::Set:
                         if (bin.getOp1().getType()->getKind() == Type::Pointer) {
-                            _instrs.insert(iInstr, new Unary(Unary::Unref, bin.getOp1()));
+                            _instrs.insert(iInstr, std::make_shared<Unary(Unary::Unref, bin.getOp1()));
                             op = bin.getOp1();
                         }
                         break;
                     case Binary::Store:
                         if (bin.getOp2().getType()->getKind() == Type::Pointer) {
-                            _instrs.insert(iInstr, new Unary(Unary::UnrefNd, bin.getOp1()));
+                            _instrs.insert(iInstr, std::make_shared<Unary(Unary::UnrefNd, bin.getOp1()));
                             op = bin.getOp2();
                         }
                         break;
@@ -1712,11 +1712,11 @@ Auto<Function> Translator::translatePredicate(const ir::Predicate & _pred) {
                 && instr.getResult()->getType()->getKind() == Type::Pointer)
         {
             m_ptrs.push_back(instr.getResult());
-            iInstr = _instrs.insert(iNext, new Unary(Unary::Ref, Operand(instr.getResult())));
+            iInstr = _instrs.insert(iNext, std::make_shared<Unary(Unary::Ref, Operand(instr.getResult())));
         }
 
         if (op.getKind() != Operand::Empty)
-            iInstr = _instrs.insert(iNext, new Unary(Unary::Ref, op));
+            iInstr = _instrs.insert(iNext, std::make_shared<Unary(Unary::Ref, op));
     }
 }
 
@@ -1728,28 +1728,27 @@ void Translator::insertUnrefs() {
         switch (type.getKind()) {
             case Type::Pointer:
                 m_pFunction->instructions().push_back(
-                        new Unary(Unary::Unref, Operand(pVar)));
+                        std::make_shared<Unary(Unary::Unref, Operand(pVar)));
                 break;
         }
     }
 
     for (Args::iterator iVar = m_ptrs.begin(); iVar != m_ptrs.end(); ++ iVar)
-        m_pFunction->instructions().push_back(new Unary(Unary::Unref, Operand(* iVar)));
+        m_pFunction->instructions().push_back(std::make_shared<Unary(Unary::Unref, Operand(* iVar)));
 }
 */
-void Translator::translate(const ir::Module & _module, Module & _dest) {
+void Translator::translate(const ir::ModulePtr & _module, Module & _dest) {
     m_pModule = & _dest;
     const llir::Types tt = m_pModule->types();
 
-    for (size_t i = 0; i < _module.getPredicates().size(); ++ i) {
-        const ir::Collection<ir::Predicate> qqq = _module.getPredicates();
-        const ir::Predicate & pred = * _module.getPredicates().get(i);
-        if (pred.getBlock())
+    for (size_t i = 0; i < _module->getPredicates().size(); ++ i) {
+        const auto pred = _module->getPredicates().get(i);
+        if (pred->getBlock())
             m_pModule->functions().push_back(translatePredicate(pred));
     }
 }
 
-void translate(Module & _dest, const ir::Module & _from) {
+void translate(Module & _dest, const ir::ModulePtr & _from) {
     Translator translator(NULL);
     translator.translate(_from, _dest);
 }

@@ -43,9 +43,9 @@ class FlagsCollector : public ir::Visitor {
 public:
     FlagsCollector(Flags &_to, Flags &_from) : m_to(_to), m_from(_from) {}
 
-    virtual bool visitType(ir::Type &_type) {
-        if (_type.getKind() == ir::Type::FRESH) {
-            const size_t cOrd = ((FreshType &)_type).getOrdinal();
+    bool visitType(const ir::TypePtr &_type) override {
+        if (_type->getKind() == ir::Type::FRESH) {
+            const size_t cOrd = _type->as<FreshType>()->getOrdinal();
             m_to.set(cOrd, m_from.get(cOrd));
         }
 
@@ -65,8 +65,8 @@ void Flags::filterTo(Flags &_to, const class Formula &_from) {
             for (Formulas::iterator j = cf.getPart(i).begin(); j != cf.getPart(i).end(); ++j)
                 filterTo(_to, **j);
     } else {
-        FlagsCollector(_to, *this).traverseNode(*_from.getLhs());
-        FlagsCollector(_to, *this).traverseNode(*_from.getRhs());
+        FlagsCollector(_to, *this).traverseNode(_from.getLhs());
+        FlagsCollector(_to, *this).traverseNode(_from.getRhs());
     }
 }
 
@@ -114,15 +114,15 @@ bool FormulaCmp::operator()(const FormulaPtr &_lhs, const FormulaPtr &_rhs) cons
         return _lhs->getKind() < _rhs->getKind();
 
     if (_lhs->is(Formula::COMPOUND)) {
-        const CompoundFormula &lhs = *_lhs.as<CompoundFormula>();
-        const CompoundFormula &rhs = *_rhs.as<CompoundFormula>();
+        const auto lhs = _lhs->as<CompoundFormula>();
+        const auto rhs = _rhs->as<CompoundFormula>();
 
-        if (lhs.size() != rhs.size())
-            return lhs.size() < rhs.size();
+        if (lhs->size() != rhs->size())
+            return lhs->size() < rhs->size();
 
-        for (size_t i = 0; i < lhs.size(); ++i) {
-            const Formulas &l = lhs.getPart(i);
-            const Formulas &r = rhs.getPart(i);
+        for (size_t i = 0; i < lhs->size(); ++i) {
+            const Formulas &l = lhs->getPart(i);
+            const Formulas &r = rhs->getPart(i);
 
             if (l.size() != r.size())
                 return l.size() < r.size();
@@ -163,19 +163,19 @@ bool Formula::hasFresh() const {
 }
 
 FormulaPtr Formula::clone(Cloner &_cloner) const {
-    return NEW_CLONE(this, _cloner, Formula(m_kind, _cloner.get(m_pLhs.ptr()), _cloner.get(m_pRhs.ptr())));
+    return NEW_CLONE(this, _cloner, Formula(m_kind, _cloner.get(m_pLhs), _cloner.get(m_pRhs)));
 }
 
-Auto<Context> Context::clone(Cloner &_cloner) const {
-    Auto<Context> pNew = ptr(NEW_CLONE(this, _cloner, Context()));
+ContextPtr Context::clone(Cloner &_cloner) const {
+    const auto pNew = NEW_CLONE(this, _cloner, Context());
 
     for (Formulas::const_iterator i = pFormulas->begin(); i != pFormulas->end(); ++i)
-        pNew->pFormulas->insert(_cloner.get(i->ptr()));
+        pNew->pFormulas->insert(_cloner.get(*i));
 
-    pNew->pFormulas->pFlags = new Flags(*pFormulas->pFlags);
+    pNew->pFormulas->pFlags = std::make_shared<Flags>(*pFormulas->pFlags);
 
     for (Formulas::const_iterator i = pSubsts->begin(); i != pSubsts->end(); ++i)
-        pNew->pSubsts->insert(_cloner.get(i->ptr()));
+        pNew->pSubsts->insert(_cloner.get(*i));
 
     pNew->pParent = pParent; // No clone().
 
@@ -189,7 +189,7 @@ FormulaPtr CompoundFormula::clone(Cloner &_cloner) const {
         Formulas &part = pCF->addPart();
 
         for (Formulas::iterator j = getPart(i).begin(); j != getPart(i).end(); ++j)
-            part.insert(_cloner.get(j->ptr()));
+            part.insert(_cloner.get(*j));
     }
 
     return pCF;
@@ -201,12 +201,12 @@ bool tc::rewriteType(ir::TypePtr &_pType, const ir::TypePtr &_pOld, const ir::Ty
 
     if (*_pType == *_pOld) {
         if (_pOld->getKind() == ir::Type::FRESH && _bRewriteFlags)
-            _pNew->rewriteFlags(_pOld.as<FreshType>()->getFlags());
+            _pNew->rewriteFlags(_pOld->as<FreshType>()->getFlags());
         _pType = _pNew;
         return true;
     }
 
-    _pType = clone(*_pType);
+    _pType = clone(_pType);
 
     return _pType->rewrite(_pOld, _pNew, _bRewriteFlags);
 }
@@ -270,13 +270,13 @@ int Formula::eval() const {
 
         case NO_JOIN:
         case HAS_JOIN:
-            if (ir::TypePtr pJoin = getLhs()->getJoin(*getRhs()))
+            if (ir::TypePtr pJoin = getLhs()->getJoin(getRhs()))
                 return (pJoin->getKind() == ir::Type::TOP) == (getKind() == NO_JOIN) ? TRUE : FALSE;
             break;
 
         case NO_MEET:
         case HAS_MEET:
-            if (ir::TypePtr pMeet = getLhs()->getMeet(*getRhs()))
+            if (ir::TypePtr pMeet = getLhs()->getMeet(getRhs()))
                 return (pMeet->getKind() == ir::Type::BOTTOM) == (getKind() == NO_MEET) ? TRUE : FALSE;
             break;
     }
@@ -317,12 +317,12 @@ bool Formula::implies(const Formula &_other) {
     }
 }
 
-void CompoundFormula::addPart(const Auto<Formulas> &_pFormulas) {
+void CompoundFormula::addPart(const FormulasPtr &_pFormulas) {
     m_parts.push_back(_pFormulas);
 }
 
 Formulas &CompoundFormula::addPart() {
-    m_parts.push_back(ptr(new Formulas()));
+    m_parts.push_back(std::make_shared<Formulas>());
     return *m_parts.back();
 }
 
@@ -355,12 +355,12 @@ bool CompoundFormula::operator ==(const Formula &_other) const {
 
 static
 void _check(Context &_fs) {
-    if (_fs->size() > 1) {
-        Formulas::iterator i = _fs->begin();
+    if (_fs.formulas()->size() > 1) {
+        Formulas::iterator i = _fs.formulas()->begin();
         FormulaCmp cmp;
         size_t c = 0;
 
-        for (Formulas::iterator j = ::next(i); j != _fs->end(); ++i, ++j, ++c) {
+        for (Formulas::iterator j = ::next(i); j != _fs.formulas()->end(); ++i, ++j, ++c) {
             FormulaPtr p1 = *i;
             FormulaPtr p2 = *j;
 
@@ -563,7 +563,7 @@ bool Context::add(const FormulaPtr &_pFormula) {
 }
 
 bool Context::add(int _kind, const ir::TypePtr &_pLhs, const ir::TypePtr &_pRhs) {
-    return add(new Formula(_kind, _pLhs, _pRhs));
+    return add(std::make_shared<Formula>(_kind, _pLhs, _pRhs));
 }
 
 void Formulas::insertFormulas(const tc::Formulas& _formulas) {
@@ -582,14 +582,14 @@ void Context::restoreNamedTypes() {
 
         if (iSubst == pSubsts->end()) {
             pSubsts->rewrite(i.first, i.second);
-            pSubsts->insert(new tc::Formula(tc::Formula::EQUALS, i.first, i.second));
+            pSubsts->insert(std::make_shared<tc::Formula>(tc::Formula::EQUALS, i.first, i.second));
         }
 
         if (iSubst != pSubsts->end() &&
             (*iSubst)->getRhs()->getKind() == ir::Type::FRESH) {
             const ir::TypePtr pOldRight = (*iSubst)->getRhs();
             pSubsts->rewrite((*iSubst)->getRhs(), i.second);
-            pSubsts->insert(new tc::Formula(tc::Formula::EQUALS, pOldRight, i.second));
+            pSubsts->insert(std::make_shared<tc::Formula>(tc::Formula::EQUALS, pOldRight, i.second));
         }
     }
 }
@@ -598,36 +598,36 @@ class PredicateLinker : public ir::Visitor {
 public:
     PredicateLinker(ir::Context &_ctx) : Visitor(CHILDREN_FIRST), m_ctx(_ctx) {}
 
-    virtual bool visitPredicateReference(ir::PredicateReference &_ref) {
-        if (!_ref.getType())
+    bool visitPredicateReference(const ir::PredicateReferencePtr &_ref) override {
+        if (!_ref->getType())
             return true;
 
         ir::Predicates predicates;
 
-        if (_ref.getTarget() && _ref.getTarget()->isBuiltin())
+        if (_ref->getTarget() && _ref->getTarget()->isBuiltin())
             return true;
 
-        m_ctx.getPredicates(_ref.getName(), predicates);
+        m_ctx.getPredicates(_ref->getName(), predicates);
         if (predicates.empty())
             return true;
 
-        if (_ref.getTarget())
-            _ref.setTarget(NULL);
+        if (_ref->getTarget())
+            _ref->setTarget(NULL);
 
         for (size_t i = 0; i < predicates.size(); ++i) {
-            ir::PredicatePtr pPredicate = predicates.get(i);
-            ir::TypePtr pType = pPredicate->getType();
+            const auto pPredicate = predicates.get(i);
+            const auto pType = pPredicate->getType();
 
-            const size_t szOrd = _ref.getType()->compare(*pType);
+            const size_t szOrd = _ref->getType()->compare(*pType);
             if (szOrd != ir::Type::ORD_EQUALS && szOrd != ir::Type::ORD_SUPER)
                 continue;
 
-            if (!_ref.getTarget()
-                || _ref.getTarget()->getType()->compare(*pType) == ir::Type::ORD_SUB
-                || (_ref.getTarget()->getType()->compare(*pType) == ir::Type::ORD_EQUALS &&
-                        !_ref.getTarget()->getBlock()))
-                _ref.setTarget(pPredicate);
-            // Find the most appropriate target. Last subexpression of || : set new target if current one is a forward declaration
+            if (!_ref->getTarget()
+                || _ref->getTarget()->getType()->compare(*pType) == ir::Type::ORD_SUB
+                || (_ref->getTarget()->getType()->compare(*pType) == ir::Type::ORD_EQUALS &&
+                        !_ref->getTarget()->getBlock()))
+                _ref->setTarget(pPredicate);
+            // Find the most appropriate target. Last subexpression of || : set std::make_shared<target if current one is a forward declaration
             // (without a body). If we already got the target with declared body, can retarget only to a predicate with more
             // appropriate signature.
         }
@@ -640,30 +640,30 @@ private:
 };
 
 void tc::linkPredicates(ir::Context &_ctx, ir::Node &_node) {
-    PredicateLinker(_ctx).traverseNode(_node);
+    PredicateLinker(_ctx).traverseNode(_node.as<ir::Node>());//TODO:dyp: fix
 }
 
 class FreshTypeRewriter : public ir::Visitor {
 public:
     FreshTypeRewriter(const Formulas &_substs) : Visitor(CHILDREN_FIRST), m_substs(_substs) {}
 
-    virtual bool visitExpression(ir::Expression &_expr) {
-        VISITOR_TRAVERSE(Type, ExprType, _expr.getType(), _expr, Expression, setType);
+    bool visitExpression(const ir::ExpressionPtr &_expr) override {
+        VISITOR_TRAVERSE(Type, ExprType, _expr->getType(), _expr, Expression, setType);
         return true;
     }
 
-    virtual bool visitType(ir::Type &_type) {
-        if (_type.getKind() != ir::Type::FRESH)
+    bool visitType(const ir::TypePtr &_type) override {
+        if (_type->getKind() != ir::Type::FRESH)
             return true;
 
-        Formulas::const_iterator iSubst = m_substs.findSubst(&_type);
+        const auto iSubst = m_substs.findSubst(_type);
         if (iSubst == m_substs.end())
             return true;
 
-        const ir::Node *pParent = getParent();
+        const auto pParent = getParent();
         if (pParent && getLoc().role == ir::R_TypeDeclBody &&
             (*iSubst)->getRhs()->getKind() == ir::Type::NAMED_REFERENCE &&
-            pParent == (*iSubst)->getRhs().as<ir::NamedReferenceType>()->getDeclaration().ptr())
+            pParent == (*iSubst)->getRhs()->as<ir::NamedReferenceType>()->getDeclaration())
             return true;
 
         callSetter((*iSubst)->getRhs());
@@ -674,14 +674,14 @@ private:
     const Formulas &m_substs;
 };
 
-static void _apply(tc::Formulas &_constraints, ir::Node &_node) {
+static void _apply(tc::Formulas &_constraints, const ir::NodePtr &_node) {
     FreshTypeRewriter ftr(_constraints);
     ftr.traverseNode(_node);
 }
 
 void Context::rewriteTypesInConditions() {
-    for (auto& i: getConditions())
-        _apply(*pSubsts, *i);
+    for (const auto& i: getConditions())
+        _apply(*pSubsts, i);
 }
 
 void Context::clearBodiesOfTypeDeclarations() const {
@@ -692,7 +692,7 @@ void Context::clearBodiesOfTypeDeclarations() const {
     }
 }
 
-void tc::apply(const ContextPtr& _pContext, ir::Node &_node) {
+void tc::apply(const ContextPtr& _pContext, const ir::NodePtr &_node) {
     _pContext->restoreNamedTypes();
     _pContext->rewriteTypesInConditions();
     _apply(*_pContext->pSubsts, _node);
@@ -700,24 +700,24 @@ void tc::apply(const ContextPtr& _pContext, ir::Node &_node) {
 }
 
 Context::Context() :
-        pFormulas(ptr(new Formulas())),
-        pSubsts(ptr(new Formulas())),
-        pTypes(new Lattice(this))
+        pFormulas(std::make_shared<Formulas>()),
+        pSubsts(std::make_shared<Formulas>()),
+        pTypes(std::make_shared<Lattice>(this))
 {
 }
 
-Context::Context(const Auto<Formulas> &_pFormulas, const Auto<Formulas> &_pSubsts) :
+Context::Context(const FormulasPtr &_pFormulas, const FormulasPtr &_pSubsts) :
         pFormulas(_pFormulas),
         pSubsts(_pSubsts),
-        pTypes(new Lattice(this))
+        pTypes(std::make_shared<Lattice>(this))
 {
 }
 
-Context::Context(const Auto<Formulas> &_pFormulas, const Auto<Context> &_pParent) :
+Context::Context(const FormulasPtr &_pFormulas, const ContextPtr &_pParent) :
     pFormulas(_pFormulas),
-    pSubsts(ptr(new Formulas())),
+    pSubsts(std::make_shared<Formulas>()),
     pParent(_pParent),
-    pTypes(new Lattice(this))
+    pTypes(std::make_shared<Lattice>(this))
 {
 }
 
@@ -741,8 +741,8 @@ void ContextStack::push(const ContextPtr &_ctx) {
     g_ctxs.push_back(_ctx);
 }
 
-void ContextStack::push(const Auto<Formulas> &_fs) {
-    g_ctxs.push_back(ptr(new Context(_fs, top())));
+void ContextStack::push(const FormulasPtr &_fs) {
+    g_ctxs.push_back(std::make_shared<Context>(_fs, top()));
 }
 
 void ContextStack::pop() {
@@ -759,12 +759,12 @@ void ContextStack::clear() {
 }
 
 Formulas::iterator Formulas::beginCompound() {
-    CompoundFormulaPtr pEmpty = new CompoundFormula();
+    CompoundFormulaPtr pEmpty = std::make_shared<CompoundFormula>();
     return lower_bound(pEmpty);
 }
 
 Formulas::iterator Formulas::findSubst(const ir::TypePtr &_pType) const {
-    FormulaPtr pEmpty = new Formula(Formula::EQUALS, _pType, new ir::Type(ir::Type::BOTTOM));
+    FormulaPtr pEmpty = std::make_shared<Formula>(Formula::EQUALS, _pType, std::make_shared<ir::Type>(ir::Type::BOTTOM));
     Formulas::const_iterator i = lower_bound(pEmpty);
 
     if (i == end() || !(*i)->is(Formula::EQUALS) || *(*i)->getLhs() != *_pType)
@@ -812,14 +812,14 @@ ir::TypePtr Context::lookup(const Formula &_f, const Formula &_cond) {
         pLhs = h.getLhs();
         pRhs = h.getRhs();
 
-        if (!it.find(&h).eof())
+        if (!it.find(h.as<Formula>()).eof())//TODO:dyp: fix
             return p;
 
         if (h.isSymmetric()) {
             h.setLhs(pRhs);
             h.setRhs(pLhs);
 
-            if (!it.find(&h).eof())
+            if (!it.find(h.as<Formula>()).eof())//TODO:dyp: fix
                 return p;
         }
     }
@@ -870,7 +870,7 @@ bool ContextIterator::next() {
         if (m_pFormulas == m_pCurrent->pFormulas && (!m_bSkipTopSubsts || m_pCurrent->pParent))
             m_pFormulas = m_pCurrent->pSubsts;
         else if (m_pCurrent->pParent) {
-            m_pCurrent = m_pCurrent->pParent.ptr();
+            m_pCurrent = m_pCurrent->pParent.get();
             m_pFormulas = m_pCurrent->pFormulas;
         } else
             return false;
@@ -898,17 +898,17 @@ ContextIterator ContextIterator::find(const FormulaPtr &_f) {
     return it;
 }
 
-bool Formula::contains(const ir::TypePtr &_pType) const {
-    return (m_pLhs && (*m_pLhs == *_pType || m_pLhs->contains(_pType))) ||
-            (m_pRhs && (*m_pRhs == *_pType || m_pRhs->contains(_pType)));
+bool Formula::contains(const ir::Type &_type) const {
+    return (m_pLhs && (*m_pLhs == _type || m_pLhs->contains(_type))) ||
+            (m_pRhs && (*m_pRhs == _type || m_pRhs->contains(_type)));
 }
 
-bool CompoundFormula::contains(const ir::TypePtr &_pType) const {
+bool CompoundFormula::contains(const ir::Type &_type) const {
     for (size_t i = 0; i < size(); ++i) {
         const Formulas &part = getPart(i);
 
         for (Formulas::iterator j = part.begin(); j != part.end(); ++j)
-            if ((*j)->contains(_pType))
+            if ((*j)->contains(_type))
                 return true;
     }
 

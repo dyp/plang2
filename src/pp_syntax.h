@@ -12,13 +12,16 @@
 
 namespace pp {
 
-class Context : public Counted {
+class Context;
+using ContextPtr = std::shared_ptr<Context>;
+
+class Context {
 public:
     Context() {}
 
     NameGenerator& nameGenerator() { return m_names; }
 
-    void collectPaths(ir::Node &_node);
+    void collectPaths(const ir::NodePtr &_node);
 
     void getPath(const ir::NodePtr& _pNode, std::list<ir::ModulePtr>& _container);
     void clear();
@@ -27,26 +30,25 @@ private:
     std::map<ir::NodePtr, std::list<ir::ModulePtr>> m_paths;
     NameGenerator m_names;
 };
-typedef Auto<Context> ContextPtr;
 
 class PrettyPrinterSyntax: public PrettyPrinterBase {
 public:
     template<typename _Stream>
-    PrettyPrinterSyntax(ir::Node &_node, _Stream &_os, ContextPtr _pContext) :
-        PrettyPrinterBase(_os), m_pNode(&_node), m_nFlags(0), m_bCompact(false), m_bSingleLine(false),
-        m_pContext(!_pContext ? new Context() : _pContext)
+    PrettyPrinterSyntax(const ir::NodePtr &_node, _Stream &_os, ContextPtr _pContext) :
+        PrettyPrinterBase(_os), m_pNode(_node),
+        m_pContext(!_pContext ? std::make_shared<Context>() : _pContext)
     {}
 
     template<typename _Stream>
-    PrettyPrinterSyntax(ir::Node &_node, _Stream &_os, size_t nDepth = 0) :
-        PrettyPrinterBase(_os), m_pNode(&_node), m_nFlags(0), m_bCompact(false), m_bSingleLine(false),
-        m_pContext(new Context())
+    PrettyPrinterSyntax(const ir::NodePtr &_node, _Stream &_os, size_t nDepth = 0) :
+        PrettyPrinterBase(_os), m_pNode(_node),
+        m_pContext(std::make_shared<Context>())
     {}
 
     template<typename _Stream>
-    PrettyPrinterSyntax(_Stream &_os, bool _bCompact = false, int _nFlags = 0, ContextPtr _pContext = NULL) :
-        PrettyPrinterBase(_os), m_pNode(NULL), m_nFlags(_nFlags), m_bCompact(_bCompact), m_bSingleLine(false),
-        m_pContext(!_pContext ? new Context() : _pContext)
+    PrettyPrinterSyntax(_Stream &_os, bool _bCompact = false, int _nFlags = 0, ContextPtr _pContext = ContextPtr()) :
+        PrettyPrinterBase(_os), m_nFlags(_nFlags), m_bCompact(_bCompact),
+        m_pContext(!_pContext ? std::make_shared<Context>() : _pContext)
     {
         if (m_bCompact)
             m_os.setInline(true);
@@ -58,116 +60,116 @@ public:
     }
 
     void run();
-    void print(ir::Node &_node);
     void print(const ir::NodePtr &_pNode);
 
 protected:
     // NODE / MODULE
-    virtual bool traverseModule(ir::Module &_module);
+    bool traverseModule(const ir::ModulePtr &_module) override;
     void printPath(const ir::NodePtr& _pNode);
 
     // NODE / LABEL
-    virtual bool visitLabel(ir::Label &_label);
+    bool visitLabel(const ir::LabelPtr &_label) override;
 
     // NODE / TYPE
-    virtual bool visitType(ir::Type &_type);
-    virtual bool visitTypeType(ir::TypeType &_type);
-    virtual bool traverseNamedReferenceType(ir::NamedReferenceType &_type);
-    virtual bool visitSetType(ir::SetType &_type);
-    virtual bool visitListType(ir::ListType &_type);
-    virtual bool visitRefType(ir::RefType &_type);
-    virtual bool traverseMapType(ir::MapType &_type);
-    virtual bool traverseSubtype(ir::Subtype &_type);
-    virtual bool traverseRange(ir::Range &_type);
-    virtual bool visitArrayType(ir::ArrayType &_type);
-    virtual bool traverseEnumType(ir::EnumType &_type);
+    bool visitType(const ir::TypePtr &_type) override;
+    bool visitTypeType(const ir::TypeTypePtr &_type) override;
+    bool traverseNamedReferenceType(const ir::NamedReferenceTypePtr &_type) override;
+    bool visitSetType(const ir::SetTypePtr &_type) override;
+    bool visitListType(const ir::ListTypePtr &_type) override;
+    bool visitRefType(const ir::RefTypePtr &_type) override;
+    bool traverseMapType(const ir::MapTypePtr &_type) override;
+    bool traverseSubtype(const ir::SubtypePtr &_type) override;
+    bool traverseRange(const ir::RangePtr &_type) override;
+    bool visitArrayType(const ir::ArrayTypePtr &_type) override;
+    bool traverseEnumType(const ir::EnumTypePtr &_type) override;
     bool needsIndent();
-    virtual bool traverseStructType(ir::StructType &_type);
-    virtual bool traverseUnionConstructorDeclaration(ir::UnionConstructorDeclaration &_cons);
-    virtual bool traverseUnionType(ir::UnionType &_type);
-    virtual bool traversePredicateType(ir::PredicateType &_type);
-    virtual bool traverseParameterizedType(ir::ParameterizedType &_type);
-    virtual bool visitSeqType(ir::SeqType& _type);
-    virtual bool visitOptionalType(ir::OptionalType& _type);
+    bool traverseStructType(const ir::StructTypePtr &_type) override;
+    bool traverseUnionConstructorDeclaration(const ir::UnionConstructorDeclarationPtr &_cons) override;
+    bool traverseUnionType(const ir::UnionTypePtr &_type) override;
+    bool traversePredicateType(const ir::PredicateTypePtr &_type) override;
+    bool traverseParameterizedType(const ir::ParameterizedTypePtr &_type) override;
+    bool visitSeqType(const ir::SeqTypePtr& _type) override;
+    bool visitOptionalType(const ir::OptionalTypePtr& _type) override;
 
     // NODE / STATEMENT
-    virtual bool traverseJump(ir::Jump &_stmt);
-    virtual bool traverseBlock(ir::Block &_stmt);
-    virtual bool traverseParallelBlock(ir::ParallelBlock &_stmt);
-    virtual bool _traverseAnonymousPredicate(ir::AnonymousPredicate &_decl);
-    virtual bool traversePredicate(ir::Predicate &_stmt);
-    virtual bool traverseAssignment(ir::Assignment &_stmt);
-    virtual bool traverseMultiassignment(ir::Multiassignment &_stmt);
-    virtual bool traverseCall(ir::Call &_stmt);
-    virtual bool traverseIf(ir::If &_stmt);
-    virtual bool traverseSwitch(ir::Switch &_stmt);
-    virtual bool traverseSwitchCase(ir::SwitchCase &_case);
-    virtual bool traverseFor(ir::For &_stmt);
-    virtual bool traverseWhile(ir::While &_stmt);
-    virtual bool traverseBreak(ir::Break &_stmt);
-    virtual bool traverseWith(ir::With &_stmt);
-    virtual bool traverseTypeDeclaration(ir::TypeDeclaration &_stmt);
-    virtual bool traverseVariableDeclaration(ir::VariableDeclaration &_stmt);
-    virtual bool traverseVariableDeclarationGroup(ir::VariableDeclarationGroup &_stmt);
-    virtual bool traverseFormulaDeclaration(ir::FormulaDeclaration &_node);
-    virtual bool traverseLemmaDeclaration(ir::LemmaDeclaration &_stmt);
+    bool traverseJump(const ir::JumpPtr &_stmt) override;
+    bool traverseBlock(const ir::BlockPtr &_stmt) override;
+    bool traverseParallelBlock(const ir::ParallelBlockPtr &_stmt) override;
+    bool _traverseAnonymousPredicate(const ir::AnonymousPredicatePtr &_decl) override;
+    bool traversePredicate(const ir::PredicatePtr &_stmt) override;
+    bool traverseAssignment(const ir::AssignmentPtr &_stmt) override;
+    bool traverseMultiassignment(const ir::MultiassignmentPtr &_stmt) override;
+    bool traverseCall(const ir::CallPtr &_stmt) override;
+    bool traverseIf(const ir::IfPtr &_stmt) override;
+    bool traverseSwitch(const ir::SwitchPtr &_stmt) override;
+    bool traverseSwitchCase(const ir::SwitchCasePtr &_case) override;
+    bool traverseFor(const ir::ForPtr &_stmt) override;
+    bool traverseWhile(const ir::WhilePtr &_stmt) override;
+    bool traverseBreak(const ir::BreakPtr &_stmt) override;
+    bool traverseWith(const ir::WithPtr &_stmt) override;
+    bool traverseTypeDeclaration(const ir::TypeDeclarationPtr &_stmt) override;
+    bool traverseVariableDeclaration(const ir::VariableDeclarationPtr &_stmt) override;
+    bool traverseVariableDeclarationGroup(const ir::VariableDeclarationGroupPtr &_stmt) override;
+    bool traverseFormulaDeclaration(const ir::FormulaDeclarationPtr &_node) override;
+    bool traverseLemmaDeclaration(const ir::LemmaDeclarationPtr &_stmt) override;
 
     // NODE / NAMED_VALUE
-    virtual bool traverseNamedValue(ir::NamedValue &_val);
-    virtual bool traverseEnumValue(ir::EnumValue &_val);
-    virtual bool traverseParam(ir::Param &_val);
-    virtual bool traverseVariable(ir::Variable &_val);
+    bool traverseNamedValue(const ir::NamedValuePtr &_val) override;
+    bool traverseEnumValue(const ir::EnumValuePtr &_val) override;
+    bool traverseParam(const ir::ParamPtr &_val) override;
+    bool traverseVariable(const ir::VariablePtr &_val) override;
 
     // NODE / EXPRESSION
-    void printLiteralKind(ir::Literal &_node);
-    void printUnaryOperator(ir::Unary &_node);
-    void printBinaryOperator(ir::Binary &_node);
+    void printLiteralKind(const ir::LiteralPtr &_node);
+    void printUnaryOperator(const ir::UnaryPtr &_node);
+    void printBinaryOperator(const ir::BinaryPtr &_node);
     void printQuantifier(int _quantifier);
     bool needsParen();
-    virtual bool traverseExpression(ir::Expression &_node);
-    virtual bool visitLiteral(ir::Literal &_node);
-    virtual bool visitVariableReference(ir::VariableReference &_node);
-    virtual bool visitPredicateReference(ir::PredicateReference &_node);
-    virtual bool visitLambda(ir::Lambda &_node);
-    virtual bool traverseBinder(ir::Binder &_expr);
-    virtual bool visitUnary(ir::Unary &_node);
-    virtual bool traverseBinary(ir::Binary &_node);
-    virtual bool traverseTernary(ir::Ternary &_node);
-    virtual bool traverseFormula(ir::Formula &_node);
-    virtual bool traverseReplacement(ir::Replacement &_expr);
-    virtual bool traverseRecognizerExpr(ir::RecognizerExpr &_expr);
-    virtual bool traverseAccessorExpr(ir::AccessorExpr &_expr);
-    virtual bool traverseFunctionCall(ir::FunctionCall &_expr);
-    virtual bool traverseFormulaCall(ir::FormulaCall &_node);
-    virtual bool traverseStructFieldDefinition(ir::StructFieldDefinition &_cons);
-    virtual bool traverseStructConstructor(ir::StructConstructor &_expr);
-    virtual bool traverseUnionConstructor(ir::UnionConstructor &_expr);
-    virtual bool traverseElementDefinition(ir::ElementDefinition &_cons);
-    virtual bool traverseArrayConstructor(ir::ArrayConstructor &_expr);
-    virtual bool traverseMapConstructor(ir::MapConstructor &_expr);
-    virtual bool traverseSetConstructor(ir::SetConstructor &_expr);
-    virtual bool traverseListConstructor(ir::ListConstructor &_expr);
-    virtual bool traverseArrayPartDefinition(ir::ArrayPartDefinition &_cons);
-    virtual bool traverseArrayIteration(ir::ArrayIteration &_expr);
-    virtual bool traverseArrayPartExpr(ir::ArrayPartExpr &_expr);
-    virtual bool traverseFieldExpr(ir::FieldExpr &_expr);
-    virtual bool traverseMapElementExpr(ir::MapElementExpr &_expr);
-    virtual bool traverseListElementExpr(ir::ListElementExpr &_expr);
-    virtual bool traverseCastExpr(ir::CastExpr &_expr);
-    virtual bool visitConstructor(ir::Constructor& _expr);
+    bool traverseExpression(const ir::ExpressionPtr &_node) override;
+    bool visitLiteral(const ir::LiteralPtr &_node) override;
+    bool visitVariableReference(const ir::VariableReferencePtr &_node) override;
+    bool visitPredicateReference(const ir::PredicateReferencePtr &_node) override;
+    bool visitLambda(const ir::LambdaPtr &_node) override;
+    bool traverseBinder(const ir::BinderPtr &_expr) override;
+    bool visitUnary(const ir::UnaryPtr &_node) override;
+    bool traverseBinary(const ir::BinaryPtr &_node) override;
+    bool traverseTernary(const ir::TernaryPtr &_node) override;
+    bool traverseFormula(const ir::FormulaPtr &_node) override;
+    bool traverseReplacement(const ir::ReplacementPtr &_expr) override;
+    bool traverseRecognizerExpr(const ir::RecognizerExprPtr &_expr) override;
+    bool traverseAccessorExpr(const ir::AccessorExprPtr &_expr) override;
+    bool traverseFunctionCall(const ir::FunctionCallPtr &_expr) override;
+    bool traverseFormulaCall(const ir::FormulaCallPtr &_node) override;
+    bool traverseStructFieldDefinition(const ir::StructFieldDefinitionPtr &_cons) override;
+    bool traverseStructConstructor(const ir::StructConstructorPtr &_expr) override;
+    bool traverseUnionConstructor(const ir::UnionConstructorPtr &_expr) override;
+    bool traverseElementDefinition(const ir::ElementDefinitionPtr &_cons) override;
+    bool traverseArrayConstructor(const ir::ArrayConstructorPtr &_expr) override;
+    bool traverseMapConstructor(const ir::MapConstructorPtr &_expr) override;
+    bool traverseSetConstructor(const ir::SetConstructorPtr &_expr) override;
+    bool traverseListConstructor(const ir::ListConstructorPtr &_expr) override;
+    bool traverseArrayPartDefinition(const ir::ArrayPartDefinitionPtr &_cons) override;
+    bool traverseArrayIteration(const ir::ArrayIterationPtr &_expr) override;
+    bool traverseArrayPartExpr(const ir::ArrayPartExprPtr &_expr) override;
+    bool traverseFieldExpr(const ir::FieldExprPtr &_expr) override;
+    bool traverseMapElementExpr(const ir::MapElementExprPtr &_expr) override;
+    bool traverseListElementExpr(const ir::ListElementExprPtr &_expr) override;
+    bool traverseCastExpr(const ir::CastExprPtr &_expr) override;
+    bool visitConstructor(const ir::ConstructorPtr& _expr) override;
 
 private:
     ir::NodePtr m_pNode;
     ir::ModulePtr m_pCurrentModule;
-    int m_nFlags;
-    bool m_bCompact, m_bSingleLine;
+    int m_nFlags = 0;
+    bool m_bCompact = false;
+    bool m_bSingleLine = false;
     ContextPtr m_pContext;
 
-    bool _traverseStructType(ir::StructType &_type);
+    bool _traverseStructType(const ir::StructTypePtr &_type);
 };
 
-void prettyPrintSyntax(ir::Node &_node, std::wostream & _os = std::wcout, const ContextPtr& _pContext = NULL,  bool _bNewLine = false);
-void prettyPrintSyntax(ir::Node &_node, size_t nDepth, std::wostream & _os = std::wcout);
+void prettyPrintSyntax(const ir::NodePtr &_node, std::wostream & _os = std::wcout, const ContextPtr& _pContext = NULL,  bool _bNewLine = false);
+void prettyPrintSyntax(const ir::NodePtr &_node, size_t nDepth, std::wostream & _os = std::wcout);
 
 std::wstring fmtRule(size_t _cRuleInd = 0);
 void prettyPrint(const vf::ConjunctPtr& _pConjunct, std::wostream &_os = std::wcout, const ContextPtr& _pContext = NULL);
@@ -178,7 +180,7 @@ void prettyPrint(const vf::Context& _context, std::wostream &_os = std::wcout, c
 }
 
 template<typename _Stream>
-void prettyPrintCompact(ir::Node &_node, _Stream &_os, int _nFlags = 0, const pp::ContextPtr & _pContext = nullptr) {
+void prettyPrintCompact(const ir::NodePtr &_node, _Stream &_os, int _nFlags = 0, const pp::ContextPtr & _pContext = nullptr) {
     pp::PrettyPrinterSyntax(_os, true, _nFlags, _pContext).print(_node);
 }
 

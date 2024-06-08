@@ -12,16 +12,16 @@ namespace ir {
 // Check that only variables are LValues in assignments.
 class CheckAssignments : public Visitor {
 public:
-    virtual bool visitAssignment(Assignment &_node) {
-        if (_node.getLValue()->getKind() != Expression::VAR)
+    bool visitAssignment(const AssignmentPtr &_node) override {
+        if (_node->getLValue()->getKind() != Expression::VAR)
             throw std::runtime_error("Only variables are supported in assignments.");
 
         return true;
     }
 
-    virtual bool visitMultiassignment(Multiassignment &_node) {
-        for (size_t i = 0; i < _node.getLValues().size(); ++i)
-            if (_node.getLValues().get(i)->getKind() != Expression::VAR)
+    bool visitMultiassignment(const MultiassignmentPtr &_node) override {
+        for (size_t i = 0; i < _node->getLValues().size(); ++i)
+            if (_node->getLValues().get(i)->getKind() != Expression::VAR)
                 throw std::runtime_error("Only variables are supported in multiassignments.");
 
         return true;

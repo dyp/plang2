@@ -102,13 +102,13 @@ static std::wstring fmtChar(wchar_t _c) {
     return fmtQuote(std::wstring(&_c, 1));
 }
 
-static std::wstring fmtLiteral(const Literal &_lit) {
-    switch (_lit.getLiteralKind()) {
+static std::wstring fmtLiteral(const LiteralPtr &_lit) {
+    switch (_lit->getLiteralKind()) {
         case Literal::UNIT:   return L"nil";
-        case Literal::NUMBER: return fmtNumber(_lit.getNumber());
-        case Literal::BOOL:   return fmtBool(_lit.getBool());
-        case Literal::CHAR:   return fmtChar(_lit.getChar());
-        case Literal::STRING: return fmtQuote(_lit.getString());
+        case Literal::NUMBER: return fmtNumber(_lit->getNumber());
+        case Literal::BOOL:   return fmtBool(_lit->getBool());
+        case Literal::CHAR:   return fmtChar(_lit->getChar());
+        case Literal::STRING: return fmtQuote(_lit->getString());
         default:              return L"";
     }
 }
@@ -184,14 +184,14 @@ std::wstring PrettyPrinterBase::fmtType(int _kind) {
 }
 
 #define VISITOR(_NODE, ...)                                 \
-        virtual bool visit##_NODE(_NODE &_node) {           \
+        virtual bool visit##_NODE(const _NODE##Ptr &_node) {           \
             m_os << fmtIndent(L" : " WIDEN(#_NODE) L"\n");  \
             { __VA_ARGS__ }                                 \
             return true;                                    \
         }
 
 #define HANDLER(_ROLE)                                  \
-    virtual int handle##_ROLE(Node &_node) {            \
+    virtual int handle##_ROLE(NodePtr &) {            \
         m_os << fmtIndent(L"* " WIDEN(#_ROLE) L"\n");   \
         return 0;                                       \
     }
@@ -214,7 +214,7 @@ class PrettyPrinter: public PrettyPrinterAST {
 public:
     PrettyPrinter(std::wostream &_os) : PrettyPrinterAST(_os) {}
 
-    void print(Node &_node) {
+    void print(const NodePtr &_node) {
         traverseNode(_node);
     }
 
@@ -222,7 +222,7 @@ protected:
 
 #define PROP(_FMT, _NAME)                                                                               \
         do {                                                                                            \
-            m_os << fmtIndent(L" `- " WIDEN(#_NAME) L" = ") + fmt##_FMT(_node.get##_NAME()) + L"\n";    \
+            m_os << fmtIndent(L" `- " WIDEN(#_NAME) L" = ") + fmt##_FMT(_node->get##_NAME()) + L"\n";    \
         } while (0)
 
 #define PROP_VAL(_FMT)                                                      \
@@ -232,15 +232,15 @@ protected:
 
 #define PROP_IS(_NAME)                                                                              \
         do {                                                                                        \
-            m_os << fmtIndent(L" `- " WIDEN(#_NAME) L" = ") + fmtBool(_node.is##_NAME()) + L"\n";   \
+            m_os << fmtIndent(L" `- " WIDEN(#_NAME) L" = ") + fmtBool(_node->is##_NAME()) + L"\n";   \
         } while (0)
 
     VISITOR(Type,
-            if (_node.getKind() <= Type::GENERIC)
+            if (_node->getKind() <= Type::GENERIC)
                 PROP(Type, Kind);
             else
                 PROP(Int, Kind);
-            if (_node.getKind() >= Type::NAT && _node.getKind() <= Type::REAL)
+            if (_node->getKind() >= Type::NAT && _node->getKind() <= Type::REAL)
                 PROP(Bits, Bits);
     );
 
@@ -288,8 +288,8 @@ protected:
     );
 
     VISITOR(NamedValue,
-            if (_node.getKind() != NamedValue::PREDICATE_PARAMETER ||
-                    static_cast<const Param &>(_node).isUsed())
+            if (_node->getKind() != NamedValue::PREDICATE_PARAMETER ||
+                    _node->as<Param>()->isUsed())
                 PROP(Quote, Name);
     );
 
@@ -298,12 +298,12 @@ protected:
     );
 
     VISITOR(Expression,
-            VISITOR_TRAVERSE(Type, ExprType, _node.getType(), _node, Expression, setType);
+            VISITOR_TRAVERSE(Type, ExprType, _node->getType(), _node, Expression, setType);
             return true;
     );
 
     VISITOR(Param,
-            PROP(Bool, LinkedParam);
+//            PROP(Param, LinkedParam);
             PROP_IS(Output);
     );
 
@@ -337,15 +337,15 @@ protected:
     );
 };
 
-void prettyPrint(Module & _module, std::wostream & _os) {
+void prettyPrint(const ModulePtr & _module, std::wostream & _os) {
     PrettyPrinter pp(_os);
-    Param::updateUsed(_module);
+    Param::updateUsed(_module->as<Node>());
     pp.traverseModule(_module);
 }
 
-void print(ir::Node &_node, std::wostream &_os) {
+void print(const ir::NodePtr &_node, std::wostream &_os) {
     PrettyPrinter pp(_os);
-    Param::updateUsed(_node);
+    Param::updateUsed(_node->as<Node>());
     pp.traverseNode(_node);
 }
 
@@ -418,7 +418,7 @@ public:
 
         size_t c = 0;
 
-        for (tc::Formulas::iterator i = _constraints->begin(); i != _constraints->end(); ++i, ++c) {
+        for (tc::Formulas::iterator i = _constraints.formulas()->begin(); i != _constraints.formulas()->end(); ++i, ++c) {
             tc::Formula &f = **i;
 
             if (!f.is(tc::Formula::COMPOUND))

@@ -14,7 +14,7 @@ class Builtins {
 public:
     static Builtins &instance();
 
-    PredicatePtr find(const std::wstring &_name) const;
+    PredicatePtr find(const std::wstring &_name);
 
 private:
     Collection<Predicate> m_predicates;

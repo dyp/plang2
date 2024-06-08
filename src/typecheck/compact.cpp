@@ -23,16 +23,16 @@ bool Compact::_run(int & _nResult) {
 
     tc::CompoundFormula &cf = (tc::CompoundFormula &)**m_iCurrentCF;
 
-    if (_context()->size() != 1)
+    if (_context()->formulas()->size() != 1)
         return false;
 
     for (size_t k = m_nCurrentCFPart + 1; k < cf.size(); ++k) {
         tc::Formulas &other = cf.getPart(k);
 
-        if (other.size() != 1 || _context()->size() != 1)
+        if (other.size() != 1 || _context()->formulas()->size() != 1)
             continue;
 
-        tc::FormulaPtr pSub = *_context()->begin(), pEq = *other.begin();
+        tc::FormulaPtr pSub = *_context()->formulas()->begin(), pEq = *other.begin();
 
         if (!pEq->is(tc::Formula::EQUALS))
             std::swap(pSub, pEq);
@@ -41,9 +41,9 @@ bool Compact::_run(int & _nResult) {
                 (*pSub->getLhs() == *pEq->getLhs() && *pSub->getRhs() == *pEq->getRhs()) ||
                 (*pSub->getLhs() == *pEq->getRhs() && *pSub->getRhs() == *pEq->getLhs())))
         {
-            _context()->clear();
-            _context()->insert(new tc::Formula(tc::Formula::SUBTYPE, pSub->getLhs(), pSub->getRhs()));
-            other.pFlags->filterTo(*_context()->pFlags, *pSub);
+            _context()->formulas()->clear();
+            _context()->formulas()->insert(std::make_shared<tc::Formula>(tc::Formula::SUBTYPE, pSub->getLhs(), pSub->getRhs()));
+            other.pFlags->filterTo(*_context()->formulas()->pFlags, *pSub);
             bModified = true;
             cf.removePart(k);
             --k;
@@ -53,8 +53,8 @@ bool Compact::_run(int & _nResult) {
     return bModified;
 }
 
-Auto<Operation> Operation::compact() {
-    return new Compact();
+OperationPtr Operation::compact() {
+    return std::make_shared<Compact>();
 }
 
 }

@@ -24,30 +24,30 @@ bool StaticTypeChecker::checkArrayConstructor(ArrayConstructor& arrayConstructor
         printTypecheckInfo(L"Static type checking failed", L"", PRINT_RED, 2);
         return false;
     }
-    TypePtr arrayBaseType = new Type(Type::BOTTOM);
+    auto arrayBaseType = std::make_shared<Type>(Type::BOTTOM);
     for (const auto& i: arrayConstructor)
         arrayBaseType = getTypeJoin(arrayBaseType, i->getValue()->getType());
     bool haveIndices = std::all_of(arrayConstructor.begin(), arrayConstructor.end(),
                     [](ElementDefinitionPtr x){if (x->getIndex()) return true; return false;});
     if (!haveIndices) {
-        LiteralPtr upperBound = new Literal(Number::makeNat(arrayConstructor.size()));
-        upperBound->setType(new Type(Type::NAT, upperBound->getNumber().countBits(false)));
-        SubtypePtr arrayDimensionType = new Subtype(new NamedValue(L"", upperBound->getType()));
-        arrayDimensionType->setExpression(new Binary(Binary::LESS,
-                                                     new VariableReference(arrayDimensionType->getParam()),
+        const auto upperBound = std::make_shared<Literal>(Number::makeNat(arrayConstructor.size()));
+        upperBound->setType(std::make_shared<Type>(Type::NAT, upperBound->getNumber().countBits(false)));
+        const auto arrayDimensionType = std::make_shared<Subtype>(std::make_shared<NamedValue>(L"", upperBound->getType()));
+        arrayDimensionType->setExpression(std::make_shared<Binary>(Binary::LESS,
+                                                     std::make_shared<VariableReference>(arrayDimensionType->getParam()),
                                                      upperBound));
         for (size_t i = 0; i < arrayConstructor.size(); ++i) {
-            LiteralPtr index = new Literal(Number::makeNat(i));
-            index->setType(new Type(Type::NAT, index->getNumber().countBits(false)));
+            const auto index = std::make_shared<Literal>(Number::makeNat(i));
+            index->setType(std::make_shared<Type>(Type::NAT, index->getNumber().countBits(false)));
             arrayConstructor.get(i)->setIndex(index);
         }
         typeWarning(L"array constructor", arrayBaseType->getKind() != Type::BOTTOM &&
                                          arrayBaseType->getKind() != Type::TOP);
         typeWarning(L"array constructor", arrayDimensionType->getKind() != Type::BOTTOM &&
                                          arrayDimensionType->getKind() != Type::TOP);
-        arrayConstructor.setType(new ArrayType(arrayBaseType, arrayDimensionType));
+        arrayConstructor.setType(std::make_shared<ArrayType>(arrayBaseType, arrayDimensionType));
     } else {
-        TypePtr paramType = new Type(Type::BOTTOM);
+        auto paramType = std::make_shared<Type>(Type::BOTTOM);
         for (const auto& i : arrayConstructor)
             if (i->getIndex()) {
                 if(isFresh(i->getIndex()->getType())) {
@@ -56,28 +56,28 @@ bool StaticTypeChecker::checkArrayConstructor(ArrayConstructor& arrayConstructor
                 } else
                     paramType = getTypeJoin(paramType, i->getIndex()->getType());
             }
-        VariableReferencePtr param = new VariableReference(L"", new NamedValue(L"", paramType));
-        SubtypePtr arrayDimensionType = new Subtype(param->getTarget());
-        ExpressionPtr subtypeExpression = new Literal(false);
-        ExpressionPtr lastIndex = new Literal(Number::makeNat(0));
+        const auto param = std::make_shared<VariableReference>(L"", std::make_shared<NamedValue>(L"", paramType));
+        const auto arrayDimensionType = std::make_shared<Subtype>(param->getTarget());
+        ExpressionPtr subtypeExpression = std::make_shared<Literal>(false);
+        ExpressionPtr lastIndex = std::make_shared<Literal>(Number::makeNat(0));
 
         for (const auto& i : arrayConstructor)
             if (i->getIndex()) {
-                subtypeExpression = new Binary(Binary::BOOL_OR, subtypeExpression,
-                                               new Binary(Binary::EQUALS, param, i->getIndex()));
+                subtypeExpression = std::make_shared<Binary>(Binary::BOOL_OR, subtypeExpression,
+                                               std::make_shared<Binary>(Binary::EQUALS, param, i->getIndex()));
                 lastIndex = i->getIndex();
             } else {
-                subtypeExpression = new Binary(Binary::BOOL_OR, subtypeExpression,
-                                               new Binary(Binary::EQUALS, param,
-                                                          new Binary(Binary::ADD, lastIndex,
-                                                                     new Literal(Number::makeNat(1)))));
+                subtypeExpression = std::make_shared<Binary>(Binary::BOOL_OR, subtypeExpression,
+                                               std::make_shared<Binary>(Binary::EQUALS, param,
+                                                          std::make_shared<Binary>(Binary::ADD, lastIndex,
+                                                                     std::make_shared<Literal>(Number::makeNat(1)))));
             }
         arrayDimensionType->setExpression(subtypeExpression);
         typeWarning(L"array constructor", arrayBaseType->getKind() != Type::BOTTOM &&
                                           arrayBaseType->getKind() != Type::TOP);
         typeWarning(L"array constructor", arrayDimensionType->getKind() != Type::BOTTOM &&
                                           arrayDimensionType->getKind() != Type::TOP);
-        arrayConstructor.setType(new ArrayType(arrayBaseType, arrayDimensionType));
+        arrayConstructor.setType(std::make_shared<ArrayType>(arrayBaseType, arrayDimensionType));
     }
     return true;
 }
@@ -96,9 +96,9 @@ bool StaticTypeChecker::checkArrayPartExpr(ArrayPartExpr &arrayPartExpr) {
         return false;
     }
     for (const auto& i: arrayPartExpr.getIndices())
-        typeError("type of dimension",isSubtype(i->getType(), new Type(Type::INT, Number::GENERIC)));
+        typeError("type of dimension",isSubtype(i->getType(), std::make_shared<Type>(Type::INT, Number::GENERIC)));
     if (arrayPartExpr.getObject()->getType()->getKind() == Type::ARRAY) {
-        ArrayTypePtr arrayType = arrayPartExpr.getObject()->getType().as<ArrayType>();
+        const auto arrayType = arrayPartExpr.getObject()->getType()->as<ArrayType>();
         Collection<Type> dimensionTypes;
         arrayType->getDimensions(dimensionTypes);
         if (arrayType->getDimensionsCount() != arrayPartExpr.getIndices().size())
@@ -111,17 +111,17 @@ bool StaticTypeChecker::checkArrayPartExpr(ArrayPartExpr &arrayPartExpr) {
         setType(arrayPartExpr, arrayBaseType);
     }
     if (arrayPartExpr.getObject()->getType()->getKind() == Type::MAP) {
-        MapTypePtr mapType = arrayPartExpr.getObject()->getType().as<MapType>();
+        const auto mapType = arrayPartExpr.getObject()->getType()->as<MapType>();
         typeError("map type", arrayPartExpr.getIndices().size() == 1);
         typeError("map type", isSubtype(arrayPartExpr.getIndices().get(0)->getType(), mapType->getIndexType()));
-        TypePtr mapBaseType = mapType->getBaseType();
+        const auto mapBaseType = mapType->getBaseType();
         setType(arrayPartExpr, mapBaseType);
     }
     if (arrayPartExpr.getObject()->getType()->getKind() == Type::LIST) { 
         typeError("list type", arrayPartExpr.getIndices().size() == 1);
         typeError("list type", isSubtype(arrayPartExpr.getIndices().get(0)->getType(), 
-                                         new Type(Type::NAT, Number::GENERIC)));
-        TypePtr listBaseType = arrayPartExpr.getObject()->getType().as<ListType>()->getBaseType();
+                                         std::make_shared<Type>(Type::NAT, Number::GENERIC)));
+        const auto listBaseType = arrayPartExpr.getObject()->getType()->as<ListType>()->getBaseType();
         setType(arrayPartExpr, listBaseType);
     }
     return true;
@@ -137,7 +137,7 @@ bool StaticTypeChecker::checkArrayType(ArrayType &arrayType) {
     }
     for (const auto& i : dimensionTypes)
         typeError("array dimension", 
-                  isSubtype(i, new Type(Type::INT, Number::GENERIC)));
+                  isSubtype(i, std::make_shared<Type>(Type::INT, Number::GENERIC)));
     return true;
 }
 
@@ -184,7 +184,7 @@ bool StaticTypeChecker::checkBinary(Binary &binary) {
                     setType(binary, joinType);
                     return true;
                 case Type::NAT:
-                    setType(binary, new Type(Type::INT, Number::GENERIC));
+                    setType(binary, std::make_shared<Type>(Type::INT, Number::GENERIC));
                     return true;
                 default:
                     typeError("binary minus");
@@ -210,7 +210,7 @@ bool StaticTypeChecker::checkBinary(Binary &binary) {
                 case Type::REAL:
                 case Type::ENUM:
                 case Type::CHAR:
-                    setType(binary, new Type(Type::BOOL));
+                    setType(binary, std::make_shared<Type>(Type::BOOL));
                     return true;
                 default:
                     typeError("binary operation");
@@ -254,7 +254,7 @@ bool StaticTypeChecker::checkBinary(Binary &binary) {
         case Binary::EQUALS:
         case Binary::NOT_EQUALS:
             if (isSubtype(typeOfLeft, typeOfRight) || isSubtype(typeOfRight, typeOfLeft)) {
-                setType(binary, new Type(Type::BOOL));
+                setType(binary, std::make_shared<Type>(Type::BOOL));
                 return true;
             }
             else
@@ -270,9 +270,9 @@ bool StaticTypeChecker::checkBinary(Binary &binary) {
                 typeError("binary operation");
         case Binary::IN:
             if (typeOfRight->getKind() == Type::SET) { ;
-                TypePtr BaseType = typeOfRight.as<SetType>()->getBaseType();
+                TypePtr BaseType = typeOfRight->as<SetType>()->getBaseType();
                 if (isSubtype(typeOfLeft, BaseType)) {
-                    setType(binary, new Type(Type::BOOL));
+                    setType(binary, std::make_shared<Type>(Type::BOOL));
                     return true;
                 }
             }
@@ -290,10 +290,10 @@ bool StaticTypeChecker::checkBinder(Binder &binder) {
 
 bool StaticTypeChecker::checkCall(Call &call, const ir::Context &context) {
     printTypecheckInfo(L"Start check for: ", str(call), PRINT_BLUE, 1);
-    PredicateReferencePtr predicateReference = call.getPredicate().as<PredicateReference>();
+    const auto predicateReference = call.getPredicate()->as<PredicateReference>();
     Predicates predicates;
     if(predicateReference->getType() && predicateReference->getType()->getKind() == Type::PREDICATE) {
-        PredicateTypePtr predicateType = predicateReference->getType().as<PredicateType>();
+        const auto predicateType = predicateReference->getType()->as<PredicateType>();
         if ((predicateType->getOutParams().size() != call.getBranches().size()) ||
             (predicateType->getInParams().size() != call.getArgs().size()))
             typeError("predicate call");
@@ -399,15 +399,15 @@ bool StaticTypeChecker::checkFieldExpr(FieldExpr &fieldExpr) {
         return false;
     }
     typeError("field expression", fieldExpr.getObject()->getType()->getKind() == Type::STRUCT);
-    NamedValues fields = fieldExpr.getObject()->getType().as<StructType>()->getNamesOrd();
-    for (size_t i = 0; i < fields.size(); i++) {
-        if (fields.get(i)->getName() == fieldExpr.getFieldName()){
-            if (isFresh(fields.get(i)->getType())) {
+    const auto fields = fieldExpr.getObject()->getType()->as<StructType>()->getNamesOrd();
+    for (size_t i = 0; i < fields->size(); i++) {
+        if (fields->get(i)->getName() == fieldExpr.getFieldName()){
+            if (isFresh(fields->get(i)->getType())) {
                 printTypecheckInfo(L"Static type checking failed", L"", PRINT_RED, 2);
                 return false;
             }
             else {
-                setType(fieldExpr, fields.get(i)->getType());
+                setType(fieldExpr, fields->get(i)->getType());
                 return true;
             }
         }
@@ -423,7 +423,7 @@ bool StaticTypeChecker::checkFormula(Formula &formula) {
         return false;
     }
     typeError("formula", formula.getSubformula()->getType()->getKind() == Type::BOOL);
-    setType(formula, new Type(Type::BOOL));
+    setType(formula, std::make_shared<Type>(Type::BOOL));
     return true;
 }
 
@@ -444,7 +444,7 @@ bool StaticTypeChecker::checkFormulaCall(FormulaCall &formulaCall) {
 
 bool StaticTypeChecker::checkFunctionCall(FunctionCall &functionCall, const ir::Context &context) {
     printTypecheckInfo(L"Start check for: ", str(functionCall), PRINT_BLUE, 1);
-    PredicateReferencePtr predicateReference = functionCall.getPredicate().as<PredicateReference>();
+    const auto predicateReference = functionCall.getPredicate()->as<PredicateReference>();
     Predicates funcs;
     context.getPredicates(predicateReference->getName(), funcs);
     TypePtr suitedFunc = nullptr;
@@ -482,7 +482,7 @@ bool StaticTypeChecker::checkFunctionCall(FunctionCall &functionCall, const ir::
                 suitedFunc = func->getOutParams().get(0)->get(0)->getType();
         }
     }
-    typeError("predicate call", suitedFunc);
+    typeError("predicate call", bool(suitedFunc));
     setType(functionCall, suitedFunc);
     return true;
 }
@@ -511,11 +511,11 @@ bool StaticTypeChecker::checkListConstructor(ListConstructor &listConstructor) {
         printTypecheckInfo(L"Static type checking failed", L"", PRINT_RED, 2);
         return false;
     }
-    TypePtr listBaseType = new Type(Type::BOTTOM);
+    auto listBaseType = std::make_shared<Type>(Type::BOTTOM);
     for (auto i : listConstructor)
         listBaseType = getTypeJoin(listBaseType, i->getType());
     typeWarning(L"list constructor", listBaseType->getKind() != Type::BOTTOM && listBaseType->getKind() != Type::TOP);
-    setType(listConstructor, new ListType(listBaseType));
+    setType(listConstructor, std::make_shared<ListType>(listBaseType));
     return true;
 }
 
@@ -523,27 +523,27 @@ bool StaticTypeChecker::checkLiteral(Literal &literal) {
     printTypecheckInfo(L"Start check for: ", str(literal), PRINT_BLUE, 1);
     switch (literal.getLiteralKind()) {
         case Literal::UNIT:
-            setType(literal, new Type(Type::UNIT));
+            setType(literal, std::make_shared<Type>(Type::UNIT));
             break;
         case Literal::NUMBER: {
             const Number &num = literal.getNumber();
 
             if (num.isNat())
-                setType(literal, new Type(Type::NAT, num.countBits(false)));
+                setType(literal, std::make_shared<Type>(Type::NAT, num.countBits(false)));
             else if (num.isInt())
-                setType(literal, new Type(Type::INT, num.countBits(true)));
+                setType(literal, std::make_shared<Type>(Type::INT, num.countBits(true)));
             else
-                setType(literal, new Type(Type::REAL, num.countBits(false)));
+                setType(literal, std::make_shared<Type>(Type::REAL, num.countBits(false)));
             break;
         }
         case Literal::BOOL:
-            setType(literal, new Type(Type::BOOL));
+            setType(literal, std::make_shared<Type>(Type::BOOL));
             break;
         case Literal::CHAR:
-            setType(literal, new Type(Type::CHAR));
+            setType(literal, std::make_shared<Type>(Type::CHAR));
             break;
         case Literal::STRING:
-            setType(literal, new Type(Type::STRING));
+            setType(literal, std::make_shared<Type>(Type::STRING));
             break;
         default:
             break;
@@ -559,15 +559,15 @@ bool StaticTypeChecker::checkMapConstructor(MapConstructor &mapConstructor) {
         printTypecheckInfo(L"Static type checking failed", L"", PRINT_RED, 2);
         return false;
     }
-    TypePtr mapBaseType = new Type(Type::BOTTOM);
-    TypePtr mapIndexType = new Type(Type::BOTTOM);
+    auto mapBaseType = std::make_shared<Type>(Type::BOTTOM);
+    auto mapIndexType = std::make_shared<Type>(Type::BOTTOM);
     for(const auto& i : mapConstructor) {
         mapBaseType = getTypeJoin(mapBaseType, i->getValue()->getType());
         mapIndexType = getTypeJoin(mapIndexType, i->getIndex()->getType());
     }
     typeWarning(L"map constructor", mapBaseType->getKind() == Type::BOTTOM || mapBaseType->getKind() == Type::TOP);
     typeWarning(L"map constructor", mapIndexType->getKind() == Type::BOTTOM || mapIndexType->getKind() == Type::TOP);
-    setType(mapConstructor, new MapType(mapIndexType, mapBaseType));
+    setType(mapConstructor, std::make_shared<MapType>(mapIndexType, mapBaseType));
     return true;
 }
 
@@ -585,16 +585,16 @@ bool StaticTypeChecker::checkPredicateReference(PredicateReference &predicateRef
 
 SubtypePtr StaticTypeChecker::checkRange(Range &range) {
     printTypecheckInfo(L"Start check for: ", str(range), PRINT_BLUE, 1);
-    TypePtr rangeMaxType = range.getMax()->getType();
-    TypePtr rangeMinType = range.getMin()->getType();
+    const auto rangeMaxType = range.getMax()->getType();
+    const auto rangeMinType = range.getMin()->getType();
     if (isFresh(rangeMinType) || isFresh(rangeMaxType)) {
         printTypecheckInfo(L"Static type checking failed", L"", PRINT_RED, 2);
         return nullptr;
     }
-    TypePtr rangeParamType = getTypeJoin(rangeMaxType, rangeMinType);
+    const auto rangeParamType = getTypeJoin(rangeMaxType, rangeMinType);
     typeError("range", rangeParamType->getKind() == Type::INT || rangeParamType->getKind() == Type::NAT||
                        rangeParamType->getKind() == Type::ENUM || rangeParamType->getKind() == Type::CHAR);
-    SubtypePtr subtype = range.asSubtype();
+    const auto subtype = range.asSubtype();
     subtype->getParam()->setType(rangeParamType);
 
     return subtype;
@@ -606,9 +606,9 @@ bool StaticTypeChecker::checkRecognizerExpr(RecognizerExpr &recognizerExpr) {
         printTypecheckInfo(L"Static type checking failed", L"", PRINT_RED, 2);
         return false;
     }
-    setType(recognizerExpr, new Type(Type::BOOL));
+    setType(recognizerExpr, std::make_shared<Type>(Type::BOOL));
     UnionConstructorDeclarations constructorDeclarations = 
-            recognizerExpr.getObject()->getType().as<UnionType>()->getConstructors();
+            recognizerExpr.getObject()->getType()->as<UnionType>()->getConstructors();
     auto it = std::find_if(constructorDeclarations.begin(), constructorDeclarations.end(),
                [recognizerExpr](UnionConstructorDeclarationPtr x){
                    return x->getName() == recognizerExpr.getConstructorName();});
@@ -638,11 +638,11 @@ bool StaticTypeChecker::checkSetConstructor(SetConstructor &setConstructor) {
         printTypecheckInfo(L"Static type checking failed", L"", PRINT_RED, 2);
         return false;
     }
-    TypePtr setBaseType = new Type(Type::BOTTOM);
+    auto setBaseType = std::make_shared<Type>(Type::BOTTOM);
     for (const auto& i : setConstructor)
         setBaseType = getTypeJoin(setBaseType, i->getType());
     typeWarning(L"set constructor", setBaseType->getKind() != Type::BOTTOM && setBaseType->getKind() != Type::TOP);
-    setType(setConstructor, new SetType(setBaseType));
+    setType(setConstructor, std::make_shared<SetType>(setBaseType));
     return true;
 }
 
@@ -654,14 +654,14 @@ bool StaticTypeChecker::checkStructConstructor(StructConstructor &structConstruc
         printTypecheckInfo(L"Static type checking failed", L"", PRINT_RED, 2);
         return false;
     }
-    StructTypePtr structType = new StructType();
+    const auto structType = std::make_shared<StructType>();
     for (const auto& i : structConstructor) {
-        NamedValuePtr field = new NamedValue(i->getName());
+        const auto field = std::make_shared<NamedValue>(i->getName());
         setType(*field, i->getValue()->getType());
         if (i->getName().empty())
-            structType->getTypesOrd().add(field);
+            structType->getTypesOrd()->add(field);
         else
-            structType->getNamesSet().add(field);
+            structType->getNamesSet()->add(field);
         i->setField(field);
     }
     setType(structConstructor, structType);
@@ -686,8 +686,8 @@ bool StaticTypeChecker::checkTernary(Ternary &ternary) {
 
 bool StaticTypeChecker::checkTypeExpr(TypeExpr &typeExpr) {
     printTypecheckInfo(L"Start check for: ", str(typeExpr), PRINT_BLUE, 1);
-    TypeTypePtr typeType = new TypeType();
-    typeType->setDeclaration(new TypeDeclaration(L"", typeExpr.getContents()));
+    TypeTypePtr typeType = std::make_shared<TypeType>();
+    typeType->setDeclaration(std::make_shared<TypeDeclaration>(L"", typeExpr.getContents()));
     typeExpr.setType(typeType);
     return true;
 }
@@ -703,13 +703,13 @@ bool StaticTypeChecker::checkUnary(Unary &unary) {
         case Unary::MINUS:
             switch (exprType->getKind()) {
                 case Type::INT:
-                    setType(unary, new Type(Type::INT, Number::GENERIC));
+                    setType(unary, std::make_shared<Type>(Type::INT, Number::GENERIC));
                     return true;
                 case Type::REAL:
-                    setType(unary, new Type(Type::REAL, Number::GENERIC));
+                    setType(unary, std::make_shared<Type>(Type::REAL, Number::GENERIC));
                     return true;
                 case Type::NAT:
-                    setType(unary, new Type(Type::INT, Number::GENERIC));
+                    setType(unary, std::make_shared<Type>(Type::INT, Number::GENERIC));
                     return true;
                 default:
                     typeError("unary minus");
@@ -717,13 +717,13 @@ bool StaticTypeChecker::checkUnary(Unary &unary) {
         case Unary::PLUS:
             switch (exprType->getKind()) {
                 case Type::INT:
-                    setType(unary, new Type(Type::INT, Number::GENERIC));
+                    setType(unary, std::make_shared<Type>(Type::INT, Number::GENERIC));
                     return true;
                 case Type::REAL:
-                    setType(unary, new Type(Type::REAL, Number::GENERIC));
+                    setType(unary, std::make_shared<Type>(Type::REAL, Number::GENERIC));
                     return true;
                 case Type::NAT:
-                    setType(unary, new Type(Type::INT, Number::GENERIC));
+                    setType(unary, std::make_shared<Type>(Type::INT, Number::GENERIC));
                     return true;
                 default:
                     typeError("unary plus");
@@ -731,7 +731,7 @@ bool StaticTypeChecker::checkUnary(Unary &unary) {
         case Unary::BOOL_NEGATE:
             switch (exprType->getKind()) {
                 case Type::BOOL:
-                    setType(unary, new Type(Type::BOOL));
+                    setType(unary, std::make_shared<Type>(Type::BOOL));
                     return true;
                 case Type::SET:
                     setType(unary, clone(exprType));
@@ -742,10 +742,10 @@ bool StaticTypeChecker::checkUnary(Unary &unary) {
         case Unary::BITWISE_NEGATE:
             switch (exprType->getKind()) {
                 case Type::INT:
-                    setType(unary, new Type(Type::INT, Number::GENERIC));
+                    setType(unary, std::make_shared<Type>(Type::INT, Number::GENERIC));
                     return true;
                 case Type::NAT:
-                    setType(unary, new Type(Type::INT, Number::GENERIC));
+                    setType(unary, std::make_shared<Type>(Type::INT, Number::GENERIC));
                     return true;
                 default:
                     typeError("unary operation");
@@ -764,13 +764,13 @@ bool StaticTypeChecker::checkUnionConstructor(UnionConstructor &unionConstructor
         printTypecheckInfo(L"Static type checking failed", L"", PRINT_RED, 2);
         return false;
     }
-    UnionTypePtr unionType = new UnionType();
-    UnionConstructorDeclarationPtr constructorDeclaration = new UnionConstructorDeclaration(unionConstructor.getName());
+    const auto unionType = std::make_shared<UnionType>();
+    const auto constructorDeclaration = std::make_shared<UnionConstructorDeclaration>(unionConstructor.getName());
     unionType->getConstructors().add(constructorDeclaration);
     for (auto i : unionConstructor) {
-        NamedValuePtr field = new NamedValue(i->getName());
+        const auto field = std::make_shared<NamedValue>(i->getName());
         setType(*field, i->getValue()->getType());
-        constructorDeclaration->getStructFields()->getNamesOrd().add(field);
+        constructorDeclaration->getStructFields()->getNamesOrd()->add(field);
         i->setField(field);
     }
     setType(unionConstructor, unionType);
@@ -825,20 +825,20 @@ void StaticTypeChecker::printTypecheckInfo(std::wstring head, std::wstring msg, 
 
 TypePtr StaticTypeChecker::getGeneralType(const TypePtr &type) {
     if (type->getKind() == Type::RANGE)
-        return getGeneralType(getTypeJoin(type.as<Range>()->getMax()->getType(),
-                                          type.as<Range>()->getMin()->getType()));
+        return getGeneralType(getTypeJoin(type->as<Range>()->getMax()->getType(),
+                                          type->as<Range>()->getMin()->getType()));
     if (type->getKind() == Type::SUBTYPE)
-        return getGeneralType(type.as<Subtype>()->getParam()->getType());
+        return getGeneralType(type->as<Subtype>()->getParam()->getType());
     return type;
 }
 
 bool StaticTypeChecker::isSubtype(const TypePtr &type1, const TypePtr &type2) {
-    TypePtr generalType1 = getGeneralType(type1);
-    TypePtr generalType2 = getGeneralType(type2);
-    printTypecheckInfo(L"Subtype check ", str(*generalType1) + L" <: " + str(*generalType2), PRINT_BLUE, 2);
+    const auto generalType1 = getGeneralType(type1);
+    const auto generalType2 = getGeneralType(type2);
+    printTypecheckInfo(L"Subtype check ", str(generalType1) + L" <: " + str(generalType2), PRINT_BLUE, 2);
     if (type1->getKind() == Type::ARRAY && type2->getKind() == Type::ARRAY) {
-        ArrayTypePtr arrayType1 = type1.as<ArrayType>();
-        ArrayTypePtr arrayType2 = type2.as<ArrayType>();
+        const auto arrayType1 = type1->as<ArrayType>();
+        const auto arrayType2 = type2->as<ArrayType>();
         Collection<Type> dimension1;
         Collection<Type> dimension2;
         arrayType1->getDimensions(dimension1);
@@ -855,23 +855,24 @@ bool StaticTypeChecker::isSubtype(const TypePtr &type1, const TypePtr &type2) {
         return isSubtype(arrayType1->getBaseType(), arrayType2->getBaseType());
     }
     if (type1->getKind() == Type::LIST && type2->getKind() == Type::LIST)
-        return isSubtype(type1.as<ListType>()->getBaseType(), type2.as<ListType>()->getBaseType());
+        return isSubtype(type1->as<ListType>()->getBaseType(), type2->as<ListType>()->getBaseType());
     return generalType1->compare(*generalType2, Type::ORD_SUB) ||
            generalType1->compare(*generalType2, Type::ORD_EQUALS);
 }
 
 bool StaticTypeChecker::isTypeEqual(const TypePtr &type1, const TypePtr &type2) {
-    TypePtr generalType1 = getGeneralType(type1);
-    TypePtr generalType2 = getGeneralType(type2);
-    printTypecheckInfo(L"Check equals ", str(*generalType1) + L" <=> " + str(*generalType2), PRINT_BLUE, 2);
+    const auto tJoin = type1->getJoin(type2);
+    const auto generalType1 = getGeneralType(type1);
+    const auto generalType2 = getGeneralType(type2);
+    printTypecheckInfo(L"Check equals ", str(generalType1) + L" <=> " + str(generalType2), PRINT_BLUE, 2);
     return isSubtype(generalType1, generalType2) && isSubtype(generalType1, generalType2);
 }
 
 TypePtr StaticTypeChecker::getTypeJoin(const TypePtr &type1, const TypePtr &type2) {
     TypePtr generalType1 = getGeneralType(type1);
     TypePtr generalType2 = getGeneralType(type2);
-    TypePtr tJoin = generalType1->getJoin(*generalType2);
-    printTypecheckInfo(L"Get Join ", str(*generalType1) + L" & " + str(*generalType2) + L" => " + str(*tJoin),
+    TypePtr tJoin = generalType1->getJoin(generalType2);
+    printTypecheckInfo(L"Get Join ", str(generalType1) + L" & " + str(generalType2) + L" => " + str(tJoin),
                        PRINT_BLUE, 2);
     return tJoin;
 }
@@ -884,29 +885,28 @@ bool StaticTypeChecker::isFresh(const TypePtr &type) {
         case Type::GENERIC:
             return true;
         case Type::ARRAY:
-            return isFresh(generalType.as<ArrayType>()->getBaseType());
+            return isFresh(generalType->as<ArrayType>()->getBaseType());
         case Type::RANGE:
-            return isFresh(generalType.as<Range>()->getMin()->getType()) || isFresh(type.as<Range>()->getMax()->getType());
+            return isFresh(generalType->as<Range>()->getMin()->getType()) || isFresh(type->as<Range>()->getMax()->getType());
         case Type::SUBTYPE:
-            return isFresh(generalType.as<Subtype>()->getParam()->getType());
+            return isFresh(generalType->as<Subtype>()->getParam()->getType());
         case Type::MAP:
-            return isFresh(generalType.as<MapType>()->getBaseType());
+            return isFresh(generalType->as<MapType>()->getBaseType());
         case Type::LIST:
-            return isFresh(generalType.as<ListType>()->getBaseType());
+            return isFresh(generalType->as<ListType>()->getBaseType());
         default:
             return false;
     }
 }
 
 void StaticTypeChecker::setType(Node &node, const TypePtr type) {
-    NodePtr pNode = &node;
     if (node.getNodeKind() == Node::NAMED_VALUE)
-        pNode.as<NamedValue>()->setType(clone(type));
+        node.as<NamedValue>()->setType(clone(type));
     else if (node.getNodeKind() == Node::EXPRESSION)
-        pNode.as<Expression>()->setType(clone(type));
+        node.as<Expression>()->setType(clone(type));
     else
         typeError("impossible to set the type");
-    printTypecheckInfo(L"Set Type ", L"[" +str(*type) + L"] " + str(node), PRINT_BLUE, 2);
+    printTypecheckInfo(L"Set Type ", L"[" +str(type) + L"] " + str(node.as<Node>()), PRINT_BLUE, 2);
 }
 
 bool StaticTypeChecker::isContains(const ExpressionPtr &expr, const TypePtr &type) {
@@ -925,7 +925,7 @@ void StaticTypeChecker::typeWarning(const std::wstring msg, bool expr) {
         printTypecheckInfo(L"Type Error ", msg, PRINT_RED, 2);
 }
 
-std::wstring StaticTypeChecker::str(Node &node) {
+std::wstring StaticTypeChecker::str(const NodePtr &node) {
     std::wostringstream stream;
     pp::prettyPrintSyntax(node, stream, NULL, true);
     std::wstring wstr = stream.str();

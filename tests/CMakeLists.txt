@@ -19,6 +19,7 @@ set(SOURCES_ST
     ../src/ir/type_union.cpp
     ../src/ir/visitor.cpp
     ../src/ir/declarations.cpp
+    ../src/ir/statements.cpp
     ../src/lexer.cpp
     ../src/numbers.cpp
     ../src/options.cpp

@@ -20,7 +20,7 @@ void mergeSCC(CallGraph &_callGraph,
 
 void predicateOrdering(CallGraph &_graph, std::list<CallGraphNode> &_mergingOrder);
 
-void printModuleSCCCallGraph(Module &_module, std::wostream &_os);
+void printModuleSCCCallGraph(const ModulePtr &_module, std::wostream &_os);
 
 }
 

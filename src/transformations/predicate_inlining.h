@@ -14,7 +14,7 @@
 
 namespace ir {
 
-void predicateInlining(Module &_module);
+void predicateInlining(const ModulePtr &_module);
 
 }
 

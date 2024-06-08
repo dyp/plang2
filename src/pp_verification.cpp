@@ -40,29 +40,29 @@ std::wstring fmtRule(size_t _cRuleInd) {
 }
 
 void prettyPrint(const ConjunctPtr& _pConjunct, std::wostream &_os, const ContextPtr& _pContext) {
-    ContextPtr pContext = !_pContext ? new Context() : _pContext;
+    ContextPtr pContext = !_pContext ? std::make_shared<Context>() : _pContext;
     switch (_pConjunct->getKind()) {
         case Conjunct::QUANTIFIER: {
-            const ValuesSet& bound = _pConjunct.as<QuantifierConjunct>()->getBound();
+            const ValuesSet& bound = _pConjunct->as<QuantifierConjunct>()->getBound();
             _os << L"\x2203 ";
             for (ValuesSet::iterator i = bound.begin(); i != bound.end(); ++i) {
-                prettyPrintSyntax(**i, _os, _pContext);
+                prettyPrintSyntax(*i, _os, _pContext);
                 if (i != ::prev(bound.end()))
                     _os << L", ";
             }
             _os << ". ";
-            prettyPrint(_pConjunct.as<QuantifierConjunct>()->getConjunct(), _os, pContext);
+            prettyPrint(_pConjunct->as<QuantifierConjunct>()->getConjunct(), _os, pContext);
             break;
         }
 
         case Conjunct::LOGIC:
             _os << "L(";
-            prettyPrintCompact(*_pConjunct.as<LogicConjunct>()->getStatement(), _os, 0, pContext);
+            prettyPrintCompact(_pConjunct->as<LogicConjunct>()->getStatement(), _os, 0, pContext);
             _os << ")";
             break;
 
         case Conjunct::FORMULA:
-            prettyPrintSyntax(*_pConjunct.as<FormulaConjunct>()->getExpression(), _os, pContext);
+            prettyPrintSyntax(_pConjunct->as<FormulaConjunct>()->getExpression(), _os, pContext);
             break;
     }
 }
@@ -83,7 +83,7 @@ void prettyPrint(const ConjunctionPtr& _pConj, std::wostream &_os, const Context
     if (!_pConj)
         return;
 
-    ContextPtr pContext = !_pContext ? new Context() : _pContext;
+    ContextPtr pContext = !_pContext ? std::make_shared<Context>() : _pContext;
     _updateContext(_pConj, pContext);
 
     const auto& conjuncts = _pConj->getConjuncts();
@@ -95,7 +95,7 @@ void prettyPrint(const ConjunctionPtr& _pConj, std::wostream &_os, const Context
 }
 
 void prettyPrint(const Condition& _cond, std::wostream &_os, const ContextPtr& _pContext) {
-    ContextPtr pContext = !_pContext ? new Context() : _pContext;
+    ContextPtr pContext = !_pContext ? std::make_shared<Context>() : _pContext;
 
     switch (_cond.getKind()) {
         case Condition::SEQUENT: {
@@ -115,7 +115,7 @@ void prettyPrint(const Condition& _cond, std::wostream &_os, const ContextPtr& _
             _os << L"{ ";
             prettyPrint(corr.getPrecondition(), _os);
             _os << L" } ";
-            prettyPrintCompact(*corr.getStatement(), _os);
+            prettyPrintCompact(corr.getStatement(), _os);
             _os << L" { ";
             prettyPrint(corr.getPostcondition(), _os);
             _os << L" }";
@@ -125,14 +125,14 @@ void prettyPrint(const Condition& _cond, std::wostream &_os, const ContextPtr& _
 }
 
 void prettyPrint(const vf::Context& _context, std::wostream &_os, const ContextPtr& _pContext) {
-    ContextPtr pContext = !_pContext ? new Context() : _pContext;
+    ContextPtr pContext = !_pContext ? std::make_shared<Context>() : _pContext;
 
     size_t cIndex = 1;
 
     for (std::list<std::pair<ConditionPtr, bool> >::const_iterator i = _context.m_conditions.begin();
         i != _context.m_conditions.end(); ++i) {
         _os << ((*i).second ? L"{" : L"[") << L"-" << cIndex++ << ((*i).second ? "}" : "]") << " ";
-        prettyPrint(*(*i).first, _os, pContext);
+        prettyPrint(*i->first, _os, pContext);
         _os << L"\n";
     }
 
@@ -142,7 +142,7 @@ void prettyPrint(const vf::Context& _context, std::wostream &_os, const ContextP
     for (std::list<std::pair<ir::ExpressionPtr, bool> >::const_iterator i = _context.m_lemmas.begin();
         i != _context.m_lemmas.end(); ++i) {
         _os << ((*i).second ? L"{" : L"[") << L"+" << cIndex++ << ((*i).second ? "}" : "]") << " ";
-        prettyPrintSyntax(*(*i).first, _os);
+        prettyPrintSyntax(i->first, _os);
         _os << L"\n";
     }
 }

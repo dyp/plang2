@@ -19,14 +19,26 @@ inline void freeList(std::list<T *> & _list) {
     _list.clear();
 }
 
-class Base : public Counted {
+class Base : std::enable_shared_from_this<Base> {
 protected:
     // Override Counted's deleted copy constructor to allow copying
     // preserving Counted's internal fields.
     Base(const Base &_other) {}
     Base &operator =(const Base &_other) { return *this; }
     Base() = default;
+public:
+    template <class _Class>
+    std::shared_ptr<const _Class> as() const {
+        return std::static_pointer_cast<const _Class>(shared_from_this());
+    }
+
+    template <class _Class>
+    std::shared_ptr<_Class> as() {
+        return std::static_pointer_cast<_Class>(shared_from_this());
+    }
 };
+
+using TypePtr = std::shared_ptr<class Type>;
 
 class Type : public Base {
 public:
@@ -105,13 +117,14 @@ private:
     int m_kind;
 };
 
-typedef std::vector<Auto<Type> > Types;
+using Types = std::vector<TypePtr>;
+using FunctionTypePtr = std::shared_ptr<class FunctionType>;
 
 class FunctionType : public Type {
 public:
-    FunctionType(const Auto<Type> & _returnType) : Type(FUNCTION), m_returnType(_returnType) {}
+    FunctionType(const TypePtr & _returnType) : Type(FUNCTION), m_returnType(_returnType) {}
 
-    const Auto<Type> & getReturnType() const { return m_returnType; }
+    const TypePtr & getReturnType() const { return m_returnType; }
 
     Types & argTypes() { return m_argTypes; }
 
@@ -121,9 +134,11 @@ public:
     }
 
 private:
-    Auto<Type> m_returnType;
+    TypePtr m_returnType;
     Types m_argTypes;
 };
+
+using StructTypePtr = std::shared_ptr<class StructType>;
 
 class StructType : public Type {
 public:
@@ -138,8 +153,8 @@ public:
     virtual size_t sizeOf() const {
         // assume 4-byte field alignment.
         size_t cSize = 0;
-        for (llir::Types::const_iterator iType = m_fieldTypes.begin(); iType != m_fieldTypes.end(); ++ iType) {
-            const size_t cFieldSize = (* iType)->sizeOf();
+        for (const auto& iType : m_fieldTypes) {
+            const size_t cFieldSize = iType->sizeOf();
             cSize += cFieldSize%4 == 0 ? cFieldSize : (cFieldSize/4 + 1)*4;
         }
         return std::max((size_t) 1, cSize);
@@ -158,10 +173,10 @@ public:
         if (m_fieldTypes.size() > other.m_fieldTypes.size())
             return false;
 
-        llir::Types::const_iterator iType = m_fieldTypes.begin();
-        llir::Types::const_iterator iType2 = other.m_fieldTypes.begin();
+        auto iType = m_fieldTypes.cbegin();
+        auto iType2 = other.m_fieldTypes.cbegin();
 
-        for (; iType != m_fieldTypes.end(); ++ iType, ++ iType2) {
+        for (; iType != m_fieldTypes.cend(); ++ iType, ++ iType2) {
             if (**iType < **iType2)
                 return true;
             if (**iType2 < **iType)
@@ -178,8 +193,8 @@ private:
 
 class PointerType : public Type {
 public:
-    PointerType(const Auto<Type> & _baseType) : Type(POINTER), m_baseType(_baseType) {}
-    const Auto<Type> & getBase() const { return m_baseType; }
+    PointerType(const TypePtr & _baseType) : Type(POINTER), m_baseType(_baseType) {}
+    const TypePtr & getBase() const { return m_baseType; }
 
     virtual bool operator < (const Type & _other) const {
         return getKind() < _other.getKind() ||
@@ -187,24 +202,25 @@ public:
     }
 
 private:
-    Auto<Type> m_baseType;
+    TypePtr m_baseType;
 };
 
-class Instruction;
+using InstructionPtr = std::shared_ptr<class Instruction>;
+using VariablePtr = std::shared_ptr<class Variable>;
 
 class Variable : public Base {
 public:
     Variable() : m_bAlive(true), m_bUsed(false) {}
-    Variable(const Auto<Type> & _type) : m_type(_type), m_bAlive(true), m_bUsed(false) {}
+    Variable(const TypePtr & _type) : m_type(_type), m_bAlive(true), m_bUsed(false) {}
 
-    const Auto<Type> & getType() const { return m_type; }
-    void setType(const Auto<Type> & _type) { m_type = _type; }
+    const TypePtr & getType() const { return m_type; }
+    void setType(const TypePtr & _type) { m_type = _type; }
 
-    Auto<Instruction> getLastUse() const { return m_lastUse; }
-    void setLastUse(const Auto<Instruction> _instr) { m_lastUse = _instr; }
+    InstructionPtr getLastUse() const { return m_lastUse; }
+    void setLastUse(const InstructionPtr _instr) { m_lastUse = _instr; }
 
-    Auto<Instruction> getLastInit() const { return m_lastInit; }
-    void setLastInit(const Auto<Instruction> _instr) { m_lastInit = _instr; }
+    InstructionPtr getLastInit() const { return m_lastInit; }
+    void setLastInit(const InstructionPtr _instr) { m_lastInit = _instr; }
 
 //    bool isValid() const { return m_type->getKind() != Type::Undefined; }
 
@@ -218,16 +234,16 @@ public:
     bool operator < (const Variable & _other) const { return this < & _other; }
 
 protected:
-    Auto<Type> m_type;
-    Auto<Instruction> m_lastUse;
-    Auto<Instruction> m_lastInit;
+    TypePtr m_type;
+    InstructionPtr m_lastUse;
+    InstructionPtr m_lastInit;
     bool m_bAlive;
     mutable bool m_bUsed;
 };
 
-class Literal;
+using LiteralPtr = std::shared_ptr<class Literal>;
 
-typedef std::list<Auto<Literal> > Literals;
+typedef std::list<LiteralPtr> Literals;
 
 class Literal : public Base {
 public:
@@ -240,12 +256,12 @@ public:
     };
 
     Literal() : m_kind(NUMBER) {}
-    Literal(int _kind, const Auto<Type> & _type) : m_kind(_kind), m_type(_type) {}
-    Literal(const Auto<Type> & _pType, const Number & _number) : m_kind(NUMBER), m_type(_pType), m_number(_number) {}
+    Literal(int _kind, const TypePtr & _type) : m_kind(_kind), m_type(_type) {}
+    Literal(const TypePtr & _pType, const Number & _number) : m_kind(NUMBER), m_type(_pType), m_number(_number) {}
 
     int getKind() const { return m_kind; }
 
-    const Auto<Type> & getType() const { return m_type; }
+    const TypePtr & getType() const { return m_type; }
 
     const Number & getNumber() const { return m_number; }
 
@@ -271,7 +287,7 @@ public:
     const std::wstring & getString() const { return m_wstring; }
     void setString(const std::wstring & _str) {
         m_kind = STRING;
-        m_type = new Type(Type::WCHAR);
+        m_type = std::make_shared<Type>(Type::WCHAR);
         m_wstring = _str;
     }
 
@@ -280,30 +296,33 @@ public:
 
 private:
     int m_kind;
-    Auto<Type> m_type;
+    TypePtr m_type;
     Number m_number;
     std::wstring m_wstring;
     std::string m_string;
     Literals m_fields;
 
     void _setNumber(int _kind, int64_t _value) {
-        m_type = new Type(_kind);
+        m_type = std::make_shared<Type>(_kind);
         m_number = Number::makeInt(_value);
     }
 };
 
+using ConstantPtr = std::shared_ptr<class Constant>;
+
 class Constant : public Variable {
 public:
-    Constant(const Auto<Literal> & _literal) :
+    Constant(const LiteralPtr & _literal) :
         Variable(_literal->getType()), m_literal(_literal) {}
 
-    Auto<Literal> getLiteral() const { return m_literal; }
+    LiteralPtr getLiteral() const { return m_literal; }
 
 private:
-    Auto<Literal> m_literal;
+    LiteralPtr m_literal;
 };
 
-typedef std::list<Auto<Constant> > Consts;
+using Consts = std::list<ConstantPtr>;
+using LabelPtr = std::shared_ptr<class Label>;
 
 class Label : public Base {
 public:
@@ -321,6 +340,8 @@ public:
 private:
     size_t m_cUsageCount;
 };
+
+using InstructionPtr = std::shared_ptr<class Instruction>;
 
 class Instruction : public Base {
 public:
@@ -343,10 +364,10 @@ public:
     Instruction() : m_var(NULL), m_label(NULL), m_cResultUsageCount(0) {}
 
     virtual int getKind() const { return NOP; };
-    Auto<Variable> getResult() const { return m_var; }
-    void setResult(const Auto<Variable> & _var) { m_var = _var; }
-    Auto<Label> getLabel() const { return m_label; }
-    void setLabel(const Auto<Label> & _label) { m_label = _label; }
+    VariablePtr getResult() const { return m_var; }
+    void setResult(const VariablePtr & _var) { m_var = _var; }
+    LabelPtr getLabel() const { return m_label; }
+    void setLabel(const LabelPtr & _label) { m_label = _label; }
 
     bool operator ==(const Instruction & _other) const { return this == & _other; }
 
@@ -356,24 +377,26 @@ public:
     void decResultUsageCount() const { -- m_cResultUsageCount; }
 
 protected:
-    Auto<Variable> m_var;
-    Auto<Label> m_label;
+    VariablePtr m_var;
+    LabelPtr m_label;
     mutable size_t m_cResultUsageCount;
 };
 
-typedef std::list<Auto<Variable> > Args;
-typedef std::list<Auto<Instruction> > Instructions;
+typedef std::list<VariablePtr> Args;
+typedef std::list<InstructionPtr> Instructions;
+
+using FunctionPtr = std::shared_ptr<class Function>;
 
 class Function : public Variable {
 public:
-    Function(const std::wstring & _strName, const Auto<Type> & _returnType)
-        : Variable(new Type(Type::FUNCTION)), m_strName(_strName), m_result(new Variable(_returnType)) {}
+    Function(const std::wstring & _strName, const TypePtr & _returnType)
+        : Variable(std::make_shared<Type>(Type::FUNCTION)), m_strName(_strName), m_result(std::make_shared<Variable>(_returnType)) {}
 
     const std::wstring & getName() const { return m_strName; }
 
-    const Auto<Type> & getReturnType() const { return m_result->getType(); }
+    const TypePtr & getReturnType() const { return m_result->getType(); }
 
-    Auto<Variable> getResult() const { return m_result; }
+    const VariablePtr& getResult() const { return m_result; }
 
     Args & args() { return m_args; }
     const Args & args() const { return m_args; }
@@ -386,13 +409,13 @@ public:
 
 private:
     std::wstring m_strName;
-    //Auto<Type> m_returnType;
-    Auto<Variable> m_result;
+    //TypePtr m_returnType;
+    VariablePtr m_result;
     Args m_args, m_locals;
     Instructions m_instructions;
 };
 
-typedef std::list<Auto<Function> > Functions;
+using Functions = std::list<FunctionPtr>;
 
 class Module : public Base {
 public:
@@ -427,22 +450,22 @@ public:
 
     Operand() : m_kind(EMPTY) {}
     Operand(const Literal & _literal) : m_kind(LITERAL), m_literal(_literal), m_var(NULL), m_label(NULL) {}
-    Operand(Auto<Variable> _var) : m_kind(VARIABLE), m_var(_var), m_label(NULL) {}
-    Operand(Auto<Label> _label) : m_kind(LABEL), m_var(NULL), m_label(_label) {}
+    Operand(VariablePtr _var) : m_kind(VARIABLE), m_var(_var), m_label(NULL) {}
+    Operand(LabelPtr _label) : m_kind(LABEL), m_var(NULL), m_label(_label) {}
 
     int getKind() const { return m_kind; }
 
-    const Auto<Variable> getVariable() const { return m_var; }
+    const VariablePtr getVariable() const { return m_var; }
     const Literal & getLiteral() const { return m_literal; }
-    const Auto<Label> getLabel() const { return m_label; }
+    const LabelPtr getLabel() const { return m_label; }
 
-    void setVariable(const Auto<Variable> & _var) { m_var = _var; }
-    void setLabel(const Auto<Label> & _label) { m_label = _label; }
+    void setVariable(const VariablePtr & _var) { m_var = _var; }
+    void setLabel(const LabelPtr & _label) { m_label = _label; }
 
-    const Auto<Type> getType() const {
+    const TypePtr getType() const {
         if (m_kind == LITERAL) return m_literal.getType();
         if (m_kind == VARIABLE) return m_var->getType();
-        return new Type(Type::UNDEFINED);
+        return std::make_shared<Type>(Type::UNDEFINED);
     }
 
     bool empty() const { return m_kind == EMPTY; }
@@ -450,8 +473,8 @@ public:
 private:
     int m_kind;
     Literal m_literal;
-    Auto<Variable> m_var;
-    Auto<Label> m_label;
+    VariablePtr m_var;
+    LabelPtr m_label;
 };
 
 class Unary : public Instruction {
@@ -470,25 +493,25 @@ public:
     };
 
     Unary(int _kind, const Operand & _op = Operand()) : m_kind(_kind), m_op(_op) {
-        Auto<Type> type;
+        TypePtr type;
         switch (_kind) {
             case LOAD:
                 assert(_op.getType()->getKind() == Type::POINTER);
-                type = ((PointerType &) * _op.getType()).getBase();
+                type = ((PointerType &) * _op.getType()).getBase();//TODO:dyp: fix
                 break;
             case PTR:
-                type = new PointerType(_op.getType());
+                type = std::make_shared<PointerType>(_op.getType());
                 break;
             case NOT:
                 type = _op.getType();
                 break;
             case MALLOC:
-                type = new PointerType(new Type(Type::VOID));
+                type = std::make_shared<PointerType>(std::make_shared<Type>(Type::VOID));
                 break;
         }
 
         if (type)
-            m_var = new Variable(type);
+            m_var = std::make_shared<Variable>(type);
     }
 
     virtual int getKind() const { return UNARY; }
@@ -549,18 +572,18 @@ public:
     };
 
     Binary(int _kind, const Operand & _op1, const Operand & _op2) : m_kind(_kind), m_op1(_op1), m_op2(_op2) {
-        Auto<Type> type;
+        TypePtr type;
         if (_kind & ARITHMMASK)
             type = _op1.getType();
         else if (_kind & CMPMASK)
-            type = new Type(Type::BOOL);
+            type = std::make_shared<Type>(Type::BOOL);
         else if (_kind == OFFSET)
             type = _op1.getType();
         else if (_kind == QINIT)
-            type = new Type(Type::GMP_Q);
+            type = std::make_shared<Type>(Type::GMP_Q);
 
         if (type)
-            m_var = new Variable(type);
+            m_var = std::make_shared<Variable>(type);
     }
 
     virtual int getKind() const { return Instruction::BINARY; }
@@ -580,9 +603,9 @@ class Field : public Instruction {
 public:
     Field(const Operand & _op, size_t _cIndex) : m_cIndex(_cIndex), m_op(_op) {
         assert(_op.getType()->getKind() == Type::POINTER);
-        const Type & type = * ((PointerType &) * _op.getType()).getBase();
+        const Type & type = * ((PointerType &) * _op.getType()).getBase(); //TODO:dyp: fix
         assert(type.getKind() == Type::STRUCT);
-        m_var = new Variable(new PointerType(((StructType &) type).fieldTypes()[_cIndex]));
+        m_var = std::make_shared<Variable>(std::make_shared<PointerType>(((StructType &) type).fieldTypes()[_cIndex]));//TODO:dyp: fix
     }
 
     size_t getIndex() const { return m_cIndex; }
@@ -599,9 +622,10 @@ typedef std::list<Operand> Operands;
 
 class Call : public Instruction {
 public:
-    Call(const Operand & _function, const Auto<FunctionType> & _type) : m_function(_function), m_type(_type) {
-        if (m_type->getReturnType() && m_type->getReturnType()->getKind() != Type::VOID)
-            m_var = new Variable(m_type->getReturnType());
+    Call(const Operand & _function, const FunctionTypePtr & _type) : m_function(_function), m_type(_type) {
+        if (m_type->getReturnType() && m_type->getReturnType()->getKind() != Type::VOID) {
+            m_var = std::make_shared<Variable>(m_type->getReturnType());
+        }
     }
 
     virtual int getKind() const { return Instruction::CALL; }
@@ -612,14 +636,14 @@ public:
 
 private:
     Operand m_function;
-    Auto<FunctionType> m_type;
+    FunctionTypePtr m_type;
     Operands m_args;
 };
 
 class Builtin : public Instruction {
 public:
-    Builtin(const std::string & _name, const Auto<Type> & _type) : m_name(_name) {
-        m_var = new Variable(_type);
+    Builtin(const std::string & _name, const TypePtr & _type) : m_name(_name) {
+        m_var = std::make_shared<Variable>(_type);
     }
 
     virtual int getKind() const { return Instruction::BUILTIN; }
@@ -632,6 +656,8 @@ private:
     std::string m_name;
     Operands m_args;
 };
+
+using IfPtr = std::shared_ptr<class If>;
 
 class If : public Instruction {
 public:
@@ -671,20 +697,20 @@ private:
 
 class Cast : public Instruction {
 public:
-    Cast(const Operand & _op, const Auto<Type> & _type) :
+    Cast(const Operand & _op, const TypePtr & _type) :
         m_op(_op), m_type(_type)
     {
-        m_var = new Variable(m_type);
+        m_var = std::make_shared<Variable>(m_type);
     }
 
     virtual int getKind() const { return Instruction::CAST; }
     const Operand & getOp() const { return m_op; }
     Operand & getOp() { return m_op; }
-    Auto<Type> getType() const { return m_type; }
+    TypePtr getType() const { return m_type; }
 
 private:
     Operand m_op;
-    Auto<Type> m_type;
+    TypePtr m_type;
 };
 
 class Select : public Instruction {
@@ -692,7 +718,7 @@ public:
     Select(const Operand & _condition, const Operand & _opTrue, const Operand & _opFalse) :
         m_condition(_condition), m_opTrue(_opTrue), m_opFalse(_opFalse)
     {
-        m_var = new Variable(_opTrue.getType());
+        m_var = std::make_shared<Variable>(_opTrue.getType());
     }
 
     virtual int getKind() const { return Instruction::SELECT; }
@@ -752,7 +778,7 @@ private:
     Instructions m_deflt;
 };
 
-void translate(Module & _dest, const ir::Module & _from);
+void translate(Module & _dest, const ir::ModulePtr & _from);
 
 };
 

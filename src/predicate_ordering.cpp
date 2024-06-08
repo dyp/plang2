@@ -325,7 +325,7 @@ void ir::predicateOrdering(CallGraph &_graph, std::list<CallGraphNode> &_predica
 }
 
 // Creates and prints callgraph and then its acyclic version.
-void ir::printModuleSCCCallGraph(Module &_module, std::wostream &_os) {
+void ir::printModuleSCCCallGraph(const ModulePtr &_module, std::wostream &_os) {
     CallGraph graph;
     generateCallGraph(_module, graph);
     printCallGraph(graph, _os);

@@ -17,6 +17,7 @@ set(SOURCES
     ir/type_union.cpp
     ir/visitor.cpp
     ir/declarations.cpp
+    ir/statements.cpp
     transformations/tail_recursion_elimination.cpp
     transformations/predicate_inlining.cpp
     backend_c.cpp

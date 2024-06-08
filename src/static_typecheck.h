@@ -2,8 +2,7 @@
 // Created by auzubarev on 04.04.18.
 //
 
-#ifndef PLANG_STATIC_TYPECHECK_H
-#define PLANG_STATIC_TYPECHECK_H
+#pragma once
 
 #include <ir/statements.h>
 #include <algorithm>
@@ -46,7 +45,10 @@ public:
     static bool checkVariableDeclaration(VariableDeclaration& variableDeclaration);
     static bool checkVariableReference(VariableReference& variableReference);
     static void printTypecheckInfo(std::wstring head, std::wstring msg = L"", int color = PRINT_BLUE, int indent = 0);
-    static std::wstring str(Node &node);
+    static std::wstring str(const NodePtr &node);
+    static std::wstring str(Node &node) {
+        return str(node.as<Node>());
+    }
     enum {
         PRINT_RED,
         PRINT_BLUE,
@@ -65,4 +67,3 @@ private:
     static TypePtr getGeneralType(const TypePtr &type);
 };
 
-#endif //PLANG_STATIC_TYPECHECK_H

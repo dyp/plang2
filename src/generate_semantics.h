@@ -13,59 +13,59 @@
 namespace ir{
 
 class CollectPreConditions : public Visitor {
-    Module &m_module;
+    const ModulePtr m_module;
     class NameGenerator;
-    Auto<NameGenerator> m_pNameGen;
-    Predicate *m_pPredicate = nullptr;
-    Process *m_pProcess = nullptr;
-    Auto<Module> m_pNewModule;
+    std::shared_ptr<NameGenerator> m_pNameGen;
+    PredicatePtr m_pPredicate;
+    ProcessPtr m_pProcess;
+    ModulePtr m_pNewModule;
     Collection<LemmaDeclaration> m_lemmas;
 
 public:
-    CollectPreConditions(Module &_module);
+    CollectPreConditions(const ModulePtr &_module);
 
     ///collecting preconditions, conditions from If's and Switch's for generating lemmas
     ExpressionPtr collectConditions();
 
-    ExpressionPtr caseNonintersection(ExpressionPtr _pExpr1, ExpressionPtr _pExpr2);
+    ExpressionPtr caseNonintersection(const ExpressionPtr& _pExpr1, const ExpressionPtr& _pExpr2);
 
-    ExpressionPtr compatibility(TypePtr _pExpr1, TypePtr _pExpr2);
+    ExpressionPtr compatibility(const TypePtr& _pExpr1, const TypePtr& _pExpr2);
 
-    RangePtr arrayRangeWithCurrentParams(ExpressionPtr _pArray);
+    RangePtr arrayRangeWithCurrentParams(const ExpressionPtr& _pArray);
 
-    Collection<Range> arrayRangesWithCurrentParams(ExpressionPtr _pArray);
+    Collection<Range> arrayRangesWithCurrentParams(const ExpressionPtr& _pArray);
 
-    ExpressionPtr varBelongsSetOneDimension(VariableReferencePtr _pVar, ExpressionPtr _pExpr);
-    ExpressionPtr varsBelongSetSeveralDimensions(Collection<VariableReference> _vars, ExpressionPtr _pExpr);
+    ExpressionPtr varBelongsSetOneDimension(const VariableReferencePtr& _pVar, const ExpressionPtr& _pExpr);
+    ExpressionPtr varsBelongSetSeveralDimensions(const Collection<VariableReference>& _vars, const ExpressionPtr& _pExpr);
 
-    static TypePtr getNotNamedReferenceType(TypePtr _pType);
+    static TypePtr getNotNamedReferenceType(const TypePtr& _pType);
 
-    virtual bool visitPredicateType(PredicateType &_node);          //creating modules for theory
-    virtual bool visitLambda(Lambda &_node);
-    virtual int handlePredicateDecl(Node &_node);
-    virtual int handleProcessDecl(Node &_node);
+    bool visitPredicateType(const PredicateTypePtr &_node) override;          //creating modules for theory
+    bool visitLambda(const LambdaPtr &_node) override;
+    int handlePredicateDecl(NodePtr &_node) override;
+    int handleProcessDecl(NodePtr &_node) override;
 
-    virtual int handlePredicatePreCondition(Node &_node);      //adding preconditions to module
-    virtual int handlePredicateBranchPreCondition(Node &_node);
-    virtual int handlePredicateTypePreCondition(Node &_node);
-    virtual int handlePredicateTypeBranchPreCondition(Node &_node);
-    virtual int handleProcessBranchPreCondition(Node &_node);
+    int handlePredicatePreCondition(NodePtr &_node) override;      //adding preconditions to module
+    int handlePredicateBranchPreCondition(NodePtr &_node) override;
+    int handlePredicateTypePreCondition(NodePtr &_node) override;
+    int handlePredicateTypeBranchPreCondition(NodePtr &_node) override;
+    int handleProcessBranchPreCondition(NodePtr &_node) override;
 
-    virtual int handleFunctionCallee(Node &_node);      //generating lemmas
-    virtual int handlePredicateCallBranchResults(Node &_node);
-    virtual int handlePredicateCallArgs(Node &_node);
-    virtual bool visitCall(Call &_node);
-    virtual bool visitBinary(Binary &_node);
-    virtual bool visitIf(If &_node);
-    virtual bool visitSwitch(Switch &_node);
-    virtual bool visitArrayPartExpr(ArrayPartExpr &_node);
-    virtual bool visitReplacement(Replacement &_node);
-    virtual int handleSwitchDefault(Node &_node);
-    virtual int handleSwitchCase(Node &_node);
-    virtual int handleUnionConsField(Node &_node);
-    virtual bool visitAssignment(Assignment &_node);
-    virtual bool visitVariableDeclaration(VariableDeclaration &_node);
-    virtual bool visitNamedValue(NamedValue &_node);
+    int handleFunctionCallee(NodePtr &_node) override;      //generating lemmas
+    int handlePredicateCallBranchResults(NodePtr &_node) override;
+    int handlePredicateCallArgs(NodePtr &_node) override;
+    bool visitCall(const CallPtr &_node) override;
+    bool visitBinary(const BinaryPtr &_node) override;
+    bool visitIf(const IfPtr &_node) override;
+    bool visitSwitch(const SwitchPtr &_node) override;
+    bool visitArrayPartExpr(const ArrayPartExprPtr &_node) override;
+    bool visitReplacement(const ReplacementPtr &_node) override;
+    int handleSwitchDefault(NodePtr &_node) override;
+    int handleSwitchCase(NodePtr &_node) override;
+    int handleUnionConsFields(NodePtr &_node) override;
+    bool visitAssignment(const AssignmentPtr &_node) override;
+    bool visitVariableDeclaration(const VariableDeclarationPtr &_node) override;
+    bool visitNamedValue(const NamedValuePtr &_node) override;
 };
 
 class VarSubstitute: public Visitor {
@@ -74,14 +74,14 @@ public:
 
     VarSubstitute(NamedValuePtr _pNamedValue, NodePtr _pSubstitution) : Visitor(CHILDREN_FIRST), m_pSubstitution(_pSubstitution), m_pNamedValue(_pNamedValue) {}
 
-    bool visitVariableReference(VariableReference &_var) {
-        if(m_pNamedValue->getName() == _var.getName())
+    bool visitVariableReference(const VariableReferencePtr &_var) override {
+        if(m_pNamedValue->getName() == _var->getName())
             callSetter(m_pSubstitution);
         return true;
     }
 
-    bool visitTypeDeclaration(TypeDeclaration &_typeDecl) {
-        if(m_pNamedValue->getName() == _typeDecl.getName()) {
+    bool visitTypeDeclaration(const TypeDeclarationPtr &_typeDecl) override {
+        if(m_pNamedValue->getName() == _typeDecl->getName()) {
             callSetter(m_pSubstitution);
 //            _typeDecl.setType(m_pSubstitution);
         }
@@ -92,7 +92,7 @@ private:
     NamedValuePtr m_pNamedValue;
 };
 
-Auto<Module> processPreConditions(Module &_module);
+ModulePtr processPreConditions(const ModulePtr &_module);
 
 void getRanges(const ArrayType &_array, Collection<Range> &_ranges);
 

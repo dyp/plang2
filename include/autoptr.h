@@ -9,259 +9,93 @@
 #include <stack>
 #include <stdint.h>
 #include <assert.h>
-
-// Smart pointer.
-
-struct Counted {
-    // Delete copy constructor and operator so that private fields won't get
-    // accidentally overwritten.
-    Counted(const Counted &_other) = delete;
-    Counted &operator =(const Counted &_other) = delete;
-
-    virtual ~Counted() {}
-
-    // Increment ref count (if dynamically allocated.)
-    // \param _pObj can be NULL, hence method is static (checking this != NULL is ugly).
-    static void ref(const Counted *_pObj);
-
-    // Decrement ref count (if dynamically allocated.)
-    // \returns true if object was dynamically allocated and count reaches zero.
-    bool unref() const;
-
-    // Only dynamically allocated objects' references are tracked.
-    // Also, when using multiple inheritance and wanting to benefit from inheriting from Counted,
-    //      Counted or it's descendant must be listed first in the base list.
-    void *operator new(size_t _c, bool _bAcquire = true);
-
-    // Create wrapper with counter or use the object itself if it already got one.
-    static const Counted *createCountedWrapper(const void *_pObj, bool _bAcquire);
-    static const Counted *createCountedWrapper(const Counted *_pObj, bool /* _bAcquire */);
-
-    template<class>
-    friend class Auto;
-
-    friend class Cloner;
-
-protected:
-    Counted();
-
-private:
-    mutable const void *m_pCountedPtr;
-    mutable int m_nCountedRefs;
-    static std::stack<void *> m_allocs;
-
-    static bool _isManaged(const void *_pObj, bool _bPop = true);
-
-    Counted(const void *_ptr);
-};
-
-template<typename _Obj>
-class Auto {
-public:
-    Auto() : m_pObj(NULL) {}
-
-    Auto(const Auto &_other) : m_pObj(_other.m_pObj) {
-        Counted::ref(m_pObj);
-    }
-
-    template<typename _Other>
-    Auto(const Auto<_Other> &_other) : m_pObj(NULL) {
-        // Condition here serves to statically check compatibility of _Obj* vs. _Other*.
-        if (_Obj *pOther = _other.ptr()) {
-            m_pObj = _other.m_pObj;
-            Counted::ref(m_pObj);
-        }
-    }
-
-    // No Auto(void *) constructor is provided to prevent accidentally
-    // calling delete on stack-allocated non-counted object, etc.
-    Auto(const Counted *_pObj) : m_pObj(_pObj) {
-        Counted::ref(m_pObj);
-    }
-
-    ~Auto() {
-        _release();
-    }
-
-    template<typename _Other>
-    Auto<_Other> as() const {
-        return Auto<_Other>(m_pObj);
-    }
-
-    _Obj *ptr() const {
-        return m_pObj != NULL ? (_Obj *)m_pObj->m_pCountedPtr : NULL;
-    }
-
-    Auto &operator =(const Auto &_other) {
-        if (_other.ptr() != ptr()) {
-            _release();
-            m_pObj = _other.m_pObj;
-            Counted::ref(m_pObj);
-        }
-
-        return *this;
-    }
-
-    _Obj &operator *() const {
-        return *ptr();
-    }
-
-    _Obj *operator ->() const {
-        return ptr();
-    }
-
-    template<typename _Other>
-    bool operator <(const Auto<_Other> &_other) const {
-        return (void *)ptr() < (void *)_other.ptr();
-    }
-
-    template<typename _Other>
-    bool operator ==(const Auto<_Other> &_other) const {
-        return (void *)ptr() == (void *)_other.ptr();
-    }
-
-    template<typename _Other>
-    bool operator !=(const Auto<_Other> &_other) const {
-        return (void *)ptr() != (void *)_other.ptr();
-    }
-
-    bool operator !() const {
-        return ptr() == NULL;
-    }
-
-    operator bool() const {
-        return ptr() != NULL;
-    }
-
-    void swap(Auto &_other) {
-        std::swap(m_pObj, _other.m_pObj);
-    }
-
-    template<class>
-    friend class Auto;
-
-    friend class Cloner;
-
-private:
-    const Counted *m_pObj;
-
-    void _release() {
-        if (m_pObj != NULL && !m_pObj->unref()) {
-            if (m_pObj->m_pCountedPtr != m_pObj) {
-                if (m_pObj->m_pCountedPtr)
-                    delete (_Obj *)m_pObj->m_pCountedPtr;
-                delete m_pObj;
-            } else
-                delete (_Obj *)m_pObj;
-        }
-    }
-};
-
-template<typename _Obj>
-inline Auto<_Obj> ptr(const _Obj *_pObj) {
-    return Auto<_Obj>(Counted::createCountedWrapper(_pObj, true));
-}
-
-template<typename _Obj>
-inline Auto<_Obj> ref(const _Obj *_pObj) {
-    return Auto<_Obj>(Counted::createCountedWrapper(_pObj, false));
-}
-
-template<class _Comparable>
-struct PtrLess {
-    bool operator()(const Auto<_Comparable> &_pLhs, const Auto<_Comparable> &_pRhs) const { return *_pLhs < *_pRhs; }
-};
+#include <memory>
 
 // Cloner.
-
 class Cloner {
 public:
-    template<class _Obj>
-    Auto<_Obj> get(const _Obj *_pObj, bool _bKeepOriginal = false) {
-        if (_pObj == NULL)
-            return NULL;
+    ~Cloner() = default;
 
-        Cache::iterator iObj = m_cache.find(_getHandle(_pObj));
+    template<class _Obj>
+    std::shared_ptr<_Obj> get(const std::shared_ptr<_Obj>& _pObj, bool _bKeepOriginal = false) {
+        if (!_pObj)
+            return nullptr;
+
+        const auto iObj = m_cache.find(_getHandle(_pObj.get()));
 
         if (iObj != m_cache.end())
-            return iObj->second;
+            return std::static_pointer_cast<_Obj>(iObj->second);
 
         if (_bKeepOriginal)
             return _pObj;
 
-        return _pObj->clone(*this).template as<_Obj>();
-    }
-
-    ~Cloner() {
-        for (const auto& i: m_cache)
-            if (i.second != NULL && !i.second->unref())
-                delete i.second;
+        return std::static_pointer_cast<_Obj>(_pObj->clone(*this));
     }
 
     template<class _Obj>
-    Auto<_Obj> get(const Auto<_Obj> &_pObj, bool _bKeepOriginal = false) {
-        return get(_pObj.ptr(), _bKeepOriginal);
+    void alias(const std::shared_ptr<_Obj>& _pObj, const std::shared_ptr<_Obj>& _pOther) {
+        _mergeHandles(_getHandle(_pObj.get()), _getHandle(_pOther.get()));
     }
 
     template<class _Obj>
-    void alias(const Auto<_Obj> &_pObj, const Auto<_Obj> &_pOther) {
-        _mergeHandles(_getHandle(_pObj.ptr()), _getHandle(_pOther.ptr()));
+    void inject(const std::shared_ptr<_Obj>& _pNew) {
+        m_cache[_getHandle(_pNew.get())] = _pNew;
     }
 
     template<class _Obj>
-    void inject(const Auto<_Obj> &_pNew) {
-        m_cache[_getHandle(_pNew.ptr())] = _pNew.m_pObj;
-        Counted::ref(_pNew.m_pObj);
+    void inject(const std::shared_ptr<_Obj>& _pNew, const std::shared_ptr<_Obj>& _pOld) {
+        const int nHandle = _getHandle(_pNew.get());
+        _mergeHandles(nHandle, _getHandle(_pOld.get()));
+        m_cache[nHandle] = _pNew;
     }
 
     template<class _Obj>
-    void inject(const Auto<_Obj> &_pNew, const Auto<_Obj> &_pOld) {
-        const int nHandle = _getHandle(_pNew.ptr());
-        _mergeHandles(nHandle, _getHandle(_pOld.ptr()));
-        m_cache[nHandle] = _pNew.m_pObj;
-        Counted::ref(_pNew.m_pObj);
+    bool isKnown(const std::shared_ptr<_Obj>& _pObj) const {
+        return m_handles.find(_pObj.get()) != m_handles.cend();
     }
 
     template<class _Obj>
-    bool isKnown(const Auto<_Obj> &_pObj) const {
-        return m_handles.find(_pObj.ptr()) != m_handles.cend();
+    void* allocate(size_t _cSize, const void* _pOriginal) {
+        auto objPtr = std::shared_ptr<void>(std::malloc(_cSize), [](auto p)
+        {
+            delete ((_Obj *)p);
+        });
+
+        m_cache[_getHandle(_pOriginal)] = objPtr;
+
+        return objPtr.get();
     }
 
-    void *allocate(size_t _cSize, const void *_pOriginal);
-    void *allocate(size_t _cSize, const Counted *_pOriginal);
-
-    friend void *operator new(size_t, Cloner &, const void *);
+    friend void* operator new(size_t, Cloner&, const void*);
 
 private:
-    typedef std::map<int, const Counted *> Cache;
-    typedef std::map<const void *, int> Handles;
-    typedef std::multimap<int, const void *> Objects;
+    typedef std::map<int, std::shared_ptr<void>> Cache;
+    typedef std::map<const void*, int> Handles;
+    typedef std::multimap<int, const void*> Objects;
 
     Cache m_cache;
     Handles m_handles;
     Objects m_objects;
 
-    int _getHandle(const void *_pObject);
+    int _getHandle(const void* _pObject);
     void _mergeHandles(int _nHandle, int _nOther);
 };
 
-void *operator new(size_t _cSize, Cloner &_cloner, const void *_pOriginal);
+void* operator new(size_t _cSize, Cloner& _cloner, const void* _pOriginal);
 
 template<typename _Obj>
-inline Auto<_Obj> clone(const _Obj &_obj) {
-    Cloner cloner;
-    return cloner.get(&_obj);
-}
-
-template<typename _Obj>
-inline Auto<_Obj> clone(const Auto<_Obj> &_obj) {
+inline std::shared_ptr<_Obj> clone(const std::shared_ptr<_Obj>& _obj) {
     Cloner cloner;
     return cloner.get(_obj);
 }
-
 // We need a sequence point between allocation and evaluation of constructor arguments
 // in order to cache uninitialized object and prevent infinite recursion on cyclic references.
 #define NEW_CLONE(_ORIGINAL, _CLONER, _CTOR) \
-    ((_CLONER).allocate(sizeof(*_ORIGINAL), _ORIGINAL), ::new((_CLONER), _ORIGINAL) _CTOR)
+    ((_CLONER).allocate<std::remove_const<std::remove_reference<decltype(*_ORIGINAL)>::type>::type>(sizeof(*_ORIGINAL), _ORIGINAL), std::shared_ptr<std::remove_const<std::remove_reference<decltype(*_ORIGINAL)>::type>::type>(::new((_CLONER), _ORIGINAL) _CTOR))
+
+template<class _Comparable>
+struct PtrLess {
+    bool operator()(const std::shared_ptr<const _Comparable>& _pLhs, const std::shared_ptr<const _Comparable>& _pRhs) const { return _pLhs.get() < _pRhs.get(); }
+};
 
 #endif /* AUTOPTR_H_ */

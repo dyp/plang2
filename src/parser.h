@@ -16,6 +16,6 @@
 ir::ModulePtr parse(lexer::Tokens &_tokens);
 
 tc::ContextPtr parseTypeConstraints(lexer::Tokens &_tokens,
-        tc::Formulas & _constraints, FreshTypeNames & _freshTypeNames);
+        const tc::FormulasPtr & _constraints, FreshTypeNames & _freshTypeNames);
 
 #endif /* PARSER_H_ */

@@ -35,7 +35,7 @@ private:
     std::wostream &m_os;
     size_t m_cStatInd, m_cClusterInd;
 
-    void _fmtStatement(const ir::Statement& _stmt, size_t _cInd) {
+    void _fmtStatement(ir::Statement& _stmt, size_t _cInd) {
         m_os << "\"";
         switch (_stmt.getKind()) {
             case ir::Statement::BLOCK:
@@ -54,7 +54,7 @@ private:
                 m_os << L"var{}";
                 break;
             default:
-                prettyPrintCompact(const_cast<ir::Statement&>(_stmt), m_os);
+                prettyPrintCompact(_stmt.as<ir::Node>(), m_os);
                 break;
         }
         m_os << "\"";

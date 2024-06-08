@@ -39,17 +39,13 @@ public:
     /// \param _pType Referenced type.
     void setActualType(const TypePtr &_pType) { m_pActualType = _pType; }
 
-    virtual bool contains(const TypePtr &_pType) const { return m_pActualType->contains(_pType); }
+    bool contains(const Type &_type) const override { return m_pActualType->contains(_type); }
 
     virtual bool hasParameters() const { return true; }
 
-    virtual NodePtr clone(Cloner &_cloner) const {
-        ParameterizedTypePtr pCopy = NEW_CLONE(this, _cloner, ParameterizedType(_cloner.get(getActualType())));
-        pCopy->getParams().appendClones(getParams(), _cloner);
-        return pCopy;
-    }
+    NodePtr clone(Cloner &_cloner) const override;
 
-    virtual int getMonotonicity(const Type &_var) const;
+    int getMonotonicity(const Type &_var) const override;
 
 private:
     NamedValues m_params;
@@ -88,11 +84,7 @@ public:
     bool less(const Type &_other) const override;
     bool equals(const Type &_other) const override;
 
-    NodePtr clone(Cloner &_cloner) const override {
-        NamedReferenceTypePtr pCopy = NEW_CLONE(this, _cloner, NamedReferenceType(_cloner.get(getDeclaration(), true)));
-        pCopy->getArgs().appendClones(getArgs(), _cloner);
-        return pCopy;
-    }
+    NodePtr clone(Cloner &_cloner) const override;
 
 private:
     Collection<Expression> m_args;
@@ -118,9 +110,7 @@ public:
     virtual int compare(const Type &_other) const;
     virtual bool less(const Type &_other) const;
 
-    virtual NodePtr clone(Cloner &_cloner) const {
-        return NEW_CLONE(this, _cloner, TypeType(_cloner.get(getDeclaration())));
-    }
+    NodePtr clone(Cloner &_cloner) const override;
 
 private:
     TypeDeclarationPtr m_pDecl;
@@ -139,48 +129,42 @@ public:
 
     /// Ordered fields known by name.
     /// \return List of fields.
-    NamedValues &getNamesOrd() { return m_namesOrd; }
-    const NamedValues &getNamesOrd() const { return m_namesOrd; }
+    const NamedValuesPtr &getNamesOrd() const { return m_fields[0]; }
 
     // Ordered fields known by type.
-    NamedValues &getTypesOrd() { return m_typesOrd; }
-    const NamedValues &getTypesOrd() const { return m_typesOrd; }
+    const NamedValuesPtr &getTypesOrd() const { return m_fields[1]; }
 
     // Unordered fields known by name.
-    NamedValues &getNamesSet() { return m_namesSet; }
-    const NamedValues &getNamesSet() const { return m_namesSet; }
+    const NamedValuesPtr &getNamesSet() const { return m_fields[2]; }
 
     /// All fields. Guaranteed to have 3 elements.
     /// \return List of fields.
-    NamedValues *getAllFields() { return m_fields; }
-    const NamedValues *getAllFields() const { return m_fields; }
+    NamedValuesPtr *getAllFields() { return m_fields; }
+    const NamedValuesPtr *getAllFields() const { return m_fields; }
 
-    size_t size() const { return m_namesOrd.size() + m_typesOrd.size() + m_namesSet.size(); }
+    size_t size() const { return m_fields[0]->size() + m_fields[1]->size() + m_fields[2]->size(); }
 
     NamedValuesPtr mergeFields() const;
 
     virtual bool hasFresh() const;
     virtual bool rewrite(const TypePtr &_pOld, const TypePtr &_pNew, bool _bRewriteFlags = true);
     virtual int compare(const Type &_other) const;
-    virtual TypePtr getMeet(Type &_other);
-    virtual TypePtr getJoin(Type &_other);
+    virtual TypePtr getMeet(const TypePtr &_other);
+    virtual TypePtr getJoin(const TypePtr &_other);
     virtual bool less(const Type &_other) const;
-    virtual bool contains(const TypePtr &_pType) const;
+    bool contains(const Type &_type) const override;
     virtual int getMonotonicity(const Type &_var) const;
 
     bool empty() const;
 
-    virtual NodePtr clone(Cloner &_cloner) const {
-        StructTypePtr pCopy = NEW_CLONE(this, _cloner, StructType());
-        pCopy->getNamesOrd().appendClones(getNamesOrd(), _cloner);
-        pCopy->getTypesOrd().appendClones(getTypesOrd(), _cloner);
-        pCopy->getNamesSet().appendClones(getNamesSet(), _cloner);
-        return pCopy;
-    }
+    NodePtr clone(Cloner &_cloner) const override;
 
 private:
-    NamedValues m_fields[3];
-    NamedValues &m_namesOrd, &m_typesOrd, &m_namesSet;
+    NamedValuesPtr m_fields[3] = {
+        std::make_shared<NamedValues>(),
+        std::make_shared<NamedValues>(),
+        std::make_shared<NamedValues>()
+    };
 };
 
 /// Identifier belonging to an enumeration.
@@ -211,11 +195,7 @@ public:
     /// \param _nOrdinal Ordinal corresponding to the value.
     void setOrdinal(int _nOrdinal) { m_nOrdinal = _nOrdinal; }
 
-    virtual NodePtr clone(Cloner &_cloner) const {
-        const EnumValuePtr pCopy = NEW_CLONE(this, _cloner, EnumValue(getName(), getOrdinal(), _cloner.get(getType())));
-        pCopy->setLoc(this->getLoc());
-        return pCopy;
-    }
+    NodePtr clone(Cloner &_cloner) const override;
 
 private:
     int m_nOrdinal;
@@ -237,11 +217,7 @@ public:
     Collection<EnumValue> &getValues() { return m_values; }
     const Collection<EnumValue> &getValues() const { return m_values; }
 
-    virtual NodePtr clone(Cloner &_cloner) const {
-        EnumTypePtr pCopy = NEW_CLONE(this, _cloner, EnumType());
-        pCopy->getValues().appendClones(getValues(), _cloner);
-        return pCopy;
-    }
+    NodePtr clone(Cloner &_cloner) const override;
 
 private:
     Collection<EnumValue> m_values;
@@ -255,7 +231,7 @@ public:
         const UnionTypePtr &_pUnion = NULL, const TypePtr _pFields = NULL) :
         m_strName(_strName), m_pUnion(_pUnion), m_ord(_ord)
     {
-        m_pFields = !_pFields ? new StructType() : _pFields;
+        m_pFields = !_pFields ? std::make_shared<StructType>()->as<Type>() : _pFields;
     }
 
     virtual int getNodeKind() const { return Node::UNION_CONSTRUCTOR_DECLARATION; }
@@ -285,12 +261,7 @@ public:
     virtual bool less(const Node& _other) const;
     virtual bool equals(const Node& _other) const;
 
-    virtual NodePtr clone(Cloner &_cloner) const {
-        const UnionConstructorDeclarationPtr pCopy = NEW_CLONE(this, _cloner, UnionConstructorDeclaration(getName(),
-                getOrdinal(), _cloner.get(getUnion()), _cloner.get(getFields())));
-        pCopy->setLoc(this->getLoc());
-        return pCopy;
-    }
+    NodePtr clone(Cloner &_cloner) const override;
 
 private:
     std::wstring m_strName;
@@ -321,18 +292,14 @@ public:
 
     virtual bool hasFresh() const;
     virtual bool rewrite(const TypePtr &_pOld, const TypePtr &_pNew, bool _bRewriteFlags = true);
-    virtual TypePtr getMeet(Type &_other);
-    virtual TypePtr getJoin(Type &_other);
+    virtual TypePtr getMeet(const TypePtr &_other);
+    virtual TypePtr getJoin(const TypePtr &_other);
     virtual bool less(const Type &_other) const;
     virtual int getMonotonicity(const Type &_var) const;
 
-    virtual bool contains(const TypePtr &_pType) const;
+    bool contains(const Type &_type) const override;
 
-    virtual NodePtr clone(Cloner &_cloner) const {
-        UnionTypePtr pCopy = NEW_CLONE(this, _cloner, UnionType());
-        pCopy->getConstructors().appendClones(getConstructors(), _cloner);
-        return pCopy;
-    }
+    NodePtr clone(Cloner &_cloner) const override;
 
 private:
     UnionConstructorDeclarations m_constructors;
@@ -362,13 +329,15 @@ public:
     virtual bool rewriteFlags(int _flags) { return m_pBaseType->rewriteFlags(_flags); }
     virtual int getMonotonicity(const Type &_var) const;
 
-    virtual bool contains(const TypePtr &_pType) const {
-        return *m_pBaseType == *_pType || m_pBaseType->contains(_pType);
+    bool contains(const Type &_type) const override {
+        return *m_pBaseType == _type || m_pBaseType->contains(_type);
     }
 
 private:
     TypePtr m_pBaseType;
 };
+
+using OptionalTypePtr = std::shared_ptr<class OptionalType>;
 
 /// Optional type.
 /// Values of optional type are either of it's base type or \c nil.
@@ -382,10 +351,10 @@ public:
     /// \returns #Optional.
     virtual int getKind() const { return OPTIONAL; }
 
-    virtual NodePtr clone(Cloner &_cloner) const {
-        return NEW_CLONE(this, _cloner, OptionalType(_cloner.get(getBaseType())));
-    }
+    NodePtr clone(Cloner &_cloner) const override;
 };
+
+using SeqTypePtr = std::shared_ptr<class SeqType>;
 
 /// Sequence type.
 class SeqType : public DerivedType {
@@ -398,9 +367,7 @@ public:
     /// \returns #Seq.
     virtual int getKind() const { return SEQ; }
 
-    virtual NodePtr clone(Cloner &_cloner) const {
-        return NEW_CLONE(this, _cloner, SeqType(_cloner.get(getBaseType())));
-    }
+    NodePtr clone(Cloner &_cloner) const override;
 };
 
 /// Subtype.
@@ -432,15 +399,13 @@ public:
     /// \param _pExpression Boolean expression.
     void setExpression(const ExpressionPtr &_pExpression) { m_pExpression = _pExpression; }
 
-    RangePtr asRange() const;
+    RangePtr asRange();
 
-    virtual NodePtr clone(Cloner &_cloner) const {
-        return NEW_CLONE(this, _cloner, Subtype(_cloner.get(getParam()), _cloner.get(getExpression())));
-    }
+    NodePtr clone(Cloner &_cloner) const override;
 
     virtual bool less(const Type &_other) const;
-    virtual TypePtr getMeet(Type &_other);
-    virtual TypePtr getJoin(Type &_other);
+    virtual TypePtr getMeet(const TypePtr &_other);
+    virtual TypePtr getJoin(const TypePtr &_other);
     virtual bool rewrite(const TypePtr &_pOld, const TypePtr &_pNew, bool _bRewriteFlags = true);
     virtual int compare(const Type &_other) const;
     virtual int getMonotonicity(const Type &_var) const;
@@ -449,8 +414,8 @@ public:
         return m_pParam && m_pParam->getType()->hasFresh();
     }
 
-    virtual bool contains(const TypePtr &_pType) const {
-        return m_pParam && ((*m_pParam->getType() == *_pType) || m_pParam->getType()->contains(_pType));
+    bool contains(const Type &_type) const override {
+        return m_pParam && ((*m_pParam->getType() == _type) || m_pParam->getType()->contains(_type));
     }
 
 private:
@@ -464,6 +429,9 @@ private:
 /// \code subtype (T t : t >= tMin & t <= tMax) \endcode
 class Range : public Type {
 public:
+    Range() {}
+    Range(const ExpressionPtr &_pMin)
+        : m_pMin(_pMin) {}
     /// Initialize with bounds.
     /// \param _pMin Expression corresponding to the lower bound of the type.
     /// \param _pMax Expression corresponding to the upper bound of the type.
@@ -492,9 +460,7 @@ public:
 
     SubtypePtr asSubtype() const;
 
-    virtual NodePtr clone(Cloner &_cloner) const {
-        return NEW_CLONE(this, _cloner, Range(_cloner.get(getMin()), _cloner.get(getMax())));
-    }
+    NodePtr clone(Cloner &_cloner) const override;
 
 private:
     ExpressionPtr m_pMin, m_pMax;
@@ -505,7 +471,12 @@ class ArrayType : public DerivedType {
 public:
     /// Initialize with base type.
     /// \param _pType Base type.
-    ArrayType(const TypePtr &_pType = NULL, const TypePtr &_pDimensionType = NULL) :
+    ArrayType() {}
+
+    ArrayType(const TypePtr &_pType) :
+        DerivedType(_pType)
+    {}
+    ArrayType(const TypePtr &_pType, const TypePtr &_pDimensionType) :
         DerivedType(_pType), m_pDimensionType(_pDimensionType)
     {}
 
@@ -520,7 +491,7 @@ public:
 
     TypePtr getRootType() const {
         return getBaseType()->getKind() == ARRAY
-            ? getBaseType().as<ArrayType>()->getRootType()
+            ? getBaseType()->as<ArrayType>()->getRootType()
             : getBaseType();
     }
 
@@ -530,13 +501,13 @@ public:
 
     size_t getDimensionsCount() const {
         return getBaseType()->getKind() == ARRAY
-            ? getBaseType().as<ArrayType>()->getDimensionsCount() + 1
+            ? getBaseType()->as<ArrayType>()->getDimensionsCount() + 1
             : 1;
     }
 
     virtual bool less(const Type &_other) const;
-    virtual TypePtr getMeet(Type &_other);
-    virtual TypePtr getJoin(Type &_other);
+    virtual TypePtr getMeet(const TypePtr &_other);
+    virtual TypePtr getJoin(const TypePtr &_other);
     virtual bool rewrite(const TypePtr &_pOld, const TypePtr &_pNew, bool _bRewriteFlags = true);
     virtual int compare(const Type &_other) const;
     virtual int getMonotonicity(const Type &_var) const;
@@ -545,16 +516,14 @@ public:
         return getBaseType()->hasFresh();
     }
 
-    virtual bool contains(const TypePtr &_pType) const {
-        return *getBaseType() == *_pType
-            || getBaseType()->contains(_pType)
-            || *getDimensionType() == *_pType
-            || getDimensionType()->contains(_pType);
+    bool contains(const Type &_type) const override {
+        return *getBaseType() == _type
+            || getBaseType()->contains(_type)
+            || *getDimensionType() == _type
+            || getDimensionType()->contains(_type);
     }
 
-    virtual NodePtr clone(Cloner &_cloner) const {
-        return NEW_CLONE(this, _cloner, ArrayType(_cloner.get(getBaseType()), _cloner.get(getDimensionType())));
-    }
+    NodePtr clone(Cloner &_cloner) const override;
 
 private:
     TypePtr m_pDimensionType;
@@ -563,20 +532,19 @@ private:
 /// Set type.
 class SetType : public DerivedType {
 public:
+    SetType() {}
     /// Initialize with base type.
     /// \param _pType Base type.
-    SetType(const TypePtr &_pType = NULL) : DerivedType(_pType) {}
+    SetType(const TypePtr &_pType) : DerivedType(_pType) {}
 
     /// Get type kind.
     /// \returns #Set.
     virtual int getKind() const { return SET; }
 
-    virtual TypePtr getMeet(Type &_other);
-    virtual TypePtr getJoin(Type &_other);
+    virtual TypePtr getMeet(const TypePtr &_other);
+    virtual TypePtr getJoin(const TypePtr &_other);
 
-    virtual NodePtr clone(Cloner &_cloner) const {
-        return NEW_CLONE(this, _cloner, SetType(_cloner.get(getBaseType())));
-    }
+    NodePtr clone(Cloner &_cloner) const override;
 };
 
 /// Map type.
@@ -586,8 +554,12 @@ public:
     /// Initialize with base type.
     /// \param _pIndexType Index type.
     /// \param _pBaseType Base type.
-    MapType(const TypePtr &_pIndexType = NULL, const TypePtr &_pBaseType = NULL)
+    MapType(const TypePtr &_pIndexType, const TypePtr &_pBaseType)
         : DerivedType(_pBaseType), m_pIndexType(_pIndexType) {}
+    MapType(const TypePtr &_pIndexType)
+        : DerivedType(), m_pIndexType(_pIndexType) {}
+    MapType()
+        : DerivedType() {}
 
     /// Get type kind.
     /// \returns #Map.
@@ -601,8 +573,8 @@ public:
     /// \param _pType Index type.
     void setIndexType(const TypePtr &_pType) { m_pIndexType = _pType; }
 
-    virtual bool contains(const TypePtr &_pType) const {
-        return DerivedType::contains(_pType) || *m_pIndexType == *_pType || m_pIndexType->contains(_pType);
+    bool contains(const Type &_type) const override {
+        return DerivedType::contains(_type) || *m_pIndexType == _type || m_pIndexType->contains(_type);
     }
 
     virtual bool rewriteFlags(int _flags) {
@@ -614,13 +586,11 @@ public:
     virtual bool rewrite(const TypePtr &_pOld, const TypePtr &_pNew, bool _bRewriteFlags = true);
     virtual int compare(const Type &_other) const;
     virtual bool less(const Type &_other) const;
-    virtual TypePtr getJoin(Type &_other);
-    virtual TypePtr getMeet(Type &_other);
+    virtual TypePtr getJoin(const TypePtr &_other);
+    virtual TypePtr getMeet(const TypePtr &_other);
     virtual int getMonotonicity(const Type &_var) const;
 
-    virtual NodePtr clone(Cloner &_cloner) const {
-        return NEW_CLONE(this, _cloner, MapType(_cloner.get(getIndexType()), _cloner.get(getBaseType())));
-    }
+    NodePtr clone(Cloner &_cloner) const override;
 
 private:
     TypePtr m_pIndexType;
@@ -640,12 +610,10 @@ public:
     /// \returns #List.
     virtual int getKind() const { return LIST; }
 
-    virtual TypePtr getJoin(Type &_other);
-    virtual TypePtr getMeet(Type &_other);
+    virtual TypePtr getJoin(const TypePtr &_other);
+    virtual TypePtr getMeet(const TypePtr &_other);
 
-    virtual NodePtr clone(Cloner &_cloner) const {
-        return NEW_CLONE(this, _cloner, ListType(_cloner.get(getBaseType())));
-    }
+    NodePtr clone(Cloner &_cloner) const override;
 };
 
 /// Reference type.
@@ -659,12 +627,10 @@ public:
     /// \returns #Reference.
     virtual int getKind() const { return REFERENCE; }
 
-    virtual TypePtr getMeet(Type &_other);
-    virtual TypePtr getJoin(Type &_other);
+    virtual TypePtr getMeet(const TypePtr &_other);
+    virtual TypePtr getJoin(const TypePtr &_other);
 
-    virtual NodePtr clone(Cloner &_cloner) const {
-        return NEW_CLONE(this, _cloner, RefType(_cloner.get(getBaseType())));
-    }
+    NodePtr clone(Cloner &_cloner) const override;
 };
 
 /// Predicate type.
@@ -730,20 +696,15 @@ public:
 
     virtual bool hasParameters() const { return true; }
 
-    virtual bool contains(const TypePtr &_pType) const;
+    bool contains(const Type &_type) const override;
 
     virtual int compare(const Type &_other) const;
     virtual bool less(const Type &_other) const;
-    virtual TypePtr getJoin(Type &_other);
-    virtual TypePtr getMeet(Type &_other);
+    virtual TypePtr getJoin(const TypePtr &_other);
+    virtual TypePtr getMeet(const TypePtr &_other);
     virtual int getMonotonicity(const Type &_var) const;
 
-    virtual NodePtr clone(Cloner &_cloner) const {
-        PredicateTypePtr pCopy = NEW_CLONE(this, _cloner, PredicateType(_cloner.get(getPreCondition()), _cloner.get(getPostCondition())));
-        pCopy->getInParams().appendClones(getInParams(), _cloner);
-        pCopy->getOutParams().appendClones(getOutParams(), _cloner);
-        return pCopy;
-    }
+    NodePtr clone(Cloner &_cloner) const override;
 
 private:
     Params m_paramsIn;

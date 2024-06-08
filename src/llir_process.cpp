@@ -53,10 +53,10 @@ void ProcessLL::processInstructions(Instructions & _instrs) {
 void ProcessLL::processInstructionIter(Instructions::iterator _iInstr) {
     m_iInstr = _iInstr;
     m_iNext = ::next(_iInstr);
-    m_pNext = m_iNext == m_pInstructions->end() ? NULL : m_iNext->ptr();
+    m_pNext = m_iNext == m_pInstructions->end() ? NULL : m_iNext->get();
     m_pInstr = * _iInstr;
     processInstruction(** _iInstr);
-    m_pPrev = _iInstr->ptr();
+    m_pPrev = _iInstr->get();
 }
 
 void ProcessLL::processInstruction(Instruction & _instr) {
@@ -181,15 +181,15 @@ void RecycleVars::processInstruction(Instruction & _instr)
 {
     ProcessLL::processInstruction(_instr);
 
-    Auto<Variable> oldVar = _instr.getResult();
+    const auto oldVar = _instr.getResult();
 
     if (oldVar) {
         typedef RecyclePool::iterator I;
-        const Auto<Type> & type = oldVar->getType();
+        const auto type = oldVar->getType();
         std::pair<I, I> bounds = m_varPool.equal_range(type);
 
         if (bounds.first != bounds.second) {
-            Auto<Variable> newVar = bounds.first->second;
+            const auto newVar = bounds.first->second;
 
             newVar->setLastUse(oldVar->getLastUse());
             newVar->setAlive(true);
@@ -294,7 +294,7 @@ void PruneJumps::collapse(Instructions::iterator _iInstr, Instructions & _instrs
     m_target = Operand();
 
     if (_iInstr != m_iStart) {
-        Auto<Label> pLabel;
+        LabelPtr pLabel;
 
         for (Instructions::iterator iInstr = m_iStart; iInstr != _iInstr; ++ iInstr) {
             ProcessLL::processInstructionIter(iInstr);
@@ -314,7 +314,7 @@ void PruneJumps::collapse(Instructions::iterator _iInstr, Instructions & _instrs
                     m_rewriteLabels[(* _iInstr)->getLabel()] = pLabel;
                 (* _iInstr)->setLabel(pLabel);
             } else {
-                _instrs.push_back(new Instruction()); // nop
+                _instrs.push_back(std::make_shared<Instruction>()); // nop
                 _instrs.back()->setLabel(pLabel);
                 _iInstr = ::prev(_instrs.end());
             }
@@ -356,20 +356,20 @@ void PruneJumps::processInstruction(Instruction & _instr) {
 
     // Detect start and end of collapsable instruction sequence.
 
-    Auto<Label> pLabel = _instr.getLabel();
+    const auto pLabel = _instr.getLabel();
     bool bBreak = true;
 
     if (pLabel) {
-        m_labels.insert(pLabel.ptr());
-        m_labelsFwd.erase(pLabel.ptr());
+        m_labels.insert(pLabel.get());
+        m_labelsFwd.erase(pLabel.get());
         if (_instr.getKind() == Instruction::NOP)
             bBreak = false;
     }
 
     if (! m_target.empty()) {
-        if (m_labels.find(m_target.getLabel().ptr()) == m_labels.end()) {
+        if (m_labels.find(m_target.getLabel().get()) == m_labels.end()) {
             bBreak = false;
-            m_labelsFwd.insert(m_target.getLabel().ptr());
+            m_labelsFwd.insert(m_target.getLabel().get());
         } else
             bBreak = true;
     }
@@ -385,7 +385,7 @@ void PruneJumps::processInstruction(Instruction & _instr) {
         for (Instructions::iterator iInstr = m_iStart; iInstr != iEnd; ++ iInstr) {
             ProcessLL::processInstructionIter(iInstr);
             if (! m_target.empty()) {
-                if (m_labelsFwd.find(m_target.getLabel().ptr()) != m_labelsFwd.end())
+                if (m_labelsFwd.find(m_target.getLabel().get()) != m_labelsFwd.end())
                     collapse(iInstr, * getInstructions());
             }
         }
@@ -473,11 +473,11 @@ void CollapseReturns::processBinary(Binary & _instr) {
     if (nextInstr.getLabel())
         return;
 
-    if (nextInstr.getOp().getVariable().ptr() != _instr.getOp1().getVariable().ptr())
+    if (nextInstr.getOp().getVariable().get() != _instr.getOp1().getVariable().get())
         return;
 
     nextInstr.getOp() = _instr.getOp2();
-    setInstruction(new Instruction()); // nop
+    setInstruction(std::make_shared<Instruction>()); // nop
 }
 
 //

@@ -19,14 +19,14 @@ bool Unify::_run(int & _nResult) {
     bool bModified = false;
     const bool bCompound = m_nCurrentCFPart >= 0;
 
-    while (!_context()->empty()) {
-        tc::Formula &f = **_context()->begin();
+    while (!_context()->formulas()->empty()) {
+        tc::Formula &f = **_context()->formulas()->begin();
 
         if (!f.is(tc::Formula::EQUALS))
             break;
 
         if (*f.getLhs() == *f.getRhs()) {
-            _context()->erase(_context()->begin());
+            _context()->formulas()->erase(_context()->formulas()->begin());
             continue;
         }
 
@@ -44,25 +44,25 @@ bool Unify::_run(int & _nResult) {
             bModified = true;
         }
 
-        _context()->erase(_context()->begin());
+        _context()->formulas()->erase(_context()->formulas()->begin());
 
         if (!pOld->compare(*pNew, Type::ORD_EQUALS)) {
-            if (_context().rewrite(pOld, pNew))
+            if (_context()->rewrite(pOld, pNew))
                 bModified = true;
 
-            _context().pSubsts->insert(new tc::Formula(tc::Formula::EQUALS, pOld, pNew));
+            _context()->pSubsts->insert(std::make_shared<tc::Formula>(tc::Formula::EQUALS, pOld, pNew));
             bModified |= !bCompound; // Subformulas of compound formulas don't store their substs separately.
         }
     }
 
     if (bCompound)
-        _context()->insert(_context().pSubsts->begin(), _context().pSubsts->end());
+        _context()->formulas()->insert(_context()->pSubsts->begin(), _context()->pSubsts->end());
 
     return _runCompound(_nResult) || bModified;
 }
 
-Auto<Operation> Operation::unify() {
-    return new Unify();
+OperationPtr Operation::unify() {
+    return std::make_shared<Unify>();
 }
 
 }

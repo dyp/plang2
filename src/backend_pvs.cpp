@@ -20,7 +20,7 @@ public:
     {}
 
     std::wstring namedValueName(const NamedValuePtr& pValue) {
-        return removeRedundantSymbols(cyrillicToASCII(m_context.nameGenerator().getNamedValueName(*pValue)), L"'", L"?");
+        return removeRedundantSymbols(cyrillicToASCII(m_context.nameGenerator().getNamedValueName(pValue)), L"'", L"?");
     }
 
     std::wstring fmtType(int _kind) {
@@ -35,10 +35,10 @@ public:
         }
     }
 
-    bool traverseStatement(Statement& _stmt) {
+    bool traverseStatement(const StatementPtr& _stmt) override {
         const bool bResult = Visitor::traverseStatement(_stmt);
 
-        if (_stmt.getKind() >= Statement::TYPE_DECLARATION)
+        if (_stmt->getKind() >= Statement::TYPE_DECLARATION)
             m_os << L"\n\n";
 
         return bResult;
@@ -114,90 +114,90 @@ public:
         return true;
     }
 
-    bool traverseVariableDeclaration(VariableDeclaration &_stmt) {
+    bool traverseVariableDeclaration(const VariableDeclarationPtr &_stmt) override {
         VISITOR_ENTER(VariableDeclaration, _stmt);
-        m_os << namedValueName(_stmt.getVariable()) << L" : " << setInline(true);
-        traverseType(*_stmt.getVariable()->getType());
+        m_os << namedValueName(_stmt->getVariable()) << L" : " << setInline(true);
+        traverseType(_stmt->getVariable()->getType());
         m_os << setInline(false);
-        if (_stmt.getValue()) {
+        if (_stmt->getValue()) {
             m_os << L" =\n" << indent;
-            VISITOR_TRAVERSE(Expression, VarDeclInit, _stmt.getValue(), _stmt, VariableDeclaration, setValue);
+            VISITOR_TRAVERSE(Expression, VarDeclInit, _stmt->getValue(), _stmt, VariableDeclaration, setValue);
             m_os << unindent;
         }
         VISITOR_EXIT();
     }
 
-    bool traverseTypeDeclaration(TypeDeclaration &_stmt) {
+    bool traverseTypeDeclaration(const TypeDeclarationPtr &_stmt) override {
         VISITOR_ENTER(TypeDeclaration, _stmt);
 
-        VISITOR_TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
+        VISITOR_TRAVERSE(Label, StmtLabel, _stmt->getLabel(), _stmt, Statement, setLabel);
         m_os << m_context.nameGenerator().getTypeName(_stmt);
 
-        if (_stmt.getType()->getKind() == Type::PARAMETERIZED) {
+        if (_stmt->getType()->getKind() == Type::PARAMETERIZED) {
             m_os << L"(";
-            VISITOR_TRAVERSE_COL(Type, Type, _stmt.getType().as<ParameterizedType>()->getParams());
+            VISITOR_TRAVERSE_COL(Type, Type, _stmt->getType()->as<ParameterizedType>()->getParams());
             m_os << L")";
         }
 
         m_os << L" : TYPE";
 
-        if (_stmt.getType()) {
+        if (_stmt->getType()) {
             m_os << L" =\n" << indent;
-            VISITOR_TRAVERSE(Type, TypeDeclBody, _stmt.getType(), _stmt, TypeDeclaration, setType);
+            VISITOR_TRAVERSE(Type, TypeDeclBody, _stmt->getType(), _stmt, TypeDeclaration, setType);
             m_os << unindent;
         }
 
         VISITOR_EXIT();
     }
 
-    bool visitType(ir::Type &_type) {
-        if (_type.getKind() <= Type::GENERIC)
-            m_os << fmtType(_type.getKind());
+    bool visitType(const ir::TypePtr &_type) override {
+        if (_type->getKind() <= Type::GENERIC)
+            m_os << fmtType(_type->getKind());
         return true;
     }
 
-    bool traverseSubtype(Subtype &_type) {
+    bool traverseSubtype(const SubtypePtr &_type) override {
         VISITOR_ENTER(Subtype, _type);
         m_os << L"{";
-        VISITOR_TRAVERSE(NamedValue, SubtypeParam, _type.getParam(), _type, Subtype, setParam);
+        VISITOR_TRAVERSE(NamedValue, SubtypeParam, _type->getParam(), _type, Subtype, setParam);
         m_os << L" | " << setInline(true);
-        VISITOR_TRAVERSE(Expression, SubtypeCond, _type.getExpression(), _type, Subtype, setExpression);
+        VISITOR_TRAVERSE(Expression, SubtypeCond, _type->getExpression(), _type, Subtype, setExpression);
         m_os << "}" << setInline(false);
         VISITOR_EXIT();
     }
 
-    bool traverseRange(Range &_type) {
+    bool traverseRange(const RangePtr &_type) override {
         VISITOR_ENTER(Range, _type);
         m_os << L"subrange(" << setInline(true);
-        VISITOR_TRAVERSE(Expression, RangeMin, _type.getMin(), _type, Range, setMin);
+        VISITOR_TRAVERSE(Expression, RangeMin, _type->getMin(), _type, Range, setMin);
         m_os << L", ";
-        VISITOR_TRAVERSE(Expression, RangeMax, _type.getMax(), _type, Range, setMax);
+        VISITOR_TRAVERSE(Expression, RangeMax, _type->getMax(), _type, Range, setMax);
         m_os << ")" << setInline(false);
         VISITOR_EXIT();
     }
 
-    bool traverseNamedReferenceType(NamedReferenceType &_type) {
+    bool traverseNamedReferenceType(const NamedReferenceTypePtr &_type) override {
         VISITOR_ENTER(NamedReferenceType, _type);
 
-        if (!_type.getDeclaration())
+        if (!_type->getDeclaration())
             VISITOR_EXIT();
 
         m_os << m_context.nameGenerator().getTypeName(_type);
 
-        if (!_type.getArgs().empty()) {
+        if (!_type->getArgs().empty()) {
             m_os << L"(" << setInline(true);
-            VISITOR_TRAVERSE_COL(Expression, NamedTypeArg, _type.getArgs());
+            VISITOR_TRAVERSE_COL(Expression, NamedTypeArg, _type->getArgs());
             m_os << L")" << setInline(false);
         }
 
         VISITOR_EXIT();
     }
 
-    bool visitArrayType(ArrayType& _array) {
-        const TypePtr& pBaseType = _array.getRootType();
+    bool visitArrayType(const ArrayTypePtr& _array) override {
+        const TypePtr& pBaseType = _array->getRootType();
 
         Collection<Type> dims;
-        _array.getDimensions(dims);
+        _array->getDimensions(dims);
 
         m_os << L"[";
 
@@ -211,37 +211,37 @@ public:
         return false;
     }
 
-    bool traverseEnumValue(EnumValue &_val) {
+    bool traverseEnumValue(const EnumValuePtr &_val) override {
         printComma();
-        m_os << L"\n" << _val.getName();
+        m_os << L"\n" << _val->getName();
         return true;
     }
 
-    bool traverseEnumType(EnumType &_type) {
+    bool traverseEnumType(const EnumTypePtr &_type) override {
         VISITOR_ENTER(EnumType, _type);
         m_os << L"{" << indent;
-        VISITOR_TRAVERSE_COL(EnumValue, EnumValueDecl, _type.getValues());
+        VISITOR_TRAVERSE_COL(EnumValue, EnumValueDecl, _type->getValues());
         m_os << unindent << L"\n}";
         VISITOR_EXIT();
     }
 
-    bool traverseListType(ListType &_type) {
+    bool traverseListType(const ListTypePtr &_type) override {
         VISITOR_ENTER(ListType, _type);
         m_os << L"list[" << setInline(true);
-        VISITOR_TRAVERSE(Type, ListBaseType, _type.getBaseType(), _type, DerivedType, setBaseType);
+        VISITOR_TRAVERSE(Type, ListBaseType, _type->getBaseType(), _type, DerivedType, setBaseType);
         m_os << L"]" << setInline(false);
         VISITOR_EXIT();
     }
 
-    bool traverseSetType(SetType &_type) {
+    bool traverseSetType(const SetTypePtr &_type) override {
         VISITOR_ENTER(SetType, _type);
         m_os << L"setof[" << setInline(true);
-        VISITOR_TRAVERSE(Type, SetBaseType, _type.getBaseType(), _type, DerivedType, setBaseType);
+        VISITOR_TRAVERSE(Type, SetBaseType, _type->getBaseType(), _type, DerivedType, setBaseType);
         m_os << L"]" << setInline(false);
         VISITOR_EXIT();
     }
 
-    bool visitTypeType(TypeType&) {
+    bool visitTypeType(const TypeTypePtr&) override {
         m_os << L"TYPE";
         return false;
     }
@@ -250,7 +250,7 @@ public:
         std::list<Visitor::Loc>::iterator i = ::prev(m_path.end());
         if (i->pNode->getNodeKind() != ir::Node::EXPRESSION)
             return NULL;
-        return i->pNode;
+        return i->pNode->as<Expression>();
     }
 
     ir::ExpressionPtr getParent() {
@@ -263,7 +263,7 @@ public:
             --i;
         if (i->pNode->getNodeKind() != ir::Node::EXPRESSION)
             return NULL;
-        return i->pNode;
+        return i->pNode->as<Expression>();
     }
 
     int getParentKind() {
@@ -283,7 +283,6 @@ public:
     }
 
     bool needsParen() {
-
         const int nChildKind = getChildKind();
         if (nChildKind == -1)
             return false;
@@ -305,8 +304,8 @@ public:
 
         if (nParentKind == nChildKind) {
             if (nParentKind == ir::Expression::BINARY) {
-                const ir::BinaryPtr pChild = getChild().as<Binary>();
-                const ir::BinaryPtr pParent = getParent().as<Binary>();
+                const auto pChild = getChild()->as<Binary>();
+                const auto pParent = getParent()->as<Binary>();
                 if (pChild->getOperator() == pParent->getOperator())
                     return false;
             }
@@ -334,8 +333,8 @@ public:
             m_os << ", ";
     }
 
-    void printUnaryOperator(ir::Unary &_node) {
-        switch (_node.getOperator()) {
+    void printUnaryOperator(const ir::UnaryPtr &_node) {
+        switch (_node->getOperator()) {
             case ir::Unary::PLUS:
                 m_os << L"+";
                 break;
@@ -348,8 +347,8 @@ public:
         }
     }
 
-    void printBinaryOperator(ir::Binary &_node) {
-        switch (_node.getOperator()) {
+    void printBinaryOperator(const ir::BinaryPtr &_node) {
+        switch (_node->getOperator()) {
             case ir::Binary::ADD:
                 m_os << L"+";
                 break;
@@ -398,7 +397,7 @@ public:
         }
     }
 
-    bool visitNamedValue(ir::NamedValue &_value) {
+    bool visitNamedValue(const ir::NamedValuePtr &_value) override {
         if (!m_path.empty() && getRole() == R_VarDeclVar)
             return true;
         printComma();
@@ -406,33 +405,33 @@ public:
         return true;
     }
 
-    virtual bool visitLiteral(ir::Literal &_node) {
-        switch (_node.getLiteralKind()) {
+    bool visitLiteral(const ir::LiteralPtr &_node) override {
+        switch (_node->getLiteralKind()) {
             case ir::Literal::UNIT:
                 m_os << L"0";
                 break;
             case ir::Literal::NUMBER:
-                m_os << _node.getNumber().toString();
+                m_os << _node->getNumber().toString();
                 break;
             case ir::Literal::BOOL:
-                m_os << (_node.getBool() ? L"TRUE" : L"FALSE");
+                m_os << (_node->getBool() ? L"TRUE" : L"FALSE");
                 break;
         }
         return true;
     }
 
-    bool visitVariableReference(ir::VariableReference &_node) {
-        m_os << namedValueName(_node.getTarget());
+    bool visitVariableReference(const ir::VariableReferencePtr &_node) override {
+        m_os << namedValueName(_node->getTarget());
         return false;
     }
 
-    bool visitLabel(ir::Label &_label) {
-        m_os << cyrillicToASCII(_label.getName().empty()
-            ? m_context.nameGenerator().getNewLabelName(L"L") : _label.getName()) << ": ";
+    bool visitLabel(const ir::LabelPtr &_label) override {
+        m_os << cyrillicToASCII(_label->getName().empty()
+            ? m_context.nameGenerator().getNewLabelName(L"L") : _label->getName()) << ": ";
         return true;
     }
 
-    virtual bool traverseExpression(ir::Expression &_node) {
+    bool traverseExpression(const ir::ExpressionPtr &_node) override {
         printComma();
 
         bool bParen;
@@ -450,35 +449,35 @@ public:
         return result;
     }
 
-    bool traverseFieldExpr(FieldExpr &_expr) {
+    bool traverseFieldExpr(const FieldExprPtr &_expr) override {
         VISITOR_ENTER(FieldExpr, _expr);
-        VISITOR_TRAVERSE(Expression, FieldObject, _expr.getObject(), _expr, Component, setObject);
-        m_os << L"'" << _expr.getFieldName();
+        VISITOR_TRAVERSE(Expression, FieldObject, _expr->getObject(), _expr, Component, setObject);
+        m_os << L"'" << _expr->getFieldName();
         VISITOR_EXIT();
     }
 
-    bool traverseStructFieldDefinition(StructFieldDefinition &_cons) {
+    bool traverseStructFieldDefinition(const StructFieldDefinitionPtr &_cons) override {
         VISITOR_ENTER(StructFieldDefinition, _cons);
         printComma();
-        if (!_cons.getName().empty())
-            m_os << _cons.getName() << L": ";
-        VISITOR_TRAVERSE(Expression, StructFieldValue, _cons.getValue(), _cons, StructFieldDefinition, setValue);
+        if (!_cons->getName().empty())
+            m_os << _cons->getName() << L": ";
+        VISITOR_TRAVERSE(Expression, StructFieldValue, _cons->getValue(), _cons, StructFieldDefinition, setValue);
         VISITOR_EXIT();
     }
 
-    bool traverseStructConstructor(StructConstructor &_expr) {
+    bool traverseStructConstructor(const StructConstructorPtr &_expr) override {
         VISITOR_ENTER(StructConstructor, _expr);
         m_os << L"(# ";
-        VISITOR_TRAVERSE_COL(StructFieldDefinition, StructFieldDef, _expr);
+        VISITOR_TRAVERSE_COL(StructFieldDefinition, StructFieldDef, *_expr);
         m_os << L" #)";
         VISITOR_EXIT();
     }
 
-    bool visitListConstructor(ListConstructor &_expr) {
+    bool visitListConstructor(const ListConstructorPtr &_expr) override {
         std::wstring strParens;
-        for (size_t i = 0; i < _expr.size(); ++i) {
+        for (size_t i = 0; i < _expr->size(); ++i) {
             m_os << L"cons(";
-            VISITOR_TRAVERSE_NS(Expression, Expression, _expr.get(i));
+            VISITOR_TRAVERSE_NS(Expression, Expression, _expr->get(i));
             m_os << L", ";
             strParens += L")";
         }
@@ -486,21 +485,21 @@ public:
         return false;
     }
 
-    bool traverseArrayConstructor(ArrayConstructor& _array) {
+    bool traverseArrayConstructor(const ArrayConstructorPtr& _array) override {
         VISITOR_ENTER(ArrayConstructor, _array);
 
-        const NamedValuePtr pIndex = new NamedValue(L"", _array.getType().as<ArrayType>()->getDimensionType());
+        const NamedValuePtr pIndex =std::make_shared<NamedValue>(L"", _array->getType()->as<ArrayType>()->getDimensionType());
 
         m_os << L"LAMBDA (";
         VISITOR_TRAVERSE_NS(NamedValue, ArrayIterator, pIndex);
         m_os << L") : ";
-        VISITOR_TRAVERSE_NS(Type, Type, _array.getType().as<ArrayType>()->getRootType());
+        VISITOR_TRAVERSE_NS(Type, Type, _array->getType()->as<ArrayType>()->getRootType());
         m_os << L" =\n" << indent;
 
         std::list<std::pair<ExpressionPtr, ExpressionPtr>> cases;
-        for (auto i: _array)
-            cases.push_back({new Binary(Binary::EQUALS, new VariableReference(L"", pIndex), i->getIndex()),
-                i->getValue()});
+        for (auto& i : *_array)
+            cases.push_back(std::make_pair(std::make_shared<Binary>(Binary::EQUALS,std::make_shared<VariableReference>(L"", pIndex), i->getIndex()),
+                i->getValue()));
 
         printCond(cases, nullptr);
 
@@ -509,82 +508,82 @@ public:
         VISITOR_EXIT();
     }
 
-    bool traverseSetConstructor(SetConstructor &_expr) {
+    bool traverseSetConstructor(const SetConstructorPtr &_expr) override {
         VISITOR_ENTER(SetConstructor, _expr);
-        if (!_expr.getType())
+        if (!_expr->getType())
             VISITOR_EXIT();
 
-        NamedValue nv(L"", _expr.getType().as<SetType>()->getBaseType());
+        const auto nv = std::make_shared<NamedValue>(L"", _expr->getType()->as<SetType>()->getBaseType());
 
         m_os << L"{";
-        VISITOR_TRAVERSE_NS(NamedValue, Variable, NamedValuePtr(&nv));
+        VISITOR_TRAVERSE_NS(NamedValue, Variable, NamedValuePtr(nv));
         m_os << L" | ";
 
-        for (size_t i = 0; i < _expr.size(); ++i) {
+        for (size_t i = 0; i < _expr->size(); ++i) {
             if (i != 0)
                 m_os << L" OR ";
             m_os << m_context.nameGenerator().getNamedValueName(nv) << " = ";
-            VISITOR_TRAVERSE_NS(Expression, SetElementDef, _expr.get(i));
+            VISITOR_TRAVERSE_NS(Expression, SetElementDef, _expr->get(i));
         }
 
         m_os << L"}";
         VISITOR_EXIT();
     }
 
-    bool traverseUnary(Unary &_expr) {
+    bool traverseUnary(const UnaryPtr &_expr) override {
         VISITOR_ENTER(Unary, _expr);
 
-        if (_expr.getOperator() == Unary::BITWISE_NEGATE &&
-            _expr.getType() && _expr.getType()->getKind() == Type::SET) {
+        if (_expr->getOperator() == Unary::BITWISE_NEGATE &&
+            _expr->getType() && _expr->getType()->getKind() == Type::SET) {
             m_os << L"complement(";
-            VISITOR_TRAVERSE(Expression, UnarySubexpression, _expr.getExpression(), _expr, Unary, setExpression);
+            VISITOR_TRAVERSE(Expression, UnarySubexpression, _expr->getExpression(), _expr, Unary, setExpression);
             m_os << L")";
             VISITOR_EXIT();
-        } else if (_expr.getOperator() == Unary::BITWISE_NEGATE) {
+        } else if (_expr->getOperator() == Unary::BITWISE_NEGATE) {
             m_os << L"bv2nat(NOT nat2bv(";
-            VISITOR_TRAVERSE(Expression, UnarySubexpression, _expr.getExpression(), _expr, Unary, setExpression);
+            VISITOR_TRAVERSE(Expression, UnarySubexpression, _expr->getExpression(), _expr, Unary, setExpression);
             m_os << L"))";
             VISITOR_EXIT();
         }
 
         printUnaryOperator(_expr);
         m_os << L"(";
-        VISITOR_TRAVERSE(Expression, UnarySubexpression, _expr.getExpression(), _expr, Unary, setExpression);
+        VISITOR_TRAVERSE(Expression, UnarySubexpression, _expr->getExpression(), _expr, Unary, setExpression);
         m_os << L")";
         VISITOR_EXIT();
     }
 
-    virtual bool traverseBinary(ir::Binary &_node) {
+    bool traverseBinary(const ir::BinaryPtr &_node) override {
         VISITOR_ENTER(Binary, _node);
 
-        switch (_node.getOperator()) {
+        switch (_node->getOperator()) {
             case Binary::REMAINDER: {
                 m_os << L"rem(";
-                VISITOR_TRAVERSE(Expression, BinarySubexpression, _node.getRightSide(), _node, Binary, setRightSide);
+                VISITOR_TRAVERSE(Expression, BinarySubexpression, _node->getRightSide(), _node, Binary, setRightSide);
                 m_os << L")(";
-                VISITOR_TRAVERSE(Expression, BinarySubexpression, _node.getLeftSide(), _node, Binary, setLeftSide);
+                VISITOR_TRAVERSE(Expression, BinarySubexpression, _node->getLeftSide(), _node, Binary, setLeftSide);
                 m_os << L")";
                 VISITOR_EXIT();
             }
 
             case Binary::IN: {
                 m_os << L"member(";
-                VISITOR_TRAVERSE(Expression, BinarySubexpression, _node.getLeftSide(), _node, Binary, setLeftSide);
+                VISITOR_TRAVERSE(Expression, BinarySubexpression, _node->getLeftSide(), _node, Binary, setLeftSide);
                 m_os << L", ";
-                VISITOR_TRAVERSE(Expression, BinarySubexpression, _node.getRightSide(), _node, Binary, setRightSide);
+                VISITOR_TRAVERSE(Expression, BinarySubexpression, _node->getRightSide(), _node, Binary, setRightSide);
                 m_os << L")";
                 VISITOR_EXIT();
             }
 
             case Binary::BOOL_AND: {
-                if (!_node.getLeftSide()->getType())
+                if (!_node->getLeftSide()->getType())
                     break;
-                switch (_node.getLeftSide()->getType()->getKind()) {
+                switch (_node->getLeftSide()->getType()->getKind()) {
                     case Type::SET: {
                         m_os << L"intersection(";
-                        VISITOR_TRAVERSE(Expression, BinarySubexpression, _node.getLeftSide(), _node, Binary, setLeftSide);
+                        VISITOR_TRAVERSE(Expression, BinarySubexpression, _node->getLeftSide(), _node, Binary, setLeftSide);
                         m_os << L", ";
-                        VISITOR_TRAVERSE(Expression, BinarySubexpression, _node.getRightSide(), _node, Binary, setRightSide);
+                        VISITOR_TRAVERSE(Expression, BinarySubexpression, _node->getRightSide(), _node, Binary, setRightSide);
                         m_os << L")";
                         VISITOR_EXIT();
                     }
@@ -594,14 +593,14 @@ public:
 
             case Binary::ADD:
             case Binary::BOOL_OR: {
-                if (!_node.getLeftSide()->getType())
+                if (!_node->getLeftSide()->getType())
                     break;
-                switch (_node.getLeftSide()->getType()->getKind()) {
+                switch (_node->getLeftSide()->getType()->getKind()) {
                     case Type::SET: {
                         m_os << L"union(";
-                        VISITOR_TRAVERSE(Expression, BinarySubexpression, _node.getLeftSide(), _node, Binary, setLeftSide);
+                        VISITOR_TRAVERSE(Expression, BinarySubexpression, _node->getLeftSide(), _node, Binary, setLeftSide);
                         m_os << L", ";
-                        VISITOR_TRAVERSE(Expression, BinarySubexpression, _node.getRightSide(), _node, Binary, setRightSide);
+                        VISITOR_TRAVERSE(Expression, BinarySubexpression, _node->getRightSide(), _node, Binary, setRightSide);
                         m_os << L")";
                         VISITOR_EXIT();
                     }
@@ -610,14 +609,14 @@ public:
             }
 
             case Binary::SUBTRACT: {
-                if (!_node.getLeftSide()->getType())
+                if (!_node->getLeftSide()->getType())
                     break;
-                switch (_node.getLeftSide()->getType()->getKind()) {
+                switch (_node->getLeftSide()->getType()->getKind()) {
                     case Type::SET: {
                         m_os << L"difference(";
-                        VISITOR_TRAVERSE(Expression, BinarySubexpression, _node.getLeftSide(), _node, Binary, setLeftSide);
+                        VISITOR_TRAVERSE(Expression, BinarySubexpression, _node->getLeftSide(), _node, Binary, setLeftSide);
                         m_os << L", ";
-                        VISITOR_TRAVERSE(Expression, BinarySubexpression, _node.getRightSide(), _node, Binary, setRightSide);
+                        VISITOR_TRAVERSE(Expression, BinarySubexpression, _node->getRightSide(), _node, Binary, setRightSide);
                         m_os << L")";
                         VISITOR_EXIT();
                     }
@@ -626,14 +625,14 @@ public:
             }
 
             case Binary::BOOL_XOR: {
-                if (!_node.getLeftSide()->getType())
+                if (!_node->getLeftSide()->getType())
                     break;
-                switch (_node.getLeftSide()->getType()->getKind()) {
+                switch (_node->getLeftSide()->getType()->getKind()) {
                     case Type::SET: {
                         m_os << L"symmetric_difference(";
-                        VISITOR_TRAVERSE(Expression, BinarySubexpression, _node.getLeftSide(), _node, Binary, setLeftSide);
+                        VISITOR_TRAVERSE(Expression, BinarySubexpression, _node->getLeftSide(), _node, Binary, setLeftSide);
                         m_os << L", ";
-                        VISITOR_TRAVERSE(Expression, BinarySubexpression, _node.getRightSide(), _node, Binary, setRightSide);
+                        VISITOR_TRAVERSE(Expression, BinarySubexpression, _node->getRightSide(), _node, Binary, setRightSide);
                         m_os << L")";
                         VISITOR_EXIT();
                     }
@@ -642,43 +641,43 @@ public:
             }
         }
 
-        VISITOR_TRAVERSE(Expression, BinarySubexpression, _node.getLeftSide(), _node, Binary, setLeftSide);
+        VISITOR_TRAVERSE(Expression, BinarySubexpression, _node->getLeftSide(), _node, Binary, setLeftSide);
         m_os << " ";
         printBinaryOperator(_node);
         m_os << " ";
-        VISITOR_TRAVERSE(Expression, BinarySubexpression, _node.getRightSide(), _node, Binary, setRightSide);
+        VISITOR_TRAVERSE(Expression, BinarySubexpression, _node->getRightSide(), _node, Binary, setRightSide);
         VISITOR_EXIT();
     }
 
-    virtual bool traverseTernary(ir::Ternary &_node) {
+    bool traverseTernary(const ir::TernaryPtr &_node) override {
         VISITOR_ENTER(Ternary, _node);
         m_os << "IF ";
-        VISITOR_TRAVERSE(Expression, TernarySubexpression, _node.getIf(), _node, Ternary, setIf);
+        VISITOR_TRAVERSE(Expression, TernarySubexpression, _node->getIf(), _node, Ternary, setIf);
         m_os << " THEN ";
-        VISITOR_TRAVERSE(Expression, TernarySubexpression, _node.getThen(), _node, Ternary, setThen);
+        VISITOR_TRAVERSE(Expression, TernarySubexpression, _node->getThen(), _node, Ternary, setThen);
         m_os << " ELSE ";
-        VISITOR_TRAVERSE(Expression, TernarySubexpression, _node.getElse(), _node, Ternary, setElse);
+        VISITOR_TRAVERSE(Expression, TernarySubexpression, _node->getElse(), _node, Ternary, setElse);
         m_os << " ENDIF";
         VISITOR_EXIT();
     }
 
-    virtual bool traverseFormula(ir::Formula &_node) {
+    bool traverseFormula(const ir::FormulaPtr &_node) override {
         VISITOR_ENTER(Formula, _node);
 
-        m_os << (_node.getQuantifier() == ir::Formula::EXISTENTIAL
+        m_os << (_node->getQuantifier() == ir::Formula::EXISTENTIAL
             ? L"EXISTS (" : L"FORALL (");
 
-        VISITOR_TRAVERSE_COL(NamedValue, FormulaBoundVariable, _node.getBoundVariables());
+        VISITOR_TRAVERSE_COL(NamedValue, FormulaBoundVariable, _node->getBoundVariables());
         m_os << L"): ";
 
-        VISITOR_TRAVERSE(Expression, Subformula, _node.getSubformula(), _node, Formula, setSubformula);
+        VISITOR_TRAVERSE(Expression, Subformula, _node->getSubformula(), _node, Formula, setSubformula);
         VISITOR_EXIT();
     }
 
-    virtual bool traverseFormulaCall(ir::FormulaCall &_node) {
+    bool traverseFormulaCall(const ir::FormulaCallPtr &_node) override {
         m_os << m_context.nameGenerator().getFormulaName(_node);
 
-        if (_node.getArgs().empty())
+        if (_node->getArgs().empty())
             return true;
 
         m_os << L"(";
@@ -688,43 +687,43 @@ public:
         return bResult;
     }
 
-    virtual bool traverseLemmaDeclaration(ir::LemmaDeclaration &_stmt) {
+    bool traverseLemmaDeclaration(const ir::LemmaDeclarationPtr &_stmt) override {
         VISITOR_ENTER(LemmaDeclaration, _stmt);
 
-        VISITOR_TRAVERSE(Label, StmtLabel, _stmt.getLabel(), _stmt, Statement, setLabel);
+        VISITOR_TRAVERSE(Label, StmtLabel, _stmt->getLabel(), _stmt, Statement, setLabel);
         m_os << L"LEMMA\n" << indent;
-        VISITOR_TRAVERSE(Expression, LemmaDeclBody, _stmt.getProposition(), _stmt, LemmaDeclaration, setProposition);
+        VISITOR_TRAVERSE(Expression, LemmaDeclBody, _stmt->getProposition(), _stmt, LemmaDeclaration, setProposition);
         m_os << unindent;
 
         VISITOR_EXIT();
     }
 
-    virtual bool traverseFormulaDeclaration(ir::FormulaDeclaration &_node) {
+    bool traverseFormulaDeclaration(const ir::FormulaDeclarationPtr &_node) override {
         VISITOR_ENTER(FormulaDeclaration, _node);
 
         m_os << m_context.nameGenerator().getFormulaName(_node);
 
-        if (!_node.getParams().empty()) {
+        if (!_node->getParams().empty()) {
             m_os << L" (";
-            VISITOR_TRAVERSE_COL(NamedValue, FormulaDeclParams, _node.getParams());
+            VISITOR_TRAVERSE_COL(NamedValue, FormulaDeclParams, _node->getParams());
             m_os << L")";
         }
         m_os << L" : ";
 
-        if (_node.getMeasure())
+        if (_node->getMeasure())
             m_os << L"RECURSIVE ";
 
-        if (_node.getResultType())
-            VISITOR_TRAVERSE_NS(Type, FormulaDeclResultType, _node.getResultType());
+        if (_node->getResultType())
+            VISITOR_TRAVERSE_NS(Type, FormulaDeclResultType, _node->getResultType());
         else
             m_os << L"bool";
 
         m_os << L" =\n" << indent;
-        VISITOR_TRAVERSE(Expression, FormulaDeclBody, _node.getFormula(), _node, FormulaDeclaration, setFormula);
+        VISITOR_TRAVERSE(Expression, FormulaDeclBody, _node->getFormula(), _node, FormulaDeclaration, setFormula);
 
-        if (_node.getMeasure()) {
+        if (_node->getMeasure()) {
             m_os << L"\nMEASURE ";
-            VISITOR_TRAVERSE_NS(Expression, FormulaDeclBody, _node.getMeasure());
+            VISITOR_TRAVERSE_NS(Expression, FormulaDeclBody, _node->getMeasure());
         }
 
         m_os << unindent;
@@ -732,59 +731,59 @@ public:
         VISITOR_EXIT();
     }
 
-    bool traverseArrayPartExpr(ArrayPartExpr &_expr) {
-        if (!_expr.getObject() || !_expr.getObject()->getType())
+    bool traverseArrayPartExpr(const ArrayPartExprPtr &_expr) override {
+        if (!_expr->getObject() || !_expr->getObject()->getType())
             return true;
 
-        if (_expr.isRestrict()) {
+        if (_expr->isRestrict()) {
             Collection<Type> orig, restricted;
-            _expr.getObject()->getType().as<ArrayType>()->getDimensions(orig);
-            for (auto i: _expr.getIndices())
-                restricted.add(i.as<TypeExpr>()->getContents());
-            return printRestrict(orig, restricted, _expr.getObject()->
-                getType().as<ArrayType>()->getRootType(), _expr.getObject());
+            _expr->getObject()->getType()->as<ArrayType>()->getDimensions(orig);
+            for (auto i : _expr->getIndices())
+                restricted.add(i->as<TypeExpr>()->getContents());
+            return printRestrict(orig, restricted, _expr->getObject()->
+                getType()->as<ArrayType>()->getRootType(), _expr->getObject());
         }
 
-        for (auto i: _expr.getIndices())
+        for (auto i : _expr->getIndices())
             if (i->getKind() == Expression::TYPE)
                 return true;
 
         VISITOR_ENTER(ArrayPartExpr, _expr);
         m_os << setInline(true);
-        VISITOR_TRAVERSE(Expression, ArrayPartObject, _expr.getObject(), _expr, Component, setObject);
+        VISITOR_TRAVERSE(Expression, ArrayPartObject, _expr->getObject(), _expr, Component, setObject);
         m_os << L"(";
-        VISITOR_TRAVERSE_COL(Expression, ArrayPartIndex, _expr.getIndices());
+        VISITOR_TRAVERSE_COL(Expression, ArrayPartIndex, _expr->getIndices());
         m_os << L")" << setInline(false);
         VISITOR_EXIT();
     }
 
-    bool traverseArrayPartDefinition(ArrayPartDefinition &_cons) {
+    bool traverseArrayPartDefinition(const ArrayPartDefinitionPtr &_cons) override {
         VISITOR_ENTER(ArrayPartDefinition, _cons);
-        VISITOR_TRAVERSE_COL(Expression, ArrayPartCond, _cons.getConditions());
+        VISITOR_TRAVERSE_COL(Expression, ArrayPartCond, _cons->getConditions());
         m_os << L" -> ";
-        VISITOR_TRAVERSE(Expression, ArrayPartValue, _cons.getExpression(), _cons, ArrayPartDefinition, setExpression);
+        VISITOR_TRAVERSE(Expression, ArrayPartValue, _cons->getExpression(), _cons, ArrayPartDefinition, setExpression);
         VISITOR_EXIT();
     }
 
-    bool traverseArrayIteration(ArrayIteration & _expr) {
+    bool traverseArrayIteration(const ArrayIterationPtr & _expr) override {
         VISITOR_ENTER(ArrayIteration, _expr);
 
-        if (!_expr.getType())
+        if (!_expr->getType())
             return true;
 
         m_os << L"LAMBDA (";
-        VISITOR_TRAVERSE_COL(NamedValue, ArrayIterator, _expr.getIterators());
+        VISITOR_TRAVERSE_COL(NamedValue, ArrayIterator, _expr->getIterators());
         m_os << L") : ";
-        VISITOR_TRAVERSE_NS(Type, Type, _expr.getType().as<ArrayType>()->getRootType());
+        VISITOR_TRAVERSE_NS(Type, Type, _expr->getType()->as<ArrayType>()->getRootType());
         m_os << L" =\n" << indent;
 
         std::list<std::pair<ExpressionPtr, ExpressionPtr>> cases;
-        for (size_t i = 0; i < _expr.size(); ++i)
+        for (size_t i = 0; i < _expr->size(); ++i)
             cases.push_back({
-                na::resolveCase(_expr.getIterators(), _expr.get(i)->getConditions()),
-                _expr.get(i)->getExpression()});
+                na::resolveCase(_expr->getIterators(), _expr->get(i)->getConditions()),
+                _expr->get(i)->getExpression()});
 
-        if (!printCond(cases, _expr.getDefault()))
+        if (!printCond(cases, _expr->getDefault()))
             return false;
 
         m_os << unindent;
@@ -792,20 +791,19 @@ public:
         VISITOR_EXIT();
     }
 
-    bool traverseReplacement(Replacement& _expr) {
+    bool traverseReplacement(const ReplacementPtr& _expr) override {
         VISITOR_ENTER(Replacement, _expr);
 
-        if (_expr.getNewValues()->getConstructorKind() != Constructor::ARRAY_ITERATION || !_expr.getType())
+        if (_expr->getNewValues()->getConstructorKind() != Constructor::ARRAY_ITERATION || !_expr->getType())
             VISITOR_EXIT();
 
-        Expression& array = *_expr.getObject();
-        ArrayIteration& iteration = *_expr.getNewValues().as<ArrayIteration>();
+        const auto array = _expr->getObject();
+        ArrayIteration& iteration = *_expr->getNewValues()->as<ArrayIteration>();
 
         m_os << L"LAMBDA (";
         VISITOR_TRAVERSE_COL(NamedValue, ArrayIterator, iteration.getIterators());
         m_os << L") : ";
-        VISITOR_TRAVERSE_NS(Type, Type, array.
-            getType().as<ArrayType>()->getRootType());
+        VISITOR_TRAVERSE_NS(Type, Type, array->getType()->as<ArrayType>()->getRootType());
         m_os << L" =\n" << indent;
 
         std::list<std::pair<ExpressionPtr, ExpressionPtr>> cases;
@@ -817,10 +815,10 @@ public:
         ExpressionPtr pDefault = iteration.getDefault();
 
         if (!pDefault) {
-            pDefault = new ArrayPartExpr(&array);
+            pDefault =std::make_shared<ArrayPartExpr>(array);
             for (size_t i = 0; i < iteration.getIterators().size(); ++i)
-                pDefault.as<ArrayPartExpr>()->getIndices().
-                    add(new VariableReference(L"", iteration.getIterators().get(i)));
+                pDefault->as<ArrayPartExpr>()->getIndices().
+                    add(std::make_shared<VariableReference>(L"", iteration.getIterators().get(i)));
         }
 
         if (!printCond(cases, pDefault))
@@ -831,33 +829,33 @@ public:
         VISITOR_EXIT();
     }
 
-    bool traverseCastExpr(CastExpr &_expr) {
+    bool traverseCastExpr(const CastExprPtr &_expr) override {
         VISITOR_ENTER(CastExpr, _expr);
-        VISITOR_TRAVERSE(Expression, CastParam, _expr.getExpression(), _expr, CastExpr, setExpression);
+        VISITOR_TRAVERSE(Expression, CastParam, _expr->getExpression(), _expr, CastExpr, setExpression);
         VISITOR_EXIT();
     }
 
-    bool visitPredicate(ir::Predicate &_pred) {
+    bool visitPredicate(const ir::PredicatePtr &_pred) override {
         return false;
     }
 
-    bool traverseModule(ir::Module &_module) {
-        if (_module.getName().empty())
+    bool traverseModule(const ir::ModulePtr &_module) override {
+        if (_module->getName().empty())
             return Visitor::traverseModule(_module);
 
-        m_os << cyrillicToASCII(_module.getName()) << L" : THEORY\nBEGIN\n\n";
+        m_os << cyrillicToASCII(_module->getName()) << L" : THEORY\nBEGIN\n\n";
 
         Nodes sorted;
         na::sortModule(_module, sorted);
         VISITOR_TRAVERSE_COL(Node, Decl, sorted);
-        VISITOR_TRAVERSE_COL(LemmaDeclaration, LemmaDecl, _module.getLemmas());
+        VISITOR_TRAVERSE_COL(LemmaDeclaration, LemmaDecl, _module->getLemmas());
 
-        m_os << L"END " << cyrillicToASCII(_module.getName()) << L"\n\n";
+        m_os << L"END " << cyrillicToASCII(_module->getName()) << L"\n\n";
 
         return true;
     }
 
-    void run(Node & _node) {
+    void run(const NodePtr & _node) {
         m_context.nameGenerator().collect(_node);
         traverseNode(_node);
     }
@@ -867,6 +865,6 @@ private:
     IndentingStream<wchar_t> m_os;
 };
 
-void generatePvs(Module &_module, std::wostream & _os) {
+void generatePvs(const ModulePtr &_module, std::wostream & _os) {
     GeneratePvs(_os).run(_module);
 }

@@ -18,11 +18,11 @@
 
 namespace tc {
 
-typedef Auto<class Formula> FormulaPtr;
-typedef Auto<class CompoundFormula> CompoundFormulaPtr;
-typedef Auto<class Flags> FlagsPtr;
+using FormulaPtr = std::shared_ptr<class Formula>;
+using CompoundFormulaPtr = std::shared_ptr<class CompoundFormula>;
+using FlagsPtr = std::shared_ptr<class Flags>;
 
-class Flags : public Counted {
+class Flags {
 public:
     Flags() = default;
     Flags(const Flags &_other) : m_flags(_other.m_flags) {}
@@ -83,7 +83,7 @@ private:
     static std::vector<int> m_flags;
 };
 
-typedef Auto<FreshType> FreshTypePtr;
+using FreshTypePtr = std::shared_ptr<FreshType>;
 
 class TupleType : public ir::Type {
 public:
@@ -100,8 +100,8 @@ public:
     const ir::NamedValues &getFields() const { return *m_pFields; }
 
     virtual int compare(const Type &_other) const;
-    virtual ir::TypePtr getMeet(ir::Type &_other);
-    virtual ir::TypePtr getJoin(ir::Type &_other);
+    virtual ir::TypePtr getMeet(const ir::TypePtr &_other);
+    virtual ir::TypePtr getJoin(const ir::TypePtr &_other);
     virtual bool less(const Type &_other) const;
     virtual int getMonotonicity(const Type &_var) const;
 
@@ -109,9 +109,9 @@ private:
     ir::NamedValuesPtr m_pFields;
 };
 
-typedef Auto<TupleType> TupleTypePtr;
+using TupleTypePtr = std::shared_ptr<class TupleType>;
 
-class Formula : public Counted {
+class Formula : std::enable_shared_from_this<Formula> {
 public:
     enum {
         EQUALS          = 0x01,
@@ -141,6 +141,8 @@ public:
 
     Formula(const Formula &_other) :
         m_kind(_other.m_kind), m_pLhs(_other.m_pLhs), m_pRhs(_other.m_pRhs), m_conditions(_other.m_conditions) {}
+
+    virtual ~Formula() = default;
 
     Formula &operator =(const Formula &_other) {
         m_kind = _other.m_kind;
@@ -186,8 +188,17 @@ public:
         return !(*this == _other);
     }
 
-    virtual bool contains(const ir::TypePtr &_pType) const;
+    virtual bool contains(const ir::Type &_type) const;
 
+    template <class _Class>
+    std::shared_ptr<_Class> as() {
+        return std::static_pointer_cast<_Class>(shared_from_this());
+    }
+
+    template <class _Class>
+    const std::shared_ptr<_Class> as() const {
+        return std::static_pointer_cast<_Class>(shared_from_this());
+    }
 private:
     int m_kind;
     ir::TypePtr m_pLhs, m_pRhs;
@@ -203,6 +214,8 @@ struct FormulaEquals {
 };
 
 typedef std::list<FormulaPtr> FormulaList;
+
+using FormulasPtr = std::shared_ptr<class Formulas>;
 
 struct Formulas : public std::set<FormulaPtr, FormulaCmp> {
     FlagsPtr pFlags;
@@ -223,22 +236,25 @@ private:
     std::set<ir::ExpressionPtr> m_conditions;
 };
 
-struct Context : public Counted {
-    Auto<Formulas> pFormulas;
-    Auto<Formulas> pSubsts;
-    Auto<Context> pParent;
-    Auto<class Lattice> pTypes;
+using ContextPtr = std::shared_ptr<class Context>;
+
+struct Context : public std::enable_shared_from_this<Context> {
+    FormulasPtr pFormulas;
+    FormulasPtr pSubsts;
+    std::shared_ptr<Context> pParent;
+    std::shared_ptr<class Lattice> pTypes;
     std::map<tc::FreshTypePtr, ir::NamedReferenceTypePtr> namedTypes;
 
     Context();
-    Context(const Auto<Formulas> &_pFormulas, const Auto<Formulas> &_pSubsts);
-    Context(const Auto<Formulas> &_pFormulas, const Auto<Context> &_pParent = NULL);
+    Context(const FormulasPtr &_pFormulas, const FormulasPtr &_pSubsts);
+    Context(const FormulasPtr &_pFormulas, const ContextPtr &_pParent);
+    virtual ~Context() = default;
 
     ir::TypePtr lookup(const tc::Formula &_f, const tc::Formula &_cond);
     bool rewrite(const ir::TypePtr &_pOld, const ir::TypePtr &_pNew, bool _bRewriteFlags = true);
     bool implies(Formula &_f);
     bool implies(Formulas &_fs);
-    virtual Auto<Context> clone(Cloner &_cloner) const;
+    virtual ContextPtr clone(Cloner &_cloner) const;
     bool add(const FormulaPtr &_pFormula);
     bool add(int _kind, const ir::TypePtr &_pLhs, const ir::TypePtr &_pRhs);
     Flags &flags() { return *pFormulas->pFlags; }
@@ -247,7 +263,8 @@ struct Context : public Counted {
     void rewriteTypesInConditions();
 
     Formulas &operator *() const { return *pFormulas; }
-    Formulas *operator ->() const { return pFormulas.ptr(); }
+
+    const FormulasPtr &formulas() const { return pFormulas; }
 
     template<typename T>
     void insert(T _begin, T _end) {
@@ -256,12 +273,20 @@ struct Context : public Counted {
             getConditions().insert((*i)->getConditions().begin(), (*i)->getConditions().end());
     }
 
+    template <class _Class>
+    std::shared_ptr<_Class> as() {
+        return std::static_pointer_cast<_Class>(shared_from_this());
+    }
+
+    template <class _Class>
+    std::shared_ptr<const _Class> as() const {
+        return std::static_pointer_cast<const _Class>(shared_from_this());
+    }
+
     void insertFormulas(const tc::Formulas& _formulas);
     void restoreNamedTypes();
     void clearBodiesOfTypeDeclarations() const;
 };
-
-typedef Auto<Context> ContextPtr;
 
 class ContextIterator {
 public:
@@ -279,7 +304,7 @@ public:
 private:
     Context *m_pCtx;
     Context *m_pCurrent;
-    Auto<Formulas> m_pFormulas;
+    FormulasPtr m_pFormulas;
     bool m_bSkipCompound;
     bool m_bSkipTopSubsts;
     Formulas::iterator m_iter;
@@ -290,7 +315,7 @@ struct ContextStack {
     static ContextPtr top();
     static ContextPtr root();
     static void push(const ContextPtr &_ctx);
-    static void push(const Auto<Formulas> &_fs);
+    static void push(const FormulasPtr &_fs);
     static void pop();
     static bool empty();
     static void clear();
@@ -299,13 +324,14 @@ struct ContextStack {
 class CompoundFormula : public Formula {
 public:
     CompoundFormula() : Formula(COMPOUND) {}
+    ~CompoundFormula() override = default;
 
     size_t size() const { return m_parts.size(); }
     Formulas &getPart(size_t _i) { return *m_parts[_i]; }
     const Formulas &getPart(size_t _i) const { return *m_parts[_i]; }
-    const Auto<Formulas> &getPartPtr(size_t _i) const { return m_parts[_i]; }
+    const FormulasPtr &getPartPtr(size_t _i) const { return m_parts[_i]; }
     Formulas &addPart();
-    void addPart(const Auto<Formulas> &_pFormulas);
+    void addPart(const FormulasPtr &_pFormulas);
     void removePart(size_t _i) { m_parts.erase(m_parts.begin() + _i); }
 
     virtual bool rewrite(const ir::TypePtr &_pOld, const ir::TypePtr &_pNew, bool _bRewriteFlags = true);
@@ -313,23 +339,23 @@ public:
     size_t count() const;
     virtual FormulaPtr clone(Cloner &_cloner) const;
 
-    virtual bool contains(const ir::TypePtr &_pType) const;
+    bool contains(const ir::Type &_type) const override;
 
     virtual bool operator ==(const Formula &_other) const;
 
 private:
-    std::vector<Auto<Formulas> > m_parts;
+    std::vector<FormulasPtr> m_parts;
 };
 
 bool rewriteType(ir::TypePtr &_pType, const ir::TypePtr &_pOld, const ir::TypePtr &_pNew, bool _bRewriteFlags = true);
 
 bool solve(const ContextPtr& _pContext);
 
-ContextPtr collect(Formulas &_constraints, ir::Node &_node, ir::Context &_ctx);
+ContextPtr collect(const FormulasPtr &_constraints, const ir::NodePtr &_node, ir::Context &_ctx);
 
 void linkPredicates(ir::Context &_ctx, ir::Node &_node);
 
-void apply(const ContextPtr& _pContext, ir::Node &_node);
+void apply(const ContextPtr& _pContext, const ir::NodePtr &_node);
 
 }; // namespace tc
 

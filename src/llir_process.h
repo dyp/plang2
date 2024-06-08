@@ -40,8 +40,8 @@ public:
     virtual void processOperand(Operand & _op);
 
     Function & getFunction() { return m_func; }
-    Auto<Instruction> getInstruction() const { return m_pInstr; }
-    void setInstruction(Auto<Instruction> _instr) { * m_iInstr = _instr; }
+    InstructionPtr getInstruction() const { return m_pInstr; }
+    void setInstruction(const InstructionPtr& _instr) { *m_iInstr = _instr; }
     Instructions * getInstructions() const { return m_pInstructions; }
     const Instruction * getNext() const { return m_pNext; }
     Instructions::iterator getNextIter() const { return m_iNext; }
@@ -53,7 +53,7 @@ protected:
 
 private:
     Function & m_func;
-    Auto<Instruction> m_pInstr;
+    InstructionPtr m_pInstr;
     const Instruction * m_pNext = nullptr, * m_pPrev = nullptr;
     Instructions::iterator m_iInstr, m_iNext;
     Instructions * m_pInstructions = nullptr;
@@ -75,8 +75,8 @@ public:
     virtual void processOperand(Operand & _op);
 
 private:
-    typedef std::multimap<Auto<Type>, Auto<Variable> > RecyclePool;
-    typedef std::map<Auto<Variable>, Auto<Variable> > RewriteMap;
+    using RecyclePool = std::multimap<TypePtr, VariablePtr>;
+    using RewriteMap = std::map<VariablePtr, VariablePtr>;
 
     RecyclePool m_varPool;
     RewriteMap m_rewriteVars;
@@ -110,7 +110,7 @@ private:
     Instructions::iterator m_iStart;
     typedef std::set<Label *> Labels;
     Labels m_labels, m_labelsFwd;
-    typedef std::map<Auto<Label>, Auto<Label> > RewriteMap;
+    using RewriteMap = std::map<LabelPtr, LabelPtr>;
     RewriteMap m_rewriteLabels;
 
     void collapse(Instructions::iterator _iInstr, Instructions & _instrs);
@@ -135,8 +135,8 @@ public:
     virtual void processCast(Cast & _instr);
 
 private:
-    args_t m_ptrs;
-    Operand m_op;
+    args_t m_ptrs;        const auto qqq = _module->getPredicates();
+
 };*/
 
 class CollapseLabels : public ProcessLL {

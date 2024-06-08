@@ -14,18 +14,18 @@ public:
         m_pContainer(_pContainer), m_bRoot(true)
     {}
 
-    bool visitNode(ir::Node& _node) {
+    bool visitNode(const ir::NodePtr& _pNode) {
         if (m_bRoot) {
             m_bRoot = false;
             return true;
         }
-        m_pContainer->add(&_node);
+        m_pContainer->add(_pNode);
         return false;
     }
 
     ir::NodesPtr run(const ir::NodePtr _pNode) {
         if (_pNode && m_pContainer)
-            traverseNode(*_pNode);
+            traverseNode(_pNode);
         return m_pContainer;
     }
 
@@ -37,16 +37,16 @@ private:
 namespace ir {
 
 NodesPtr Node::getChildren() const {
-    return ChildrenCollector(new Nodes()).run(this);
+    return ChildrenCollector(std::make_shared<Nodes>()).run(std::const_pointer_cast<Node>(shared_from_this()));
 }
 
-bool Node::_less(const NodePtr& _pLeft, const NodePtr& _pRight) {
+bool Node::_less(const NodeConstPtr& _pLeft, const NodeConstPtr& _pRight) {
     if (_pLeft == _pRight)
         return false;
     return (_pLeft && _pRight) ? *_pLeft < *_pRight : !_pLeft && _pRight;
 }
 
-bool Node::_equals(const NodePtr& _pLeft, const NodePtr& _pRight) {
+bool Node::_equals(const NodeConstPtr& _pLeft, const NodeConstPtr& _pRight) {
     if (_pLeft == _pRight)
         return true;
     return (_pLeft && _pRight) ? *_pLeft == *_pRight : (bool)_pLeft == (bool)_pRight;
@@ -67,14 +67,14 @@ TypePtr resolveBaseType(const TypePtr &_pType) {
 
     while (pType) {
         if (pType->getKind() == Type::NAMED_REFERENCE) {
-            NamedReferenceTypePtr pRef(pType.as<NamedReferenceType>());
+            auto pRef = std::static_pointer_cast<NamedReferenceType>(pType);
 
             if (pRef->getDeclaration() && pRef->getDeclaration()->getType())
                 pType = pRef->getDeclaration()->getType();
             else
                 break;
         } else if (pType->getKind() == Type::PARAMETERIZED) {
-            pType = pType.as<ParameterizedType>()->getActualType();
+            pType = std::static_pointer_cast<ParameterizedType>(pType)->getActualType();
         } else
             break;
     }
@@ -130,13 +130,13 @@ bool NamedValue::equals(const Node& _other) const {
         && _equals(getType(), other.getType());
 }
 
-void Param::updateUsed(Node &_root) {
+void Param::updateUsed(const NodePtr &_pRoot) {
     struct Enumerator : public Visitor {
         std::set<NamedValuePtr> params;
 
-        virtual bool visitParam(Param &_param) {
-            _param.setUsed(false);
-            params.insert(&_param);
+        bool visitParam(const ParamPtr &_pParam) override {
+            _pParam->setUsed(false);
+            params.insert(_pParam);
             return true;
         }
     };
@@ -144,20 +144,23 @@ void Param::updateUsed(Node &_root) {
     struct Updater : public Visitor {
         Enumerator enumerator;
 
-        void run(Node &_root) {
-            enumerator.traverseNode(_root);
-            traverseNode(_root);
+        void run(const NodePtr &_pRoot) {
+            enumerator.traverseNode(_pRoot);
+            traverseNode(_pRoot);
         }
 
-        virtual bool visitVariableReference(VariableReference &_val) {
-            if (_val.getTarget() && _val.getTarget()->getKind() == NamedValue::PREDICATE_PARAMETER &&
-                    enumerator.params.find(_val.getTarget()) != enumerator.params.end())
-                _val.getTarget().as<Param>()->setUsed(true);
+        bool visitVariableReference(const VariableReferencePtr &_pVal) override {
+            if (_pVal->getTarget() && _pVal->getTarget()->getKind() == NamedValue::PREDICATE_PARAMETER &&
+                enumerator.params.find(_pVal->getTarget()) != enumerator.params.end()) {
+                if (const auto paramPtr = _pVal->getTarget()->as<Param>()) {
+                    paramPtr->setUsed(true);
+                }
+            }
             return true;
         }
     } updater;
 
-    updater.run(_root);
+    updater.run(_pRoot);
 }
 
 
