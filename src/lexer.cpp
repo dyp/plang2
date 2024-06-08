@@ -787,7 +787,7 @@ bool Tokenizer::_matchToken(Token & _tok) {
     return m_tm.matched();
 }
 
-void tokenize(Tokens & _tokens, std::istream & _is) throw(ELexerException) {
+void tokenize(Tokens & _tokens, std::istream & _is) {
     Tokenizer tok(_tokens, _is);
     tok.run();
 }

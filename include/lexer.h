@@ -142,7 +142,7 @@ private:
     const int m_line, m_col;
 };
 
-void tokenize(Tokens & _tokens, std::istream & _is) throw(ELexerException);
+void tokenize(Tokens & _tokens, std::istream & _is);
 
 }; // namespace lexer
 

@@ -34,9 +34,7 @@ public:
     /// \param _pDestination Destination label.
     void setDestination(const LabelPtr &_pDestination) { m_pDestination = _pDestination; }
 
-    virtual NodePtr clone(Cloner &_cloner) const {
-        return NEW_CLONE(this, _cloner, Jump(_cloner.get(getDestination()), _cloner.get(getLabel())));
-    }
+    NodePtr clone(Cloner &_cloner) const override;
 
 private:
     LabelPtr m_pDestination;
@@ -72,9 +70,7 @@ public:
     /// \param _pExpression Expression.
     void setExpression(const ExpressionPtr &_pExpression) { m_pExpression = _pExpression; }
 
-    virtual NodePtr clone(Cloner &_cloner) const {
-        return NEW_CLONE(this, _cloner, Assignment(_cloner.get(getLValue()), _cloner.get(getExpression()), _cloner.get(getLabel())));
-    }
+    NodePtr clone(Cloner &_cloner) const override;
 
 private:
     ExpressionPtr m_pLValue, m_pExpression;
@@ -85,9 +81,10 @@ private:
 /// \extends Node
 class CallBranch : public Collection<Expression> {
 public:
+    CallBranch() {}
     /// Default constructor.
     /// \param _pHandler Branch handler statement.
-    CallBranch(const StatementPtr &_pHandler = NULL) : m_pHandler(_pHandler) {}
+    CallBranch(const StatementPtr &_pHandler) : m_pHandler(_pHandler) {}
 
     /// Get branch handler.
     /// \return Branch handler statement.
@@ -97,11 +94,7 @@ public:
     /// \param _pStmt Branch handler statement.
     void setHandler(const StatementPtr &_pStmt) { m_pHandler = _pStmt; }
 
-    virtual NodePtr clone(Cloner &_cloner) const {
-        CallBranchPtr pCopy = NEW_CLONE(this, _cloner, CallBranch(_cloner.get(getHandler())));
-        pCopy->appendClones(*this, _cloner);
-        return pCopy;
-    }
+    NodePtr clone(Cloner &_cloner) const override;
 
 private:
     StatementPtr m_pHandler;
@@ -148,13 +141,7 @@ public:
     Collection<VariableDeclaration> &getDeclarations() { return m_decls; }
     const Collection<VariableDeclaration> &getDeclarations() const { return m_decls; }
 
-    virtual NodePtr clone(Cloner &_cloner) const {
-        CallPtr pCopy = NEW_CLONE(this, _cloner, Call(_cloner.get(getPredicate(), true), _cloner.get(getLabel())));
-        pCopy->getArgs().appendClones(getArgs(), _cloner);
-        pCopy->getBranches().appendClones(getBranches(), _cloner);
-        pCopy->getDeclarations().appendClones(getDeclarations(), _cloner);
-        return pCopy;
-    }
+    NodePtr clone(Cloner &_cloner) const override;
 
 private:
     ExpressionPtr m_pPredicate;
@@ -191,12 +178,7 @@ public:
     Collection<Expression> &getExpressions() { return m_expressions; }
     const Collection<Expression> &getExpressions() const { return m_expressions; }
 
-    virtual NodePtr clone(Cloner &_cloner) const {
-        MultiassignmentPtr pCopy = NEW_CLONE(this, _cloner, Multiassignment(_cloner.get(getLabel())));
-        pCopy->getLValues().appendClones(getLValues(), _cloner);
-        pCopy->getExpressions().appendClones(getExpressions(), _cloner);
-        return pCopy;
-    }
+    NodePtr clone(Cloner &_cloner) const override;
 
 private:
     Collection<Expression> m_LValues;
@@ -225,11 +207,7 @@ public:
     /// \param _pStmt Body statement.
     void setBody(const StatementPtr &_pStmt) { m_pBody = _pStmt; }
 
-    virtual NodePtr clone(Cloner &_cloner) const {
-        SwitchCasePtr pCopy = NEW_CLONE(this, _cloner, SwitchCase(_cloner.get(getBody())));
-        pCopy->getExpressions().appendClones(getExpressions(), _cloner);
-        return pCopy;
-    }
+    NodePtr clone(Cloner &_cloner) const override;
 
 private:
     StatementPtr m_pBody;
@@ -283,12 +261,7 @@ public:
     // \return True if the statement ends like a block, false otherwise.
     virtual bool isBlockLike() const { return true; }
 
-    virtual NodePtr clone(Cloner &_cloner) const {
-        SwitchPtr pCopy = NEW_CLONE(this, _cloner, Switch(_cloner.get(getArg()), _cloner.get(getDefault()),
-                _cloner.get(getParamDecl()), _cloner.get(getLabel())));
-        pCopy->appendClones(*this, _cloner);
-        return pCopy;
-    }
+    NodePtr clone(Cloner &_cloner) const override;
 
 private:
     ExpressionPtr m_pArg;
@@ -346,10 +319,7 @@ public:
             return false;
     }
 
-    virtual NodePtr clone(Cloner &_cloner) const {
-        return NEW_CLONE(this, _cloner, If(_cloner.get(getArg()), _cloner.get(getBody()),
-                _cloner.get(getElse()), _cloner.get(getLabel())));
-    }
+    NodePtr clone(Cloner &_cloner) const override;
 
 private:
     ExpressionPtr m_pArg;
@@ -414,10 +384,7 @@ public:
             return false;
     }
 
-    virtual NodePtr clone(Cloner &_cloner) const {
-        return NEW_CLONE(this, _cloner, For(_cloner.get(getIterator()), _cloner.get(getInvariant()), _cloner.get(getIncrement()),
-                _cloner.get(getBody()), _cloner.get(getLabel())));
-    }
+    NodePtr clone(Cloner &_cloner) const override;
 
 private:
     VariableDeclarationPtr m_pIterator;
@@ -464,9 +431,7 @@ public:
             return false;
     }
 
-    virtual NodePtr clone(Cloner &_cloner) const {
-        return NEW_CLONE(this, _cloner, While(_cloner.get(getInvariant()), _cloner.get(getBody()), _cloner.get(getLabel())));
-    }
+    NodePtr clone(Cloner &_cloner) const override;
 
 private:
     ExpressionPtr m_pInvariant;
@@ -484,9 +449,7 @@ public:
     /// \returns #Break.
     virtual int getKind() const { return BREAK; }
 
-    virtual NodePtr clone(Cloner &_cloner) const {
-        return NEW_CLONE(this, _cloner, Break(_cloner.get(getLabel())));
-    }
+    NodePtr clone(Cloner &_cloner) const override;
 };
 
 /// Send message statement.
@@ -524,11 +487,7 @@ public:
     Collection<Expression> &getArgs() { return m_args; }
     const Collection<Expression> &getArgs() const { return m_args; }
 
-    virtual NodePtr clone(Cloner &_cloner) const {
-        SendPtr pCopy = NEW_CLONE(this, _cloner, Send(_cloner.get(getReceiver(), true), _cloner.get(getMessage()), _cloner.get(getLabel())));
-        pCopy->getArgs().appendClones(getArgs(), _cloner);
-        return pCopy;
-    }
+    NodePtr clone(Cloner &_cloner) const override;
 
 private:
     ProcessPtr m_pReceiver;
@@ -563,9 +522,7 @@ public:
     /// \param _pStmt Body statement.
     void setBody(const StatementPtr &_pStmt) { m_pBody = _pStmt; }
 
-    virtual NodePtr clone(Cloner &_cloner) const {
-        return NEW_CLONE(this, _cloner, MessageHandler(_cloner.get(getMessage()), _cloner.get(getBody())));
-    }
+    NodePtr clone(Cloner &_cloner) const override;
 
 private:
     MessagePtr m_pMessage;
@@ -613,11 +570,7 @@ public:
     // \return True if the statement ends like a block, false otherwise.
     virtual bool isBlockLike() const { return true; }
 
-    virtual NodePtr clone(Cloner &_cloner) const {
-        ReceivePtr pCopy = NEW_CLONE(this, _cloner, Receive(_cloner.get(getTimeout()), _cloner.get(getTimeoutHandler()), _cloner.get(getLabel())));
-        pCopy->appendClones(*this, _cloner);
-        return pCopy;
-    }
+    NodePtr clone(Cloner &_cloner) const override;
 
 private:
     ExpressionPtr m_pTimeout;
@@ -658,11 +611,7 @@ public:
             return false;
     }
 
-    virtual NodePtr clone(Cloner &_cloner) const {
-        WithPtr pCopy = NEW_CLONE(this, _cloner, With(_cloner.get(getBody()), _cloner.get(getLabel())));
-        pCopy->getArgs().appendClones(getArgs(), _cloner);
-        return pCopy;
-    }
+    NodePtr clone(Cloner &_cloner) const override;
 
 private:
     Collection<Expression> m_args;

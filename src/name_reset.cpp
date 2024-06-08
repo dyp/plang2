@@ -7,23 +7,23 @@ using namespace ir;
 
 class ResetNames : public Visitor {
 public:
-    virtual bool visitLabel(Label &_label) {
-        _label.setName(L"");
+    bool visitLabel(const LabelPtr &_label) override {
+        _label->setName(L"");
         return true;
     }
 
-    virtual bool visitNamedValue(NamedValue &_val) {
-        _val.setName(L"");
+    bool visitNamedValue(const NamedValuePtr &_val) override {
+        _val->setName(L"");
         return true;
     }
 
-    virtual bool visitVariableReference(VariableReference &_var) {
-        if (_var.getTarget())
-            _var.setName(L"");
+    bool visitVariableReference(const VariableReferencePtr &_var) override {
+        if (_var->getTarget())
+            _var->setName(L"");
         return true;
     }
 };
 
-void ir::resetNames(Module &_module) {
+void ir::resetNames(const ModulePtr &_module) {
     ResetNames().traverseNode(_module);
 }

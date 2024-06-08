@@ -18,7 +18,7 @@ public:
     CallGraphNode() {}
 
     // m_cOrder equals 0 for predicate declarations and natural for lambdas.
-    CallGraphNode(AnonymousPredicate *_pNode, const size_t _cOrder = 0) {
+    CallGraphNode(const AnonymousPredicatePtr& _pNode, const size_t _cOrder = 0) {
         m_bRecursion = false;
         m_bHasCallers = false;
         assert(_pNode != NULL);
@@ -36,7 +36,7 @@ public:
         m_callees.insert(_pNode);
     }
 
-    void addPredicate(AnonymousPredicate *_pNode, const size_t _cOrder) {
+    void addPredicate(const AnonymousPredicatePtr& _pNode, const size_t _cOrder) {
         m_nodePredicates.insert(std::make_pair(_pNode, _cOrder));
     }
 
@@ -45,12 +45,12 @@ public:
     }
 
     // Returns first predicate of node (usually used when node has only one predicate).
-    AnonymousPredicate *getPredicate() const {
+    AnonymousPredicatePtr getPredicate() const {
         assert(!m_nodePredicates.empty());
         return m_nodePredicates.begin()->first;
     }
 
-    const std::map<AnonymousPredicate *, size_t> &getPredicates() const {
+    const std::map<AnonymousPredicatePtr, size_t> &getPredicates() const {
         return m_nodePredicates;
     }
 
@@ -59,7 +59,7 @@ public:
         return m_nodePredicates.begin()->second;
     }
 
-    const size_t getOrder(AnonymousPredicate *_pPred) const {
+    const size_t getOrder(const AnonymousPredicatePtr& _pPred) const {
         auto iPred = m_nodePredicates.find(_pPred);
         assert(iPred != m_nodePredicates.end());
         return iPred->second;
@@ -85,7 +85,7 @@ public:
         m_callees.erase(_pNode);
     }
 
-    void deletePredicate(AnonymousPredicate *_pNode) {
+    void deletePredicate(const AnonymousPredicatePtr& _pNode) {
         m_nodePredicates.erase(_pNode);
     }
 
@@ -97,8 +97,8 @@ public:
             auto i = m_nodePredicates.begin();
             auto j = _other.m_nodePredicates.begin();
             for (;i != m_nodePredicates.end() && j != _other.m_nodePredicates.end(); ++i, ++j) {
-                if (*i->first != *j->first)
-                    return *i->first < *j->first;
+                if (*(i->first) != *(j->first))
+                    return *(i->first) < *(j->first);
                 if (i->second != j->second)
                     return i->second < j->second;
             }
@@ -113,7 +113,7 @@ public:
 
 private:
     // Numbers for lambdas with equal predicates.
-    std::map<AnonymousPredicate *, size_t> m_nodePredicates;
+    std::map<AnonymousPredicatePtr, size_t> m_nodePredicates;
     mutable std::set<const CallGraphNode *> m_callees;
     mutable bool m_bRecursion;
     mutable bool m_bHasCallers;
@@ -143,7 +143,7 @@ public:
         return &*m_nodes.insert(_node).first;
     }
 
-    const CallGraphNode *addNode(AnonymousPredicate *_pPred, const size_t _cOrder = 0) {
+    const CallGraphNode *addNode(const AnonymousPredicatePtr& _pPred, const size_t _cOrder = 0) {
         return &*m_nodes.insert(CallGraphNode(_pPred, _cOrder)).first;
     }
 
@@ -151,7 +151,7 @@ public:
         m_nodes.erase(_node);
     }
 
-    void addCall(AnonymousPredicate *_pCaller, AnonymousPredicate *_pCallee) {
+    void addCall(const AnonymousPredicatePtr& _pCaller, const AnonymousPredicatePtr& _pCallee) {
         const CallGraphNode *pFirst = nullptr, *pSecond = nullptr;
 
         for (const auto &node: m_nodes) {

@@ -10,8 +10,8 @@
 
 namespace tc {
 
-typedef Auto<class Relation> RelationPtr;
-typedef std::set<class RelationPtrPair> RelationPtrPairs;
+using RelationPtr = std::shared_ptr<class Relation>;
+using RelationPtrPairs = std::set<class RelationPtrPair>;
 
 class Relation : public Formula {
 public:
@@ -25,7 +25,8 @@ public:
         Formula(_formula), inferedFrom(_inferedFrom) {}
 
     Relation(const ir::TypePtr &_pLhs, const ir::TypePtr &_pRhs, bool _bStrict = false,
-            bool _bUsed = true, const RelationPtrPairs &_inferedFrom = RelationPtrPairs());
+            bool _bUsed = true, const RelationPtrPairs &_inferedFrom = RelationPtrPairs()) :
+        Formula(_bStrict ? SUBTYPE_STRICT : SUBTYPE, _pLhs, _pRhs), bUsed(_bUsed), inferedFrom(_inferedFrom) {}
 
     bool isStrict() const { return is(SUBTYPE_STRICT); }
     void setStrict(bool _bStrict) { return setKind(_bStrict ? SUBTYPE_STRICT : SUBTYPE); }
@@ -85,9 +86,9 @@ private:
     int m_kind;
 };
 
-typedef Auto<class TypeNode> TypeNodePtr;
+using TypeNodePtr = std::shared_ptr<class TypeNode>;
 
-struct TypeNode : public Counted {
+struct TypeNode {
     ir::TypePtr pType;
     mutable Relations lowers, uppers;
 
@@ -132,7 +133,7 @@ typedef std::set<const TypeNode *, TypeNodePtrWeightCmp> TypeNodeQueue;
 typedef std::multimap<ir::TypePtr, FormulaPtr, PtrLess<ir::Type> > FormulasByType;
 typedef std::map<ir::TypePtr, ir::TypePtr, PtrLess<ir::Type> > TypeMap;
 
-class Lattice : public Counted {
+class Lattice {
 public:
     typedef bool (*RelationHandler)(const RelationPtr &, Lattice &, void *);
 
@@ -154,7 +155,7 @@ public:
     void dump();
 
     typedef std::set<ir::TypePtr> Types;
-    typedef std::function<bool(const Auto<ir::Type>&, const Relations&, const Relations&)> Handler;
+    typedef std::function<bool(const ir::TypePtr&, const Relations&, const Relations&)> Handler;
 
     bool traverse(const Handler& _handler, bool _bOnlyFresh, const Types& _ignored = Types());
 

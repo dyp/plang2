@@ -14,7 +14,7 @@
 
 namespace ir{
 
-void tailRecursionElimination(Module &_module);
+void tailRecursionElimination(const ModulePtr &_module);
 
 }
 

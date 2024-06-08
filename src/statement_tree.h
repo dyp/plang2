@@ -11,29 +11,31 @@
 
 namespace st {
 
-class StmtVertex : public Counted {
+using StmtVertexPtr = std::shared_ptr<class StmtVertex>;
+
+class StmtVertex : public std::enable_shared_from_this<StmtVertex> {
 public:
     StmtVertex(const ir::StatementPtr& _pStmt) :
         m_pStmt(_pStmt)
     {}
 
-    void setParent(const Auto<StmtVertex>& _pVertex) {
+    void setParent(const StmtVertexPtr& _pVertex) {
         m_pParent = _pVertex;
     }
 
-    Auto<StmtVertex>& getParent() {
+    StmtVertexPtr& getParent() {
         return m_pParent;
     }
 
-    Auto<StmtVertex> appendChild(const Auto<StmtVertex>& _pVertex) {
+    StmtVertexPtr appendChild(const StmtVertexPtr& _pVertex) {
         if (!_pVertex)
             return NULL;
         m_children.push_back(_pVertex);
-        _pVertex->setParent(this);
+        _pVertex->setParent(shared_from_this());
         return m_children.back();
     }
 
-    std::list<Auto<StmtVertex> >& getChildren() {
+    std::list<StmtVertexPtr>& getChildren() {
         return m_children;
     }
 
@@ -57,8 +59,8 @@ public:
 
 private:
     ir::StatementPtr m_pStmt;
-    Auto<StmtVertex> m_pParent;
-    std::list<Auto<StmtVertex> > m_children;
+    StmtVertexPtr m_pParent;
+    std::list<StmtVertexPtr> m_children;
 
     // if(E) A else B :
     // if (E) -> (A, B)
@@ -84,31 +86,31 @@ private:
 
     // if(E(f(x))) :
     // {} -> (f(x: y), if(E(y)))
-    void modifyIf(const ir::If& _if);
+    void modifyIf(const ir::IfPtr& _if);
 
     // f(..., g(x), ... : y) :
     // {} -> (g(x: z), f(..., z, ...: y))
-    void modifyCall(const ir::Call& _call);
+    void modifyCall(const ir::CallPtr& _call);
 
     // switch (E) -> (A1, ..., An, D) :
     // if (E == E1) -> (A1, if (E == E2) -> (A2, ... if (E == En) -> (An, D)))
-    void modifySwitch(const ir::Switch& _switch);
+    void modifySwitch(const ir::SwitchPtr& _switch);
 
     // a = E(F(x)) :
     // {} -> (f(x: z), a = E(z))
-    void modifyAssignment(const ir::Assignment& _assignment);
+    void modifyAssignment(const ir::AssignmentPtr& _assignment);
 
     // a1, ..., an = E1, ..., En :
     // || -> (a1 = E1, ..., an = En)
-    void modifyMultiAssignment(const ir::Multiassignment& _massignment);
+    void modifyMultiAssignment(const ir::MultiassignmentPtr& _massignment);
 
     // T a = E :
     // T a = E -> a = E
-    void modifyVariableDeclaration(const ir::VariableDeclaration& _decl);
+    void modifyVariableDeclaration(const ir::VariableDeclarationPtr& _decl);
 
     // { T1 a1; ... Tn an } :
     // {}
-    void modifyVariableDeclarationGroup(const ir::VariableDeclarationGroup& _vdg);
+    void modifyVariableDeclarationGroup(const ir::VariableDeclarationGroupPtr& _vdg);
 
     // A -> B -> C  &&  A = B :
     // A -> C
@@ -127,8 +129,6 @@ private:
     // A
     ir::StatementPtr mergeVariableDecl() const;
 };
-
-typedef Auto<StmtVertex> StmtVertexPtr;
 
 }
 

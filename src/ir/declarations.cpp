@@ -21,6 +21,31 @@ bool Predicate::equals(const Node& _other) const {
     return isBuiltin() == other.isBuiltin() && getName() == other.getName();
 }
 
+NodePtr Predicate::clone(Cloner &_cloner) const {
+    const auto pCopy = NEW_CLONE(this, _cloner, getName(), isBuiltin());
+    cloneTo(pCopy, _cloner);
+    pCopy->setLoc(this->getLoc());
+    return pCopy;
+}
+
+NodePtr Message::clone(Cloner &_cloner) const {
+    const auto pCopy = NEW_CLONE(this, _cloner, getProcessingType(), getName());
+    pCopy->getParams().appendClones(getParams(), _cloner);
+    return pCopy;
+}
+
+NodePtr Process::clone(Cloner &_cloner) const {
+    const auto pCopy = NEW_CLONE(this, _cloner, getName(), _cloner.get(getBlock()));
+    pCopy->getInParams().appendClones(getInParams(), _cloner);
+    pCopy->getOutParams().appendClones(getOutParams(), _cloner);
+    pCopy->setLoc(this->getLoc());
+    return pCopy;
+}
+
+NodePtr Variable::clone(Cloner &_cloner) const {
+    return NEW_CLONE(this, _cloner, m_kind == LOCAL, getName(), _cloner.get(getType()), isMutable(), _cloner.get(getDeclaration(), true));
+}
+
 bool VariableDeclaration::less(const Node& _other) const {
     if (!Statement::equals(_other))
         return Statement::less(_other);
@@ -35,6 +60,18 @@ bool VariableDeclaration::equals(const Node& _other) const {
         return false;
     const VariableDeclaration& other = (const VariableDeclaration&)_other;
     return _equals(getVariable(), other.getVariable()) && _equals(getValue(), other.getValue());
+}
+
+NodePtr VariableDeclaration::clone(Cloner &_cloner) const {
+    const auto pCopy = NEW_CLONE(this, _cloner, _cloner.get(getVariable()), _cloner.get(getValue()), _cloner.get(getLabel()));
+    pCopy->setLoc(this->getLoc());
+    return pCopy;
+}
+
+NodePtr VariableDeclarationGroup::clone(Cloner &_cloner) const {
+    const auto pCopy = NEW_CLONE(this, _cloner);
+    pCopy->appendClones(*this, _cloner);
+    return pCopy;
 }
 
 bool FormulaDeclaration::less(const Node& _other) const {
@@ -59,6 +96,14 @@ bool FormulaDeclaration::equals(const Node& _other) const {
         && getParams() == other.getParams();
 }
 
+NodePtr FormulaDeclaration::clone(Cloner &_cloner) const {
+    const auto pCopy = NEW_CLONE(this, _cloner, getName(), _cloner.get<Type>(getResultType()),
+        _cloner.get<Expression>(getFormula()), _cloner.get<Expression>(getMeasure()), _cloner.get<Label>(getLabel()));
+    pCopy->getParams().appendClones(getParams(), _cloner);
+    pCopy->setLoc(this->getLoc());
+    return pCopy;
+}
+
 bool LemmaDeclaration::less(const Node& _other) const {
     if (!Statement::equals(_other))
         return Statement::less(_other);
@@ -74,6 +119,10 @@ bool LemmaDeclaration::equals(const Node& _other) const {
     const LemmaDeclaration& other = (const LemmaDeclaration&)_other;
     return getStatus() == other.getStatus()
         && _equals(getProposition(), other.getProposition());
+}
+
+NodePtr LemmaDeclaration::clone(Cloner &_cloner) const {
+    return NEW_CLONE(this, _cloner, _cloner.get(getProposition()), _cloner.get(getLabel()));
 }
 
 bool DeclarationGroup::less(const Node& _other) const {
@@ -105,6 +154,12 @@ bool DeclarationGroup::equals(const Node& _other) const {
         && getLemmas() == other.getLemmas();
 }
 
+NodePtr Class::clone(Cloner &_cloner) const {
+    const auto pCopy = NEW_CLONE(this, _cloner, getName(), _cloner.get<Class>(getAncestor(), true));
+    cloneTo(*pCopy, _cloner);
+    return pCopy;
+}
+
 bool Module::less(const Node& _other) const {
     if (!DeclarationGroup::equals(_other))
         return DeclarationGroup::less(_other);
@@ -127,4 +182,15 @@ bool Module::equals(const Node& _other) const {
     return getName() == other.getName() && getParams() == other.getParams()
         && getImports() == other.getImports() && getClasses() == other.getClasses()
         && getModules() == other.getModules();
+}
+
+NodePtr Module::clone(Cloner &_cloner) const {
+    const auto pCopy = NEW_CLONE(this, _cloner, getName());
+    pCopy->getParams().appendClones(getParams(), _cloner);
+    cloneTo(*pCopy, _cloner);
+    pCopy->getImports() = getImports();
+    pCopy->getClasses().appendClones(getClasses(), _cloner);
+    pCopy->getModules().appendClones(getModules(), _cloner);
+    pCopy->setLoc(this->getLoc());
+    return pCopy;
 }

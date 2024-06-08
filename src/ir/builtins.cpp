@@ -10,7 +10,7 @@ Builtins &Builtins::instance() {
     return builtins;
 }
 
-PredicatePtr Builtins::find(const std::wstring &_name) const {
+PredicatePtr Builtins::find(const std::wstring &_name) {
     for (size_t i = 0; i < m_predicates.size(); ++ i)
         if (m_predicates.get(i)->getName() == _name)
             return m_predicates.get(i);
@@ -20,10 +20,10 @@ PredicatePtr Builtins::find(const std::wstring &_name) const {
 Builtins::Builtins() {
     //Predicate * pPred = NULL;
 
-    m_predicates.add(new Predicate(L"print", true));
-    m_predicates.add(new Predicate(L"len", true));
-    m_predicates.add(new Predicate(L"inc", true));
-    m_predicates.add(new Predicate(L"zero", true));
+    m_predicates.add(std::make_shared<Predicate>(L"print", true));
+    m_predicates.add(std::make_shared<Predicate>(L"len", true));
+    m_predicates.add(std::make_shared<Predicate>(L"inc", true));
+    m_predicates.add(std::make_shared<Predicate>(L"zero", true));
 }
 
 }

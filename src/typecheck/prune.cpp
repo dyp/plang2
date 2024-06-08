@@ -28,7 +28,7 @@ bool Prune::_run(int & _nResult) {
             bool bRedundant = true;
 
             for (tc::Formulas::iterator l = other.begin(); l != other.end(); ++l)
-                if (!_context().implies(**l)) {
+                if (!_context()->implies(**l)) {
                     bRedundant = false;
                     break;
                 }
@@ -43,8 +43,8 @@ bool Prune::_run(int & _nResult) {
     return false;
 }
 
-Auto<Operation> Operation::prune() {
-    return new Prune();
+OperationPtr Operation::prune() {
+    return std::make_shared<Prune>();
 }
 
 }

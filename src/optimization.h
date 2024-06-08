@@ -6,6 +6,6 @@
 
 #include "ir/declarations.h"
 
-void optimize(ir::Node &_node);
+void optimize(const ir::NodePtr &_node);
 
 #endif /* OPTIMIZATION_H_ */

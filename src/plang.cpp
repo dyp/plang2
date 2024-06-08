@@ -77,7 +77,7 @@ int main(int _argc, const char ** _argv) {
     }
 
     if (Options::instance().bSolveTypes) {
-        tc::Formulas formulas;
+        const auto formulas = std::make_shared<tc::Formulas>();
         bool bResult = false;
         FreshTypeNames names;
 
@@ -93,17 +93,17 @@ int main(int _argc, const char ** _argv) {
 
     if (ir::ModulePtr pModule = parse(tokens)) {
         if (!Options::instance().bKeepNames)
-            resetNames(*pModule);
+            resetNames(pModule);
 
         try {
-            ir::CheckAssignments().traverseNode(*pModule);
+            ir::CheckAssignments().traverseNode(pModule);
         } catch (std::runtime_error &e) {
             std::cerr << strFile << ": " << e.what() << std::endl;
             return EXIT_FAILURE;
         }
 
         if (Options::instance().bCheckSemantics)
-            pModule = processPreConditions(*pModule);
+            pModule = processPreConditions(pModule);
 
         if (Options::instance().verify != V_NONE)
             pModule = vf::verify(pModule);
@@ -115,10 +115,10 @@ int main(int _argc, const char ** _argv) {
 #endif
 
         if (Options::instance().transformation & OT_TRE)
-            tailRecursionElimination(*pModule);
+            tailRecursionElimination(pModule);
 
         if (Options::instance().transformation & OT_PI)
-            predicateInlining(*pModule);
+            predicateInlining(pModule);
 
         if (Options::instance().bMoveOut) {
             tr::moveOutExpressions(pModule);
@@ -126,19 +126,19 @@ int main(int _argc, const char ** _argv) {
         }
 
         if (Options::instance().bOptimize)
-            optimize(*pModule);
+            optimize(pModule);
 
         if (Options::instance().prettyPrint & PP_FLAT)
-            prettyPrintFlatTree(*pModule);
+            prettyPrintFlatTree(pModule);
 
         if (Options::instance().prettyPrint & PP_AST)
-            prettyPrint(*pModule, std::wcout);
+            prettyPrint(pModule, std::wcout);
 
         if (Options::instance().prettyPrint & PP_SYNTAX)
-            pp::prettyPrintSyntax(*pModule, std::wcout, NULL, true);
+            pp::prettyPrintSyntax(pModule, std::wcout, NULL, true);
 
         if (Options::instance().prettyPrint & PP_CALLGRAPH)
-            printModuleSCCCallGraph(*pModule, std::wcout);
+            printModuleSCCCallGraph(pModule, std::wcout);
 
         if (Options::instance().backEnd == BE_NONE)
             return EXIT_SUCCESS;
@@ -147,16 +147,16 @@ int main(int _argc, const char ** _argv) {
             std::string strOut = Options::instance().strOutputFilename;
             if (!strOut.empty()) {
                 std::wofstream ofs(strOut.c_str());
-                generatePvs(*pModule, ofs);
+                generatePvs(pModule, ofs);
             }
             else
-                generatePvs(*pModule);
+                generatePvs(pModule);
             return EXIT_SUCCESS;
         }
 
         llir::Module module;
 
-        llir::translate(module, * pModule);
+        llir::translate(module, pModule);
 
         if (Options::instance().backEnd & BE_PP)
             backend::generateDebug(module, std::wcout);

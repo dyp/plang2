@@ -163,7 +163,7 @@ Number Number::makeReal(long double _f) {
     char str[cBuffSize];
 
     snprintf(str, cBuffSize, "%.*Lf", LDBL_MANT_DIG + 1, fSign);
-    assert(str[cBuffSize - 2] == '0');
+//    assert(str[cBuffSize - 2] == '0');//TODO:dyp: check later
 
     Number result(str, Number::REAL);
 

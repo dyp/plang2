@@ -43,68 +43,80 @@ int DerivedType::getMonotonicity(const Type &_var) const {
 
 // Sets.
 
-TypePtr SetType::getMeet(Type &_other) {
-    SideType meet = _getMeet(_other);
-    if (meet.first || meet.second || _other.getKind() == FRESH)
+TypePtr SetType::getMeet(const TypePtr &_other) {
+    const auto meet = _getMeet(_other);
+    if (meet.first || meet.second || _other->getKind() == FRESH)
         return meet.first;
 
-    TypePtr pMeet = getBaseType()->getMeet(*((const SetType &)_other).getBaseType());
+    const auto pMeet = getBaseType()->getMeet(_other->as<SetType>()->getBaseType());
 
-    return pMeet ? new SetType(pMeet) : NULL;
+    return pMeet ? std::make_shared<SetType>(pMeet) : SetTypePtr();
 }
 
-TypePtr SetType::getJoin(Type &_other) {
-    SideType join = _getJoin(_other);
-    if (join.first || join.second || _other.getKind() == FRESH)
+TypePtr SetType::getJoin(const TypePtr &_other) {
+    const auto join = _getJoin(_other);
+    if (join.first || join.second || _other->getKind() == FRESH)
         return join.first;
 
-    TypePtr pJoin = getBaseType()->getJoin(*((const SetType &)_other).getBaseType());
+    const auto pJoin = getBaseType()->getJoin(_other->as<SetType>()->getBaseType());
 
-    return pJoin ? new SetType(pJoin) : NULL;
+    return pJoin ? std::make_shared<SetType>(pJoin) : SetTypePtr();
+}
+
+NodePtr SetType::clone(Cloner &_cloner) const {
+    return NEW_CLONE(this, _cloner, _cloner.get<Type>(getBaseType()));
 }
 
 // References.
 
-TypePtr RefType::getMeet(Type &_other) {
-    SideType meet = _getMeet(_other);
-    if (meet.first || meet.second || _other.getKind() == FRESH)
+TypePtr RefType::getMeet(const TypePtr &_other) {
+    const auto meet = _getMeet(_other);
+    if (meet.first || meet.second || _other->getKind() == FRESH)
         return meet.first;
 
-    TypePtr pMeet = getBaseType()->getMeet(*((const RefType &)_other).getBaseType());
+    const auto pMeet = getBaseType()->getMeet(_other->as<RefType>()->getBaseType());
 
-    return pMeet ? new RefType(pMeet) : NULL;
+    return pMeet ? std::make_shared<RefType>(pMeet) : RefTypePtr();
 }
 
-TypePtr RefType::getJoin(Type &_other) {
-    SideType join = _getJoin(_other);
-    if (join.first || join.second || _other.getKind() == FRESH)
+TypePtr RefType::getJoin(const TypePtr &_other) {
+    const auto join = _getJoin(_other);
+    if (join.first || join.second || _other->getKind() == FRESH)
         return join.first;
 
-    TypePtr pJoin = getBaseType()->getJoin(*((const RefType &)_other).getBaseType());
+    const auto pJoin = getBaseType()->getJoin(_other->as<RefType>()->getBaseType());
 
-    return pJoin ? new RefType(pJoin) : NULL;
+    return pJoin ? std::make_shared<RefType>(pJoin) : RefTypePtr();
+}
+
+NodePtr RefType::clone(Cloner &_cloner) const {
+    return NEW_CLONE(this, _cloner, _cloner.get<Type>(getBaseType()));
 }
 
 // Lists.
 
-TypePtr ListType::getMeet(Type &_other) {
-    SideType meet = _getMeet(_other);
-    if (meet.first || meet.second || _other.getKind() == FRESH)
+TypePtr ListType::getMeet(const TypePtr &_other) {
+    const auto meet = _getMeet(_other);
+    if (meet.first || meet.second || _other->getKind() == FRESH)
         return meet.first;
 
-    TypePtr pMeet = getBaseType()->getMeet(*((const ListType &)_other).getBaseType());
+    const auto pMeet = getBaseType()->getMeet(_other->as<ListType>()->getBaseType());
 
-    return pMeet ? new ListType(pMeet) : NULL;
+    return pMeet ? std::make_shared<ListType>(pMeet) : ListTypePtr();
 }
 
-TypePtr ListType::getJoin(Type &_other) {
-    SideType join = _getJoin(_other);
-    if (join.first || join.second || _other.getKind() == FRESH)
+TypePtr ListType::getJoin(const TypePtr &_other) {
+    const auto join = _getJoin(_other);
+    if (join.first || join.second || _other->getKind() == FRESH)
         return join.first;
 
-    TypePtr pJoin = getBaseType()->getJoin(*((const ListType &)_other).getBaseType());
+    const auto pJoin = getBaseType()->getJoin(_other->as<ListType>()->getBaseType());
 
-    return pJoin ? new ListType(pJoin) : NULL;
+    return pJoin ? std::make_shared<ListType>(pJoin) : ListTypePtr();
+}
+
+NodePtr ListType::clone(Cloner &_cloner) const {
+    return NEW_CLONE(this, _cloner, _cloner.get<Type>(getBaseType()));
 }
 
 // Maps.
@@ -147,26 +159,26 @@ bool MapType::less(const Type &_other) const {
     return *getIndexType() < *other.getIndexType();
 }
 
-TypePtr MapType::getMeet(Type &_other) {
-    SideType meet = _getMeet(_other);
-    if (meet.first || meet.second || _other.getKind() == FRESH)
+TypePtr MapType::getMeet(const TypePtr &_other) {
+    const auto meet = _getMeet(_other);
+    if (meet.first || meet.second || _other->getKind() == FRESH)
         return meet.first;
 
-    TypePtr pIndexJoin = getIndexType()->getJoin(*((const MapType &)_other).getIndexType().as<Type>());
-    TypePtr pBaseMeet = getBaseType()->getMeet(*((const MapType &)_other).getBaseType());
+    const auto pIndexJoin = getIndexType()->getJoin(_other->as<MapType>()->getIndexType());
+    const auto pBaseMeet = getBaseType()->getMeet(_other->as<MapType>()->getBaseType());
 
-    return (pIndexJoin && pBaseMeet) ? new MapType(pIndexJoin, pBaseMeet) : NULL;
+    return (pIndexJoin && pBaseMeet) ? std::make_shared<MapType>(pIndexJoin, pBaseMeet) : MapTypePtr();
 }
 
-TypePtr MapType::getJoin(Type &_other) {
-    SideType join = _getJoin(_other);
-    if (join.first || join.second || _other.getKind() == FRESH)
+TypePtr MapType::getJoin(const TypePtr &_other) {
+    const auto join = _getJoin(_other);
+    if (join.first || join.second || _other->getKind() == FRESH)
         return join.first;
 
-    TypePtr pBaseJoin = getBaseType()->getJoin(*((const MapType &)_other).getBaseType());
-    TypePtr pIndexMeet = getIndexType()->getMeet(*((const MapType &)_other).getIndexType().as<Type>());
+    const auto pBaseJoin = getBaseType()->getJoin(_other->as<MapType>()->getBaseType());
+    const auto pIndexMeet = getIndexType()->getMeet(_other->as<MapType>()->getIndexType());
 
-    return (pBaseJoin && pIndexMeet) ? new MapType(pIndexMeet, pBaseJoin) : NULL;
+    return (pBaseJoin && pIndexMeet) ? std::make_shared<MapType>(pIndexMeet, pBaseJoin) : MapTypePtr();
 }
 
 int MapType::getMonotonicity(const Type &_var) const {
@@ -179,4 +191,8 @@ int MapType::getMonotonicity(const Type &_var) const {
         return MT_NONE;
 
     return bMonotone ? MT_MONOTONE : (bAntitone ? MT_ANTITONE : MT_CONST);
+}
+
+NodePtr MapType::clone(Cloner &_cloner) const {
+    return NEW_CLONE(this, _cloner, _cloner.get<Type>(getIndexType()), _cloner.get<Type>(getBaseType()));
 }

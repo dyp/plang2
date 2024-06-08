@@ -13,9 +13,9 @@
 
 namespace ir {
 
-void generateCallGraph(Module &_module, CallGraph &_graph);
+void generateCallGraph(const ModulePtr &_module, CallGraph &_graph);
 
-void printModuleCallGraph(Module &_module, std::wostream &_os);
+void printModuleCallGraph(const ModulePtr &_module, std::wostream &_os);
 
 }
 

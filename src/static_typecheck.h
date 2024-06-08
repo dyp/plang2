@@ -2,8 +2,7 @@
 // Created by auzubarev on 04.04.18.
 //
 
-#ifndef PLANG_STATIC_TYPECHECK_H
-#define PLANG_STATIC_TYPECHECK_H
+#pragma once
 
 #include <ir/statements.h>
 #include <algorithm>
@@ -46,7 +45,10 @@ public:
     static bool checkVariableDeclaration(VariableDeclaration& variableDeclaration);
     static bool checkVariableReference(VariableReference& variableReference);
     static void printTypecheckInfo(std::wstring head, std::wstring msg = L"", int color = PRINT_BLUE, int indent = 0);
-    static std::wstring str(Node &node);
+    static std::wstring str(const NodePtr &node);
+    static std::wstring str(Node &node) {
+        return str(node.as<Node>());
+    }
     enum {
         PRINT_RED,
         PRINT_BLUE,
@@ -58,11 +60,10 @@ private:
     static bool isContains(const ExpressionPtr &expr, const TypePtr &type);
     static bool isTypeEqual(const TypePtr &type1, const TypePtr &type2);
     static TypePtr getTypeJoin(const TypePtr &type1, const TypePtr &type2);
-    static void typeError(std::string msg, bool expr = false);
-    static void typeWarning(const std::wstring msg, bool expr = false);
+    static void typeError(const std::string& msg, bool expr = false);
+    static void typeWarning(const std::wstring& msg, bool expr = false);
     static bool isFresh(const TypePtr &type);
     static void setType(Node &node, const TypePtr type);
     static TypePtr getGeneralType(const TypePtr &type);
 };
 
-#endif //PLANG_STATIC_TYPECHECK_H

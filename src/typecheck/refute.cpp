@@ -16,19 +16,19 @@ protected:
 };
 
 bool Refute::_run(int & _nResult) {
-    tc::Formulas::iterator iCF = _context()->beginCompound();
+    const auto iCF = _context()->formulas()->beginCompound();
 
     _nResult = tc::Formula::UNKNOWN;
 
-    for (tc::Formulas::iterator i = _context()->begin(); i != iCF; ++i) {
+    for (tc::Formulas::iterator i = _context()->formulas()->begin(); i != iCF; ++i) {
         TypePtr a = (*i)->getLhs();
         TypePtr b = (*i)->getRhs();
         TypePtr c;
 
         // Check if there exists such c for which the relations P and Q hold.
 #define CHECK(P,PL,PR,Q,QL,QR) \
-        if (_context().lookup(tc::Formula(tc::Formula::P, PL, PR),   \
-                tc::Formula(tc::Formula::Q, QL, QR))) {             \
+        if (_context()->lookup(std::make_shared<tc::Formula>(tc::Formula::P, PL, PR),   \
+                std::make_shared<tc::Formula>(tc::Formula::Q, QL, QR))) {             \
             _nResult = tc::Formula::FALSE;                           \
             return true;                                            \
         }
@@ -46,8 +46,8 @@ bool Refute::_run(int & _nResult) {
     return _runCompound(_nResult);
 }
 
-Auto<Operation> Operation::refute() {
-    return new Refute();
+OperationPtr Operation::refute() {
+    return std::make_shared<Refute>();
 }
 
 }

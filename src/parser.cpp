@@ -27,7 +27,7 @@
 using namespace ir;
 using namespace lexer;
 
-#define PARSER_FN(_Node,_Name,...) Auto<_Node> (Parser::*_Name) (Context &_ctx, ## __VA_ARGS__)
+#define PARSER_FN(_Node,_Name,...) std::shared_ptr<_Node> (Parser::*_Name) (Context &_ctx, ## __VA_ARGS__)
 
 #define CASE_BUILTIN_TYPE \
     case INT_TYPE: \
@@ -85,12 +85,9 @@ using namespace lexer;
 #define TOK_S(_CTX) (fmtQuote((_CTX).getValue()).c_str())
 
 struct operator_t {
-    int nPrecedence, nBinary, nUnary;
-
-    operator_t() : nPrecedence(-1), nBinary(-1), nUnary(-1) {}
-
-    operator_t(int _nPrecedence, int _nBinary = -1, int _nUnary = -1) :
-        nPrecedence(_nPrecedence), nBinary(_nBinary), nUnary(_nUnary) {}
+    int nPrecedence = -1;
+    int nBinary = -1;
+    int nUnary = -1;
 };
 
 class Parser {
@@ -122,14 +119,14 @@ public:
     ExpressionPtr parseExpression(Context &_ctx);
     ExpressionPtr parseSubexpression(Context &_ctx, const ExpressionPtr &_lhs, int _minPrec);
     ExpressionPtr parseAtom(Context &_ctx);
-    ExpressionPtr parseComponent(Context &_ctx, Expression &_base);
+    ExpressionPtr parseComponent(Context &_ctx, const ExpressionPtr &_base);
     FormulaPtr parseFormula(Context &_ctx);
     Context* parseModuleReference(Context &_ctx);
     ArrayIterationPtr parseArrayIteration(Context &_ctx);
-    ArrayPartExprPtr parseArrayPart(Context &_ctx, Expression &_base);
-    FunctionCallPtr parseFunctionCall(Context &_ctx, Expression &_base);
-    BinderPtr parseBinder(Context &_ctx, Expression &_base);
-    ReplacementPtr parseReplacement(Context &_ctx, Expression &_base);
+    ArrayPartExprPtr parseArrayPart(Context &_ctx, const ExpressionPtr &_base);
+    FunctionCallPtr parseFunctionCall(Context &_ctx, const ExpressionPtr &_base);
+    BinderPtr parseBinder(Context &_ctx, const ExpressionPtr &_base);
+    ReplacementPtr parseReplacement(Context &_ctx, const ExpressionPtr &_base);
     LambdaPtr parseLambda(Context &_ctx);
     PredicatePtr parsePredicate(Context &_ctx);
     ProcessPtr parseProcess(Context &_ctx);
@@ -156,7 +153,7 @@ public:
 
     Context *parsePragma(Context &_ctx);
 
-    bool parseDeclarations(Context &_ctx, Module &_module);
+    bool parseDeclarations(Context &_ctx, const ModulePtr &_module);
 
     // Parameter parsing constants.
     enum {
@@ -202,15 +199,15 @@ public:
     UnionConstructorPtr parseConstructor(Context &_ctx, const UnionTypePtr &_pUnion);
 
     template<class _T>
-    Auto<_T> findByName(const Collection<_T> &_list, const std::wstring &_name);
+    std::shared_ptr<_T> findByName(const Collection<_T> &_list, const std::wstring &_name);
 
     template<class _T>
     size_t findByNameIdx(const Collection<_T> &_list, const std::wstring &_name);
 
     typedef std::map<std::wstring, BranchPtr> branch_map_t;
 
-    bool parsePredicateParams(Context &_ctx, AnonymousPredicate &_pred, branch_map_t & _branches);
-    bool parsePredicateBody(Context &_ctx, AnonymousPredicate &_pred, branch_map_t & _branches);
+    bool parsePredicateParams(Context &_ctx, const AnonymousPredicatePtr &_pred, branch_map_t & _branches);
+    bool parsePredicateBody(Context &_ctx, const AnonymousPredicatePtr &_pred, branch_map_t & _branches);
 
     template<class _Pred>
     bool parsePreconditions(Context &_ctx, _Pred &_pred, branch_map_t &_branches);
@@ -233,7 +230,7 @@ private:
     bool isTypeName(Context &_ctx, const std::wstring &_name) const;
     bool fixupAsteriskedParameters(Context &_ctx, Params &_in, Params &_out);
 
-    bool typecheck(Context &_ctx, Node &_node);
+    bool typecheck(Context &_ctx, const NodePtr &_node);
 };
 
 template<class _Node, class _Base>
@@ -246,7 +243,7 @@ bool Parser::parseList(Context &_ctx, Collection<_Node,_Base> &_list, PARSER_FN(
         return false;
 
     Collection<_Node> list;
-    Auto<_Node> pNode = (this->*_parser)(ctx);
+    std::shared_ptr<_Node> pNode = (this->*_parser)(ctx);
 
     if (!pNode)
         return false;
@@ -271,9 +268,9 @@ bool Parser::parseList(Context &_ctx, Collection<_Node,_Base> &_list, PARSER_FN(
 }
 
 template<class _T>
-Auto<_T> Parser::findByName(const Collection<_T> &_list, const std::wstring &_name) {
+std::shared_ptr<_T> Parser::findByName(const Collection<_T> &_list, const std::wstring &_name) {
     const size_t cIdx = findByNameIdx(_list, _name);
-    return cIdx == (size_t) -1 ? _list.get(cIdx) : Auto<_T>();
+    return cIdx == (size_t) -1 ? _list.get(cIdx) : std::shared_ptr<_T>();
 }
 
 template<class _T>
@@ -285,37 +282,37 @@ size_t Parser::findByNameIdx(const Collection<_T> &_list, const std::wstring &_n
     return (size_t)-1;
 }
 
-ArrayPartExprPtr Parser::parseArrayPart(Context &_ctx, Expression &_base) {
+ArrayPartExprPtr Parser::parseArrayPart(Context &_ctx, const ExpressionPtr &_base) {
     Context &ctx = *_ctx.createChild(false);
-    ArrayPartExprPtr pParts = new ArrayPartExpr();
+    const auto pParts = std::make_shared<ArrayPartExpr>();
 
     if (!parseArrayIndices(ctx, pParts->getIndices()))
         return NULL;
 
-    pParts->setObject(&_base);
+    pParts->setObject(_base);
     _ctx.mergeChildren();
 
     return pParts;
 }
 
-FunctionCallPtr Parser::parseFunctionCall(Context &_ctx, Expression &_base) {
+FunctionCallPtr Parser::parseFunctionCall(Context &_ctx, const ExpressionPtr &_base) {
     Context &ctx = *_ctx.createChild(false);
-    FunctionCallPtr pCall = new FunctionCall();
+    const auto pCall = std::make_shared<FunctionCall>();
 
     if (ctx.is(LPAREN, RPAREN))
         ctx.skip(2);
     else if (!parseActualParameterList(ctx, pCall->getArgs()))
         return NULL;
 
-    pCall->setPredicate(&_base);
+    pCall->setPredicate(_base);
     _ctx.mergeChildren();
 
     return pCall;
 }
 
-BinderPtr Parser::parseBinder(Context &_ctx, Expression &_base) {
+BinderPtr Parser::parseBinder(Context &_ctx, const ExpressionPtr &_base) {
     Context &ctx = *_ctx.createChild(false);
-    BinderPtr pBinder = new Binder();
+    const auto pBinder = std::make_shared<Binder>();
 
     if (!ctx.consume(LPAREN))
         UNEXPECTED(ctx, "(");
@@ -346,16 +343,16 @@ BinderPtr Parser::parseBinder(Context &_ctx, Expression &_base) {
         UNEXPECTED(ctx, ")");
 
 
-    ExpressionPtr pPredicate = &_base;
-    if (_base.getKind() == Expression::PREDICATE) {
+    ExpressionPtr pPredicate = _base;
+    if (_base->getKind() == Expression::PREDICATE) {
         ir::Predicates predicates;
-        const std::wstring strName = pPredicate.as<PredicateReference>()->getName();
+        const std::wstring strName = pPredicate->as<PredicateReference>()->getName();
 
         _ctx.getPredicates(strName, predicates);
         if (predicates.size() != 1)
             ERROR(ctx, NULL, L"Overloaded binders are not implemented");
 
-        pPredicate = new PredicateReference(strName, predicates.get(0));
+        pPredicate = std::make_shared<PredicateReference>(strName, predicates.get(0));
     }
 
     pBinder->setPredicate(pPredicate);
@@ -364,9 +361,9 @@ BinderPtr Parser::parseBinder(Context &_ctx, Expression &_base) {
     return pBinder;
 }
 
-ReplacementPtr Parser::parseReplacement(Context &_ctx, Expression &_base) {
+ReplacementPtr Parser::parseReplacement(Context &_ctx, const ExpressionPtr &_base) {
     Context &ctx = *_ctx.createChild(false);
-    ExpressionPtr pNewValues = parseExpression(ctx);
+    const auto pNewValues = parseExpression(ctx);
 
     if (!pNewValues)
         ERROR(ctx, NULL, L"Error parsing replacement values");
@@ -374,16 +371,16 @@ ReplacementPtr Parser::parseReplacement(Context &_ctx, Expression &_base) {
     if (pNewValues->getKind() != Expression::CONSTRUCTOR)
         ERROR(ctx, NULL, L"Constructor expected");
 
-    ReplacementPtr pExpr = new Replacement();
+    const auto pExpr = std::make_shared<Replacement>();
 
-    pExpr->setObject(&_base);
-    pExpr->setNewValues(pNewValues.as<Constructor>());
+    pExpr->setObject(_base);
+    pExpr->setNewValues(pNewValues->as<Constructor>());
     _ctx.mergeChildren();
 
     return pExpr;
 }
 
-ExpressionPtr Parser::parseComponent(Context &_ctx, Expression &_base) {
+ExpressionPtr Parser::parseComponent(Context &_ctx, const ExpressionPtr &_base) {
     Context &ctx = *_ctx.createChild(false);
     ExpressionPtr pExpr;
 
@@ -392,24 +389,24 @@ ExpressionPtr Parser::parseComponent(Context &_ctx, Expression &_base) {
         pExpr = parseReplacement(ctx, _base);
     } else if (ctx.is(DOT)) {
         const std::wstring &fieldName = ctx.scan(2, 1);
-        ComponentPtr pExpr = new FieldExpr(fieldName);
+        ComponentPtr pExpr = std::make_shared<FieldExpr>(fieldName);
 
         _ctx.mergeChildren();
-        pExpr->setObject(&_base);
+        pExpr->setObject(_base);
 
         return pExpr;
     } else if (ctx.is(LBRACKET)) {
         pExpr = parseArrayPart(ctx, _base);
     } else if (ctx.is(LPAREN)) {
-        if (_base.getKind() == Expression::TYPE) {
+        if (_base->getKind() == Expression::TYPE) {
             pExpr = parseExpression(ctx);
 
             if (!pExpr)
                 return NULL;
 
-            CastExprPtr pCast = new CastExpr();
+            const auto pCast = std::make_shared<CastExpr>();
 
-            pCast->setToType(ExpressionPtr(&_base).as<TypeExpr>());
+            pCast->setToType(_base->as<TypeExpr>());
             pCast->setExpression(pExpr);
             _ctx.mergeChildren();
 
@@ -436,7 +433,7 @@ ArrayIterationPtr Parser::parseArrayIteration(Context &_ctx) {
     if (!ctx.consume(FOR))
         UNEXPECTED(ctx, "for");
 
-    ArrayIterationPtr pArray = new ArrayIteration();
+    const auto pArray = std::make_shared<ArrayIteration>();
 
     if (!ctx.consume(LPAREN))
         UNEXPECTED(ctx, "(");
@@ -453,7 +450,7 @@ ArrayIterationPtr Parser::parseArrayIteration(Context &_ctx) {
         ++ctxParts;
 
         while (ctxParts.is(CASE)) {
-            ArrayPartDefinitionPtr pPart = new ArrayPartDefinition();
+            const auto pPart = std::make_shared<ArrayPartDefinition>();
 
             if (!parseList(ctxParts, pPart->getConditions(),
                     &Parser::parseExpression, CASE, COLON, COMMA))
@@ -517,31 +514,31 @@ int Parser::getBinaryOp(int _token) const {
 void Parser::initOps() {
     m_ops.resize(END_OF_FILE + 1);
 
-    m_ops[IMPLIES]    = operator_t(Binary::getPrecedence(Binary::IMPLIES), Binary::IMPLIES);
-    m_ops[IFF]        = operator_t(Binary::getPrecedence(Binary::IFF), Binary::IFF);
-    m_ops[QUESTION]   = operator_t(Ternary::getPrecedence());
+    m_ops[IMPLIES]    = {.nPrecedence = Binary::getPrecedence(Binary::IMPLIES), .nBinary = Binary::IMPLIES};
+    m_ops[IFF]        = {.nPrecedence = Binary::getPrecedence(Binary::IFF), .nBinary = Binary::IFF};
+    m_ops[QUESTION]   = {.nPrecedence = Ternary::getPrecedence()};
 //    m_oPS[COLON]      = operator_t(nPrec);
-    m_ops[OR]         = operator_t(Binary::getPrecedence(Binary::BOOL_OR), Binary::BOOL_OR);
-    m_ops[XOR]        = operator_t(Binary::getPrecedence(Binary::BOOL_XOR), Binary::BOOL_XOR);
-    m_ops[AMPERSAND]  = operator_t(Binary::getPrecedence(Binary::BOOL_AND), Binary::BOOL_AND);
-    m_ops[AND]        = operator_t(Binary::getPrecedence(Binary::BOOL_AND), Binary::BOOL_AND);
-    m_ops[EQ]         = operator_t(Binary::getPrecedence(Binary::EQUALS), Binary::EQUALS);
-    m_ops[NE]         = operator_t(Binary::getPrecedence(Binary::NOT_EQUALS), Binary::NOT_EQUALS);
-    m_ops[LT]         = operator_t(Binary::getPrecedence(Binary::LESS), Binary::LESS);
-    m_ops[LTE]        = operator_t(Binary::getPrecedence(Binary::LESS_OR_EQUALS), Binary::LESS_OR_EQUALS);
-    m_ops[GT]         = operator_t(Binary::getPrecedence(Binary::GREATER), Binary::GREATER);
-    m_ops[GTE]        = operator_t(Binary::getPrecedence(Binary::GREATER_OR_EQUALS), Binary::GREATER_OR_EQUALS);
-    m_ops[IN]         = operator_t(Binary::getPrecedence(Binary::IN), Binary::IN);
-    m_ops[SHIFTLEFT]  = operator_t(Binary::getPrecedence(Binary::SHIFT_LEFT), Binary::SHIFT_LEFT);
-    m_ops[SHIFTRIGHT] = operator_t(Binary::getPrecedence(Binary::SHIFT_RIGHT), Binary::SHIFT_RIGHT);
-    m_ops[PLUS]       = operator_t(Binary::getPrecedence(Binary::ADD), Binary::ADD, Unary::PLUS);
-    m_ops[MINUS]      = operator_t(Binary::getPrecedence(Binary::SUBTRACT), Binary::SUBTRACT, Unary::MINUS);
-    m_ops[BANG]       = operator_t(Unary::getPrecedence(Unary::BOOL_NEGATE), -1, Unary::BOOL_NEGATE);
-    m_ops[TILDE]      = operator_t(Unary::getPrecedence(Unary::BITWISE_NEGATE), -1, Unary::BITWISE_NEGATE);
-    m_ops[ASTERISK]   = operator_t(Binary::getPrecedence(Binary::MULTIPLY), Binary::MULTIPLY);
-    m_ops[SLASH]      = operator_t(Binary::getPrecedence(Binary::DIVIDE), Binary::DIVIDE);
-    m_ops[PERCENT]    = operator_t(Binary::getPrecedence(Binary::REMAINDER), Binary::REMAINDER);
-    m_ops[CARET]      = operator_t(Binary::getPrecedence(Binary::POWER), Binary::POWER);
+    m_ops[OR]         = {.nPrecedence = Binary::getPrecedence(Binary::BOOL_OR), .nBinary = Binary::BOOL_OR};
+    m_ops[XOR]        = {.nPrecedence = Binary::getPrecedence(Binary::BOOL_XOR), .nBinary = Binary::BOOL_XOR};
+    m_ops[AMPERSAND]  = {.nPrecedence = Binary::getPrecedence(Binary::BOOL_AND), .nBinary = Binary::BOOL_AND};
+    m_ops[AND]        = {.nPrecedence = Binary::getPrecedence(Binary::BOOL_AND), .nBinary = Binary::BOOL_AND};
+    m_ops[EQ]         = {.nPrecedence = Binary::getPrecedence(Binary::EQUALS), .nBinary = Binary::EQUALS};
+    m_ops[NE]         = {.nPrecedence = Binary::getPrecedence(Binary::NOT_EQUALS), .nBinary = Binary::NOT_EQUALS};
+    m_ops[LT]         = {.nPrecedence = Binary::getPrecedence(Binary::LESS), .nBinary = Binary::LESS};
+    m_ops[LTE]        = {.nPrecedence = Binary::getPrecedence(Binary::LESS_OR_EQUALS), .nBinary = Binary::LESS_OR_EQUALS};
+    m_ops[GT]         = {.nPrecedence = Binary::getPrecedence(Binary::GREATER), .nBinary = Binary::GREATER};
+    m_ops[GTE]        = {.nPrecedence = Binary::getPrecedence(Binary::GREATER_OR_EQUALS), .nBinary = Binary::GREATER_OR_EQUALS};
+    m_ops[IN]         = {.nPrecedence = Binary::getPrecedence(Binary::IN), .nBinary = Binary::IN};
+    m_ops[SHIFTLEFT]  = {.nPrecedence = Binary::getPrecedence(Binary::SHIFT_LEFT), .nBinary = Binary::SHIFT_LEFT};
+    m_ops[SHIFTRIGHT] = {.nPrecedence = Binary::getPrecedence(Binary::SHIFT_RIGHT), .nBinary = Binary::SHIFT_RIGHT};
+    m_ops[PLUS]       = {.nPrecedence = Binary::getPrecedence(Binary::ADD), .nBinary = Binary::ADD, .nUnary = Unary::PLUS};
+    m_ops[MINUS]      = {.nPrecedence = Binary::getPrecedence(Binary::SUBTRACT), .nBinary = Binary::SUBTRACT, .nUnary = Unary::MINUS};
+    m_ops[BANG]       = {.nPrecedence = Unary::getPrecedence(Unary::BOOL_NEGATE), .nUnary = Unary::BOOL_NEGATE};
+    m_ops[TILDE]      = {.nPrecedence = Unary::getPrecedence(Unary::BITWISE_NEGATE), .nUnary = Unary::BITWISE_NEGATE};
+    m_ops[ASTERISK]   = {.nPrecedence = Binary::getPrecedence(Binary::MULTIPLY), .nBinary = Binary::MULTIPLY};
+    m_ops[SLASH]      = {.nPrecedence = Binary::getPrecedence(Binary::DIVIDE), .nBinary = Binary::DIVIDE};
+    m_ops[PERCENT]    = {.nPrecedence = Binary::getPrecedence(Binary::REMAINDER), .nBinary = Binary::REMAINDER};
+    m_ops[CARET]      = {.nPrecedence = Binary::getPrecedence(Binary::POWER), .nBinary = Binary::POWER};
 }
 
 ExpressionPtr Parser::parseCastOrTypeReference(Context &_ctx, const TypePtr &_pType) {
@@ -560,12 +557,12 @@ ExpressionPtr Parser::parseCastOrTypeReference(Context &_ctx, const TypePtr &_pT
             //case Type::NamedReference:
                 pExpr = parseAtom(ctx);
                 if (pExpr)
-                    pExpr = new CastExpr(pExpr, new TypeExpr(_pType));
+                    pExpr = std::make_shared<CastExpr>(pExpr, std::make_shared<TypeExpr>(_pType));
         }
     }
 
     if (!pExpr)
-        pExpr = new TypeExpr(_pType);
+        pExpr = std::make_shared<TypeExpr>(_pType);
 
     _ctx.mergeChildren();
 
@@ -578,14 +575,14 @@ LambdaPtr Parser::parseLambda(Context &_ctx) {
     if (!ctx.consume(PREDICATE))
         UNEXPECTED(ctx, "predicate");
 
-    LambdaPtr pLambda = new Lambda();
+    const auto pLambda = std::make_shared<Lambda>();
     branch_map_t branches;
 
     if (!parsePredicateParams(ctx, pLambda->getPredicate(), branches) ||
         !parsePredicateBody(ctx, pLambda->getPredicate(), branches))
         return NULL;
 
-    if (!pLambda->getPredicate().getBlock())
+    if (!pLambda->getPredicate()->getBlock())
         ERROR(ctx, NULL, L"No body defined for anonymous predicate");
 
     _ctx.mergeChildren();
@@ -599,7 +596,7 @@ FormulaPtr Parser::parseFormula(Context &_ctx) {
     if (!ctx.in(FORALL, EXISTS))
         ERROR(ctx, NULL, L"Quantifier expected");
 
-    FormulaPtr pFormula = new Formula(ctx.in(FORALL) ? Formula::UNIVERSAL : Formula::EXISTENTIAL);
+    const auto pFormula = std::make_shared<Formula>(ctx.in(FORALL) ? Formula::UNIVERSAL : Formula::EXISTENTIAL);
 
     ++ctx;
 
@@ -658,37 +655,37 @@ ExpressionPtr Parser::parseAtom(Context &_ctx) {
             ctx.is(LIST_LBRACKET, LIST_RBRACKET) || ctx.is(MAP_LBRACKET, MAP_RBRACKET))
     {
         ctx.skip(2);
-        pExpr = new Literal();
+        pExpr = std::make_shared<Literal>();
         token = -1;
     }
 
     switch (token) {
         case INTEGER: {
             Number num(ctx.scan(), Number::INTEGER);
-            pExpr = new Literal(num);
+            pExpr = std::make_shared<Literal>(num);
             break;
         }
         case REAL:
         case NOT_A_NUMBER:
         case INF: {
             Number num(ctx.scan(), Number::REAL);
-            pExpr = new Literal(num);
+            pExpr = std::make_shared<Literal>(num);
             break;
         }
         case TRUE:
         case FALSE:
-            pExpr = new Literal(ctx.getToken() == TRUE);
+            pExpr = std::make_shared<Literal>(ctx.getToken() == TRUE);
             ++ctx;
             break;
         case CHAR:
-            pExpr = new Literal(ctx.scan()[0]);
+            pExpr = std::make_shared<Literal>(ctx.scan()[0]);
             break;
         case STRING:
-            pExpr = new Literal(ctx.scan());
+            pExpr = std::make_shared<Literal>(ctx.scan());
             break;
         case NIL:
             ++ctx;
-            pExpr = new Literal();
+            pExpr = std::make_shared<Literal>();
             break;
         case LPAREN: {
             Context *pCtx = ctx.createChild(false, ctx.getFlags());
@@ -697,7 +694,7 @@ ExpressionPtr Parser::parseAtom(Context &_ctx) {
             if (!pExpr || !pCtx->consume(RPAREN)) {
                 // Try to parse as a struct literal.
                 pCtx = ctx.createChild(false);
-                StructConstructorPtr pStruct = new StructConstructor();
+                StructConstructorPtr pStruct = std::make_shared<StructConstructor>();
                 if (!parseList(*pCtx, *pStruct, &Parser::parseFieldDefinition, LPAREN, RPAREN, COMMA))
                     ERROR(*pCtx, NULL, L"Expected \")\" or a struct literal");
                 pExpr = pStruct;
@@ -706,25 +703,25 @@ ExpressionPtr Parser::parseAtom(Context &_ctx) {
             break;
         }
         case LBRACKET:
-            pExpr = new ArrayConstructor();
+            pExpr = std::make_shared<ArrayConstructor>();
             if (!parseList(ctx, (ArrayConstructor &)*pExpr, &Parser::parseArrayElement,
                     LBRACKET, RBRACKET, COMMA))
                 ERROR(ctx, NULL, L"Failed parsing array constructor");
             break;
         case MAP_LBRACKET:
-            pExpr = new MapConstructor();
+            pExpr = std::make_shared<MapConstructor>();
             if (!parseList(ctx, (MapConstructor &)*pExpr, &Parser::parseMapElement,
                     MAP_LBRACKET, MAP_RBRACKET, COMMA))
                 ERROR(ctx, NULL, L"Failed parsing map constructor");
             break;
         case LBRACE:
-            pExpr = new SetConstructor();
+            pExpr = std::make_shared<SetConstructor>();
             if (!parseList(ctx, (SetConstructor &)*pExpr, &Parser::parseExpression,
                     LBRACE, RBRACE, COMMA))
                 ERROR(ctx, NULL, L"Failed parsing set constructor");
             break;
         case LIST_LBRACKET:
-            pExpr = new ListConstructor();
+            pExpr = std::make_shared<ListConstructor>();
             if (!parseList(ctx, (ListConstructor &)*pExpr, &Parser::parseExpression,
                     LIST_LBRACKET, LIST_RBRACKET, COMMA))
                 ERROR(ctx, NULL, L"Failed parsing list constructor");
@@ -767,7 +764,7 @@ ExpressionPtr Parser::parseAtom(Context &_ctx) {
         }
 
         if ((pVar = moduleCtx.getVariable(str)) && (!bAllowTypes || !isTypeVariable(pVar))) {
-            pExpr = new VariableReference(pVar);
+            pExpr = std::make_shared<VariableReference>(pVar);
             ctx.skip(bLinkedIdentifier ? 2 : 1);
         }
 
@@ -788,13 +785,13 @@ ExpressionPtr Parser::parseAtom(Context &_ctx) {
 
         if (!pExpr && (pPred = moduleCtx.getPredicate(str))) {
             ++ctx;
-            pExpr = new PredicateReference(str);
+            pExpr = std::make_shared<PredicateReference>(str);
         }
 
         FormulaDeclarationPtr pFormula;
 
         if (!pExpr && (ctx.getFlags() & Context::ALLOW_FORMULAS) && (pFormula = moduleCtx.getFormula(str))) {
-            FormulaCallPtr pCall = new FormulaCall();
+            FormulaCallPtr pCall = std::make_shared<FormulaCall>();
 
             ++ctx;
 
@@ -818,7 +815,7 @@ ExpressionPtr Parser::parseAtom(Context &_ctx) {
             // It's OK since we always know the UnionType in UnionType.ConstructorName expression even
             // before type inference.
             ctx.skip(2);
-            pExpr = parseConstructor(ctx, pRealType.as<UnionType>());
+            pExpr = parseConstructor(ctx, pRealType->as<UnionType>());
             if (!pExpr)
                 return NULL;
         }
@@ -835,9 +832,9 @@ ExpressionPtr Parser::parseAtom(Context &_ctx) {
     // Other things should be implemented HERE.
 
     if (pExpr)
-        while (ExpressionPtr pCompound = parseComponent(ctx, *pExpr)) {
+        while (ExpressionPtr pCompound = parseComponent(ctx, pExpr)) {
             pExpr = pCompound;
-            pCompound = parseComponent(ctx, *pExpr);
+            pCompound = parseComponent(ctx, pExpr);
         }
 
     if (pExpr && bAllowTypes && ctx.consume(DOUBLE_DOT)) {
@@ -847,7 +844,7 @@ ExpressionPtr Parser::parseAtom(Context &_ctx) {
         if (!pMax)
             return NULL;
 
-        pExpr = new TypeExpr(new Range(pExpr, pMax));
+        pExpr = std::make_shared<TypeExpr>(std::make_shared<Range>(pExpr, pMax));
     }
 
     if (!pExpr)
@@ -893,13 +890,13 @@ ExpressionPtr Parser::parseSubexpression(Context &_ctx, const ExpressionPtr &_pL
         if (bParseElse) {
             if (op != COLON)
                 ERROR(ctx, NULL, L"\":\" expected");
-            pLhs.as<Ternary>()->setElse(pRhs);
+            pLhs->as<Ternary>()->setElse(pRhs);
             bParseElse = false;
         } else if (op == QUESTION) {
             if (!pLhs)
                 return NULL;
             bParseElse = true;
-            pLhs = new Ternary(pLhs, pRhs);
+            pLhs = std::make_shared<Ternary>(pLhs, pRhs);
         } else if (!pLhs) {
             const int unaryOp = getUnaryOp(op);
 
@@ -908,13 +905,14 @@ ExpressionPtr Parser::parseSubexpression(Context &_ctx, const ExpressionPtr &_pL
 
             if (tokRHS != LPAREN && // Disable optimization of "-(NUMBER)" expressions for now.
                     pRhs->getKind() == Expression::LITERAL &&
-                    pRhs.as<Literal>()->getLiteralKind() == Literal::NUMBER)
+                    pRhs->as<Literal>()->getLiteralKind() == Literal::NUMBER)
             {
                 // OK, handle unary plus/minus here.
                 if (unaryOp == Unary::MINUS) {
-                    Number num = pRhs.as<Literal>()->getNumber();
+                    auto literal = pRhs->as<Literal>();
+                    Number num = literal->getNumber();
                     num.negate();
-                    pRhs.as<Literal>()->setNumber(num);
+                    literal->setNumber(num);
                 }
                 if (unaryOp == Unary::MINUS || unaryOp == Unary::PLUS) {
                     pLhs = pRhs;
@@ -922,16 +920,18 @@ ExpressionPtr Parser::parseSubexpression(Context &_ctx, const ExpressionPtr &_pL
                 }
             }
 
-            pLhs = new Unary(unaryOp, pRhs);
-            pLhs.as<Unary>()->getOverflow().set(_ctx.getOverflow());
+            const auto unary = std::make_shared<Unary>(unaryOp, pRhs);
+            unary->getOverflow().set(_ctx.getOverflow());
+            pLhs = unary;
         } else {
             const int binaryOp = getBinaryOp(op);
 
             if (binaryOp < 0)
                 ERROR(ctx, NULL, L"Binary operator expected");
 
-            pLhs = new Binary(binaryOp, pLhs, pRhs);
-            pLhs.as<Binary>()->getOverflow().set(_ctx.getOverflow());
+            const auto binary = std::make_shared<Binary>(binaryOp, pLhs, pRhs);
+            binary->getOverflow().set(_ctx.getOverflow());
+            pLhs = binary;
         }
     }
 
@@ -980,17 +980,17 @@ bool Parser::parsePreconditions(Context &_ctx, _Pred &_pred, branch_map_t &_bran
 
         if (ExpressionPtr pFormula = parseExpression(ctx)) {
             if (pFormula->getKind() == Expression::FORMULA)
-                pBranch->setPreCondition(pFormula.as<Formula>());
+                pBranch->setPreCondition(pFormula->as<Formula>());
             else
-                pBranch->setPreCondition(new Formula(Formula::NONE, pFormula));
+                pBranch->setPreCondition(std::make_shared<Formula>(Formula::NONE, pFormula));
         } else
             ERROR(ctx, false, L"Formula expected");
     } else {
         if (ExpressionPtr pFormula = parseExpression(ctx)) {
             if (pFormula->getKind() == Expression::FORMULA)
-                _pred.setPreCondition(pFormula.as<Formula>());
+                _pred->setPreCondition(pFormula->as<Formula>());
             else
-                _pred.setPreCondition(new Formula(Formula::NONE, pFormula));
+                _pred->setPreCondition(std::make_shared<Formula>(Formula::NONE, pFormula));
         } else
             ERROR(ctx, false, L"Formula expected");
     }
@@ -1005,8 +1005,8 @@ bool Parser::parsePreconditions(Context &_ctx, _Pred &_pred, branch_map_t &_bran
 
         if (ExpressionPtr pFormula = parseExpression(ctx)) {
             if (pFormula->getKind() != Expression::FORMULA)
-                pFormula = new Formula(Formula::NONE, pFormula);
-            pBranch->setPreCondition(pFormula.as<Formula>());
+                pFormula = std::make_shared<Formula>(Formula::NONE, pFormula);
+            pBranch->setPreCondition(pFormula->as<Formula>());
         } else
             ERROR(ctx, NULL, L"Formula expected");
     }
@@ -1023,7 +1023,7 @@ bool Parser::parsePostconditions(Context &_ctx, _Pred &_pred, branch_map_t &_bra
 
     Context &ctx = *_ctx.createChild(false, Context::ALLOW_FORMULAS);
 
-    if (_pred.isHyperFunction()) {
+    if (_pred->isHyperFunction()) {
         while (ctx.consume(POST)) {
             BranchPtr pBranch = _branches[ctx.getValue()];
 
@@ -1034,16 +1034,16 @@ bool Parser::parsePostconditions(Context &_ctx, _Pred &_pred, branch_map_t &_bra
 
             if (ExpressionPtr pFormula = parseExpression(ctx)) {
                 if (pFormula->getKind() != Expression::FORMULA)
-                    pFormula = new Formula(Formula::NONE, pFormula);
-                pBranch->setPostCondition(pFormula.as<Formula>());
+                    pFormula = std::make_shared<Formula>(Formula::NONE, pFormula);
+                pBranch->setPostCondition(pFormula->as<Formula>());
             } else
                 ERROR(ctx, NULL, L"Formula expected");
         }
     } else if (ctx.consume(POST)) {
         if (ExpressionPtr pFormula = parseExpression(ctx)) {
             if (pFormula->getKind() != Expression::FORMULA)
-                pFormula = new Formula(Formula::NONE, pFormula);
-            _pred.setPostCondition(pFormula.as<Formula>());
+                pFormula = std::make_shared<Formula>(Formula::NONE, pFormula);
+            _pred->setPostCondition(pFormula->as<Formula>());
         } else
             ERROR(ctx, false, L"Formula expected");
     }
@@ -1063,7 +1063,7 @@ bool Parser::parseMeasure(Context &_ctx, _Pred &_pred) {
     if (!pMeasure)
         ERROR(_ctx, false, L"Expression expected");
 
-    _pred.setMeasure(pMeasure);
+    _pred->setMeasure(pMeasure);
 
     return true;
 }
@@ -1078,7 +1078,7 @@ bool Parser::fixupAsteriskedParameters(Context &_ctx, Params &_in, Params &_out)
             continue;
 
         const std::wstring name = pInParam->getName() + L'\'';
-        ParamPtr pOutParam = new Param(name);
+        ParamPtr pOutParam = std::make_shared<Param>(name);
 
         _out.add(pOutParam);
         pInParam->setLinkedParam(pOutParam);
@@ -1092,22 +1092,22 @@ bool Parser::fixupAsteriskedParameters(Context &_ctx, Params &_in, Params &_out)
     return bResult;
 }
 
-bool Parser::parsePredicateParams(Context &_ctx, AnonymousPredicate &_pred, branch_map_t & _branches) {
+bool Parser::parsePredicateParams(Context &_ctx, const AnonymousPredicatePtr &_pred, branch_map_t & _branches) {
     if (!_ctx.consume(LPAREN))
         ERROR(_ctx, NULL, L"Expected \"(\", got: %ls", TOK_S(_ctx));
 
-    if (!parseParamList(_ctx, _pred.getInParams(), &Parser::parseParam, ALLOW_ASTERSK | ALLOW_EMPTY_NAMES))
+    if (!parseParamList(_ctx, _pred->getInParams(), &Parser::parseParam, ALLOW_ASTERSK | ALLOW_EMPTY_NAMES))
         ERROR(_ctx, false, L"Failed to parse input parameters");
 
     bool bHasAsterisked = false;
 
     while (_ctx.consume(COLON)) {
-        BranchPtr pBranch = new Branch();
+        const auto pBranch = std::make_shared<Branch>();
 
-        _pred.getOutParams().add(pBranch);
+        _pred->getOutParams().add(pBranch);
 
-        if (_pred.getOutParams().size() == 1)
-            bHasAsterisked = fixupAsteriskedParameters(_ctx, _pred.getInParams(), *pBranch);
+        if (_pred->getOutParams().size() == 1)
+            bHasAsterisked = fixupAsteriskedParameters(_ctx, _pred->getInParams(), *pBranch);
         else if (bHasAsterisked)
             ERROR(_ctx, false, L"Hyperfunctions cannot use '*' in parameter list");
 
@@ -1123,7 +1123,7 @@ bool Parser::parsePredicateParams(Context &_ctx, AnonymousPredicate &_pred, bran
 
             lexer::Loc locLabel = _ctx.loc();
 
-            if (_ctx.is(INTEGER) && wcstoul(strLabel.c_str(), NULL, 10) != _pred.getOutParams().size())
+            if (_ctx.is(INTEGER) && wcstoul(strLabel.c_str(), NULL, 10) != _pred->getOutParams().size())
                 ERROR(_ctx, false, L"Numbers of numeric branch labels should correspond to branch order");
 
             ++_ctx;
@@ -1138,20 +1138,20 @@ bool Parser::parsePredicateParams(Context &_ctx, AnonymousPredicate &_pred, bran
         }
     }
 
-    if (_pred.getOutParams().empty()) {
-        BranchPtr pBranch = new Branch();
+    if (_pred->getOutParams().empty()) {
+        const auto pBranch = std::make_shared<Branch>();
 
-        _pred.getOutParams().add(pBranch);
-        fixupAsteriskedParameters(_ctx, _pred.getInParams(), *pBranch);
+        _pred->getOutParams().add(pBranch);
+        fixupAsteriskedParameters(_ctx, _pred->getInParams(), *pBranch);
     }
 
     // Create labels for unlabeled branches.
-    if (_pred.getOutParams().size() > 1) {
-        for (size_t i = 0; i < _pred.getOutParams().size(); ++ i) {
-            BranchPtr pBranch = _pred.getOutParams().get(i);
+    if (_pred->getOutParams().size() > 1) {
+        for (size_t i = 0; i < _pred->getOutParams().size(); ++ i) {
+            const auto pBranch = _pred->getOutParams().get(i);
 
             if (!pBranch->getLabel()) {
-                pBranch->setLabel(new Label(fmtInt(i + 1)));
+                pBranch->setLabel(std::make_shared<Label>(fmtInt(i + 1)));
                 _ctx.addLabel(pBranch->getLabel());
                 _branches[pBranch->getLabel()->getName()] = pBranch;
             }
@@ -1161,7 +1161,7 @@ bool Parser::parsePredicateParams(Context &_ctx, AnonymousPredicate &_pred, bran
     return true;
 }
 
-bool Parser::parsePredicateBody(Context &_ctx, AnonymousPredicate &_pred, branch_map_t & _branches) {
+bool Parser::parsePredicateBody(Context &_ctx, const AnonymousPredicatePtr &_pred, branch_map_t & _branches) {
     if (!_ctx.consume(RPAREN))
         ERROR(_ctx, false, L"Expected \")\", got: %ls", TOK_S(_ctx));
 
@@ -1170,8 +1170,8 @@ bool Parser::parsePredicateBody(Context &_ctx, AnonymousPredicate &_pred, branch
             ERROR(_ctx, false, L"Failed parsing preconditions");
 
     if (_ctx.is(LBRACE)) {
-        if (BlockPtr pBlock = parseBlock(_ctx))
-            _pred.setBlock(pBlock);
+        if (const auto pBlock = parseBlock(_ctx))
+            _pred->setBlock(pBlock);
         else
             ERROR(_ctx, false, L"Failed parsing predicate body");
     }
@@ -1194,9 +1194,9 @@ PredicatePtr Parser::parsePredicate(Context &_ctx) {
         return NULL;
 
     branch_map_t branches;
-    PredicatePtr pPred = new Predicate(pCtx->scan());
+    const auto pPred = std::make_shared<Predicate>(pCtx->scan());
 
-    if (!parsePredicateParams(*pCtx, *pPred, branches))
+    if (!parsePredicateParams(*pCtx, pPred, branches))
         return nullptr;
 
     if (!_ctx.addPredicate(pPred))
@@ -1206,7 +1206,7 @@ PredicatePtr Parser::parsePredicate(Context &_ctx) {
 
     pPred->setLoc(&*_ctx.loc());
 
-    if (!parsePredicateBody(*pCtx, *pPred, branches))
+    if (!parsePredicateBody(*pCtx, pPred, branches))
         return NULL;
 
     if (!pPred->getBlock() && !pCtx->consume(SEMICOLON))
@@ -1233,7 +1233,8 @@ VariableDeclarationPtr Parser::parseVariableDeclaration(Context &_ctx, int _nFla
     if (!ctx.is(IDENTIFIER))
         ERROR(ctx, NULL, L"Expected identifier, got: %ls", TOK_S(ctx));
 
-    VariableDeclarationPtr pDecl = new VariableDeclaration(_nFlags & LOCAL_VARIABLE, ctx.scan());
+    const auto pDecl = std::make_shared<VariableDeclaration>();
+    pDecl->setVariable(std::make_shared<Variable>(_nFlags & LOCAL_VARIABLE, ctx.scan()));
 
     if ((_nFlags & PART_OF_LIST) == 0)
         pDecl->getVariable()->setType(pType);
@@ -1317,7 +1318,7 @@ bool Parser::parseImport(Context &_ctx, Module &_module) {
     pInstanceModule->setLoc(&*_ctx.loc());
 
     _ctx.addModule(pInstanceModule);
-    _ctx.addModuleCtx(pInstanceModule, new Context(pInstanceModule));
+    _ctx.addModuleCtx(pInstanceModule, new Context(pInstanceModule));//TODO:dyp: fix
     _ctx.mergeChildren();
 
     return true;
@@ -1356,7 +1357,7 @@ ArrayTypePtr Parser::parseArrayType(Context &_ctx) {
         return NULL;
 
     ArrayTypePtr
-        pArray = new ArrayType(pBaseType),
+        pArray = std::make_shared<ArrayType>(pBaseType),
         pCurrentArray = pArray;
 
     while (1) {
@@ -1371,8 +1372,8 @@ ArrayTypePtr Parser::parseArrayType(Context &_ctx) {
         if (ctx.consume(RPAREN))
             break;
 
-        pCurrentArray->setBaseType(new ArrayType());
-        pCurrentArray = pCurrentArray->getBaseType().as<ArrayType>();
+        pCurrentArray->setBaseType(std::make_shared<ArrayType>());
+        pCurrentArray = pCurrentArray->getBaseType()->as<ArrayType>();
     }
 
     pCurrentArray->setBaseType(pBaseType);
@@ -1409,7 +1410,7 @@ MapTypePtr Parser::parseMapType(Context &_ctx) {
 
     _ctx.mergeChildren();
 
-    return new MapType(pIndexType, pBaseType);
+    return std::make_shared<MapType>(pIndexType, pBaseType);
 }
 
 bool Parser::isTypeName(Context &_ctx, const std::wstring &_name) const {
@@ -1435,7 +1436,7 @@ NamedReferenceTypePtr Parser::parseTypeReference(Context &_ctx) {
 
     const std::wstring str = ctx.scan();
 
-    TypeDeclarationPtr pDecl = moduleCtx.getType(str);
+    const auto pDecl = moduleCtx.getType(str);
 
     if (!pDecl)
         ERROR(ctx, NULL, L"Unknown type identifier: %ls", str.c_str());
@@ -1444,15 +1445,15 @@ NamedReferenceTypePtr Parser::parseTypeReference(Context &_ctx) {
 //        const NamedValue * pVar = ctx.getVariable(str);
 //
 //        if (isTypeVariable(pVar))
-//            pType = new NamedReferenceType(pVar);
+//            pType = std::make_shared<NamedReferenceType(pVar);
 //        else
 //            ERROR(ctx, NULL, L"Unknown type identifier: %ls", str.c_str());
 //    } else
 
-    NamedReferenceTypePtr pType = new NamedReferenceType(pDecl);
+    const auto pType = std::make_shared<NamedReferenceType>(pDecl);
 
     if (pDecl && pDecl->getType() && pDecl->getType()->hasParameters() && ctx.is(LPAREN)) {
-        if (!parseActualParameterList(ctx, pType.as<NamedReferenceType>()->getArgs()))
+        if (!parseActualParameterList(ctx, pType->as<NamedReferenceType>()->getArgs()))
             ERROR(ctx, NULL, L"Garbage in argument list");
     }
 
@@ -1463,7 +1464,7 @@ NamedReferenceTypePtr Parser::parseTypeReference(Context &_ctx) {
 
 RangePtr Parser::parseRange(Context &_ctx) {
     Context &ctx = *_ctx.createChild(false, Context::RESTRICT_TYPES);
-    ExpressionPtr pMin = parseSubexpression(ctx, parseAtom(ctx), 0);
+    const auto pMin = parseSubexpression(ctx, parseAtom(ctx), 0);
 
     if (!pMin)
         return NULL;
@@ -1471,14 +1472,14 @@ RangePtr Parser::parseRange(Context &_ctx) {
     if (!ctx.consume(DOUBLE_DOT))
         UNEXPECTED(ctx, "..");
 
-    ExpressionPtr pMax = parseExpression(ctx);
+    const auto pMax = parseExpression(ctx);
 
     if (!pMax)
         return NULL;
 
     _ctx.mergeChildren();
 
-    return new Range(pMin, pMax);
+    return std::make_shared<Range>(pMin, pMax);
 }
 
 StructTypePtr Parser::parseStructType(Context &_ctx) {
@@ -1490,16 +1491,16 @@ StructTypePtr Parser::parseStructType(Context &_ctx) {
     if (!ctx.consume(LPAREN))
         UNEXPECTED(ctx, "(");
 
-    StructTypePtr pType = new StructType();
+    StructTypePtr pType = std::make_shared<StructType>();
     NamedValues fields;
 
     if (!parseParamList(ctx, fields, &Parser::parseVariableName, ALLOW_EMPTY_NAMES))
         return NULL;
 
     if (!fields.empty() && !fields.get(0)->getName().empty())
-        pType->getNamesOrd().append(fields);
+        pType->getNamesOrd()->append(fields);
     else
-        pType->getTypesOrd().append(fields);
+        pType->getTypesOrd()->append(fields);
 
     if (!ctx.consume(RPAREN))
         UNEXPECTED(ctx, ")");
@@ -1515,7 +1516,7 @@ UnionTypePtr Parser::parseUnionType(Context &_ctx) {
     if (!ctx.consume(UNION))
         UNEXPECTED(ctx, "union");
 
-    UnionTypePtr pType = new UnionType();
+    const auto pType = std::make_shared<UnionType>();
 
     if (!parseList(ctx, pType->getConstructors(), &Parser::parseConstructorDeclaration,
             LPAREN, RPAREN, COMMA))
@@ -1537,7 +1538,7 @@ EnumTypePtr Parser::parseEnumType(Context &_ctx) {
     if (!ctx.consume(ENUM))
         UNEXPECTED(ctx, "enum");
 
-    EnumTypePtr pType = new EnumType();
+    const auto pType = std::make_shared<EnumType>();
 
     if (!parseList(ctx, pType->getValues(), &Parser::parseEnumValue, LPAREN, RPAREN, COMMA))
         return NULL;
@@ -1579,7 +1580,7 @@ SubtypePtr Parser::parseSubtype(Context &_ctx) {
 
     _ctx.mergeChildren();
 
-    return new Subtype(pVar, pExpr);
+    return std::make_shared<Subtype>(pVar, pExpr);
 }
 
 PredicateTypePtr Parser::parsePredicateType(Context &_ctx) {
@@ -1588,7 +1589,7 @@ PredicateTypePtr Parser::parsePredicateType(Context &_ctx) {
     if (!ctx.consume(PREDICATE))
         UNEXPECTED(ctx, "predicate");
 
-    PredicateTypePtr pType = new PredicateType();
+    const auto pType = std::make_shared<PredicateType>();
 
     if (!ctx.consume(LPAREN))
         UNEXPECTED(ctx, "(");
@@ -1599,7 +1600,7 @@ PredicateTypePtr Parser::parsePredicateType(Context &_ctx) {
     branch_map_t branches;
 
     while (ctx.consume(COLON)) {
-        BranchPtr pBranch = new Branch();
+        const auto pBranch = std::make_shared<Branch>();
 
         pType->getOutParams().add(pBranch);
         parseParamList(ctx, *pBranch, &Parser::parseParam, OUTPUT_PARAMS | ALLOW_EMPTY_NAMES);
@@ -1613,7 +1614,7 @@ PredicateTypePtr Parser::parsePredicateType(Context &_ctx) {
             if (!branches.insert(std::make_pair(strLabel, pBranch)).second)
                 ERROR(ctx, NULL, L"Duplicate branch name \"%ls\"", strLabel.c_str());
 
-            pBranch->setLabel(new Label(strLabel));
+            pBranch->setLabel(std::make_shared<Label>(strLabel));
         }
     }
 
@@ -1621,11 +1622,11 @@ PredicateTypePtr Parser::parsePredicateType(Context &_ctx) {
         UNEXPECTED(ctx, ")");
 
     if (ctx.is(PRE))
-        if (!parsePreconditions(ctx, *pType, branches))
+        if (!parsePreconditions(ctx, pType, branches))
             ERROR(ctx, NULL, L"Failed parsing preconditions");
 
     if (ctx.is(POST))
-        if (!parsePostconditions(ctx, *pType, branches))
+        if (!parsePostconditions(ctx, pType, branches))
             ERROR(ctx, NULL, L"Failed parsing postconditions");
 
     _ctx.mergeChildren();
@@ -1641,25 +1642,25 @@ TypePtr Parser::parseType(Context &_ctx) {
 
     switch (ctx.getToken()) {
         case NAT_TYPE:
-            pType = new Type(Type::NAT);
+            pType = std::make_shared<Type>(Type::NAT);
             pType->setBits(ctx.getIntBits());
             ++ctx;
             break;
         case INT_TYPE:
-            pType = new Type(Type::INT);
+            pType = std::make_shared<Type>(Type::INT);
             pType->setBits(ctx.getIntBits());
             ++ctx;
             break;
         case REAL_TYPE:
-            pType = new Type(Type::REAL);
+            pType = std::make_shared<Type>(Type::REAL);
             pType->setBits(ctx.getRealBits());
             ++ctx;
             break;
-        case BOOL_TYPE:   pType = new Type(Type::BOOL); ++ctx; break;
-        case CHAR_TYPE:   pType = new Type(Type::CHAR); ++ctx; break;
-        case STRING_TYPE: pType = new Type(Type::STRING); ++ctx; break;
-        case TYPE:        pType = new TypeType(new TypeDeclaration()); ++ctx; break;
-        case VAR:         pType = new Type(Type::GENERIC); ++ctx; break;
+        case BOOL_TYPE:   pType = std::make_shared<Type>(Type::BOOL); ++ctx; break;
+        case CHAR_TYPE:   pType = std::make_shared<Type>(Type::CHAR); ++ctx; break;
+        case STRING_TYPE: pType = std::make_shared<Type>(Type::STRING); ++ctx; break;
+        case TYPE:        pType = std::make_shared<TypeType>(std::make_shared<TypeDeclaration>()); ++ctx; break;
+        case VAR:         pType = std::make_shared<Type>(Type::GENERIC); ++ctx; break;
 
         case STRUCT:
             pType = parseStructType(ctx);
@@ -1676,17 +1677,17 @@ TypePtr Parser::parseType(Context &_ctx) {
         case SEQ:
             if (!(pType = parseDerivedTypeParameter(++ctx)))
                 return NULL;
-            pType = new SeqType(pType);
+            pType = std::make_shared<SeqType>(pType);
             break;
         case SET:
             if (!(pType = parseDerivedTypeParameter(++ctx)))
                 return NULL;
-            pType = new SetType(pType);
+            pType = std::make_shared<SetType>(pType);
             break;
         case LIST:
             if (!(pType = parseDerivedTypeParameter(++ ctx)))
                 return NULL;
-            pType = new ListType(pType);
+            pType = std::make_shared<ListType>(pType);
             break;
         case ARRAY:
             pType = parseArrayType(ctx);
@@ -1714,11 +1715,11 @@ TypePtr Parser::parseType(Context &_ctx) {
         if (ctx.getFlags() & Context::PARSE_INTERNAL_TYPES) {
             pType = ctx.getFreshType(ctx.scan());
             if (ctx.consume(ASTERISK))
-                pType.as<tc::FreshType>()->addFlags(tc::FreshType::PARAM_IN | tc::FreshType::PARAM_OUT);
+                pType->as<tc::FreshType>()->addFlags(tc::FreshType::PARAM_IN | tc::FreshType::PARAM_OUT);
             else if (ctx.consume(PLUS))
-                pType.as<tc::FreshType>()->addFlags(tc::FreshType::PARAM_IN);
+                pType->as<tc::FreshType>()->addFlags(tc::FreshType::PARAM_IN);
             else if (ctx.consume(MINUS))
-                pType.as<tc::FreshType>()->addFlags(tc::FreshType::PARAM_OUT);
+                pType->as<tc::FreshType>()->addFlags(tc::FreshType::PARAM_OUT);
         } else
             pType = parseTypeReference(ctx);
     }
@@ -1730,7 +1731,7 @@ TypePtr Parser::parseType(Context &_ctx) {
         ERROR(ctx, NULL, L"Unexpected token while parsing type reference: %ls", TOK_S(ctx));
 
     if (ctx.consume(ASTERISK))
-        pType = new OptionalType(pType);
+        pType = std::make_shared<OptionalType>(pType);
 
     _ctx.mergeChildren();
 
@@ -1763,12 +1764,12 @@ bool Parser::parseParamList(Context &_ctx, Collection<_Param> &_params,
                 ERROR(ctx, false, L"Type required");
         }
 
-        Auto<_Param> pParam;
+        std::shared_ptr<_Param> pParam;
 
         if (!ctx.is(IDENTIFIER)) {
             if (!(_nFlags & ALLOW_EMPTY_NAMES))
                 ERROR(ctx, false, L"Identifier required");
-            pParam = new _Param();
+            pParam = std::make_shared<_Param>();
         } else
             pParam = (this->*_parser)(ctx, _nFlags);
 
@@ -1776,7 +1777,7 @@ bool Parser::parseParamList(Context &_ctx, Collection<_Param> &_params,
             ERROR(ctx, false, L"Variable or parameter definition required");
 
         if (pType->getKind() == Type::TYPE) {
-            TypeDeclarationPtr pDecl = pType.as<TypeType>()->getDeclaration();
+            TypeDeclarationPtr pDecl = pType->as<TypeType>()->getDeclaration();
 
             pDecl->setName(pParam->getName());
             if (!_ctx.addType(pDecl))
@@ -1804,7 +1805,7 @@ StatementPtr Parser::parseVariableDeclarationGroup(Context &_ctx, int _nFlags) {
         return decls.get(0);
 
     // decls.size() > 1
-    VariableDeclarationGroupPtr pGroup = new VariableDeclarationGroup();
+    const auto pGroup = std::make_shared<VariableDeclarationGroup>();
 
     pGroup->append(decls);
     _ctx.mergeChildren();
@@ -1824,20 +1825,20 @@ ParamPtr Parser::parseParam(Context &_ctx, int _nFlags) {
         if (!(_nFlags & OUTPUT_PARAMS))
             ERROR(ctx, NULL, L"Only output parameters can be declared as joined");
 
-        NamedValuePtr pVar = ctx.getVariable(name, true);
+        const auto pVar = ctx.getVariable(name, true);
 
         if (!pVar)
             ERROR(ctx, NULL, L"Parameter '%ls' is not defined.", name.c_str());
 
-        if (pVar->getKind() != NamedValue::PREDICATE_PARAMETER || pVar.as<Param>()->isOutput())
+        if (pVar->getKind() != NamedValue::PREDICATE_PARAMETER || pVar->as<Param>()->isOutput())
             ERROR(ctx, NULL, L"Identifier '%ls' does not name a predicate input parameter.", name.c_str());
 
         name += L'\'';
-        pParam = new Param(name);
-        pParam->setLinkedParam(pVar.as<Param>());
-        pVar.as<Param>()->setLinkedParam(pParam);
+        pParam = std::make_shared<Param>(name);
+        pParam->setLinkedParam(pVar->as<Param>());
+        pVar->as<Param>()->setLinkedParam(pParam);
     } else
-        pParam = new Param(name);
+        pParam = std::make_shared<Param>(name);
 
     if (ctx.consume(ASTERISK)) {
         if (!(_nFlags & ALLOW_ASTERSK))
@@ -1862,7 +1863,7 @@ NamedValuePtr Parser::parseNamedValue(Context &_ctx) {
     if (!ctx.is(IDENTIFIER))
         ERROR(ctx, NULL, L"Identifier required");
 
-    NamedValuePtr pVar = new NamedValue(ctx.scan(), pType);
+    const auto pVar = std::make_shared<NamedValue>(ctx.scan(), pType);
 
     pVar->setLoc(&*_ctx.loc());
 
@@ -1876,8 +1877,8 @@ NamedValuePtr Parser::parseNamedValue(Context &_ctx) {
 
 ElementDefinitionPtr Parser::parseArrayElement(Context &_ctx) {
     Context &ctx = *_ctx.createChild(false);
-    ElementDefinitionPtr pElem = new ElementDefinition();
-    ExpressionPtr pExpr = parseExpression(ctx);
+    const auto pElem = std::make_shared<ElementDefinition>();
+    auto pExpr = parseExpression(ctx);
 
     if (!pExpr)
         ERROR(ctx, NULL, L"Expression expected.");
@@ -1898,8 +1899,8 @@ ElementDefinitionPtr Parser::parseArrayElement(Context &_ctx) {
 
 ElementDefinitionPtr Parser::parseMapElement(Context &_ctx) {
     Context &ctx = *_ctx.createChild(false);
-    ElementDefinitionPtr pElem = new ElementDefinition();
-    ExpressionPtr pExpr = parseExpression(ctx);
+    const auto pElem = std::make_shared<ElementDefinition>();
+    auto pExpr = parseExpression(ctx);
 
     if (!pExpr)
         ERROR(ctx, NULL, L"Index expression expected.");
@@ -1929,7 +1930,7 @@ RecognizerExprPtr Parser::parseRecognizerExpr(Context &_ctx) {
     if (!ctx.consume(LPAREN))
         ERROR(ctx, NULL, L"Expected '(', got: %ls", TOK_S(ctx));
 
-    const ExpressionPtr pUnion = parseExpression(ctx);
+    const auto pUnion = parseExpression(ctx);
     if (!pUnion)
         return NULL;
 
@@ -1938,7 +1939,7 @@ RecognizerExprPtr Parser::parseRecognizerExpr(Context &_ctx) {
 
     _ctx.mergeChildren();
 
-    return new RecognizerExpr(strName, pUnion);
+    return std::make_shared<RecognizerExpr>(strName, pUnion);
 }
 
 ExpressionPtr Parser::parseAccessorExpr(Context &_ctx) {
@@ -1960,17 +1961,17 @@ ExpressionPtr Parser::parseAccessorExpr(Context &_ctx) {
 
     _ctx.mergeChildren();
 
-    return new AccessorExpr(strName, pUnion);
+    return std::make_shared<AccessorExpr>(strName, pUnion);
 }
 
 StructFieldDefinitionPtr Parser::parseFieldDefinition(Context &_ctx) {
     Context &ctx = *_ctx.createChild(false);
-    StructFieldDefinitionPtr pField = new StructFieldDefinition();
+    const auto pField = std::make_shared<StructFieldDefinition>();
 
     if (ctx.is(IDENTIFIER, COLON))
         pField->setName(ctx.getValue());
 
-    ExpressionPtr pExpr = parseExpression(ctx);
+    auto pExpr = parseExpression(ctx);
 
     if (!pExpr) {
         if (pField->getName().empty())
@@ -1995,30 +1996,31 @@ StructFieldDefinitionPtr Parser::parseFieldDefinition(Context &_ctx) {
 
 StructFieldDefinitionPtr Parser::parseConstructorField(Context &_ctx) {
     Context &ctx = *_ctx.createChild(false, Context::RESTRICT_TYPES);
-    StructFieldDefinitionPtr pField = new StructFieldDefinition();
+    const auto pField = std::make_shared<StructFieldDefinition>();
     std::wstring strIdent;
 
     if (ctx.is(IDENTIFIER))
         strIdent = ctx.getValue();
 
-    if (ExpressionPtr pExpr = parseExpression(ctx)) {
+    if (const auto pExpr = parseExpression(ctx)) {
         pField->setValue(pExpr);
     } else {
-        VariableDeclarationPtr pDecl = parseVariableDeclaration(ctx, LOCAL_VARIABLE);
+        auto pDecl = parseVariableDeclaration(ctx, LOCAL_VARIABLE);
 
         if (!pDecl && strIdent.empty())
             ERROR(ctx, NULL, L"Expression, declaration or identifier expected.");
 
         if (!pDecl) {
             // Unresolved identifier treated as variable declaration.
-            pDecl = new VariableDeclaration(true, ctx.scan());
-            pDecl->getVariable()->setType(new Type(Type::GENERIC));
+            pDecl = std::make_shared<VariableDeclaration>();
+            pDecl->setVariable(std::make_shared<Variable>(true, ctx.scan()));
+            pDecl->getVariable()->setType(std::make_shared<Type>(Type::GENERIC));
         }
 
         if (ctx.getCurrentConstructor())
             ctx.getCurrentConstructor()->getDeclarations().add(pDecl);
 
-        pField->setValue(new VariableReference(pDecl->getVariable()));
+        pField->setValue(std::make_shared<VariableReference>(pDecl->getVariable()));
     }
 
     _ctx.mergeChildren();
@@ -2032,7 +2034,7 @@ UnionConstructorPtr Parser::parseConstructor(Context &_ctx, const UnionTypePtr &
 
     Context &ctx = *_ctx.createChild(false);
     const std::wstring &strName = ctx.scan();
-    UnionConstructorPtr pCons = new UnionConstructor(strName);
+    const auto pCons = std::make_shared<UnionConstructor>(strName);
 
     if ((_pUnion && _pUnion->getConstructors().findByNameIdx(strName) == (size_t)-1) ||
             (!_pUnion && !_ctx.hasConstructor(strName)))
@@ -2046,7 +2048,7 @@ UnionConstructorPtr Parser::parseConstructor(Context &_ctx, const UnionTypePtr &
     }
 
     if (_pUnion) {
-        UnionConstructorDeclarationPtr pDecl =
+        const auto pDecl =
                 _pUnion->getConstructors().get(_pUnion->getConstructors().findByNameIdx(strName));
 
         if (pDecl->getStructFields() && pDecl->getStructFields()->size() != pCons->size())
@@ -2065,10 +2067,10 @@ UnionConstructorDeclarationPtr Parser::parseConstructorDeclaration(Context &_ctx
     if (!ctx.is(IDENTIFIER))
         ERROR(ctx, NULL, L"Constructor name expected.");
 
-    UnionConstructorDeclarationPtr pCons = new UnionConstructorDeclaration(ctx.scan());
+    const auto pCons = std::make_shared<UnionConstructorDeclaration>(ctx.scan());
 
     if (ctx.consume(LPAREN)) {
-        if (!parseParamList(ctx, pCons->getStructFields()->getNamesOrd(), &Parser::parseVariableName))
+        if (!parseParamList(ctx, *pCons->getStructFields()->getNamesOrd(), &Parser::parseVariableName))
             return NULL;
 
         if (!ctx.consume(RPAREN))
@@ -2088,7 +2090,7 @@ EnumValuePtr Parser::parseEnumValue(Context &_ctx) {
     if (!_ctx.is(IDENTIFIER))
         return NULL;
 
-    EnumValuePtr pVar = new EnumValue(_ctx.scan());
+    const auto pVar = std::make_shared<EnumValue>(_ctx.scan());
 
     if (!_ctx.addVariable(pVar))
         ERROR(_ctx, NULL, L"Enum value '%ls' was redefined", pVar->getName().c_str());
@@ -2102,7 +2104,7 @@ NamedValuePtr Parser::parseVariableName(Context &_ctx, int /* _nFlags */) {
     if (!_ctx.is(IDENTIFIER))
         return NULL;
 
-    NamedValuePtr pVar = new NamedValue(_ctx.scan());
+    const auto pVar = std::make_shared<NamedValue>(_ctx.scan());
 
     _ctx.addVariable(pVar);
 
@@ -2116,12 +2118,12 @@ TypeDeclarationPtr Parser::parseTypeDeclaration(Context &_ctx) {
         return NULL;
 
     Context *pCtx = _ctx.createChild(false);
-    TypeDeclarationPtr pDecl = new TypeDeclaration(pCtx->scan(2, 1));
+    const auto pDecl = std::make_shared<TypeDeclaration>(pCtx->scan(2, 1));
     ParameterizedTypePtr pParamType;
 
     if (pCtx->consume(LPAREN)) {
         pCtx = pCtx->createChild(true, Context::MERGE_CONSTRUCTORS);
-        pParamType = new ParameterizedType();
+        pParamType = std::make_shared<ParameterizedType>();
         pDecl->setType(pParamType);
         if (!parseParamList(*pCtx, pParamType->getParams(), &Parser::parseVariableName))
             return NULL;
@@ -2161,7 +2163,7 @@ BlockPtr Parser::parseBlock(Context &_ctx) {
     if (!pCtx->consume(LBRACE))
         return NULL;
 
-    BlockPtr pBlock = new Block();
+    const auto pBlock = std::make_shared<Block>();
 
     pCtx = pCtx->createChild(true);
 
@@ -2193,7 +2195,7 @@ BlockPtr Parser::parseBlock(Context &_ctx) {
                 ERROR(*pCtx, NULL, L"Error parsing statement");
 
             if (pCtx->is(DOUBLE_PIPE)) {
-                ParallelBlockPtr pNewBlock = new ParallelBlock();
+                const auto pNewBlock = std::make_shared<ParallelBlock>();
 
                 pNewBlock->add(pStmt);
 
@@ -2223,7 +2225,7 @@ BlockPtr Parser::parseBlock(Context &_ctx) {
 
 MultiassignmentPtr Parser::parseMultiAssignment(Context &_ctx) {
     Context &ctx = *_ctx.createChild(false);
-    MultiassignmentPtr pMA = new Multiassignment();
+    const auto pMA = std::make_shared<Multiassignment>();
 
     if (!parseList(ctx, pMA->getLValues(), &Parser::parseAtom, PIPE, PIPE, COMMA))
         ERROR(ctx, NULL, L"Error parsing list of l-values");
@@ -2253,7 +2255,7 @@ SwitchPtr Parser::parseSwitch(Context &_ctx) {
     if (!ctx.consume(LPAREN))
         UNEXPECTED(ctx, "(");
 
-    VariableDeclarationPtr pDecl = parseVariableDeclaration(ctx, LOCAL_VARIABLE | ALLOW_INITIALIZATION);
+    const auto pDecl = parseVariableDeclaration(ctx, LOCAL_VARIABLE | ALLOW_INITIALIZATION);
     ExpressionPtr pExpr;
 
     if (!pDecl) {
@@ -2266,11 +2268,11 @@ SwitchPtr Parser::parseSwitch(Context &_ctx) {
     if (!ctx.consume(RPAREN))
         UNEXPECTED(ctx, ")");
 
-    SwitchPtr pSwitch = new Switch();
+    const auto pSwitch = std::make_shared<Switch>();
 
     if (pDecl) {
         pSwitch->setParamDecl(pDecl);
-        pExpr = new VariableReference(pDecl->getVariable());
+        pExpr = std::make_shared<VariableReference>(pDecl->getVariable());
         pExpr->setType(pExpr->getType());
         pSwitch->setArg(pExpr);
     } else
@@ -2281,7 +2283,7 @@ SwitchPtr Parser::parseSwitch(Context &_ctx) {
 
     while (ctx.in(CASE)) {
         Context &ctxCase = *ctx.createChild(true);
-        SwitchCasePtr pCase = new SwitchCase();
+        const auto pCase = std::make_shared<SwitchCase>();
 
         if (!parseList(ctxCase, pCase->getExpressions(), &Parser::parseExpression, CASE, COLON, COMMA))
             ERROR(ctxCase, NULL, L"Error parsing list of expressions");
@@ -2334,7 +2336,7 @@ IfPtr Parser::parseConditional(Context &_ctx) {
     if (!pStmt)
         ERROR(ctx, NULL, L"Statement expected");
 
-    IfPtr pIf = new If();
+    const auto pIf = std::make_shared<If>();
 
     pIf->setArg(pExpr);
     pIf->setBody(pStmt);
@@ -2363,8 +2365,8 @@ JumpPtr Parser::parseJump(Context &_ctx) {
         ERROR(ctx, NULL, L"Label identifier expected");
 
     std::wstring name = ctx.scan();
-    LabelPtr pLabel = ctx.createLabel(name);
-    JumpPtr pJump = new Jump(pLabel);
+    const auto pLabel = ctx.createLabel(name);
+    const auto pJump = std::make_shared<Jump>(pLabel);
     ctx.addJump(pJump);
 
     _ctx.mergeChildren();
@@ -2388,12 +2390,12 @@ WithPtr Parser::parseWith(Context &_ctx) {
     if (!ctx.consume(WITH))
         UNEXPECTED(ctx, "with");
 
-    WithPtr pWith = new With();
+    const auto pWith = std::make_shared<With>();
 
     if (!parseList(ctx, pWith->getArgs(), &Parser::parseExpression, LPAREN, RPAREN, COMMA))
         ERROR(ctx, NULL, L"Error parsing list of expressions");
 
-    if (StatementPtr pStmt = parseStatement(ctx))
+    if (const auto pStmt = parseStatement(ctx))
         pWith->setBody(pStmt);
     else
         ERROR(ctx, NULL, L"Statement expected");
@@ -2412,10 +2414,10 @@ ForPtr Parser::parseFor(Context &_ctx) {
     if (!ctx.consume(LPAREN))
         UNEXPECTED(ctx, "(");
 
-    ForPtr pFor = new For();
+    const auto pFor = std::make_shared<For>();
 
     if (!ctx.in(SEMICOLON)) {
-        if (VariableDeclarationPtr pDecl = parseVariableDeclaration(ctx, LOCAL_VARIABLE | ALLOW_INITIALIZATION))
+        if (const auto pDecl = parseVariableDeclaration(ctx, LOCAL_VARIABLE | ALLOW_INITIALIZATION))
             pFor->setIterator(pDecl);
         else
             ERROR(ctx, NULL, L"Variable declaration expected");
@@ -2425,7 +2427,7 @@ ForPtr Parser::parseFor(Context &_ctx) {
         UNEXPECTED(ctx, ";");
 
     if (!ctx.in(SEMICOLON)) {
-        if (ExpressionPtr pExpr = parseExpression(ctx))
+        if (const auto pExpr = parseExpression(ctx))
             pFor->setInvariant(pExpr);
         else
             ERROR(ctx, NULL, L"Expression expected");
@@ -2435,7 +2437,7 @@ ForPtr Parser::parseFor(Context &_ctx) {
         UNEXPECTED(ctx, ";");
 
     if (!ctx.is(RPAREN)) {
-        if (StatementPtr pStmt = parseStatement(ctx))
+        if (const auto pStmt = parseStatement(ctx))
             pFor->setIncrement(pStmt);
         else
             ERROR(ctx, NULL, L"Statement expected");
@@ -2444,7 +2446,7 @@ ForPtr Parser::parseFor(Context &_ctx) {
     if (!ctx.consume(RPAREN))
         UNEXPECTED(ctx, ")");
 
-    if (StatementPtr pStmt = parseStatement(ctx))
+    if (const auto pStmt = parseStatement(ctx))
         pFor->setBody(pStmt);
     else
         ERROR(ctx, NULL, L"Statement expected");
@@ -2463,7 +2465,7 @@ WhilePtr Parser::parseWhile(Context &_ctx) {
     if (!ctx.consume(LPAREN))
         UNEXPECTED(ctx, "(");
 
-    WhilePtr pWhile = new While();
+    const auto pWhile = std::make_shared<While>();
 
     if (ExpressionPtr pExpr = parseExpression(ctx))
         pWhile->setInvariant(pExpr);
@@ -2473,7 +2475,7 @@ WhilePtr Parser::parseWhile(Context &_ctx) {
     if (!ctx.consume(RPAREN))
         UNEXPECTED(ctx, ")");
 
-    if (StatementPtr pStmt = parseStatement(ctx))
+    if (const auto pStmt = parseStatement(ctx))
         pWhile->setBody(pStmt);
     else
         ERROR(ctx, NULL, L"Statement expected");
@@ -2491,7 +2493,7 @@ BreakPtr Parser::parseBreak(Context &_ctx) {
 
     _ctx.mergeChildren();
 
-    return new Break();
+    return std::make_shared<Break>();
 }
 
 StatementPtr Parser::parseAssignment(Context &_ctx) {
@@ -2503,12 +2505,12 @@ StatementPtr Parser::parseAssignment(Context &_ctx) {
         ERROR(ctx, NULL, L"Error parsing expression");
 
     if (ctx.consume(EQ)) {
-        if (ExpressionPtr pRHS = parseExpression(ctx))
-            pStmt = new Assignment(pLHS, pRHS);
+        if (const auto pRHS = parseExpression(ctx))
+            pStmt = std::make_shared<Assignment>(pLHS, pRHS);
         else
             ERROR(ctx, NULL, L"Error parsing expression");
     } else if (ctx.consume(COMMA)) {
-        MultiassignmentPtr pMA = new Multiassignment();
+        const auto pMA = std::make_shared<Multiassignment>();
 
         pMA->getLValues().add(pLHS);
 
@@ -2535,10 +2537,11 @@ ExpressionPtr Parser::parseCallResult(Context &_ctx, VariableDeclarationPtr &_pD
     TypePtr pType = parseType(*pCtx);
 
     if (pType && pCtx->is(IDENTIFIER)) {
-        _pDecl = new VariableDeclaration(true, pCtx->scan());
+        _pDecl = std::make_shared<VariableDeclaration>();
+        _pDecl->setVariable(std::make_shared<Variable>(true, pCtx->scan()));
         _pDecl->getVariable()->setType(pType);
         _pDecl->getVariable()->setMutable(false);
-        pExpr = new VariableReference(_pDecl->getVariable());
+        pExpr = std::make_shared<VariableReference>(_pDecl->getVariable());
         _ctx.addVariable(_pDecl->getVariable());
         _pDecl->getVariable()->setLoc(&*_ctx.loc());
     }
@@ -2601,7 +2604,7 @@ CallPtr Parser::parseCall(Context &_ctx) {
 
     if (ctx.getPredicate(name)) {
         ++ctx;
-        pExpr = new PredicateReference(name);
+        pExpr = std::make_shared<PredicateReference>(name);
     } else {
         pExpr = parseAtom(ctx);
 
@@ -2609,7 +2612,7 @@ CallPtr Parser::parseCall(Context &_ctx) {
             ERROR(ctx, NULL, L"Predicate expression expected");
     }
 
-    CallPtr pCall = new Call();
+    const auto pCall = std::make_shared<Call>();
 
     pCall->setPredicate(pExpr);
 
@@ -2624,7 +2627,7 @@ CallPtr Parser::parseCall(Context &_ctx) {
             ERROR(ctx, NULL, L"Failed to parse input parameters");
 
         while (ctx.consume(COLON)) {
-            CallBranchPtr pBranch = new CallBranch();
+            const auto pBranch = std::make_shared<CallBranch>();
 
             pCall->getBranches().add(pBranch);
 
@@ -2636,8 +2639,8 @@ CallPtr Parser::parseCall(Context &_ctx) {
             if (ctx.is(HASH) && ctx.nextIn(IDENTIFIER, LABEL, INTEGER)) {
                 const std::wstring strLabel = ctx.scan(2, 1);
 
-                if (LabelPtr pLabel = ctx.getLabel(strLabel))
-                    pBranch->setHandler(new Jump(pLabel));
+                if (const auto pLabel = ctx.getLabel(strLabel))
+                    pBranch->setHandler(std::make_shared<Jump>(pLabel));
                 else
                     branches.insert(std::make_pair(strLabel, pBranch));
             }
@@ -2660,7 +2663,7 @@ CallPtr Parser::parseCall(Context &_ctx) {
             if (bounds.first == bounds.second)
                 ERROR(ctx, NULL, L"Label identifier expected");
 
-            if (StatementPtr pStmt = parseStatement(ctx))
+            if (const auto pStmt = parseStatement(ctx))
                 for (I i = bounds.first; i != bounds.second; ++ i)
                     i->second->setHandler(pStmt);
             else
@@ -2668,7 +2671,7 @@ CallPtr Parser::parseCall(Context &_ctx) {
         }
 
     if (pCall->getBranches().empty())
-        pCall->getBranches().add(new Branch());
+        pCall->getBranches().add(std::make_shared<CallBranch>());
 
     _ctx.mergeChildren();
 
@@ -2705,12 +2708,12 @@ StatementPtr Parser::parseStatement(Context &_ctx) {
 
     if (_ctx.in(IDENTIFIER, LABEL, INTEGER) && _ctx.nextIs(COLON)) {
         Context &ctx = *_ctx.createChild(false);
-        LabelPtr pLabel = ctx.createLabel(ctx.scan(2));
+        const auto pLabel = ctx.createLabel(ctx.scan(2));
         pLabel->setLoc(&*_ctx.loc());
         ctx.addLabel(pLabel);
 
         if (ctx.is(RBRACE))
-            pStmt = new Statement();
+            pStmt = std::make_shared<Statement>();
         else
             pStmt = parseStatement(ctx);
 
@@ -2719,14 +2722,14 @@ StatementPtr Parser::parseStatement(Context &_ctx) {
 
         if (pStmt->getLabel()) {
             // We should somehow make two labels to point to the same statement.
-            BlockPtr pBlock = new Block();
+            const auto pBlock = std::make_shared<Block>();
             pBlock->add(pStmt);
             pStmt = pBlock;
         }
 
         pStmt->setLabel(pLabel);
 
-        if (JumpPtr pJump = _ctx.getJump(pLabel->getName()))
+        if (const auto pJump = _ctx.getJump(pLabel->getName()))
             pJump->setDestination(pLabel);
 
         _ctx.mergeChildren();
@@ -2768,7 +2771,7 @@ ProcessPtr Parser::parseProcess(Context &_ctx) {
     if (!ctx.is(IDENTIFIER))
         ERROR(ctx, NULL, L"Identifier expected");
 
-    ProcessPtr pProcess = new Process(ctx.scan());
+    const auto pProcess = std::make_shared<Process>(ctx.scan());
 
     pProcess->setLoc(&*_ctx.loc());
 
@@ -2781,7 +2784,7 @@ ProcessPtr Parser::parseProcess(Context &_ctx) {
     branch_map_t branches;
 
     while (ctx.consume(COLON)) {
-        BranchPtr pBranch = new Branch();
+        const auto pBranch = std::make_shared<Branch>();
 
         pProcess->getOutParams().add(pBranch);
         parseParamList(ctx, *pBranch, &Parser::parseParam, OUTPUT_PARAMS);
@@ -2795,7 +2798,7 @@ ProcessPtr Parser::parseProcess(Context &_ctx) {
             if (!branches.insert(std::make_pair(strLabel, pBranch)).second)
                 ERROR(ctx, NULL, L"Duplicate branch name \"%ls\"", strLabel.c_str());
 
-            pBranch->setLabel(new Label(strLabel));
+            pBranch->setLabel(std::make_shared<Label>(strLabel));
         }
     }
 
@@ -2818,7 +2821,7 @@ FormulaDeclarationPtr Parser::parseFormulaDeclaration(Context &_ctx) {
         return NULL;
 
     Context *pCtx = _ctx.createChild(false, Context::ALLOW_FORMULAS);
-    FormulaDeclarationPtr pDecl = new FormulaDeclaration(pCtx->scan(2, 1));
+    const auto pDecl = std::make_shared<FormulaDeclaration>(pCtx->scan(2, 1));
 
     pDecl->setLoc(&*_ctx.loc());
 
@@ -2848,14 +2851,14 @@ FormulaDeclarationPtr Parser::parseFormulaDeclaration(Context &_ctx) {
     }
 
     if (pCtx->consume(EQ)) {
-        if (ExpressionPtr pFormula = parseExpression(*pCtx))
+        if (const auto pFormula = parseExpression(*pCtx))
             pDecl->setFormula(pFormula);
         else
             return NULL;
     }
 
     if (pCtx->consume(MEASURE)) {
-        if (ExpressionPtr pMeasure = parseExpression(*pCtx))
+        if (const auto pMeasure = parseExpression(*pCtx))
             pDecl->setMeasure(pMeasure);
         else
             return NULL;
@@ -2872,7 +2875,7 @@ LemmaDeclarationPtr Parser::parseLemmaDeclaration(Context &_ctx) {
         return NULL;
 
     Context &ctx = *_ctx.createChild(false, Context::ALLOW_FORMULAS);
-    LemmaDeclarationPtr pLemma = new LemmaDeclaration();
+    const auto pLemma = std::make_shared<LemmaDeclaration>();
 
     ++ctx;
 
@@ -2886,7 +2889,7 @@ LemmaDeclarationPtr Parser::parseLemmaDeclaration(Context &_ctx) {
         cLemmaStatus = LemmaDeclaration::UNKNOWN;
     }
 
-    if (ExpressionPtr pProposition = parseExpression(ctx))
+    if (const auto pProposition = parseExpression(ctx))
         pLemma->setProposition(pProposition);
     else
         ERROR(ctx, NULL, L"Failed parsing lemma proposition");
@@ -2962,7 +2965,7 @@ Context *Parser::parsePragma(Context &_ctx) {
 
                 const std::wstring strLabel = ctx.scan();
 
-                if (LabelPtr pLabel = ctx.getLabel(strLabel))
+                if (const auto pLabel = ctx.getLabel(strLabel))
                     ctx.getPragma().overflow().set(Overflow::RETURN, pLabel);
                 else
                     ERROR(ctx, NULL, L"Unknown label %ls", strLabel.c_str());
@@ -2993,13 +2996,14 @@ Context *Parser::parsePragma(Context &_ctx) {
     return &ctx;
 }
 
-bool Parser::typecheck(Context &_ctx, Node &_node) {
+bool Parser::typecheck(Context &_ctx, const NodePtr &_node) {
     if (Options::instance().typeCheck == TC_NONE)
         return true;
     if (Options::instance().instance().bVerbose)
-        StaticTypeChecker::printTypecheckInfo(L"Type check for: ", StaticTypeChecker::str(_node),
+        StaticTypeChecker::printTypecheckInfo(L"Type check for: ", StaticTypeChecker::str(*_node),
                                               StaticTypeChecker::PRINT_GREEN);
-    tc::Formulas constraints, substs;
+    const auto constraints = std::make_shared<tc::Formulas>();
+    tc::Formulas substs;
     tc::ContextPtr pContext;
 
     try {
@@ -3019,14 +3023,14 @@ bool Parser::typecheck(Context &_ctx, Node &_node) {
     return true;
 }
 
-bool Parser::parseDeclarations(Context &_ctx, Module &_module) {
+bool Parser::parseDeclarations(Context &_ctx, const ModulePtr &_module) {
     Context *pCtx = _ctx.createChild(false);
 
     while (!pCtx->in(END_OF_FILE, RBRACE)) {
         switch (pCtx->getToken()) {
             case MODULE:
-                if (ModulePtr pModule = parseModule(*pCtx, false))
-                    _module.getModules().add(pModule);
+                if (const auto pModule = parseModule(*pCtx, false))
+                    _module->getModules().add(pModule);
                 else
                     ERROR(*pCtx, false, L"Failed parsing submodule");
                 break;
@@ -3036,17 +3040,17 @@ bool Parser::parseDeclarations(Context &_ctx, Module &_module) {
                     const LemmaDeclarationPtr pLemma = parseLemmaDeclaration(*pCtx);
                     if (!pLemma)
                         ERROR(*pCtx, false, L"Failed parsing lemma declaration");
-                    pLemma->setLabel(new Label(strLabel));
-                    _module.getLemmas().add(pLemma);
-                    if (!typecheck(*pCtx, *pLemma))
+                    pLemma->setLabel(std::make_shared<Label>(strLabel));
+                    _module->getLemmas().add(pLemma);
+                    if (!typecheck(*pCtx, pLemma))
                         return false;
                     break;
                 } else if (!pCtx->getType(pCtx->getValue()) &&
                     !pCtx->getModule(pCtx->getValue()))
                 {
-                    if (PredicatePtr pPred = parsePredicate(*pCtx)) {
-                        _module.getPredicates().add(pPred);
-                        if (!typecheck(*pCtx, *pPred))
+                    if (const auto pPred = parsePredicate(*pCtx)) {
+                        _module->getPredicates().add(pPred);
+                        if (!typecheck(*pCtx, pPred))
                             return false;
                     } else
                         ERROR(*pCtx, false, L"Failed parsing predicate");
@@ -3056,44 +3060,44 @@ bool Parser::parseDeclarations(Context &_ctx, Module &_module) {
             CASE_BUILTIN_TYPE:
             case PREDICATE:
             case MUTABLE: {
-                Collection<VariableDeclaration> decls;
-                parseParamList(*pCtx, decls, &Parser::parseVariableDeclaration, ALLOW_INITIALIZATION | PART_OF_LIST | SINGLE_TYPE);
-                if (decls.empty())
+                const auto decls = std::make_shared<Collection<VariableDeclaration>>();
+                parseParamList(*pCtx, *decls, &Parser::parseVariableDeclaration, ALLOW_INITIALIZATION | PART_OF_LIST | SINGLE_TYPE); //TODO:dyp: fix
+                if (decls->empty())
                     ERROR(* pCtx, false, L"Failed parsing variable declaration");
-                _module.getVariables().append(decls);
-                if (!typecheck(*pCtx, decls))
+                _module->getVariables().append(*decls);
+                if (!typecheck(*pCtx, decls->as<Node>()))
                         return false;
             }
             break;
             case TYPE:
-                if (TypeDeclarationPtr pDecl = parseTypeDeclaration(*pCtx)) {
+                if (const auto pDecl = parseTypeDeclaration(*pCtx)) {
                     if (!pCtx->in(SEMICOLON, RBRACE, END_OF_FILE))
                         ERROR(*pCtx, false, L"Semicolon or end of declarations expected");
-                    _module.getTypes().add(pDecl);
-                    if (!typecheck(*pCtx, *pDecl))
+                    _module->getTypes().add(pDecl);
+                    if (!typecheck(*pCtx, pDecl))
                             return false;
                 } else
                     ERROR(*pCtx, false, L"Failed parsing type declaration");
                 break;
             case PROCESS:
-                if (ProcessPtr pProcess = parseProcess(*pCtx))
-                    _module.getProcesses().add(pProcess);
+                if (const auto pProcess = parseProcess(*pCtx))
+                    _module->getProcesses().add(pProcess);
                 else
                     ERROR(*pCtx, false, L"Failed parsing process declaration");
                 break;
             case FORMULA:
-                if (FormulaDeclarationPtr pFormula = parseFormulaDeclaration(*pCtx)) {
-                    _module.getFormulas().add(pFormula);
-                    if (!typecheck(*pCtx, *pFormula))
+                if (const auto pFormula = parseFormulaDeclaration(*pCtx)) {
+                    _module->getFormulas().add(pFormula);
+                    if (!typecheck(*pCtx, pFormula))
                         return false;
                 }
                 else
                     ERROR(* pCtx, false, L"Failed parsing formula declaration");
                 break;
             case LEMMA:
-                if (LemmaDeclarationPtr pLemma = parseLemmaDeclaration(*pCtx)) {
-                    _module.getLemmas().add(pLemma);
-                    if (!typecheck(*pCtx, *pLemma))
+                if (const auto pLemma = parseLemmaDeclaration(*pCtx)) {
+                    _module->getLemmas().add(pLemma);
+                    if (!typecheck(*pCtx, pLemma))
                         return false;
                 }
                 else
@@ -3133,10 +3137,10 @@ bool Parser::parseDeclarations(Context &_ctx, Module &_module) {
 ModulePtr Parser::parseMainModule(Context &_ctx) {
     Context &ctx = *_ctx.createChild(true);
 
-    ModulePtr pModule = parseModule(ctx, true);
+    auto pModule = parseModule(ctx, true);
 
     if (!pModule)
-        pModule = new Module();
+        pModule = std::make_shared<Module>();
 
     while (ctx.is(IMPORT))
         if (!parseImport(ctx, *pModule)) {
@@ -3145,7 +3149,7 @@ ModulePtr Parser::parseMainModule(Context &_ctx) {
         }
 
     if (!ctx.consume(END_OF_FILE)) {
-        if (!parseDeclarations(ctx, *pModule))
+        if (!parseDeclarations(ctx, pModule))
             return NULL;
         if (!ctx.consume(END_OF_FILE))
             UNEXPECTED(_ctx, "End of module");
@@ -3174,7 +3178,7 @@ ModulePtr Parser::parseModule(Context &_ctx, bool _bTopLevel) {
     if (!ctx.is(IDENTIFIER))
         ERROR(ctx, NULL, L"Identifier expected");
 
-    ModulePtr pModule = new Module(ctx.scan());
+    const auto pModule = std::make_shared<Module>(ctx.scan());
 
     if (_ctx.getModule(pModule->getName(), true))
         ERROR(ctx, NULL, L"Module '%ls' was redefined", pModule->getName().c_str());
@@ -3200,7 +3204,7 @@ ModulePtr Parser::parseModule(Context &_ctx, bool _bTopLevel) {
                 return NULL;
             }
 
-        if (!parseDeclarations(ctx, *pModule))
+        if (!parseDeclarations(ctx, pModule))
             return NULL;
         if (!ctx.consume(RBRACE))
             UNEXPECTED(_ctx, "End of module");
@@ -3222,7 +3226,7 @@ ModulePtr parse(Tokens &_tokens) {
     Parser parser(_tokens);
     Context ctx(loc, true);
 
-    if (ModulePtr pModule = parser.parseMainModule(ctx)) {
+    if (const auto pModule = parser.parseMainModule(ctx)) {
         ctx.mergeChildren(true);
         DEBUG(L"Done.");
 
@@ -3249,7 +3253,7 @@ bool Parser::parseTypeConstraintPart(Context & _ctx, tc::Formulas & _formulas) {
         UNEXPECTED(_ctx, "(");
 
     do {
-        if (tc::FormulaPtr pFormula = parseTypeConstraint(_ctx))
+        if (const auto pFormula = parseTypeConstraint(_ctx))
             _formulas.insert(pFormula);
         else
             ERROR(_ctx, false, L"Failed parsing subformula");
@@ -3266,10 +3270,10 @@ bool Parser::parseTypeConstraintPart(Context & _ctx, tc::Formulas & _formulas) {
 
 tc::FormulaPtr Parser::parseTypeConstraint(Context & _ctx) {
     Context *pCtx = _ctx.createChild(false);
-    tc::FormulaPtr pFormula = new tc::Formula(tc::Formula::EQUALS);
+    auto pFormula = std::make_shared<tc::Formula>(tc::Formula::EQUALS);
 
     if (pCtx->is(LPAREN)) {
-        tc::CompoundFormulaPtr pCF = new tc::CompoundFormula();
+        const auto pCF = std::make_shared<tc::CompoundFormula>();
 
         do
             if (!parseTypeConstraintPart(*pCtx, pCF->addPart()))
@@ -3278,7 +3282,7 @@ tc::FormulaPtr Parser::parseTypeConstraint(Context & _ctx) {
 
         pFormula = pCF;
     } else {
-        if (TypePtr pType = parseType(*pCtx))
+        if (const auto pType = parseType(*pCtx))
             pFormula->setLhs(pType);
         else
             ERROR(*pCtx, NULL, L"Failed parsing LHS type");
@@ -3299,7 +3303,7 @@ tc::FormulaPtr Parser::parseTypeConstraint(Context & _ctx) {
 
         pCtx->skip();
 
-        if (TypePtr pType = parseType(*pCtx))
+        if (const auto pType = parseType(*pCtx))
             pFormula->setRhs(pType);
         else
             ERROR(*pCtx, NULL, L"Failed parsing RHS type");
@@ -3311,20 +3315,20 @@ tc::FormulaPtr Parser::parseTypeConstraint(Context & _ctx) {
 }
 
 tc::ContextPtr parseTypeConstraints(lexer::Tokens & _tokens,
-        tc::Formulas & _constraints, FreshTypeNames & _freshTypeNames)
+        const tc::FormulasPtr & _constraints, FreshTypeNames & _freshTypeNames)
 {
     Loc loc = _tokens.begin();
     Parser parser(_tokens);
     Context ctx(loc, true, Context::PARSE_INTERNAL_TYPES);
 
-    tc::ContextStack::push(::ref(&_constraints));
+    tc::ContextStack::push(_constraints);
 
     do {
         if (ctx.is(END_OF_FILE))
             break;
 
-        if (tc::FormulaPtr pFormula = parser.parseTypeConstraint(ctx))
-            _constraints.insert(pFormula);
+        if (const auto pFormula = parser.parseTypeConstraint(ctx))
+            _constraints->insert(pFormula);
         else {
             ctx.mergeChildren(true);
             std::wcerr << L"Failed parsing type constraint at line " <<

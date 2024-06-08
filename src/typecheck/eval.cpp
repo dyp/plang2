@@ -16,12 +16,12 @@ protected:
 };
 
 bool Eval::_run(int & _nResult) {
-    tc::Formulas::iterator iCF = _context()->beginCompound();
+    tc::Formulas::iterator iCF = _context()->formulas()->beginCompound();
     bool bModified = false;
 
     _nResult = tc::Formula::TRUE;
 
-    for (tc::Formulas::iterator i = _context()->begin(); i != iCF;) {
+    for (tc::Formulas::iterator i = _context()->formulas()->begin(); i != iCF;) {
         tc::Formula &f = **i;
         const int r = f.eval();
 
@@ -38,15 +38,15 @@ bool Eval::_run(int & _nResult) {
         }
 
         // TRUE.
-        _context()->erase(i++);
+        i = _context()->formulas()->erase(i);
         bModified = true;
     }
 
     return _runCompound(_nResult) || bModified;
 }
 
-Auto<Operation> Operation::eval() {
-    return new Eval();
+OperationPtr Operation::eval() {
+    return std::make_shared<Eval>();
 }
 
 }

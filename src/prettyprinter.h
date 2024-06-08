@@ -31,7 +31,7 @@ protected:
     std::wstring fmtType(int _kind);
 };
 
-void prettyPrint(ir::Module &_module, std::wostream &_os);
+void prettyPrint(const ir::ModulePtr &_module, std::wostream &_os);
 void prettyPrint(tc::Context &_constraints, std::wostream &_os);
 void prettyPrint(const tc::Formula &_formula, std::wostream &_os, bool _bNewLine = true);
 

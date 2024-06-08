@@ -15,8 +15,8 @@ public:
         m_os(_os)
     {}
 
-    virtual bool visitExpression(ir::Expression& _expr) {
-        vf::ConjunctionPtr pConj = getPreConditionForExpression(&_expr);
+    bool visitExpression(const ir::ExpressionPtr& _expr) override {
+        vf::ConjunctionPtr pConj = getPreConditionForExpression(_expr);
 
         if (pConj->empty())
             return false;
@@ -25,32 +25,32 @@ public:
         if (!pExpr)
             return true;
 
-        pExpr = tr::normalizeExpressions(pExpr).as<ir::Expression>();
-        pp::prettyPrintSyntax(*pExpr, m_os, nullptr, true);
+        pExpr = tr::normalizeExpressions(pExpr)->as<ir::Expression>();
+        pp::prettyPrintSyntax(pExpr, m_os, nullptr, true);
         return true;
     }
 
-    virtual bool visitPredicate(ir::Predicate& _pred) {
-        m_pPred = &_pred;
+    bool visitPredicate(const ir::PredicatePtr& _pred) override {
+        m_pPred = _pred;
         return true;
     }
 
-    virtual bool visitStatement(ir::Statement& _stmt) {
+    bool visitStatement(const ir::StatementPtr& _stmt) override {
         vf::ConjunctionPtr
-            pConjPre = getPreConditionForStatement(&_stmt, m_pPred),
-            pConjPost = getPostConditionForStatement(&_stmt);
+            pConjPre = getPreConditionForStatement(_stmt, m_pPred),
+            pConjPost = getPostConditionForStatement(_stmt);
 
         ir::ExpressionPtr pExpr = pConjPre->mergeToExpression();
-        pExpr = tr::normalizeExpressions(pExpr, true).as<ir::Expression>();
+        pExpr = tr::normalizeExpressions(pExpr, true)->as<ir::Expression>();
 
         if (!pConjPre->empty() && pExpr)
-            pp::prettyPrintSyntax(*pExpr, m_os, nullptr, true);
+            pp::prettyPrintSyntax(pExpr, m_os, nullptr, true);
 
         pExpr = pConjPost->mergeToExpression();
-        pExpr = tr::normalizeExpressions(pExpr, true).as<ir::Expression>();
+        pExpr = tr::normalizeExpressions(pExpr, true)->as<ir::Expression>();
 
         if (!pConjPost->empty() && pExpr)
-            pp::prettyPrintSyntax(*pExpr, m_os, nullptr, true);
+            pp::prettyPrintSyntax(pExpr, m_os, nullptr, true);
 
         return true;
     }

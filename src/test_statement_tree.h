@@ -20,12 +20,12 @@ public:
             if (!_pModule->getPredicates().get(i))
                 continue;
             const std::wstring strName = _pModule->getPredicates().get(i)->getName();
-            st::StmtVertex top(_pModule->getPredicates().get(i)->getBlock());
-            top.expand();
-            _printGraph(top, strName + L"_exp");
-            top.modifyForVerification();
+            const auto top = std::make_shared<st::StmtVertex>(_pModule->getPredicates().get(i)->getBlock());
+            top->expand();
+            _printGraph(top, strName + L"_exp");//TODO:dyp: fix
+            top->modifyForVerification();
             _printGraph(top, strName + L"_mod");
-            top.simplify();
+            top->simplify();
             _printGraph(top, strName + L"_simp");
         }
         m_os<< L"}\n";
@@ -35,7 +35,7 @@ private:
     std::wostream &m_os;
     size_t m_cStatInd, m_cClusterInd;
 
-    void _fmtStatement(const ir::Statement& _stmt, size_t _cInd) {
+    void _fmtStatement(ir::Statement& _stmt, size_t _cInd) {
         m_os << "\"";
         switch (_stmt.getKind()) {
             case ir::Statement::BLOCK:
@@ -54,29 +54,28 @@ private:
                 m_os << L"var{}";
                 break;
             default:
-                prettyPrintCompact(const_cast<ir::Statement&>(_stmt), m_os);
+                prettyPrintCompact(_stmt.as<ir::Node>(), m_os);
                 break;
         }
         m_os << "\"";
     }
 
-    void _printTree(st::StmtVertex& _tree) {
+    void _printTree(const st::StmtVertexPtr& _tree) {
         const size_t cInd = m_cStatInd;
         size_t cEdge = 0;
         m_os << L"        A" << cInd << " [ label = ";
-        _fmtStatement(_tree.getStatement(), m_cStatInd);
+        _fmtStatement(_tree->getStatement(), m_cStatInd);
         m_os << L" ];\n";
-        for (std::list<st::StmtVertexPtr>::iterator i = _tree.getChildren().begin();
-            i != _tree.getChildren().end(); ++i) {
+        for (const auto& c : _tree->getChildren()) {
             m_os << L"        A" << cInd << L" -> A" << ++m_cStatInd;
-            if (_tree.getChildren().size() != 1)
+            if (_tree->getChildren().size() != 1)
                 m_os << L" [ label = " << ++cEdge << L" ]";
             m_os << L";\n";
-            _printTree(**i);
+            _printTree(c);
         }
     }
 
-    void _printGraph(st::StmtVertex& _tree, const std::wstring& _strName = L"") {
+    void _printGraph(const st::StmtVertexPtr& _tree, const std::wstring& _strName = L"") {
         ++m_cStatInd;
         m_os << L"    subgraph cluster" << m_cClusterInd++ << L"{\n";
         m_os << L"        node [style=filled];\n";

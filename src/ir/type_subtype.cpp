@@ -19,25 +19,25 @@ bool Subtype::less(const Type &_other) const {
     return _less(getExpression(), other.getExpression());
 }
 
-TypePtr Subtype::getMeet(Type &_other) {
+TypePtr Subtype::getMeet(const TypePtr &_other) {
     SideType meet = _getMeet(_other);
-    if (meet.first || meet.second || _other.getKind() == FRESH)
+    if (meet.first || meet.second || _other->getKind() == FRESH)
         return meet.first;
 
-    if (_other.getKind() == FRESH)
+    if (_other->getKind() == FRESH)
         return NULL;
 
-    const Subtype &other = (const Subtype &)_other;
+    const auto other = _other->as<Subtype>();
 
-    SubtypePtr pType = new Subtype();
+    const auto pType = std::make_shared<Subtype>();
     NamedValuePtr pParam;
     Cloner cloner;
 
-    cloner.alias(getParam(), other.getParam());
+    cloner.alias(getParam(), other->getParam());
 
-    if (*other.getParam()->getType() != *getParam()->getType()) {
-        if (auto pMeet = getParam()->getType()->getMeet(*other.getParam()->getType())) {
-            pParam = new NamedValue(L"", pMeet);
+    if (*other->getParam()->getType() != *getParam()->getType()) {
+        if (const auto pMeet = getParam()->getType()->getMeet(other->getParam()->getType())) {
+            pParam = std::make_shared<NamedValue>(L"", pMeet);
             cloner.inject(pParam, getParam());
         } else
             return NULL;
@@ -48,7 +48,7 @@ TypePtr Subtype::getMeet(Type &_other) {
 
     ExpressionPtr
         pExprThis = cloner.get(getExpression()),
-        pExprOther = cloner.get(other.getExpression());
+        pExprOther = cloner.get(other->getExpression());
 
     ExpressionPtr pExpr;
     if (Expression::implies(pExprThis, pExprOther))
@@ -56,35 +56,35 @@ TypePtr Subtype::getMeet(Type &_other) {
     else if (Expression::implies(pExprOther, pExprThis))
         pExpr = pExprOther;
     else
-        pExpr = new Binary(Binary::BOOL_AND, pExprThis, pExprOther);
+        pExpr = std::make_shared<Binary>(Binary::BOOL_AND, pExprThis, pExprOther);
 
     pType->setParam(pParam);
     pType->setExpression(pExpr);
     return pType;
 }
 
-TypePtr Subtype::getJoin(Type &_other) {
-    SideType join = _getJoin(_other);
-    if (join.first || join.second || _other.getKind() == FRESH)
+TypePtr Subtype::getJoin(const TypePtr &_other) {
+    const auto join = _getJoin(_other);
+    if (join.first || join.second || _other->getKind() == FRESH)
         return join.first;
 
-    if (_other.getKind() == FRESH)
+    if (_other->getKind() == FRESH)
         return NULL;
 
-    const Subtype &other = (const Subtype &)_other;
+    const auto other = _other->as<Subtype>();
 
-    SubtypePtr pType = new Subtype();
-    NamedValuePtr pParam = getParam();
+    const auto pType = std::make_shared<Subtype>();
+    auto pParam = getParam();
     Cloner cloner;
 
-    cloner.alias(getParam(), other.getParam());
+    cloner.alias(getParam(), other->getParam());
 
-    if (*other.getParam()->getType() != *getParam()->getType()) {
-        if (auto pJoin = getParam()->getType()->getJoin(*other.getParam()->getType())) {
-            pParam = new NamedValue(L"", pJoin);
+    if (*other->getParam()->getType() != *getParam()->getType()) {
+        if (const auto pJoin = getParam()->getType()->getJoin(other->getParam()->getType())) {
+            pParam = std::make_shared<NamedValue>(L"", pJoin);
             cloner.inject(pParam, getParam());
         } else
-            return NULL;
+            return nullptr;
     }
 
     if (!pParam)
@@ -92,7 +92,7 @@ TypePtr Subtype::getJoin(Type &_other) {
 
     ExpressionPtr
         pExprThis = cloner.get(getExpression()),
-        pExprOther = cloner.get(other.getExpression());
+        pExprOther = cloner.get(other->getExpression());
 
     ExpressionPtr pExpr;
     if (Expression::implies(pExprThis, pExprOther))
@@ -100,7 +100,7 @@ TypePtr Subtype::getJoin(Type &_other) {
     else if (Expression::implies(pExprOther, pExprThis))
         pExpr = pExprThis;
     else
-        pExpr = new Binary(Binary::BOOL_OR, pExprThis, pExprOther);
+        pExpr = std::make_shared<Binary>(Binary::BOOL_OR, pExprThis, pExprOther);
 
     pType->setParam(pParam);
     pType->setExpression(pExpr);
@@ -131,7 +131,7 @@ int Subtype::compare(const Type &_other) const {
         int nResult = nOrder & (ORD_NONE | ORD_UNKNOWN);
 
         if (nOrder & ORD_EQUALS) {
-            if (Expression::matches(getExpression(), other.getExpression()))
+            if (Expression::_matches(getExpression(), other.getExpression()))
                 nResult |= ORD_EQUALS;
             else if (Expression::implies(getExpression(), other.getExpression()))
                 nResult |= ORD_SUB;

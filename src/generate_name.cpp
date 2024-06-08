@@ -11,41 +11,41 @@ class NamesCollector : public Visitor {
 public:
     NamesCollector(NameGenerator& _generator) : m_generator(_generator) {}
 
-    virtual bool visitNamedValue(NamedValue & _val) {
-        m_generator.addNamedValue(&_val);
+    bool visitNamedValue(const NamedValuePtr & _val) override {
+        m_generator.addNamedValue(_val);
         return true;
     }
 
-    virtual bool visitVariableReference(VariableReference & _var) {
-        if (_var.getTarget())
-            visitNamedValue(*_var.getTarget());
+    bool visitVariableReference(const VariableReferencePtr & _var) override {
+        if (_var->getTarget())
+            visitNamedValue(_var->getTarget());
         return true;
     }
 
-    virtual bool visitLabel(Label & _label) {
-        m_generator.addLabel(&_label);
+    bool visitLabel(const LabelPtr & _label) override {
+        m_generator.addLabel(_label);
         return true;
     }
 
-    virtual bool visitTypeDeclaration(TypeDeclaration & _type) {
-        m_generator.addType(&_type);
+    bool visitTypeDeclaration(const TypeDeclarationPtr & _type) override {
+        m_generator.addType(_type);
         return true;
     }
 
-    virtual bool visitNamedReferenceType(NamedReferenceType & _type) {
-        if (_type.getDeclaration())
-            visitTypeDeclaration(*_type.getDeclaration());
+    bool visitNamedReferenceType(const NamedReferenceTypePtr & _type) override {
+        if (_type->getDeclaration())
+            visitTypeDeclaration(_type->getDeclaration());
         return true;
     }
 
-    virtual bool visitFormulaDeclaration(FormulaDeclaration & _formula) {
-        m_generator.addFormula(&_formula);
+    bool visitFormulaDeclaration(const FormulaDeclarationPtr & _formula) override {
+        m_generator.addFormula(_formula);
         return true;
     }
 
-    virtual bool visitFormulaCall(FormulaCall & _formula) {
-        if (_formula.getTarget())
-            visitFormulaDeclaration(*_formula.getTarget());
+    bool visitFormulaCall(const FormulaCallPtr & _formula) override {
+        if (_formula->getTarget())
+            visitFormulaDeclaration(_formula->getTarget());
         return true;
     }
 
@@ -53,7 +53,7 @@ private:
     NameGenerator& m_generator;
 };
 
-void NameGenerator::collect(Node& _node) {
+void NameGenerator::collect(const NodePtr& _node) {
     NamesCollector(*this).traverseNode(_node);
 }
 
@@ -116,68 +116,68 @@ std::wstring NameGenerator::_generateUniqueName(std::set<std::wstring>& _used,
     return strIdent;
 }
 
-std::wstring NameGenerator::getNamedValueName(NamedValue& _val) {
-    auto iNamedValue = m_namedValues.find(&_val);
+std::wstring NameGenerator::getNamedValueName(const NamedValuePtr& _val) {
+    auto iNamedValue = m_namedValues.find(_val);
     std::wstring strIdent = iNamedValue != m_namedValues.end() ?
         iNamedValue->second : L"";
 
     if (strIdent.empty()) {
         strIdent = _generateUniqueName(m_usedIdentifiers, m_nLastFoundValue, L"%ls", intToAlpha);
-        m_namedValues[&_val] = strIdent;
+        m_namedValues[_val] = strIdent;
     }
 
     return strIdent;
 }
 
-std::wstring NameGenerator::getLabelName(Label& _label) {
-    auto iLabel = m_labels.find(&_label);
+std::wstring NameGenerator::getLabelName(const LabelPtr& _label) {
+    auto iLabel = m_labels.find(_label);
     std::wstring strLabel = iLabel != m_labels.end() ?
         iLabel->second : L"";
 
     if (strLabel.empty()) {
         strLabel = _generateUniqueName(m_usedLabels, m_nLastFoundLabel, L"l_%ls");
-        m_labels[&_label] = strLabel;
+        m_labels[_label] = strLabel;
     }
 
     return strLabel;
 }
 
-std::wstring NameGenerator::getTypeName(ir::TypeDeclaration& _type) {
-    auto iType = m_types.find(&_type);
+std::wstring NameGenerator::getTypeName(const ir::TypeDeclarationPtr& _type) {
+    auto iType = m_types.find(_type);
     std::wstring strIdent = iType != m_types.end() ?
         iType->second : L"";
 
     if (strIdent.empty()) {
         strIdent = _generateUniqueName(m_usedIdentifiers, m_nLastFoundType, L"T_%ls");
-        m_types[&_type] = strIdent;
+        m_types[_type] = strIdent;
     }
 
     return strIdent;
 }
 
-std::wstring NameGenerator::getTypeName(ir::NamedReferenceType& _type) {
-    return !_type.getDeclaration() ?
+std::wstring NameGenerator::getTypeName(const ir::NamedReferenceTypePtr& _type) {
+    return !_type->getDeclaration() ?
         _generateUniqueName(m_usedIdentifiers, m_nLastFoundType, L"UnknownType_%ls") :
-        getTypeName(*_type.getDeclaration());
+        getTypeName(_type->getDeclaration());
 }
 
-std::wstring NameGenerator::getFormulaName(ir::FormulaDeclaration& _formula) {
-    auto iFormula = m_formulas.find(&_formula);
+std::wstring NameGenerator::getFormulaName(const ir::FormulaDeclarationPtr& _formula) {
+    auto iFormula = m_formulas.find(_formula);
     std::wstring strIdent = iFormula != m_formulas.end() ?
         iFormula->second : L"";
 
     if (strIdent.empty()) {
         strIdent = _generateUniqueName(m_usedIdentifiers, m_nLastFoundFormula, L"f_%ls");
-        m_formulas[&_formula] = strIdent;
+        m_formulas[_formula] = strIdent;
     }
 
     return strIdent;
 }
 
-std::wstring NameGenerator::getFormulaName(ir::FormulaCall& _formula) {
-    return !_formula.getTarget() ?
+std::wstring NameGenerator::getFormulaName(const ir::FormulaCallPtr& _formula) {
+    return !_formula->getTarget() ?
         _generateUniqueName(m_usedIdentifiers, m_nLastFoundFormula, L"unknownFormula_%ls") :
-        getFormulaName(*_formula.getTarget());
+        getFormulaName(_formula->getTarget());
 }
 
 std::wstring NameGenerator::getNewLabelName(const std::wstring& _name) {

@@ -87,6 +87,7 @@ private:
 
 namespace tc {
 class FreshType;
+using FreshTypePtr = std::shared_ptr<class FreshType>;
 }
 
 namespace ir {
@@ -111,7 +112,8 @@ public:
     typedef std::map<std::wstring, ir::ProcessPtr> ProcessMap;
     typedef std::map<std::wstring, ir::FormulaDeclarationPtr> FormulaMap;
     typedef std::multimap<std::wstring, ir::UnionConstructorDeclarationPtr> ConsMap;
-    typedef std::map<std::wstring, Auto<tc::FreshType> > FreshTypeMap;
+    using FreshTypeMap = std::map<std::wstring, tc::FreshTypePtr>;
+    using FreshTypeMapPtr = std::shared_ptr<FreshTypeMap>;
 
 public:
     Context(lexer::Loc _loc, bool _bScope = false, int _flags = 0)
@@ -199,8 +201,8 @@ public:
     void addConstructor(const ir::UnionConstructorDeclarationPtr &_pCons);
     bool hasConstructor(const std::wstring &_strName) const;
 
-    Auto<tc::FreshType> getFreshType(const std::wstring & _strName);
-    const FreshTypeMap * getFreshTypes() const { return m_freshTypes; }
+    tc::FreshTypePtr getFreshType(const std::wstring & _strName);
+    const FreshTypeMapPtr getFreshTypes() const { return m_freshTypes; }
 
     // Constructor-parsing stuff.
     ir::UnionConstructorPtr getCurrentConstructor() const {
@@ -237,7 +239,7 @@ private:
     ProcessMap *m_processes = nullptr;
     FormulaMap *m_formulas = nullptr;
     ConsMap *m_constructors = nullptr;
-    FreshTypeMap *m_freshTypes = nullptr;
+    FreshTypeMapPtr m_freshTypes;
     bool m_bFailed = false;
     Pragma m_pragma;
     ir::UnionConstructorPtr m_pCons;

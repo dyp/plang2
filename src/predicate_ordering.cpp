@@ -121,7 +121,7 @@ void ir::mergeSCC(CallGraph &_graph, Components &_components) {
             _setComponentNodeRecursive(*component.begin());
 }
 
-typedef std::map<const AnonymousPredicate *, size_t> PredNumbers;
+typedef std::map<AnonymousPredicateConstPtr, size_t> PredNumbers;
 // In order of their appearances in .dot file.
 static void _enumeratePredicates(const std::set<CallGraphNode> &_nodes, PredNumbers &_predNumbers) {
     size_t c = 0;
@@ -169,9 +169,9 @@ static void _deleteComponetFromCallees(const CallGraphNode *_pEarliestComponent,
         i.deleteCallee(_pEarliestComponent);
 }
 
-static AnonymousPredicate *_findEarliestPredicate(const CallGraphNode &_componentCopy, const PredNumbers &_predNumbers) {
+static AnonymousPredicatePtr _findEarliestPredicate(const CallGraphNode &_componentCopy, const PredNumbers &_predNumbers) {
     size_t cLowest = std::numeric_limits<size_t>::max();
-    AnonymousPredicate *pPred = NULL;
+    AnonymousPredicatePtr pPred;
 
     for (const auto &j: _componentCopy.getPredicates())
         if (_predNumbers.find(j.first)->second < cLowest) {
@@ -203,7 +203,7 @@ static void _printComponent(const CallGraphNode *_pComponent, CallGraphNode &_co
     _os << fmtInt(_cCompNumber, L"digraph cluster_%u {\n");
 
     while (!_componentCopy.getPredicates().empty()) {
-        AnonymousPredicate *pEarliestPredInComp = _findEarliestPredicate(_componentCopy, _predNumbers);
+        const auto pEarliestPredInComp = _findEarliestPredicate(_componentCopy, _predNumbers);
 
         // Cyclic graph is used to find initial callees of predicate.
         for (const auto &node: _cyclicGraph.getNodes())
@@ -325,7 +325,7 @@ void ir::predicateOrdering(CallGraph &_graph, std::list<CallGraphNode> &_predica
 }
 
 // Creates and prints callgraph and then its acyclic version.
-void ir::printModuleSCCCallGraph(Module &_module, std::wostream &_os) {
+void ir::printModuleSCCCallGraph(const ModulePtr &_module, std::wostream &_os) {
     CallGraph graph;
     generateCallGraph(_module, graph);
     printCallGraph(graph, _os);

@@ -65,10 +65,10 @@ bool UnionType::hasFresh() const {
     return false;
 }
 
-bool UnionType::contains(const TypePtr &_pType) const {
+bool UnionType::contains(const Type &_type) const {
     for (size_t i = 0; i < m_constructors.size(); ++i)
         if (m_constructors.get(i)->getFields() &&
-            m_constructors.get(i)->getFields()->contains(_pType))
+            m_constructors.get(i)->getFields()->contains(_type))
             return true;
     return false;
 }
@@ -91,27 +91,27 @@ bool UnionType::rewrite(const TypePtr &_pOld, const TypePtr &_pNew, bool _bRewri
     return bResult;
 }
 
-TypePtr UnionType::getMeet(ir::Type &_other) {
+TypePtr UnionType::getMeet(const ir::TypePtr &_other) {
     SideType meet = _getMeet(_other);
-    if (meet.first || meet.second || _other.getKind() == FRESH)
+    if (meet.first || meet.second || _other->getKind() == FRESH)
         return meet.first;
 
-    const UnionType &other = (const UnionType &)_other;
-    UnionTypePtr pUnion = new UnionType();
+    const auto other = _other->as<UnionType>();
+    const auto pUnion = std::make_shared<UnionType>();
 
     for (size_t i = 0; i < m_constructors.size(); ++i) {
-        UnionConstructorDeclaration &cons = *m_constructors.get(i);
-        const size_t cOtherConsIdx = other.getConstructors().findByNameIdx(cons.getName());
+        const auto cons = m_constructors.get(i);
+        const size_t cOtherConsIdx = other->getConstructors().findByNameIdx(cons->getName());
 
         if (cOtherConsIdx != (size_t)-1) {
-            const UnionConstructorDeclaration &otherCons = *other.getConstructors().get(cOtherConsIdx);
+            const auto otherCons = other->getConstructors().get(cOtherConsIdx);
 
-            TypePtr pMeet = cons.getFields()->getMeet(*otherCons.getFields());
+            const auto pMeet = cons->getFields()->getMeet(otherCons->getFields());
 
             if (!pMeet)
-                return NULL;
+                return nullptr;
 
-            UnionConstructorDeclarationPtr pCons = new UnionConstructorDeclaration(cons.getName());
+            const auto pCons = std::make_shared<UnionConstructorDeclaration>(cons->getName());
 
             pCons->setFields(pMeet);
             pUnion->getConstructors().add(pCons);
@@ -119,56 +119,56 @@ TypePtr UnionType::getMeet(ir::Type &_other) {
     }
 
     if (pUnion->getConstructors().empty())
-        return new Type(BOTTOM);
+        return std::make_shared<Type>(BOTTOM);
 
     return pUnion;
 }
 
-TypePtr UnionType::getJoin(ir::Type &_other) {
+TypePtr UnionType::getJoin(const ir::TypePtr &_other) {
     SideType join = _getJoin(_other);
-    if (join.first || join.second || _other.getKind() == FRESH)
+    if (join.first || join.second || _other->getKind() == FRESH)
         return join.first;
 
-    const UnionType &other = (const UnionType &)_other;
-    size_t cOtherUnmatched = other.getConstructors().size();
-    UnionTypePtr pUnion = new UnionType();
+    const auto other = _other->as<UnionType>();
+    size_t cOtherUnmatched = other->getConstructors().size();
+    const auto pUnion = std::make_shared<UnionType>();
 
     for (size_t i = 0; i < m_constructors.size(); ++i) {
-        UnionConstructorDeclaration &cons = *m_constructors.get(i);
-        const size_t cOtherConsIdx = other.getConstructors().findByNameIdx(cons.getName());
+        const auto cons = m_constructors.get(i);
+        const size_t cOtherConsIdx = other->getConstructors().findByNameIdx(cons->getName());
 
         if (cOtherConsIdx != (size_t) -1) {
-            const UnionConstructorDeclaration &otherCons = *other.getConstructors().get(cOtherConsIdx);
+            const auto otherCons = other->getConstructors().get(cOtherConsIdx);
 
-            TypePtr pJoin = cons.getFields()->getJoin(*otherCons.getFields());
+            const auto pJoin = cons->getFields()->getJoin(otherCons->getFields());
 
             if (!pJoin)
-                return NULL;
+                return nullptr;
 
-            UnionConstructorDeclarationPtr pCons = new UnionConstructorDeclaration(cons.getName());
+            const auto pCons = std::make_shared<UnionConstructorDeclaration>(cons->getName());
 
             pCons->setFields(pJoin);
             pUnion->getConstructors().add(pCons);
             --cOtherUnmatched;
         } else {
-            UnionConstructorDeclarationPtr pCons = new UnionConstructorDeclaration(cons.getName());
+            const auto pCons = std::make_shared<UnionConstructorDeclaration>(cons->getName());
 
-            pCons->setFields(cons.getFields());
+            pCons->setFields(cons->getFields());
             pUnion->getConstructors().add(pCons);
         }
     }
 
-    for (size_t i = 0; cOtherUnmatched > 0 && i < other.getConstructors().size(); ++i) {
-        const UnionConstructorDeclaration &otherCons = *other.getConstructors().get(i);
-        const size_t cConsIdx = getConstructors().findByNameIdx(otherCons.getName());
+    for (size_t i = 0; cOtherUnmatched > 0 && i < other->getConstructors().size(); ++i) {
+        const auto otherCons = other->getConstructors().get(i);
+        const size_t cConsIdx = getConstructors().findByNameIdx(otherCons->getName());
 
         if (cConsIdx != (size_t)-1)
             continue;
 
-        UnionConstructorDeclarationPtr pCons = new UnionConstructorDeclaration(otherCons.getName());
+        const auto pCons = std::make_shared<UnionConstructorDeclaration>(otherCons->getName());
 
         --cOtherUnmatched;
-        pCons->setFields(otherCons.getFields());
+        pCons->setFields(otherCons->getFields());
         pUnion->getConstructors().add(pCons);
 
     }
@@ -213,4 +213,18 @@ int UnionType::getMonotonicity(const Type &_var) const {
     }
 
     return bMonotone ? MT_MONOTONE : (bAntitone ? MT_ANTITONE : MT_CONST);
+}
+
+NodePtr UnionType::clone(Cloner &_cloner) const {
+    const auto pCopy = NEW_CLONE(this, _cloner);
+    pCopy->getConstructors().appendClones(getConstructors(), _cloner);
+    return pCopy;
+}
+
+NodePtr OptionalType::clone(Cloner &_cloner) const {
+    return NEW_CLONE(this, _cloner, _cloner.get<Type>(getBaseType()));
+}
+
+NodePtr SeqType::clone(Cloner &_cloner) const {
+    return NEW_CLONE(this, _cloner, _cloner.get<Type>(getBaseType()));
 }

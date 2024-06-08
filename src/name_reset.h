@@ -9,7 +9,7 @@
 
 namespace ir {
 
-void resetNames(Module &_module);
+void resetNames(const ModulePtr &_module);
 
 }
 

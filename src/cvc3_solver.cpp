@@ -921,14 +921,14 @@ public:
         Visitor(CHILDREN_FIRST), m_bRewriteStatus(_bRewriteStatus), m_result(_result)
     {}
 
-    virtual bool visitLemmaDeclaration(LemmaDeclaration& _lemma) {
-        if (!_lemma.getProposition() || na::containsBannedNodes(_lemma.getProposition()))
+    bool visitLemmaDeclaration(const LemmaDeclarationPtr& _lemma) override {
+        if (!_lemma->getProposition() || na::containsBannedNodes(_lemma->getProposition()))
             return true;
 
         CVC3::ExprPtr pExpr;
 
         try {
-            pExpr = translateExpr(*_lemma.getProposition());
+            pExpr = translateExpr(*_lemma->getProposition());
         } catch (CVC3::Exception& ex) {
             std::wcerr << strWiden(ex.toString()) << L"\n\n";
             return true;

@@ -13,7 +13,9 @@ namespace tc {
 typedef std::set<tc::FreshTypePtr, PtrLess<tc::FreshType> > FreshTypeSet;
 typedef std::map<tc::FreshTypePtr, std::pair<size_t, size_t>, PtrLess<tc::FreshType> > ExtraBoundsCount;
 
-class Operation : public Counted {
+using OperationPtr = std::shared_ptr<class Operation>;
+
+class Operation {
 public:
     virtual ~Operation() {}
 
@@ -22,16 +24,16 @@ public:
     bool getRestartIteration() const { return m_bRestartIteration; }
 
     // Operations.
-    static Auto<Operation> unify();
-    static Auto<Operation> lift();
-    static Auto<Operation> eval();
-    static Auto<Operation> prune();
-    static Auto<Operation> refute();
-    static Auto<Operation> compact();
-    static Auto<Operation> infer();
-    static Auto<Operation> expand();
-    static Auto<Operation> explode();
-    static Auto<Operation> guess();
+    static OperationPtr unify();
+    static OperationPtr lift();
+    static OperationPtr eval();
+    static OperationPtr prune();
+    static OperationPtr refute();
+    static OperationPtr compact();
+    static OperationPtr infer();
+    static OperationPtr expand();
+    static OperationPtr explode();
+    static OperationPtr guess();
 
 protected:
     const std::wstring m_strName;
@@ -47,8 +49,8 @@ protected:
 
     bool _runCompound(int & _result);
     virtual bool _run(int & _result) = 0;
-    Context& _context();
-    void _enumerateFreshTypes(CompoundFormula &_cf, FreshTypeSet &_types);
+    ContextPtr _context();
+    void _enumerateFreshTypes(const CompoundFormulaPtr &_cf, FreshTypeSet &_types);
 
 protected:
     virtual void _clear();

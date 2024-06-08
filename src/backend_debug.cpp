@@ -463,7 +463,7 @@ std::wostream & DebugGenerator::generateInstr(const Instruction & _instr) {
         m_os << resolveLabel(* _instr.getLabel()) << L":\n";
 
     if (_instr.getResult()) {
-        const Variable * pVar = _instr.getResult().ptr();
+        const Variable * pVar = _instr.getResult().get();
         std::wstring strName = resolveVariable(pVar);
         if (strName.empty()) {
             strName = fmtInt(m_nVar ++, L"v%llu");
@@ -529,7 +529,7 @@ std::wostream & DebugGenerator::generateFunc(const Function & _function) {
     addChild();
 
     if (_function.getResult()) {
-        getChild()->m_vars[_function.getResult().ptr()] = L"r";
+        getChild()->m_vars[_function.getResult().get()] = L"r";
         m_os << getChild()->fmtIndent(L".result %r ");
         //const size_t c = sizeof(Type);
         getChild()->generateType(* _function.getReturnType()) << "\n";
@@ -537,7 +537,7 @@ std::wostream & DebugGenerator::generateFunc(const Function & _function) {
 
     for (Args::const_iterator iArg = _function.args().begin(); iArg != _function.args().end(); ++ iArg) {
         std::wstring strName = fmtInt(getChild()->m_nParam ++);
-        getChild()->m_vars[iArg->ptr()] = strName;
+        getChild()->m_vars[iArg->get()] = strName;
         m_os << getChild()->fmtIndent(L".arg %") << strName << " ";
         getChild()->generateType(* (* iArg)->getType()) << "\n";
     }
@@ -546,7 +546,7 @@ std::wostream & DebugGenerator::generateFunc(const Function & _function) {
 
     for (Args::const_iterator iVar = _function.locals().begin(); iVar != _function.locals().end(); ++ iVar) {
         std::wstring strName = fmtInt(nVar ++, L"u%llu");
-        getChild()->m_vars[iVar->ptr()] = strName;
+        getChild()->m_vars[iVar->get()] = strName;
         m_os << getChild()->fmtIndent(L".var %") << strName << " ";
         getChild()->generateType(* (* iVar)->getType()) << "\n";
     }

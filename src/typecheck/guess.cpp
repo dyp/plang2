@@ -22,7 +22,7 @@ private:
 };
 
 bool Guess::_handler(const ir::TypePtr& _pType, const tc::Relations& _lowers, const tc::Relations& _uppers) {
-    const tc::FreshTypePtr pType = _pType.as<tc::FreshType>();
+    const auto pType = _pType->as<tc::FreshType>();
 
     m_uLowersCount = _lowers.size() > 0 ? _getExtraLowerBoundsCount(_pType) + _lowers.size() : 0;
     m_uUppersCount = _uppers.size() > 0 ? _getExtraUpperBoundsCount(_pType) + _uppers.size() : 0;
@@ -45,7 +45,7 @@ bool Guess::_handler(const ir::TypePtr& _pType, const tc::Relations& _lowers, co
     const ir::TypePtr pOther =
         pUpper ? pUpper : pLower;
 
-    return (pOther ? _context().add(new tc::Formula(tc::Formula::EQUALS, pType, pOther)) : false);
+    return (pOther ? _context()->add(std::make_shared<tc::Formula>(tc::Formula::EQUALS, pType, pOther)) : false);
 }
 
 // Matching the following patterns:
@@ -56,7 +56,7 @@ ir::TypePtr Guess::_matchSingleUpperBound(const tc::FreshTypePtr& _pType, const 
     if ((_pType->getFlags() & tc::FreshType::PARAM_IN) != 0 && m_uUppersCount == 1 && !(*_uppers.begin())->isStrict())
         return _uppers.getType(_uppers.begin());
     if (m_uUppersCount == 1 && !(*_uppers.begin())->isStrict() && _uppers.getType(_uppers.begin())->getKind() == ir::Type::FRESH &&
-        (_uppers.getType(_uppers.begin()).as<tc::FreshType>()->getFlags() & tc::FreshType::PARAM_OUT) != 0)
+        (_uppers.getType(_uppers.begin())->as<tc::FreshType>()->getFlags() & tc::FreshType::PARAM_OUT) != 0)
         return _uppers.getType(_uppers.begin());
     return nullptr;
 }
@@ -67,7 +67,7 @@ ir::TypePtr Guess::_matchSingleUpperBound(const tc::FreshTypePtr& _pType, const 
 // where A, B are fresh types; 1, k, m, n, p are infs/sups count; * is any type.
 ir::TypePtr Guess::_matchSingleLowerBound(const tc::FreshTypePtr& _pType, const tc::Relations& _lowers, const tc::Relations& _uppers) {
     if (m_uLowersCount == 1 && !(*_lowers.begin())->isStrict() && _lowers.getType(_lowers.begin())->getKind() == ir::Type::FRESH &&
-        (_lowers.getType(_lowers.begin()).as<tc::FreshType>()->getFlags() & tc::FreshType::PARAM_IN) != 0)
+        (_lowers.getType(_lowers.begin())->as<tc::FreshType>()->getFlags() & tc::FreshType::PARAM_IN) != 0)
         return _lowers.getType(_lowers.begin());
     if ((_pType->getFlags() & tc::FreshType::PARAM_OUT) != 0 && m_uLowersCount == 1 && !(*_lowers.begin())->isStrict())
         return _lowers.getType(_lowers.begin());
@@ -87,8 +87,8 @@ ir::TypePtr Guess::_matchEqualizableUpperBound(const tc::FreshTypePtr& _pType, c
 
     auto canBeUpper = [&](ir::TypePtr _pSomeType) {
         return _pSomeType->getKind() == ir::Type::FRESH &&
-            (_pSomeType.as<tc::FreshType>()->getFlags() & tc::FreshType::PARAM_OUT) &&
-            _context().pTypes->lowers(_pSomeType).size() == 2;
+            (_pSomeType->as<tc::FreshType>()->getFlags() & tc::FreshType::PARAM_OUT) &&
+            _context()->pTypes->lowers(_pSomeType).size() == 2;
     };
 
     std::list<std::pair<ir::TypePtr, ir::TypePtr>> candidates;
@@ -104,7 +104,7 @@ ir::TypePtr Guess::_matchEqualizableUpperBound(const tc::FreshTypePtr& _pType, c
             pFresh = candidate.first,
             pSup = clone(candidate.second);
 
-        const auto& lowers = _context().pTypes->lowers(pFresh);
+        const auto& lowers = _context()->pTypes->lowers(pFresh);
 
         // pInf <= (pFresh => pType) <= pSup
         ir::TypePtr pInf = lowers.getType(lowers.begin());
@@ -116,14 +116,14 @@ ir::TypePtr Guess::_matchEqualizableUpperBound(const tc::FreshTypePtr& _pType, c
         pSup->rewrite(_pType, pFresh);
         pInf->rewrite(_pType, pFresh);
 
-        tc::RelationPtr pRelation = new tc::Relation(tc::Formula(tc::Formula::SUBTYPE, pInf, pSup));
+        const auto pRelation = std::make_shared<tc::Relation>(pInf, pSup, false);
 
-        auto &relations = _context().pTypes->relations();
+        auto &relations = _context()->pTypes->relations();
 
         // Ensure that pInf <= pSup
         if (pRelation->eval() == tc::Formula::TRUE ||
             relations.find(pRelation) != relations.end()) {
-            pFresh.as<tc::FreshType>()->setFlags(0);
+            pFresh->as<tc::FreshType>()->setFlags(0);
             return pFresh;
         }
     }
@@ -131,8 +131,8 @@ ir::TypePtr Guess::_matchEqualizableUpperBound(const tc::FreshTypePtr& _pType, c
     return nullptr;
 }
 
-Auto<Operation> Operation::guess() {
-    return new Guess();
+OperationPtr Operation::guess() {
+    return std::make_shared<Guess>();
 }
 
 }

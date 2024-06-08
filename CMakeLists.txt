@@ -3,7 +3,7 @@ project(PLang)
 
 enable_testing()
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -fpermissive -Wno-deprecated")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -fpermissive -Wno-deprecated -Wno-cast-qual")
 
 find_library(GMPXXLIB gmpxx)
 

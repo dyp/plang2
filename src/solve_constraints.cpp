@@ -19,27 +19,27 @@ public:
     bool run();
     bool sequence(int &_result);
     bool fork();
-    tc::Context &context() { return *CS::top(); }
+    tc::ContextPtr context() { return CS::top(); }
 };
 
 bool Solver::fork() {
-    tc::Formulas::iterator iCF = context()->beginCompound();
+    const auto iCF = context()->formulas()->beginCompound();
 
-    if (iCF == context()->end())
+    if (iCF == context()->formulas()->end())
         return false;
 
-    tc::CompoundFormulaPtr pCF = iCF->as<tc::CompoundFormula>();
+    const auto pCF = (*iCF)->as<tc::CompoundFormula>();
 
-    context()->erase(iCF);
+    context()->formulas()->erase(iCF);
 
     tc::ContextPtr pCopy = clone(context());
 
-    context().insertFormulas(pCF->getPart(0));
-    pCF->getPart(0).pFlags->mergeTo(context().flags());
+    context()->insertFormulas(pCF->getPart(0));
+    pCF->getPart(0).pFlags->mergeTo(context()->flags());
 
     if (pCF->size() > 2) {
         pCF->removePart(0);
-        (*pCopy)->insert(pCF);
+        pCopy->formulas()->insert(pCF);
     } else {
         pCopy->insertFormulas(pCF->getPart(1));
         pCF->getPart(1).pFlags->mergeTo(pCopy->flags());
@@ -54,7 +54,7 @@ bool Solver::sequence(int &_result) {
     bool bModified = false;
     bool bIterationModified;
     size_t cStep = 0;
-    std::vector<Auto<tc::Operation> > ops{
+    std::vector<tc::OperationPtr> ops{
         tc::Operation::unify(),
         tc::Operation::lift(),
         tc::Operation::prune(),
@@ -72,14 +72,14 @@ bool Solver::sequence(int &_result) {
     do {
         bIterationModified = false;
 
-        for (const Auto<tc::Operation> & pOperation : ops) {
+        for (const auto& pOperation : ops) {
             if (bIterationModified && pOperation->getRestartIteration())
                 break;
 
             if (pOperation->run(_result)) {
                 if (Options::instance().bVerbose) {
                     std::wcout << std::endl << pOperation->getName() << L" [" << cStep << L"]:" << std::endl;
-                    prettyPrint(context(), std::wcout);
+                    prettyPrint(*context(), std::wcout);
                 }
 
                 bIterationModified = true;
@@ -106,7 +106,7 @@ bool Solver::run() {
         if (!bChanged && result != tc::Formula::FALSE && fork()) {
             if (Options::instance().bVerbose) {
                 std::wcout << std::endl << L"Fork:" << std::endl;
-                prettyPrint(context(), std::wcout);
+                prettyPrint(*context(), std::wcout);
             }
 
             continue;
@@ -131,7 +131,7 @@ bool Solver::run() {
             CS::push(processed.front());
         else {
             // Recombine all results into a compound formula and simplify it.
-            tc::CompoundFormulaPtr pCF = new tc::CompoundFormula();
+            tc::CompoundFormulaPtr pCF = std::make_shared<tc::CompoundFormula>();
 
             for (std::list<tc::ContextPtr>::iterator i = processed.begin(); i != processed.end(); ++i) {
                 tc::Context &ctx = **i;
@@ -143,10 +143,10 @@ bool Solver::run() {
                 for (tc::Formulas::iterator j = ctx.pSubsts->begin(); j != ctx.pSubsts->end(); ++j) {
                     tc::FormulaPtr pSubst = *j;
 
-                    if (pSubst->getLhs().as<tc::FreshType>()->getFlags() == tc::FreshType::PARAM_IN)
-                        part.insert(new tc::Formula(tc::Formula::SUBTYPE, pSubst->getLhs(), pSubst->getRhs()));
-                    else if (pSubst->getLhs().as<tc::FreshType>()->getFlags() == tc::FreshType::PARAM_OUT)
-                        part.insert(new tc::Formula(tc::Formula::SUBTYPE, pSubst->getRhs(), pSubst->getLhs()));
+                    if (pSubst->getLhs()->as<tc::FreshType>()->getFlags() == tc::FreshType::PARAM_IN)
+                        part.insert(std::make_shared<tc::Formula>(tc::Formula::SUBTYPE, pSubst->getLhs(), pSubst->getRhs()));
+                    else if (pSubst->getLhs()->as<tc::FreshType>()->getFlags() == tc::FreshType::PARAM_OUT)
+                        part.insert(std::make_shared<tc::Formula>(tc::Formula::SUBTYPE, pSubst->getRhs(), pSubst->getLhs()));
                     else
                         part.insert(pSubst);
                 }
@@ -155,23 +155,23 @@ bool Solver::run() {
                 CS::pop();
             }
 
-            CS::push(ptr(new tc::Context()));
-            context()->insert(pCF);
+            CS::push(std::make_shared<tc::Context>());
+            context()->formulas()->insert(pCF);
 
             if (Options::instance().bVerbose) {
                 std::wcout << std::endl << L"Recombine:" << std::endl;
-                prettyPrint(context(), std::wcout);
+                prettyPrint(*context(), std::wcout);
             }
 
             sequence(result);
             assert(result != tc::Formula::FALSE);
         }
 
-        result = context()->empty() ? tc::Formula::TRUE : tc::Formula::UNKNOWN;
+        result = context()->formulas()->empty() ? tc::Formula::TRUE : tc::Formula::UNKNOWN;
 
         if (Options::instance().bVerbose) {
             std::wcout << std::endl << L"Solution:" << std::endl;
-            prettyPrint(context(), std::wcout);
+            prettyPrint(*context(), std::wcout);
         }
     }
 

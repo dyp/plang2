@@ -19,38 +19,38 @@ bool ArrayType::less(const Type &_other) const {
     return _less(getDimensionType(), other.getDimensionType());
 }
 
-TypePtr ArrayType::getMeet(Type &_other) {
+TypePtr ArrayType::getMeet(const TypePtr &_other) {
     SideType meet = _getMeet(_other);
-    if (meet.first || meet.second || _other.getKind() == FRESH)
+    if (meet.first || meet.second || _other->getKind() == FRESH)
         return meet.first;
 
-    const ArrayType& other = (const ArrayType&)_other;
+    const auto other = _other->as<ArrayType>();
 
     TypePtr
-        pBaseMeet = getBaseType()->getMeet(*other.getBaseType()),
-        pDimensionJoin = getDimensionType()->getJoin(*other.getDimensionType());
+        pBaseMeet = getBaseType()->getMeet(other->getBaseType()),
+        pDimensionJoin = getDimensionType()->getJoin(other->getDimensionType());
 
     if (!pBaseMeet || !pDimensionJoin)
         return NULL;
 
-    return new ArrayType(pBaseMeet, pDimensionJoin);
+    return std::make_shared<ArrayType>(pBaseMeet, pDimensionJoin);
 }
 
-TypePtr ArrayType::getJoin(Type &_other) {
+TypePtr ArrayType::getJoin(const TypePtr &_other) {
     SideType join = _getJoin(_other);
-    if (join.first || join.second || _other.getKind() == FRESH)
+    if (join.first || join.second || _other->getKind() == FRESH)
         return join.first;
 
-    const ArrayType& other = (const ArrayType&)_other;
+    const auto other = _other->as<ArrayType>();
 
     TypePtr
-        pBaseJoin = getBaseType()->getJoin(*other.getBaseType()),
-        pDimensionMeet = getDimensionType()->getMeet(*other.getDimensionType());
+        pBaseJoin = getBaseType()->getJoin(other->getBaseType()),
+        pDimensionMeet = getDimensionType()->getMeet(other->getDimensionType());
 
     if (!pBaseJoin || !pDimensionMeet)
         return NULL;
 
-    return new ArrayType(pBaseJoin, pDimensionMeet);
+    return std::make_shared<ArrayType>(pBaseJoin, pDimensionMeet);
 }
 
 bool ArrayType::rewrite(const TypePtr &_pOld, const TypePtr &_pNew, bool _bRewriteFlags) {
@@ -85,4 +85,8 @@ int ArrayType::compare(const Type &_other) const {
 
 int ArrayType::getMonotonicity(const Type &_var) const {
     return getBaseType()->getMonotonicity(_var);
+}
+
+NodePtr ArrayType::clone(Cloner &_cloner) const {
+    return NEW_CLONE(this, _cloner, _cloner.get<Type>(getBaseType()), _cloner.get<Type>(getDimensionType()));
 }

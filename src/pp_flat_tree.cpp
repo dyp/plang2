@@ -8,9 +8,9 @@ using namespace ir;
 
 class PrettyPrinterFlatBase: public PrettyPrinterBase {
 public:
-    PrettyPrinterFlatBase(std::wostream &_os, Node &_node) : PrettyPrinterBase(_os), m_nPrevDepth(-1) {
+    PrettyPrinterFlatBase(std::wostream &_os, const NodePtr &_node) : PrettyPrinterBase(_os), m_nPrevDepth(-1) {
         m_path.push_back(L"");
-        m_pPrevNode = &_node;
+        m_pPrevNode = _node;
     }
 
     std::list<std::wstring> m_path;
@@ -23,22 +23,22 @@ public:
             m_os << L"/" << *i;
         if (m_pPrevNode) {
             m_os << L" = ";
-            prettyPrintCompact(*m_pPrevNode, m_os, PPC_NO_INCOMPLETE_TYPES);
+            prettyPrintCompact(m_pPrevNode, m_os, PPC_NO_INCOMPLETE_TYPES);
         }
         m_os << setInline(false);
         m_os << L"\n";
     }
 
 #define VISITOR(_NODE, ...)                             \
-        virtual bool visit##_NODE(_NODE &_node) {    \
+        bool visit##_NODE(const _NODE##Ptr &_node) override {    \
             m_path.back() += L"|" WIDEN(#_NODE);\
             return true;                                \
         }
 
 #define HANDLER(_ROLE)                          \
-        virtual int handle##_ROLE(Node &_node) {   \
+        int handle##_ROLE(NodePtr &_node) override {   \
             print(); \
-            m_pPrevNode = &_node; \
+            m_pPrevNode = _node; \
             while (m_path.size() >=  getDepth()) \
                 m_path.pop_back(); \
             m_path.push_back(WIDEN(#_ROLE)); \
@@ -58,19 +58,19 @@ protected:
 
 class PrettyPrinterFlat: public PrettyPrinterFlatBase {
 public:
-    PrettyPrinterFlat(std::wostream &_os, Node &_node) : PrettyPrinterFlatBase(_os, _node) {}
+    PrettyPrinterFlat(std::wostream &_os, const NodePtr &_node) : PrettyPrinterFlatBase(_os, _node) {}
 
     void run() {
-        traverseNode(*m_pPrevNode);
+        traverseNode(m_pPrevNode);
         print();
     }
 
 #define NAMED(_NODE, _PROP)                         \
-    virtual bool visit##_NODE(_NODE &_node) {       \
+    bool visit##_NODE(const _NODE##Ptr &_node) override {       \
         PrettyPrinterFlatBase::visit##_NODE(_node); \
         m_path.back() += L"|";                      \
-        m_path.back() += _node.get##_PROP();        \
-        printName(_node.get##_PROP());              \
+        m_path.back() += _node->get##_PROP();        \
+        printName(_node->get##_PROP());              \
         return true;                                \
     }
 
@@ -92,39 +92,39 @@ public:
     NAMED(UnionConstructorDeclaration, Name);
     NAMED(NamedReferenceType, Name);
 
-    virtual bool visitFormula(ir::Formula &_node) {
+    bool visitFormula(const ir::FormulaPtr &_node) override {
         PrettyPrinterFlatBase::visitFormula(_node);
-        printQuantifier(_node.getQuantifier());
+        printQuantifier(_node->getQuantifier());
         return true;
     }
 
-    virtual bool visitLemmaDeclaration(ir::LemmaDeclaration &_node) {
-        printLemmaStatus(_node.getStatus());
+    bool visitLemmaDeclaration(const ir::LemmaDeclarationPtr &_node) override {
+        printLemmaStatus(_node->getStatus());
         PrettyPrinterFlatBase::visitLemmaDeclaration(_node);
         return true;
     }
 
-    virtual bool visitNode(ir::Node &_node) {
-        if (_node.getLoc() && m_path.size() > 1)
-            printLine(_node.getLoc());
+    bool visitNode(const ir::NodePtr &_node) override {
+        if (_node->getLoc() && m_path.size() > 1)
+            printLine(_node->getLoc());
         return true;
     }
 
-    virtual bool visitJump(ir::Jump &_node) {
+    bool visitJump(const ir::JumpPtr &_node) override {
         PrettyPrinterFlatBase::visitJump(_node);
-        if (_node.getDestination() && _node.getDestination()->getLoc())
-            printDestination(_node.getDestination()->getLoc());
+        if (_node->getDestination() && _node->getDestination()->getLoc())
+            printDestination(_node->getDestination()->getLoc());
         return true;
     }
 
-    virtual bool visitPredicateReference(ir::PredicateReference &_node) {
+    bool visitPredicateReference(const ir::PredicateReferencePtr &_node) override {
         PrettyPrinterFlatBase::visitPredicateReference(_node);
         m_path.back() += L"|";
-        m_path.back() += _node.getName();
-        printName(_node.getName());
+        m_path.back() += _node->getName();
+        printName(_node->getName());
 
-        if (_node.getTarget() && _node.getTarget()->getLoc())
-            printDestination(_node.getTarget()->getLoc());
+        if (_node->getTarget() && _node->getTarget()->getLoc())
+            printDestination(_node->getTarget()->getLoc());
         return true;
     }
 
@@ -180,7 +180,7 @@ protected:
     }
 };
 
-void prettyPrintFlatTree(ir::Node &_node, std::wostream &_os) {
+void prettyPrintFlatTree(const ir::NodePtr &_node, std::wostream &_os) {
     PrettyPrinterFlat pp(_os, _node);
     Param::updateUsed(_node);
     pp.run();
