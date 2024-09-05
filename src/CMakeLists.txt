@@ -70,7 +70,7 @@ if (CVC3 AND CVC3LIB_FOUND)
 endif()
 
 add_definitions(
-    -fmessage-length=0 -Wall -Werror
+    -fmessage-length=0 -Wall -Werror -Wno-deprecated
 )
 
 add_executable(${TARGET} ${SOURCES})
