@@ -10,6 +10,15 @@
 #include <cassert>
 #include <algorithm>
 
+struct InlineToggle {
+    bool bEnable;
+};
+
+inline
+InlineToggle setInline(bool _bEnable = true) {
+    return {_bEnable};
+}
+
 template<typename _Char, typename _Traits = std::char_traits<_Char> >
 class IndentingStream : public std::basic_ostream<_Char, _Traits> {
     using String = std::basic_string<_Char, _Traits>;
@@ -303,6 +312,12 @@ public:
         return *this;
     }
 
+	IndentingStream &operator <<(InlineToggle _inline)
+	{
+		setInline(_inline.bEnable);
+		return *this;
+	}
+
     const String getIndentation() const {
         return _rdbuf()->getIndentation();
     }
@@ -388,23 +403,6 @@ IndentingStream<_Char, _Traits> &operator <<(
         IndentingStream<_Char, _Traits> &_os, IndentationLevel _level)
 {
     _os.setLevel(_level.nValue);
-    return _os;
-}
-
-struct InlineToggle {
-    bool bEnable;
-};
-
-inline
-InlineToggle setInline(bool _bEnable = true) {
-    return {_bEnable};
-}
-
-template<typename _Char, typename _Traits = std::char_traits<_Char> >
-IndentingStream<_Char, _Traits> &operator <<(
-        IndentingStream<_Char, _Traits> &_os, InlineToggle _inline)
-{
-    _os.setInline(_inline.bEnable);
     return _os;
 }
 

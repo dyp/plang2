@@ -3,6 +3,7 @@
 #include <limits.h>
 
 #include <fstream>
+#include <vector>
 
 #include "indenting_stream.h"
 #include "utils.h"

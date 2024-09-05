@@ -18,7 +18,7 @@ public:
     }
 
     virtual bool visitVariableReference(VariableReference &_var) {
-        if (_var.getTarget());
+        if (_var.getTarget())
             _var.setName(L"");
         return true;
     }

@@ -512,9 +512,11 @@ bool NamedReferenceType::less(const Type &_other) const {
     return getArgs() < other.getArgs();
 }
 
-bool NamedReferenceType::equals(const Type &_other) const {
-    assert(_other.getKind() == Type::NAMED_REFERENCE);
+bool NamedReferenceType::equals(const Node &_other) const {
+    if (!Type::equals(_other))
+        return false;
     const NamedReferenceType& other = (const NamedReferenceType&)_other;
+    assert(other.getKind() == Type::NAMED_REFERENCE);// should be always true due to upper check
 
     return getDeclaration() == other.getDeclaration()
         && getArgs() == other.getArgs();

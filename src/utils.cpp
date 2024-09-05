@@ -112,7 +112,6 @@ std::string strNarrow(const std::wstring & _s) {
     std::locale loc("");
     std::mbstate_t state;
     const wc2mbcs_t & facet = std::use_facet<wc2mbcs_t>(loc);
-    wc2mbcs_t::result result;
     int mbcLen = facet.max_length();
     const int bufLen = (_s.length() + 1)*mbcLen;
     char *mbcBuf = (char *)alloca(bufLen);
@@ -123,7 +122,8 @@ std::string strNarrow(const std::wstring & _s) {
     memset((void *)&state, 0, sizeof(state));
     memset((void *)mbcBuf, 0, sizeof(bufLen));
 
-    result = facet.out(state,
+//TODO:dyp: should handle result
+    (void)facet.out(state,
             _s.c_str(), _s.c_str() + _s.length() + 1, pNextIn,
             (char *)mbcBuf, (char *)mbcBuf + bufLen, pNextOut);
 
@@ -135,7 +135,6 @@ std::wstring strWiden(const std::string & _s) {
     std::locale loc("");
     std::mbstate_t state;
     const wc2mbcs_t & facet = std::use_facet<wc2mbcs_t>(loc);
-    wc2mbcs_t::result result;
 //    int wcLen = facet.max_length();
     const int bufLen = _s.length() + 1;
     wchar_t *wcBuf = (wchar_t *)alloca(bufLen*sizeof(wchar_t));
@@ -146,7 +145,8 @@ std::wstring strWiden(const std::string & _s) {
     memset((void *) & state, 0, sizeof(state));
     memset((void *) wcBuf, 0, sizeof(wchar_t)*bufLen);
 
-    result = facet.in(state,
+//TODO:dyp: should handle result
+    (void)facet.in(state,
             _s.c_str(), _s.c_str() + _s.length() + 1, pNextOut,
             (wchar_t *) wcBuf, (wchar_t *) wcBuf + bufLen, pNextIn);
 
