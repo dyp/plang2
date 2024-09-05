@@ -3,7 +3,7 @@
 EXECUTABLE=$1
 TEST=$2
 
-shift 3
+shift 2
 echo "[ Test   ]" `basename $TEST`
 
 EXPECTED=$TEST.out
