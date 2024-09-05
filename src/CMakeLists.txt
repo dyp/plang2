@@ -75,7 +75,7 @@ add_definitions(
 
 add_executable(${TARGET} ${SOURCES})
 
-if (NOT CVC3 STREQUAL "0" AND CVC3LIB_FOUND)
+if (CVC3 AND CVC3LIB_FOUND)
     set_target_properties(${TARGET} PROPERTIES COMPILE_DEFINITIONS "USE_CVC3")
     target_link_libraries(${TARGET} ${CVC3LIB_LIBRARIES})
 endif()

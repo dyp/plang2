@@ -11,7 +11,9 @@
 #include "pp_flat_tree.h"
 #include "test_statement_tree.h"
 #include "test_preconditions.h"
+#ifdef USE_CVC3
 #include "test_cvc3_solver.h"
+#endif
 #include "term_rewriting.h"
 #include "prettyprinter.h"
 #include "options.h"
@@ -97,8 +99,10 @@ int main(int _argc, const char ** _argv) {
 
     if (bPreconditions)
         PreconditionsPrinter(std::wcout).traverseNode(*pModule);
+#ifdef USE_CVC3
     else if (bCVC3)
         Cvc3Printer().traverseNode(*pModule);
+#endif
 
     return EXIT_SUCCESS;
 }
