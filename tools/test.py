@@ -72,10 +72,10 @@ def makeRegEx(_test):
     return s + r"(\|[^/=|]*|\s+)*(=|\Z)"
 
 if len(sys.argv) < 2:
-    print "No filename given"
+    print("No filename given")
     exit(1)
 
-print "[ Test   ]", os.path.basename(sys.argv[1])
+print("[ Test   ]", os.path.basename(sys.argv[1]))
 
 lns = sys.stdin.readlines()
 failed = 0
@@ -154,9 +154,9 @@ for test in extractTest(sys.argv[1]).split('\n'):
 
     if not match:
         gots = "(got '" + "', '".join(gots) + "')" if gots and printGots else ""
-        print msg, test, gots
+        print(msg, test, gots)
         continue
 
-    print msg, test
+    print(msg, test)
 
 sys.exit(0 if not failed else -1)
