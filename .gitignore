@@ -15,7 +15,7 @@ core.*
 vgcore.*
 
 # Build directories, e.g. build.debug and build.relese
-/build.*/
+/build*/
 
 # Old test directory. New tests should be added to /tests/ and be runnable by CTest.
 /test/
