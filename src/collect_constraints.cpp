@@ -14,6 +14,7 @@
 #include <ir/builtins.h>
 #include <ir/visitor.h>
 #include <utils.h>
+#include "static_typecheck.h"
 
 using namespace ir;
 
@@ -111,15 +112,17 @@ void Collector::collectParam(const NamedValuePtr &_pParam, int _nFlags) {
         return;
     }
 
-    tc::FreshTypePtr pFresh = createFresh(pType);
+    if(!Options::instance().bStaticTypecheck || pType->getKind() == Type::GENERIC) {
+        tc::FreshTypePtr pFresh = createFresh(pType);
 
-    assert(pType);
+        assert(pType);
 
-    if (pType && pType->getKind() != Type::GENERIC && !getKnownType(pType))
-        m_constraints.insert(new tc::Formula(tc::Formula::EQUALS, pFresh, pType));
+        if (pType && pType->getKind() != Type::GENERIC && !getKnownType(pType))
+            m_constraints.insert(new tc::Formula(tc::Formula::EQUALS, pFresh, pType));
 
-    _pParam->setType(pFresh);
-    pFresh->addFlags(_nFlags);
+        _pParam->setType(pFresh);
+        pFresh->addFlags(_nFlags);
+    }
 }
 
 static const TypePtr _getContentsType(const ExpressionPtr _pExpr) {
@@ -151,6 +154,14 @@ static ExpressionPtr _getConditionForIndex(const ExpressionPtr& _pIndex, const V
 
 
 bool Collector::visitRange(Range &_type) {
+    if(Options::instance().bStaticTypecheck) {
+        SubtypePtr subtype = StaticTypeChecker::checkRange(_type);
+        if (subtype) {
+            callSetter(subtype);
+            return true;
+        }
+    }
+
     SubtypePtr pSubtype = _type.asSubtype();
     collectParam(pSubtype->getParam(), tc::FreshType::PARAM_OUT);
 
@@ -164,6 +175,8 @@ bool Collector::visitRange(Range &_type) {
 }
 
 bool Collector::visitArrayType(ArrayType &_type) {
+    if(Options::instance().bStaticTypecheck && StaticTypeChecker::checkArrayType(_type))
+        return true;
     // FIXME There is should be finite type.
     m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
         _type.getDimensionType(), new Type(Type::INT, Number::GENERIC)));
@@ -171,11 +184,15 @@ bool Collector::visitArrayType(ArrayType &_type) {
 }
 
 bool Collector::visitVariableReference(VariableReference &_var) {
+    if(Options::instance().bStaticTypecheck && StaticTypeChecker::checkVariableReference(_var))
+        return true;
     _var.setType(_var.getTarget()->getType());
     return true;
 }
 
 bool Collector::visitPredicateReference(PredicateReference &_ref) {
+    if(Options::instance().bStaticTypecheck && StaticTypeChecker::checkPredicateReference(_ref, m_ctx))
+        return true;
     Predicates funcs;
 
     if (! m_ctx.getPredicates(_ref.getName(), funcs))
@@ -202,6 +219,8 @@ bool Collector::visitPredicateReference(PredicateReference &_ref) {
 }
 
 bool Collector::visitFormulaCall(FormulaCall &_call) {
+    if(Options::instance().bStaticTypecheck && StaticTypeChecker::checkFormulaCall(_call))
+        return true;
     _call.setType(_call.getTarget()->getResultType());
     for (size_t i = 0; i < _call.getArgs().size(); ++i)
         m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
@@ -210,6 +229,8 @@ bool Collector::visitFormulaCall(FormulaCall &_call) {
 }
 
 bool Collector::visitFunctionCall(FunctionCall &_call) {
+    if(Options::instance().bStaticTypecheck && StaticTypeChecker::checkFunctionCall(_call, m_ctx))
+        return true;
     PredicateTypePtr pType = new PredicateType();
 
     _call.setType(createFresh(_call.getType()));
@@ -228,11 +249,15 @@ bool Collector::visitFunctionCall(FunctionCall &_call) {
 }
 
 bool Collector::visitLambda(Lambda &_lambda) {
+    if(Options::instance().bStaticTypecheck && StaticTypeChecker::checkLambda(_lambda))
+        return true;
     _lambda.setType(_lambda.getPredicate().getType());
     return true;
 }
 
 bool Collector::visitBinder(Binder &_binder) {
+    if(Options::instance().bStaticTypecheck && StaticTypeChecker::checkBinder(_binder))
+        return true;
     PredicateTypePtr
         pType = new PredicateType(),
         pPredicateType = new PredicateType();
@@ -261,6 +286,8 @@ bool Collector::visitBinder(Binder &_binder) {
 }
 
 bool Collector::visitCall(Call &_call) {
+    if(Options::instance().bStaticTypecheck && StaticTypeChecker::checkCall(_call, m_ctx))
+        return true;
     PredicateTypePtr pType = new PredicateType();
 
     for (size_t i = 0; i < _call.getArgs().size(); ++i)
@@ -282,6 +309,8 @@ bool Collector::visitCall(Call &_call) {
 }
 
 bool Collector::visitLiteral(Literal &_lit) {
+    if(Options::instance().bStaticTypecheck && StaticTypeChecker::checkLiteral(_lit))
+        return true;
     switch (_lit.getLiteralKind()) {
         case Literal::UNIT:
             _lit.setType(new Type(Type::UNIT));
@@ -315,6 +344,8 @@ bool Collector::visitLiteral(Literal &_lit) {
 }
 
 bool Collector::visitUnary(Unary &_unary) {
+    if(Options::instance().bStaticTypecheck && StaticTypeChecker::checkUnary(_unary))
+        return true;
     _unary.setType(createFresh(_unary.getType()));
 
     switch (_unary.getOperator()) {
@@ -371,6 +402,8 @@ bool Collector::visitUnary(Unary &_unary) {
 }
 
 bool Collector::visitBinary(Binary &_binary) {
+    if(Options::instance().bStaticTypecheck && StaticTypeChecker::checkBinary(_binary))
+        return true;
     _binary.setType(createFresh(_binary.getType()));
 
     switch (_binary.getOperator()) {
@@ -628,6 +661,8 @@ bool Collector::visitBinary(Binary &_binary) {
 }
 
 bool Collector::visitTernary(Ternary &_ternary) {
+    if(Options::instance().bStaticTypecheck && StaticTypeChecker::checkTernary(_ternary))
+        return true;
     _ternary.setType(createFresh(_ternary.getType()));
     m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE, _ternary.getIf()->getType(), new Type(Type::BOOL)));
     m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE, _ternary.getThen()->getType(), _ternary.getType()));
@@ -636,6 +671,8 @@ bool Collector::visitTernary(Ternary &_ternary) {
 }
 
 bool Collector::visitFormula(Formula &_formula) {
+    if(Options::instance().bStaticTypecheck && StaticTypeChecker::checkFormula(_formula))
+        return true;
     _formula.setType(createFresh(_formula.getType()));
     tc::FreshTypePtr pFresh = new tc::FreshType(tc::FreshType::PARAM_OUT);
 
@@ -646,6 +683,8 @@ bool Collector::visitFormula(Formula &_formula) {
 }
 
 bool Collector::visitArrayPartExpr(ArrayPartExpr &_array) {
+    if(Options::instance().bStaticTypecheck && StaticTypeChecker::checkArrayPartExpr(_array))
+        return true;
     _array.setType(new tc::FreshType(tc::FreshType::PARAM_OUT));
 
     const MapTypePtr pMapType = new MapType(new Type(Type::BOTTOM), _array.getType());
@@ -688,6 +727,8 @@ bool Collector::visitArrayPartExpr(ArrayPartExpr &_array) {
 }
 
 bool Collector::visitRecognizerExpr(RecognizerExpr& _expr) {
+    if(Options::instance().bStaticTypecheck && StaticTypeChecker::checkRecognizerExpr(_expr))
+        return true;
     _expr.setType(new Type(Type::BOOL));
 
     UnionTypePtr pUnionType = new UnionType();
@@ -702,6 +743,8 @@ bool Collector::visitRecognizerExpr(RecognizerExpr& _expr) {
 }
 
 bool Collector::visitAccessorExpr(AccessorExpr& _expr) {
+    if(Options::instance().bStaticTypecheck && StaticTypeChecker::checkAccessorExpr(_expr))
+        return true;
     _expr.setType(createFresh(_expr.getType()));
 
     UnionTypePtr pUnionType = new UnionType();
@@ -714,6 +757,8 @@ bool Collector::visitAccessorExpr(AccessorExpr& _expr) {
 }
 
 bool Collector::visitStructConstructor(StructConstructor &_cons) {
+    if(Options::instance().bStaticTypecheck && StaticTypeChecker::checkStructConstructor(_cons))
+        return true;
     StructTypePtr pStruct = new StructType();
 
     for (size_t i = 0; i < _cons.size(); ++i) {
@@ -737,6 +782,8 @@ bool Collector::visitStructConstructor(StructConstructor &_cons) {
 }
 
 bool Collector::visitUnionConstructor(UnionConstructor &_cons) {
+    if(Options::instance().bStaticTypecheck && StaticTypeChecker::checkUnionConstructor(_cons))
+        return true;
     UnionTypePtr pUnion = new UnionType();
     UnionConstructorDeclarationPtr pCons = new UnionConstructorDeclaration(_cons.getName());
 
@@ -760,6 +807,8 @@ bool Collector::visitUnionConstructor(UnionConstructor &_cons) {
 }
 
 bool Collector::visitSetConstructor(SetConstructor &_cons) {
+    if(Options::instance().bStaticTypecheck && StaticTypeChecker::checkSetConstructor(_cons))
+        return true;
     SetTypePtr pSet = new SetType(NULL);
 
     pSet->setBaseType(new tc::FreshType(tc::FreshType::PARAM_OUT));
@@ -773,6 +822,8 @@ bool Collector::visitSetConstructor(SetConstructor &_cons) {
 }
 
 bool Collector::visitListConstructor(ListConstructor &_cons) {
+    if(Options::instance().bStaticTypecheck && StaticTypeChecker::checkListConstructor(_cons))
+        return true;
     ListTypePtr pList = new ListType(NULL);
 
     pList->setBaseType(new tc::FreshType(tc::FreshType::PARAM_OUT));
@@ -786,6 +837,8 @@ bool Collector::visitListConstructor(ListConstructor &_cons) {
 }
 
 bool Collector::visitArrayConstructor(ArrayConstructor &_cons) {
+    if(Options::instance().bStaticTypecheck && StaticTypeChecker::checkArrayConstructor(_cons))
+        return true;
     ArrayTypePtr pArray = new ArrayType(NULL);
 
     pArray->setBaseType(new tc::FreshType(tc::FreshType::PARAM_OUT));
@@ -886,6 +939,8 @@ bool Collector::visitArrayConstructor(ArrayConstructor &_cons) {
 }
 
 bool Collector::visitArrayIteration(ArrayIteration& _iter) {
+    if(Options::instance().bStaticTypecheck && StaticTypeChecker::checkArrayIteration(_iter))
+        return true;
     ArrayTypePtr pArrayType = new ArrayType();
     _iter.setType(pArrayType);
 
@@ -961,6 +1016,8 @@ bool Collector::visitArrayIteration(ArrayIteration& _iter) {
 }
 
 bool Collector::visitMapConstructor(MapConstructor &_cons) {
+    if(Options::instance().bStaticTypecheck && StaticTypeChecker::checkMapConstructor(_cons))
+        return true;
     MapTypePtr pMap = new MapType(NULL, NULL);
 
     pMap->setBaseType(createFresh());
@@ -982,6 +1039,8 @@ bool Collector::visitMapConstructor(MapConstructor &_cons) {
 }
 
 bool Collector::visitFieldExpr(FieldExpr &_field) {
+    if(Options::instance().bStaticTypecheck && StaticTypeChecker::checkFieldExpr(_field))
+        return true;
     tc::FreshTypePtr pFresh = createFresh(_field.getType());
     ir::StructTypePtr pStruct = new StructType();
     ir::NamedValuePtr pField = new NamedValue(_field.getFieldName(), pFresh);
@@ -1002,6 +1061,8 @@ bool Collector::visitFieldExpr(FieldExpr &_field) {
 }
 
 bool Collector::visitCastExpr(CastExpr &_cast) {
+    if(Options::instance().bStaticTypecheck && StaticTypeChecker::checkCastExpr(_cast))
+        return true;
     TypePtr pToType = (TypePtr)_cast.getToType()->getContents();
 
     _cast.setType(pToType);
@@ -1053,6 +1114,8 @@ bool Collector::visitCastExpr(CastExpr &_cast) {
 }
 
 bool Collector::visitReplacement(Replacement &_repl) {
+    if(Options::instance().bStaticTypecheck && StaticTypeChecker::checkReplacement(_repl))
+        return true;
     _repl.setType(createFresh(_repl.getType()));
 
     m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
@@ -1064,6 +1127,8 @@ bool Collector::visitReplacement(Replacement &_repl) {
 }
 
 bool Collector::visitAssignment(Assignment &_assignment) {
+    if(Options::instance().bStaticTypecheck && StaticTypeChecker::checkAssignment(_assignment))
+        return true;
     // x : A = y : B |- B <= A
     m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
             _assignment.getExpression()->getType(),
@@ -1082,6 +1147,8 @@ int Collector::handleSubtypeParam(Node &_node) {
 }
 
 bool Collector::visitVariableDeclaration(VariableDeclaration &_var) {
+    if(Options::instance().bStaticTypecheck && StaticTypeChecker::checkVariableDeclaration(_var))
+        return true;
     if (_var.getValue())
         // x : A = y : B |- B <= A
         m_constraints.insert(new tc::Formula(tc::Formula::SUBTYPE,
@@ -1091,6 +1158,8 @@ bool Collector::visitVariableDeclaration(VariableDeclaration &_var) {
 }
 
 bool Collector::visitIf(If &_if) {
+    if(Options::instance().bStaticTypecheck && StaticTypeChecker::checkIf(_if))
+        return true;
     m_constraints.insert(new tc::Formula(tc::Formula::EQUALS,
             _if.getArg()->getType(), new Type(Type::BOOL)));
     return true;
@@ -1117,6 +1186,8 @@ int Collector::handleParameterizedTypeParam(Node &_node) {
 }
 
 bool Collector::visitTypeExpr(TypeExpr &_expr) {
+    if(Options::instance().bStaticTypecheck && StaticTypeChecker::checkTypeExpr(_expr))
+        return true;
     TypeTypePtr pType = new TypeType();
     pType->setDeclaration(new TypeDeclaration(L"", _expr.getContents()));
     _expr.setType(pType);

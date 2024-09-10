@@ -16,6 +16,7 @@
 #include "prettyprinter.h"
 #include "options.h"
 #include "term_rewriting.h"
+#include "static_typecheck.h"
 
 #include "type_lattice.h"
 
@@ -2995,7 +2996,9 @@ Context *Parser::parsePragma(Context &_ctx) {
 bool Parser::typecheck(Context &_ctx, Node &_node) {
     if (Options::instance().typeCheck == TC_NONE)
         return true;
-
+    if (Options::instance().instance().bVerbose)
+        StaticTypeChecker::printTypecheckInfo(L"Type check for: ", StaticTypeChecker::str(_node),
+                                              StaticTypeChecker::PRINT_GREEN);
     tc::Formulas constraints, substs;
     tc::ContextPtr pContext;
 

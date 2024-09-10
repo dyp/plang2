@@ -23,6 +23,7 @@ set(SOURCES
     backend_debug.cpp
     backend_pvs.cpp
     collect_constraints.cpp
+    static_typecheck.cpp
     lexer.cpp
     llir.cpp
     llir_process.cpp
