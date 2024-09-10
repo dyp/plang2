@@ -1,8 +1,7 @@
+#pragma once
+
 /// \file type_lattice.h
 ///
-
-#ifndef TYPE_LATTICE_H_
-#define TYPE_LATTICE_H_
 
 #include "typecheck.h"
 
@@ -175,5 +174,3 @@ private:
 };
 
 }; // namespace tc
-
-#endif /* TYPE_LATTICE_H_ */

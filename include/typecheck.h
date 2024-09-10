@@ -1,9 +1,7 @@
+#pragma once
 /// \file typecheck.h
 ///
 
-
-#ifndef TYPECHECK_H_
-#define TYPECHECK_H_
 
 #include <assert.h>
 
@@ -332,5 +330,3 @@ void linkPredicates(ir::Context &_ctx, ir::Node &_node);
 void apply(const ContextPtr& _pContext, ir::Node &_node);
 
 }; // namespace tc
-
-#endif /* TYPECHECK_H_ */

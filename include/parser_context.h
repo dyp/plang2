@@ -1,9 +1,8 @@
+#pragma once
+
 /// \file parser_context.h
 ///
 
-
-#ifndef PARSER_CONTEXT_H_
-#define PARSER_CONTEXT_H_
 
 #include "lexer.h"
 #include "ir/declarations.h"
@@ -247,5 +246,3 @@ private:
 };
 
 }
-
-#endif /* PARSER_CONTEXT_H_ */

@@ -1,8 +1,6 @@
+#pragma once
 /// \file node_analysis.h
 ///
-
-#ifndef NODE_ANALYSIS_H_
-#define NODE_ANALISIS_H_
 
 #include <set>
 #include "ir/base.h"
@@ -72,5 +70,3 @@ void sortModule(const ir::Module & _module, ir::Nodes & _sorted);
 
 
 } // namespace na
-
-#endif // NODE_ANALYSIS_H_
