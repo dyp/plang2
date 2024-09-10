@@ -159,7 +159,7 @@ Number Number::makeReal(long double _f) {
 
     int nExp;
     long double fSign = frexpl(_f, &nExp);
-    const size_t cBuffSize = LDBL_MANT_DIG + (fSign < 0 ? 5 : 4);
+    constexpr size_t cBuffSize = LDBL_MANT_DIG + 5;
     char str[cBuffSize];
 
     snprintf(str, cBuffSize, "%.*Lf", LDBL_MANT_DIG + 1, fSign);
