@@ -19,10 +19,10 @@ class CGenerator {
 public:
     CGenerator() :
         m_pParent(NULL), /*m_os(_os),*/ m_nLevel(0), m_pChild(NULL), m_nParam(0),
-        m_nVar(0), m_nConst(0), m_nLabel(0) {}
+        m_nConst(0), m_nLabel(0) {}
     CGenerator(CGenerator & _parent) :
         m_pParent(& _parent), /*m_os(_parent.m_os),*/ m_nLevel(_parent.m_nLevel + 1),
-        m_pChild(NULL), m_nParam(0), m_nVar(0), m_nConst(0), m_nLabel(0) {}
+        m_pChild(NULL), m_nParam(0), m_nConst(0), m_nLabel(0) {}
     ~CGenerator();
 
     CGenerator * addChild();
@@ -66,7 +66,6 @@ private:
     int m_nLevel;
     CGenerator * m_pChild;
     int m_nParam;
-    int m_nVar;
     int m_nConst;
     int m_nLabel;
 

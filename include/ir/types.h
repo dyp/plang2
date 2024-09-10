@@ -67,7 +67,7 @@ public:
 
     /// Get type kind.
     /// \returns #NamedReference.
-    virtual int getKind() const { return NAMED_REFERENCE; }
+    int getKind() const override { return NAMED_REFERENCE; }
 
     /// Get pointer to target type declaration.
     /// \return Target type declaration or NULL if it wasn't declared as a type.
@@ -84,11 +84,11 @@ public:
     Collection<Expression> &getArgs() { return m_args; }
     const Collection<Expression> &getArgs() const { return m_args; }
 
-    virtual bool rewrite(const TypePtr &_pOld, const TypePtr &_pNew, bool _bRewriteFlags = true);
-    virtual bool less(const Type &_other) const;
-    virtual bool equals(const Type &_other) const;
+    bool rewrite(const TypePtr &_pOld, const TypePtr &_pNew, bool _bRewriteFlags = true) override;
+    bool less(const Type &_other) const override;
+    bool equals(const Type &_other) const override;
 
-    virtual NodePtr clone(Cloner &_cloner) const {
+    NodePtr clone(Cloner &_cloner) const override {
         NamedReferenceTypePtr pCopy = NEW_CLONE(this, _cloner, NamedReferenceType(_cloner.get(getDeclaration(), true)));
         pCopy->getArgs().appendClones(getArgs(), _cloner);
         return pCopy;

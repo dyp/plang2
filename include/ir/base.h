@@ -467,6 +467,7 @@ public:
     virtual bool less(const Node& _other) const;
     virtual bool equals(const Node& _other) const;
     virtual bool less(const Type &_other) const;
+    virtual bool equals(const Type& _other) const;
 
     // Perform deep copy.
     virtual NodePtr clone(Cloner &_cloner) const {

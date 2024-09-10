@@ -241,7 +241,7 @@ public:
         VISITOR_EXIT();
     }
 
-    bool visitTypeType(TypeType) {
+    bool visitTypeType(TypeType&) {
         m_os << L"TYPE";
         return false;
     }

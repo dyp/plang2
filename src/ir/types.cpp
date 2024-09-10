@@ -214,8 +214,11 @@ bool Type::less(const Node& _other) const {
 
 bool Type::equals(const Node& _other) const {
     assert(_other.getNodeKind() == Node::TYPE);
-    const Type& other = (const Type&)_other;
-    return getKind() == other.getKind() && !less(other) && !other.less(*this);
+    return equals((const Type&)_other);
+}
+
+bool Type::equals(const Type& _other) const {
+    return getKind() == _other.getKind() && !less(_other) && !_other.less(*this);
 }
 
 static
