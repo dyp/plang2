@@ -67,6 +67,7 @@ struct Options {
     bool bKeepNames;
     bool bSolveTypes;
     bool bMoveOut;
+    bool bStaticTypecheck;
 
     Options();
     static bool init(size_t _cArgs, const char **_pArgs);

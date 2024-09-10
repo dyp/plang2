@@ -34,6 +34,7 @@ set(SOURCES_ST
     ../src/typecheck.cpp
     ../src/solve_constraints.cpp
     ../src/collect_constraints.cpp
+    ../src/static_typecheck.cpp
     ../src/type_lattice.cpp
     ../src/generate_semantics.cpp
     ../src/generate_name.cpp

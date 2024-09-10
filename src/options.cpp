@@ -129,6 +129,7 @@ void _printUsage() {
         << "    -y, --solve-types             Read list of type constraints and try to find a solution\n"
         << "    -v, --verbose                 Print debug info\n"
         << "    -m, --move-out                Move out some syntax constructions\n"
+        << "    -S, --static-typecheck        \n"
         << "        --help                    Show this message\n";
 }
 
@@ -151,6 +152,7 @@ bool Options::init(size_t _cArgs, const char **_pArgs) {
         { "keep-names",      'k', NULL,               &instance().bKeepNames,      NULL,                          false },
         { "solve-types",     'y', NULL,               &instance().bSolveTypes,     NULL,                          false },
         { "move-out",        'm', NULL,               &instance().bMoveOut,        NULL,                          false },
+        { "static-typecheck",'S', NULL,               &instance().bStaticTypecheck,NULL,                          false },
         { NULL,               0,  NULL,               NULL,                        NULL,                          false }
     };
 
@@ -184,7 +186,8 @@ Options::Options() :
     bVerbose(false),
     bKeepNames(false),
     bSolveTypes(false),
-    bMoveOut(false)
+    bMoveOut(false),
+    bStaticTypecheck(true)
 {
 }
 
