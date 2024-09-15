@@ -10,6 +10,9 @@
 .cproject
 .pydevproject
 
+# VS Code dir
+.vscode
+
 # Core dumps.
 core.*
 vgcore.*
