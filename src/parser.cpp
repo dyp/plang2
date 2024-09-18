@@ -3037,13 +3037,26 @@ bool Parser::parseDeclarations(Context &_ctx, const ModulePtr &_module) {
             case IDENTIFIER:
                 if (pCtx->nextIs(COLON)) {
                     const std::wstring strLabel = pCtx->scan(2, 0);
-                    const LemmaDeclarationPtr pLemma = parseLemmaDeclaration(*pCtx);
-                    if (!pLemma)
-                        ERROR(*pCtx, false, L"Failed parsing lemma declaration");
-                    pLemma->setLabel(std::make_shared<Label>(strLabel));
-                    _module->getLemmas().add(pLemma);
-                    if (!typecheck(*pCtx, pLemma))
-                        return false;
+                    switch (pCtx->getToken()) {
+                    case FORMULA:
+                        if (const auto pFormula = parseFormulaDeclaration(*pCtx)) {
+                            pFormula->setLabel(std::make_shared<Label>(strLabel));
+                            _module->getFormulas().add(pFormula);
+                            if (!typecheck(*pCtx, pFormula))
+                                return false;
+                        } else
+                            ERROR(* pCtx, false, L"Failed parsing formula declaration");
+                        break;
+                    case LEMMA:
+                        if (const auto pLemma = parseLemmaDeclaration(*pCtx)) {
+                            pLemma->setLabel(std::make_shared<Label>(strLabel));
+                            _module->getLemmas().add(pLemma);
+                            if (!typecheck(*pCtx, pLemma))
+                                return false;
+                        } else
+                            ERROR(*pCtx, false, L"Failed parsing lemma declaration");
+                        break;
+                    }
                     break;
                 } else if (!pCtx->getType(pCtx->getValue()) &&
                     !pCtx->getModule(pCtx->getValue()))

@@ -9,5 +9,5 @@
 
 module A {
     label1: formula foo(:bool) = true;
-    label2: formula foo();
+    label2: formula foo2();
 }
