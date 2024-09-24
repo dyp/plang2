@@ -379,9 +379,8 @@ bool Collector::visitUnary(const UnaryPtr &_unary) {
 
                 // Set negation.
                 tc::Formulas &part2 = p->addPart();
-                const auto pSet = std::make_shared<SetType>(TypePtr());
+                const auto pSet = std::make_shared<SetType>(createFresh());
 
-                pSet->setBaseType(createFresh());
                 part2.insert(std::make_shared<tc::Formula>(tc::Formula::EQUALS,
                         _unary->getExpression()->getType(), pSet));
                 part2.insert(std::make_shared<tc::Formula>(tc::Formula::EQUALS,
@@ -432,9 +431,7 @@ bool Collector::visitBinary(const BinaryPtr &_binary) {
 
                 // Set operations.
                 tc::Formulas & part2 = p->addPart();
-                const auto pSet = std::make_shared<SetType>(TypePtr());
-
-                pSet->setBaseType(createFresh());
+                const auto pSet = std::make_shared<SetType>(createFresh());
 
                 part2.insert(std::make_shared<tc::Formula>(tc::Formula::SUBTYPE,
                         _binary->getLeftSide()->getType(),
@@ -447,9 +444,7 @@ bool Collector::visitBinary(const BinaryPtr &_binary) {
 
                 if (_binary->getOperator() == Binary::ADD) {
                     tc::Formulas & part3 = p->addPart();
-                    const auto pList = std::make_shared<ListType>();
-
-                    pList->setBaseType(createFresh());
+                    const auto pList = std::make_shared<ListType>(createFresh());
 
                     part3.insert(std::make_shared<tc::Formula>(tc::Formula::SUBTYPE,
                             _binary->getLeftSide()->getType(),
@@ -615,9 +610,7 @@ bool Collector::visitBinary(const BinaryPtr &_binary) {
 
                 // Set operations.
                 tc::Formulas & part4 = p->addPart();
-                const auto pSet = std::make_shared<SetType>();
-
-                pSet->setBaseType(createFresh());
+                const auto pSet = std::make_shared<SetType>(createFresh());
 
                 part4.insert(std::make_shared<tc::Formula>(tc::Formula::SUBTYPE,
                         _binary->getLeftSide()->getType(),
@@ -644,9 +637,8 @@ bool Collector::visitBinary(const BinaryPtr &_binary) {
 
         case Binary::IN:
             {
-                const auto pSet = std::make_shared<SetType>();
+                const auto pSet = std::make_shared<SetType>(createFresh());
 
-                pSet->setBaseType(createFresh());
                 m_constraints->insert(std::make_shared<tc::Formula>(tc::Formula::EQUALS,
                         _binary->getRightSide()->getType(), pSet));
                 m_constraints->insert(std::make_shared<tc::Formula>(tc::Formula::SUBTYPE,
@@ -808,9 +800,7 @@ bool Collector::visitUnionConstructor(const UnionConstructorPtr &_cons) {
 bool Collector::visitSetConstructor(const SetConstructorPtr &_cons) {
     if(Options::instance().bStaticTypecheck && StaticTypeChecker::checkSetConstructor(*_cons))
         return true;
-    const auto pSet = std::make_shared<SetType>();
-
-    pSet->setBaseType(std::make_shared<tc::FreshType>(tc::FreshType::PARAM_OUT));
+    const auto pSet = std::make_shared<SetType>(std::make_shared<tc::FreshType>(tc::FreshType::PARAM_OUT));
     _cons->setType(pSet);
 
     for (size_t i = 0; i < _cons->size(); ++i)
@@ -823,9 +813,8 @@ bool Collector::visitSetConstructor(const SetConstructorPtr &_cons) {
 bool Collector::visitListConstructor(const ListConstructorPtr &_cons) {
     if(Options::instance().bStaticTypecheck && StaticTypeChecker::checkListConstructor(*_cons))
         return true;
-    ListTypePtr pList = std::make_shared<ListType>();
+    ListTypePtr pList = std::make_shared<ListType>(std::make_shared<tc::FreshType>(tc::FreshType::PARAM_OUT));
 
-    pList->setBaseType(std::make_shared<tc::FreshType>(tc::FreshType::PARAM_OUT));
     _cons->setType(pList);
 
     for (size_t i = 0; i < _cons->size(); ++i)
@@ -838,9 +827,8 @@ bool Collector::visitListConstructor(const ListConstructorPtr &_cons) {
 bool Collector::visitArrayConstructor(const ArrayConstructorPtr &_cons) {
     if(Options::instance().bStaticTypecheck && StaticTypeChecker::checkArrayConstructor(*_cons))
         return true;
-    const auto pArray = std::make_shared<ArrayType>();
+    const auto pArray = std::make_shared<ArrayType>(std::make_shared<tc::FreshType>(tc::FreshType::PARAM_OUT));
 
-    pArray->setBaseType(std::make_shared<tc::FreshType>(tc::FreshType::PARAM_OUT));
     _cons->setType(pArray);
 
     if (_cons->empty()) {

@@ -532,7 +532,6 @@ private:
 /// Set type.
 class SetType : public DerivedType {
 public:
-    SetType() {}
     /// Initialize with base type.
     /// \param _pType Base type.
     SetType(const TypePtr &_pType) : DerivedType(_pType) {}
@@ -599,9 +598,6 @@ private:
 /// List type.
 class ListType : public DerivedType {
 public:
-    /// Default constructor.
-    ListType() {}
-
     /// Initialize with base type.
     /// \param _pType Base type.
     ListType(const TypePtr &_pType) : DerivedType(_pType) {}
