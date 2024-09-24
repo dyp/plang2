@@ -1,14 +1,14 @@
 A : THEORY
 BEGIN
 
-foo (a: nat, b: nat) : nat =
+foo (a: int, b: int) : int =
     a + b
 
-factorial (a: nat) : RECURSIVE nat =
+factorial (a: int) : RECURSIVE int =
     IF (1 /= a) THEN factorial(a - 1) ELSE 1 ENDIF
     MEASURE a
 
-gcd (a: nat, b: nat) : RECURSIVE nat =
+gcd (a: int, b: int) : RECURSIVE int =
     IF (a < b) THEN gcd(a, b - a) ELSE (IF (a > b) THEN gcd(a - b, b) ELSE a ENDIF) ENDIF
     MEASURE a + b
 

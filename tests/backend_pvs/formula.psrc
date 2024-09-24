@@ -1,12 +1,12 @@
 module A {
-    formula foo(nat a, b: nat) =
+    formula foo(int a, b: int) =
         a + b;
 
-    formula factorial(nat a: nat) =
+    formula factorial(int a: int) =
         a != 1 ? factorial(a - 1) : 1
         measure a;
 
-    formula gcd(nat a, b: nat) =
+    formula gcd(int a, b: int) =
         a < b ? gcd(a, b - a) :
             (a > b ? gcd(a - b, b) : a)
         measure a + b;
