@@ -745,7 +745,7 @@ bool StaticTypeChecker::checkUnary(Unary &unary) {
                     setType(unary, std::make_shared<Type>(Type::INT, Number::GENERIC));
                     return true;
                 case Type::NAT:
-                    setType(unary, std::make_shared<Type>(Type::INT, Number::GENERIC));
+                    setType(unary, std::make_shared<Type>(Type::NAT, Number::GENERIC));
                     return true;
                 default:
                     typeError("unary operation");
