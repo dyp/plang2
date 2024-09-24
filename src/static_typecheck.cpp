@@ -2,6 +2,8 @@
 #include <functional>
 #include <algorithm>
 #include <sstream>
+#include <string_view>
+#include <codecvt>
 
 #include "static_typecheck.h"
 #include "options.h"
@@ -1042,7 +1044,13 @@ bool StaticTypeChecker::isContains(const ExpressionPtr &expr, const TypePtr &typ
 
 void StaticTypeChecker::typeError(const std::string& msg, bool expr) {
     if (!expr) {
-        printTypecheckInfo(L"Type Error ", L"", PRINT_RED, 2);
+        std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+        try {
+            const auto result = converter.from_bytes(msg);
+            printTypecheckInfo(L"Type Error ", result, PRINT_RED, 2);
+        }  catch (...) {
+            printTypecheckInfo(L"Type Error ", L"", PRINT_RED, 2);
+        }
         throw std::runtime_error(msg);
     }
 }
