@@ -6,7 +6,7 @@
 
 */
 
-Umn(nat a, b:  nat c)
+Umn(int a, b:  int c)
 pre a >= 0 & b >= 0
 {
 	if (a = 0)

@@ -7,10 +7,10 @@
 
 */
 
-formula f1(nat a: bool) = a > 0;
-formula f2(nat b: bool) = b = 0;
+formula f1(int a: bool) = a > 0;
+formula f2(int b: bool) = b = 0;
 
-foo(nat a: nat b)
+foo(int a: int b)
 pre a > 0
 {
     if (a > 0)
@@ -22,7 +22,7 @@ pre a > 0
 post f1(b)
 measure a;
 
-bar(nat a: nat b)
+bar(int a: int b)
 pre a > 0
 {
     if (a > 0)

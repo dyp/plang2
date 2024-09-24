@@ -8,7 +8,7 @@
 
 */
 
-bar(nat a: nat b)
+bar(int a: int b)
 pre a > 0
 {
     if (a = 0)
