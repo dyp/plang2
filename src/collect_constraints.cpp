@@ -934,8 +934,8 @@ bool Collector::visitArrayIteration(const ArrayIterationPtr& _iter) {
     std::vector<TypePtr> dimensions;
     const bool bUnknownDimensionType = bool(_iter->getDefault());
     for (size_t i = 0; i < _iter->getIterators().size(); ++i)
-        dimensions.push_back(TypePtr(!bUnknownDimensionType ?
-                std::make_shared<tc::FreshType>(tc::FreshType::PARAM_OUT) : std::make_shared<Type>(Type::TOP)));
+        dimensions.push_back(!bUnknownDimensionType ?
+                std::make_shared<tc::FreshType>(tc::FreshType::PARAM_OUT)->as<Type>() : std::make_shared<Type>(Type::TOP));
 
     TypePtr pBaseType = std::make_shared<tc::FreshType>(tc::FreshType::PARAM_OUT);
 
@@ -1175,9 +1175,13 @@ int Collector::handleParameterizedTypeParam(NodePtr &_node) {
 bool Collector::visitTypeExpr(const TypeExprPtr &_expr) {
     if(Options::instance().bStaticTypecheck && StaticTypeChecker::checkTypeExpr(*_expr))
         return true;
-    const auto pType = std::make_shared<TypeType>();
-    pType->setDeclaration(std::make_shared<TypeDeclaration>(L"", _expr->getContents()));
-    _expr->setType(pType);
+    if (_expr->getContents()->getKind() == Type::RANGE || _expr->getContents()->getKind() == Type::SUBTYPE) {
+        _expr->setType(_expr->getContents());
+    } else {
+        const auto pType = std::make_shared<TypeType>();
+        pType->setDeclaration(std::make_shared<TypeDeclaration>(L"", _expr->getContents()));
+        _expr->setType(pType);
+    }
     return true;
 }
 

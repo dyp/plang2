@@ -81,14 +81,137 @@ bool StaticTypeChecker::checkArrayConstructor(ArrayConstructor& arrayConstructor
     }
     return true;
 }
-bool StaticTypeChecker::checkArrayIteration(ArrayIteration &arrayIteration) {
-    printTypecheckInfo(L"Start check for: ", str(arrayIteration), PRINT_BLUE, 1);
-    printTypecheckInfo(L"Static type checking failed", L"", PRINT_RED, 2);
-    return false;
+
+static const TypePtr _getContentsType(const ExpressionPtr _pExpr) {
+    return _pExpr->getType() && _pExpr->getType()->getKind() == Type::TYPE
+        ? _pExpr->as<TypeExpr>()->getContents()
+        : _pExpr->getType();
+}
+
+bool StaticTypeChecker::checkArrayIteration(ArrayIteration &_iter) {
+    printTypecheckInfo(L"Start check for: ", str(_iter), PRINT_BLUE, 1);
+    auto pArrayType = std::make_shared<ArrayType>();
+    _iter.setType(pArrayType);
+
+    typeError("array iteration should have >= 1 cases", !_iter.empty());
+
+    auto pBaseType = _getContentsType(_iter.get(0)->getExpression());
+    if (isFresh(pBaseType)) {
+        printTypecheckInfo(L"Static type checking failed", L"expression type is undefined in array iteration", PRINT_RED, 2);
+        return false;
+    }
+    for (size_t i = 1; i < _iter.size(); ++i) {
+        const auto pType = _getContentsType(_iter.get(i)->getExpression());
+        if (isFresh(pType)) {
+            printTypecheckInfo(L"Static type checking failed", L"expression type is undefined in array iteration", PRINT_RED, 2);
+            return false;
+        }
+        if (!isSubtype(pBaseType, pType)) {
+            if (isSubtype(pType, pBaseType)) {
+                pBaseType = pType;
+            } else {
+                typeError("array iteration case expression types should extend type", false);
+            }
+        }
+    }
+
+    for (size_t i = 0; i < _iter.size(); ++i) {
+        const auto& conds = _iter.get(i)->getConditions();
+        for (size_t j = 0; j < conds.size(); ++j) {
+            if (conds.get(j)->getKind() == Expression::CONSTRUCTOR
+                && conds.get(j)->as<Constructor>()->getConstructorKind() == Constructor::STRUCT_FIELDS)
+            {
+                const auto& constructor = *conds.get(j)->as<StructConstructor>();
+                typeError("Count of iterators does not match count of fields", _iter.getIterators().size() == constructor.size());
+
+                for (size_t k = 0; k < constructor.size(); ++k) {
+                    if (isFresh(_iter.getIterators().get(k)->getType())) {
+                        const auto ctorType = _getContentsType(constructor.get(k)->getValue());
+                        if (isFresh(ctorType)) {
+                            printTypecheckInfo(L"Static type checking failed", L"array ctor index type is undefined", PRINT_RED, 2);
+                            return false;
+                        }
+                    }
+
+                    const auto pIterType = _iter.getIterators().get(k)->getType();
+                    const auto ctorType = _getContentsType(constructor.get(k)->getValue());
+
+                    if (pIterType->getKind() != Type::GENERIC) {
+                        if (ctorType->getKind() != Type::GENERIC) {
+                            typeError("array iteration type mismatch ctor params", isSubtype(pIterType, ctorType) || isSubtype(ctorType, pIterType));//TODO:dyp: maybe we need to set type of ctor from iteration type
+                        } else {
+                            constructor.get(k)->getValue()->setType(pIterType);
+                        }
+                    } else {
+                        _iter.getIterators().get(k)->setType(ctorType);
+                    }
+                }
+
+                continue;
+            }
+
+            typeError("array iteration should have size 1 for non struct types", _iter.getIterators().size() == 1);
+
+            typeError("array iteration index type is not compatible", isSubtype(_getContentsType(conds.get(j)), _iter.getIterators().get(0)->getType()));
+
+            const auto pIterType = _iter.getIterators().get(0)->getType();
+
+            if (pIterType->getKind() != Type::GENERIC)
+                typeError("array iteration type mismatch condition", isSubtype(_getContentsType(conds.get(j)), pIterType));
+            else
+                _iter.getIterators().get(0)->setType(_getContentsType(conds.get(j)));
+        }
+
+        typeError("array iteration base type mismatch expression", isSubtype(pBaseType, _getContentsType(_iter.get(i)->getExpression())));
+    }
+
+    if (_iter.getDefault()) {
+        const auto pType = _getContentsType(_iter.getDefault());
+        if (!isSubtype(pBaseType, pType)) {
+            if (isSubtype(pType, pBaseType)) {
+                pBaseType = pType;
+            } else {
+                typeError("array iteration base type mismatch default expression", false);
+            }
+        }
+    }
+
+    std::vector<TypePtr> dimensions;
+    for (size_t i = 0; i < _iter.getIterators().size(); ++i)
+        dimensions.push_back(_iter.getIterators().get(i)->getType());
+
+    for (std::vector<TypePtr>::iterator i = dimensions.begin();; ++i) {
+        pArrayType->setDimensionType(*i);
+
+        if (i == --dimensions.end())
+            break;
+
+        pArrayType->setBaseType(std::make_shared<ArrayType>());
+        pArrayType = pArrayType->getBaseType()->as<ArrayType>();
+    }
+
+    pArrayType->setBaseType(pBaseType);
+    return true;
 }
 
 bool StaticTypeChecker::checkArrayPartExpr(ArrayPartExpr &arrayPartExpr) {
     printTypecheckInfo(L"Start check for: ", str(arrayPartExpr), PRINT_BLUE, 1);
+    for (auto i : arrayPartExpr.getIndices()) {
+        if (isFresh(i->getType())) {
+            const auto objectType = arrayPartExpr.getObject()->getType();
+            if (isFresh(objectType)) {
+                printTypecheckInfo(L"Static type checking failed", L"Array type is undefined", PRINT_RED, 2);
+                return false;
+            }
+            if (objectType->getKind() != Type::ARRAY) {
+                printTypecheckInfo(L"Static type checking failed", L"Array part base type is not array", PRINT_RED, 2);
+                return false;
+            }
+            const auto arrayType = objectType->as<ArrayType>();
+            i->setType(arrayType->getDimensionType());
+        }
+    }
+
     if (isFresh(arrayPartExpr.getObject()->getType()) ||
         std::any_of(arrayPartExpr.getIndices().begin(), arrayPartExpr.getIndices().end(),
                     [](ExpressionPtr x){return isFresh(x->getType());})) {
@@ -686,9 +809,13 @@ bool StaticTypeChecker::checkTernary(Ternary &ternary) {
 
 bool StaticTypeChecker::checkTypeExpr(TypeExpr &typeExpr) {
     printTypecheckInfo(L"Start check for: ", str(typeExpr), PRINT_BLUE, 1);
-    TypeTypePtr typeType = std::make_shared<TypeType>();
-    typeType->setDeclaration(std::make_shared<TypeDeclaration>(L"", typeExpr.getContents()));
-    typeExpr.setType(typeType);
+    if (typeExpr.getContents()->getKind() == Type::RANGE || typeExpr.getContents()->getKind() == Type::SUBTYPE) {
+        typeExpr.setType(typeExpr.getContents());
+    } else {
+        TypeTypePtr typeType = std::make_shared<TypeType>();
+        typeType->setDeclaration(std::make_shared<TypeDeclaration>(L"", typeExpr.getContents()));
+        typeExpr.setType(typeType);
+    }
     return true;
 }
 

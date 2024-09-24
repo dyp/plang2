@@ -42,5 +42,5 @@ module A {
         default: 2
     };
 
-    var e3 = c[1..2];
+    var e3 = c[1..2, 1..3];
 }
